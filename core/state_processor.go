@@ -17,14 +17,14 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/misc"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/misc"
+	"github.com/anduschain/go-anduschain/core/state"
+	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/core/vm"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/params"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning

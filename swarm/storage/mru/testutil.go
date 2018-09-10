@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/anduschain/go-anduschain/swarm/storage"
 )
 
 const (

@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	bv "github.com/ethereum/go-ethereum/swarm/network/bitvector"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/anduschain/go-anduschain/metrics"
+	"github.com/anduschain/go-anduschain/swarm/log"
+	bv "github.com/anduschain/go-anduschain/swarm/network/bitvector"
+	"github.com/anduschain/go-anduschain/swarm/spancontext"
+	"github.com/anduschain/go-anduschain/swarm/storage"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

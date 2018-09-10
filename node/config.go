@@ -25,15 +25,15 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/accounts/usbwallet"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/accounts/usbwallet"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/rpc"
 )
 
 const (

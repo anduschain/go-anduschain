@@ -23,11 +23,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/protocols"
-	p2ptest "github.com/ethereum/go-ethereum/p2p/testing"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/p2p/protocols"
+	p2ptest "github.com/anduschain/go-anduschain/p2p/testing"
 )
 
 const (

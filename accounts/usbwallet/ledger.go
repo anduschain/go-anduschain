@@ -28,12 +28,12 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/rlp"
 )
 
 // ledgerOpcode is an enumeration encoding the supported Ledger opcodes.

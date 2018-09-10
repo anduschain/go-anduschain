@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv5"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/swarm/storage"
+	whisper "github.com/anduschain/go-anduschain/whisper/whisperv5"
 )
 
 const (

@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/swarm/api"
-	swarm "github.com/ethereum/go-ethereum/swarm/api/client"
+	"github.com/anduschain/go-anduschain/swarm/api"
+	swarm "github.com/anduschain/go-anduschain/swarm/api/client"
 )
 
 // TestManifestChange tests manifest add, update and remove

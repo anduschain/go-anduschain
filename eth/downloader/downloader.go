@@ -25,15 +25,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/params"
+	ethereum "github.com/anduschain/go-anduschain"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/rawdb"
+	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/metrics"
+	"github.com/anduschain/go-anduschain/params"
 )
 
 var (

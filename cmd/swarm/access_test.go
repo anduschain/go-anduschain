@@ -33,12 +33,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	swarm "github.com/ethereum/go-ethereum/swarm/api/client"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/crypto/ecies"
+	"github.com/anduschain/go-anduschain/crypto/sha3"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/swarm/api"
+	swarm "github.com/anduschain/go-anduschain/swarm/api/client"
 )
 
 var DefaultCurve = crypto.S256()

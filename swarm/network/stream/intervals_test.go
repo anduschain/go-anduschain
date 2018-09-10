@@ -27,15 +27,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
-	"github.com/ethereum/go-ethereum/swarm/network"
-	"github.com/ethereum/go-ethereum/swarm/network/simulation"
-	"github.com/ethereum/go-ethereum/swarm/state"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/node"
+	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/p2p/simulations/adapters"
+	"github.com/anduschain/go-anduschain/swarm/network"
+	"github.com/anduschain/go-anduschain/swarm/network/simulation"
+	"github.com/anduschain/go-anduschain/swarm/state"
+	"github.com/anduschain/go-anduschain/swarm/storage"
 )
 
 func TestIntervals(t *testing.T) {

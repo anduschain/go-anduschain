@@ -24,13 +24,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/eth/gasprice"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/consensus/ethash"
+	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/eth/downloader"
+	"github.com/anduschain/go-anduschain/eth/gasprice"
+	"github.com/anduschain/go-anduschain/params"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.

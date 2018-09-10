@@ -58,9 +58,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/internal/build"
-	"github.com/ethereum/go-ethereum/params"
-	sv "github.com/ethereum/go-ethereum/swarm/version"
+	"github.com/anduschain/go-anduschain/internal/build"
+	"github.com/anduschain/go-anduschain/params"
+	sv "github.com/anduschain/go-anduschain/swarm/version"
 )
 
 var (

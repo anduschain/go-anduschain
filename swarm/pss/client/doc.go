@@ -28,11 +28,11 @@
 //  	"context"
 //  	"fmt"
 //  	"os"
-//  	pss "github.com/ethereum/go-ethereum/swarm/pss/client"
-//  	"github.com/ethereum/go-ethereum/p2p/protocols"
-//  	"github.com/ethereum/go-ethereum/p2p"
-//  	"github.com/ethereum/go-ethereum/swarm/pot"
-//  	"github.com/ethereum/go-ethereum/swarm/log"
+//  	pss "github.com/anduschain/go-anduschain/swarm/pss/client"
+//  	"github.com/anduschain/go-anduschain/p2p/protocols"
+//  	"github.com/anduschain/go-anduschain/p2p"
+//  	"github.com/anduschain/go-anduschain/swarm/pot"
+//  	"github.com/anduschain/go-anduschain/swarm/log"
 //  )
 //
 //  type FooMsg struct {

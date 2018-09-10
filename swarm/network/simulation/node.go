@@ -24,10 +24,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/simulations"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/p2p/simulations"
+	"github.com/anduschain/go-anduschain/p2p/simulations/adapters"
 )
 
 // NodeIDs returns NodeIDs for all nodes in the network.

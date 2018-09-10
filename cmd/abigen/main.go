@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common/compiler"
+	"github.com/anduschain/go-anduschain/accounts/abi/bind"
+	"github.com/anduschain/go-anduschain/common/compiler"
 )
 
 var (

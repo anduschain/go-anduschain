@@ -35,15 +35,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	swarm "github.com/ethereum/go-ethereum/swarm/api/client"
-	"github.com/ethereum/go-ethereum/swarm/multihash"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	"github.com/ethereum/go-ethereum/swarm/storage/mru"
-	"github.com/ethereum/go-ethereum/swarm/testutil"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/swarm/api"
+	swarm "github.com/anduschain/go-anduschain/swarm/api/client"
+	"github.com/anduschain/go-anduschain/swarm/multihash"
+	"github.com/anduschain/go-anduschain/swarm/storage"
+	"github.com/anduschain/go-anduschain/swarm/storage/mru"
+	"github.com/anduschain/go-anduschain/swarm/testutil"
 )
 
 func init() {

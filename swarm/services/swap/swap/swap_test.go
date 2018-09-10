@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/anduschain/go-anduschain/common"
 )
 
 type testInPayment struct {

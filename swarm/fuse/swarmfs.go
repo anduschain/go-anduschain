@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/swarm/api"
+	"github.com/anduschain/go-anduschain/swarm/api"
 )
 
 const (

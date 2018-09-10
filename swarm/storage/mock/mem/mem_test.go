@@ -19,7 +19,7 @@ package mem
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/swarm/storage/mock/test"
+	"github.com/anduschain/go-anduschain/swarm/storage/mock/test"
 )
 
 // TestGlobalStore is running test for a GlobalStore

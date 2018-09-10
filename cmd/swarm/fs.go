@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm/fuse"
+	"github.com/anduschain/go-anduschain/cmd/utils"
+	"github.com/anduschain/go-anduschain/node"
+	"github.com/anduschain/go-anduschain/rpc"
+	"github.com/anduschain/go-anduschain/swarm/fuse"
 	"gopkg.in/urfave/cli.v1"
 )
 

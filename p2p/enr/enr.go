@@ -34,7 +34,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/anduschain/go-anduschain/rlp"
 )
 
 const SizeLimit = 300 // maximum encoded size of a node record in bytes

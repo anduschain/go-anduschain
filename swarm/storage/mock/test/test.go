@@ -25,9 +25,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	"github.com/ethereum/go-ethereum/swarm/storage/mock"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/swarm/storage"
+	"github.com/anduschain/go-anduschain/swarm/storage/mock"
 )
 
 // MockStore creates NodeStore instances from provided GlobalStorer,
