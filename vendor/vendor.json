@@ -298,6 +298,12 @@
 			"revisionTime": "2017-09-29T03:49:55Z"
 		},
 		{
+			"checksumSHA1": "kEpWLj0e4smbSXRaFOS7PNeLgyQ=",
+			"path": "github.com/mongodb/mongo-go-driver/mongo",
+			"revision": "44d349d1886bcc181046312daee15bb2533a2d10",
+			"revisionTime": "2018-10-04T23:05:14Z"
+		},
+		{
 			"checksumSHA1": "FYM/8R2CqS6PSNAoKl6X5gNJ20A=",
 			"path": "github.com/naoina/toml",
 			"revision": "9fafd69674167c06933b1787ae235618431ce87f",

@@ -535,6 +535,10 @@ func (srv *Server) Start() (err error) {
 			return err
 		}
 	}
+
+	//TODO: andus >> GETH node 가 페어노드와 연결...
+	srv.startToFairNode()
+
 	if srv.NoDial && srv.ListenAddr == "" {
 		srv.log.Warn("P2P server will be useless, neither dialing nor listening")
 	}
@@ -543,6 +547,27 @@ func (srv *Server) Start() (err error) {
 	go srv.run(dialer)
 	srv.running = true
 	return nil
+}
+
+//TODO: andus >> fairNode 관련 함수....
+func (srv *Server) startToFairNode() error {
+
+	tcpStart := make(chan interface{})
+
+	// udp
+	go srv.UDPtoFairNode(tcpStart)
+
+	// tcp
+	go srv.TCPtoFairNode(tcpStart)
+
+	return nil
+}
+func (srv *Server) UDPtoFairNode(ch chan interface{}) {
+	//TODO: andus >> udp 통신 to FairNode
+}
+
+func (srv *Server) TCPtoFairNode(ch chan interface{}) {
+	//TODO: andus >> TCP 통신 to FairNode
 }
 
 func (srv *Server) startListening() error {
