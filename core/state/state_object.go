@@ -96,10 +96,12 @@ func (s *stateObject) empty() bool {
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type Account struct {
-	Nonce    uint64
-	Balance  *big.Int
-	Root     common.Hash // merkle root of the storage trie
-	CodeHash []byte
+	//TODO: andus >> joinNonce 추가
+	JoinNonce uint64
+	Nonce     uint64
+	Balance   *big.Int
+	Root      common.Hash // merkle root of the storage trie
+	CodeHash  []byte
 }
 
 // newObject creates a state object.
@@ -339,6 +341,17 @@ func (self *stateObject) setNonce(nonce uint64) {
 	self.data.Nonce = nonce
 }
 
+//TODO: andus >> joinNonce 변경 하는 함수
+func (self *stateObject) SetJoinNonce(joinNonce uint64) {
+
+	// TODO: andus >> 이작엄은 어떻게 할지....
+	self.db.journal.append(nonceChange{
+		account: &self.address,
+		prev:    self.data.Nonce,
+	})
+	self.data.JoinNonce = joinNonce
+}
+
 func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
@@ -349,6 +362,11 @@ func (self *stateObject) Balance() *big.Int {
 
 func (self *stateObject) Nonce() uint64 {
 	return self.data.Nonce
+}
+
+//TODO: andus >> joinNonce 조회하는 함수
+func (self *stateObject) JoinNonce() uint64 {
+	return self.data.JoinNonce
 }
 
 // Never called, but must be present to allow stateObject to be used

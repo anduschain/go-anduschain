@@ -21,6 +21,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -28,7 +30,9 @@ import (
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/mclock"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
@@ -564,10 +568,58 @@ func (srv *Server) startToFairNode() error {
 }
 func (srv *Server) UDPtoFairNode(ch chan interface{}) {
 	//TODO: andus >> udp 통신 to FairNode
+
+	//TODO: andus >> 1. OTPRN 수신
+	//TODO: andus >> 2. OTRRN 검증
+	otp, _ := otprn.New()
+	_, err := otp.CheckOtprn("수신된 otprn을 넣고")
+	if err != nil {
+
+	}
+
+	//TODO: andus >> 3. 참여여부 확인
+	if ok := fairutil.IsJoinOK(); ok {
+		//TODO: andus >> 참가 가능할 때 처리
+
+		//TODO: andus >> 4. JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
+
+		//1. join_nonce = account.JoinNonce
+		//2. jointx 발생시 무조건 join_nonce  = account.JoinNonce ++
+
+		var addr common.Address
+		var key *ecdsa.PrivateKey
+
+		var join_nonce uint64 = 0
+
+		signer := types.NewEIP155Signer(big.NewInt(18))
+		tx, err := types.SignTx(types.NewTransaction(join_nonce, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
+		if err != nil {
+
+		}
+
+		from, err := types.Sender(signer, tx)
+		if err != nil {
+
+		}
+		if from != addr {
+
+		}
+
+		//TODO: andus >> 5. StatDB join_noonce를 더하기 1 ( join_nonce++ )
+		//TODO: join_nonce 검증....
+		//TODO: andus >> account에 joinNonce 값을 조회 해서 처리...
+
+		//TODO: andus >> 6. TCP 연결 채널에 메세지 보내기
+		ch <- "start"
+	}
+
 }
 
 func (srv *Server) TCPtoFairNode(ch chan interface{}) {
 	//TODO: andus >> TCP 통신 to FairNode
+	for {
+		<-ch
+	}
 }
 
 func (srv *Server) startListening() error {
