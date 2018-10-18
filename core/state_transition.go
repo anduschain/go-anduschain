@@ -181,6 +181,7 @@ func (st *StateTransition) preCheck() error {
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
+	//TODO: andus >> joinNonce 처리 후보 1
 	if err = st.preCheck(); err != nil {
 		return
 	}

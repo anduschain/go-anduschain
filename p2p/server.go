@@ -583,9 +583,6 @@ func (srv *Server) UDPtoFairNode(ch chan interface{}) {
 
 		//TODO: andus >> 4. JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 
-		//1. join_nonce = account.JoinNonce
-		//2. jointx 발생시 무조건 join_nonce  = account.JoinNonce ++
-
 		var addr common.Address
 		var key *ecdsa.PrivateKey
 
@@ -605,9 +602,7 @@ func (srv *Server) UDPtoFairNode(ch chan interface{}) {
 
 		}
 
-		//TODO: andus >> 5. StatDB join_noonce를 더하기 1 ( join_nonce++ )
-		//TODO: join_nonce 검증....
-		//TODO: andus >> account에 joinNonce 값을 조회 해서 처리...
+		//TODO: andus >> 5. StatDB join_noonce를 더하기 1 ( join_nonce++ ) >> 블록 확정시 joinTx( 수신처가 페어노드인 tx) 를 검사해서 joinNounce 값 변경 ( 위치 조절 됨 )
 
 		//TODO: andus >> 6. TCP 연결 채널에 메세지 보내기
 		ch <- "start"
@@ -617,6 +612,8 @@ func (srv *Server) UDPtoFairNode(ch chan interface{}) {
 
 func (srv *Server) TCPtoFairNode(ch chan interface{}) {
 	//TODO: andus >> TCP 통신 to FairNode
+	//TODO: andus >> 1. fair Node에 TCP 연결
+	//TODO: andus >> 2. OTPRN, enode값 전달
 	for {
 		<-ch
 	}
@@ -873,6 +870,7 @@ type tempError interface {
 // listenLoop runs in its own goroutine and accepts
 // inbound connections.
 func (srv *Server) listenLoop() {
+	// TODO : andus >> 통신 처리 참고
 	defer srv.loopWG.Done()
 	srv.log.Info("RLPx listener up", "self", srv.makeSelf(srv.listener, srv.ntab))
 

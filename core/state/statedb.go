@@ -391,6 +391,7 @@ func (self *StateDB) setStateObject(object *stateObject) {
 
 // Retrieve a state object or create a new state object if nil.
 func (self *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
+	// TODO : andus >> state obj 가져와서 조회 할때 쓸곳...
 	stateObject := self.getStateObject(addr)
 	if stateObject == nil || stateObject.deleted {
 		stateObject, _ = self.createObject(addr)
