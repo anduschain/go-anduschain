@@ -19,12 +19,13 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"github.com/anduschain/go-anduschain/eth"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/misc"
@@ -35,6 +36,7 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
+	"github.com/deckarep/golang-set"
 )
 
 const (
@@ -559,6 +561,8 @@ func (w *worker) resultLoop() {
 				}
 				logs = append(logs, receipt.Logs...)
 			}
+
+			// TODO : andus >> 상태DB update 하는 부분을 막아야됨....
 			// Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
 			if err != nil {
@@ -927,7 +931,42 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		*receipts[i] = *l
 	}
 	s := w.current.state.Copy()
+
+	// TODO : andus >> 1. 새로운 블록 생성
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+
+	var pm *eth.ProtocolManager
+	count := 0
+
+	// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+	go func() {
+
+		winningBlock := block
+
+		t := time.NewTicker(10 * time.Second)
+
+		for {
+			select {
+			case recevedBlock := <-pm.ReceiveBlock:
+				// TODO : andus >> 블록 비교..
+				// TODO : andus >> 3. 높은것 TD가 높은 블록을 저장
+				winningBlock = compareBlock(winningBlock, recevedBlock)
+				count++
+
+				fmt.Println(recevedBlock.Hash(), count)
+
+			case <-t.C:
+				// TODO : andus >> 4. 10초 수집후 기다렸다가...
+				// TODO : andus >> 5. FairNode로 winningBlock 전송
+			}
+		}
+
+	}()
+
+	// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
+	// TODO : andus >> 7. 페어노드 서명 값 검증
+	// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+
 	if err != nil {
 		return err
 	}
@@ -955,5 +994,10 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if update {
 		w.updateSnapshot()
 	}
+	return nil
+}
+
+func compareBlock(myBlock *types.Block, receivedBlock *types.Block) *types.Block {
+
 	return nil
 }
