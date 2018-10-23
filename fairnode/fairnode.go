@@ -103,6 +103,7 @@ func (f *FairNode) sendLeague(aa chan string) {
 			//key = to,
 			//value = 접속할 peer list
 			// TODO: andus >> 각 GETH 노드에게 연결할 peer 리스트 전달
+			// TODO: andus >> 추후 서명 예정....
 		}
 	}
 }
