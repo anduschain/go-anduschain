@@ -11,7 +11,13 @@ type FairNodeDB struct {
 }
 
 func New() (*FairNodeDB, error) {
-	// TODO : mongodb 연결 및 사용 준비...
+	// TODO : mongodb 연결 및 사용정보...
 
 	return &FairNodeDB{}, nil
+}
+
+func JobCheckActiveNode() error {
+	// TODO : Active Node 관리 (주기 : 3분)..
+
+	return nil
 }
