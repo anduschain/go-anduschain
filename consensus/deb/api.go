@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package clique
+package deb
 
 import (
 	"github.com/anduschain/go-anduschain/common"
@@ -26,8 +26,8 @@ import (
 // API is a user facing RPC API to allow controlling the signer and voting
 // mechanisms of the proof-of-authority scheme.
 type API struct {
-	chain  consensus.ChainReader
-	clique *Clique
+	chain consensus.ChainReader
+	deb   *Deb
 }
 
 // GetSnapshot retrieves the state snapshot at a given block.
@@ -43,7 +43,7 @@ func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	return api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.deb.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 }
 
 // GetSnapshotAtHash retrieves the state snapshot at a given block.
@@ -52,7 +52,7 @@ func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	return api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.deb.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 }
 
 // GetSigners retrieves the list of authorized signers at the specified block.
@@ -68,7 +68,7 @@ func (api *API) GetSigners(number *rpc.BlockNumber) ([]common.Address, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.deb.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.deb.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +90,11 @@ func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
 
 // Proposals returns the current proposals the node tries to uphold and vote on.
 func (api *API) Proposals() map[common.Address]bool {
-	api.clique.lock.RLock()
-	defer api.clique.lock.RUnlock()
+	api.deb.lock.RLock()
+	defer api.deb.lock.RUnlock()
 
 	proposals := make(map[common.Address]bool)
-	for address, auth := range api.clique.proposals {
+	for address, auth := range api.deb.proposals {
 		proposals[address] = auth
 	}
 	return proposals
@@ -103,17 +103,17 @@ func (api *API) Proposals() map[common.Address]bool {
 // Propose injects a new authorization proposal that the signer will attempt to
 // push through.
 func (api *API) Propose(address common.Address, auth bool) {
-	api.clique.lock.Lock()
-	defer api.clique.lock.Unlock()
+	api.deb.lock.Lock()
+	defer api.deb.lock.Unlock()
 
-	api.clique.proposals[address] = auth
+	api.deb.proposals[address] = auth
 }
 
 // Discard drops a currently running proposal, stopping the signer from casting
 // further votes (either for or against).
 func (api *API) Discard(address common.Address) {
-	api.clique.lock.Lock()
-	defer api.clique.lock.Unlock()
+	api.deb.lock.Lock()
+	defer api.deb.lock.Unlock()
 
-	delete(api.clique.proposals, address)
+	delete(api.deb.proposals, address)
 }
