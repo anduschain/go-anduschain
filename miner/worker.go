@@ -562,7 +562,62 @@ func (w *worker) resultLoop() {
 				logs = append(logs, receipt.Logs...)
 			}
 
-			// TODO : andus >> 상태DB update 하는 부분을 막아야됨....
+			isInMinerLeagueOK := func(recevedBlockLeagueHash common.Hash, winningBlockLeagueHash common.Hash) bool {
+				// TODO : andus >> 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+
+				return recevedBlockLeagueHash == winningBlockLeagueHash
+			}
+
+			checkRANDSigOK := func(header *types.Header) bool {
+
+				// TODO : andus >> 1. 서명 확인 해야 되느데.......ㅜㅜ
+				// TODO : andus >> 2. 서명된 RNAD 값과 헤더에 diffculty 비교
+				// TODO : andus >> 3. RAND 값 검증
+
+				return true
+			}
+
+			var pm *eth.ProtocolManager
+			count := 0
+			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+			go func() {
+
+				winningBlock := block
+
+				t := time.NewTicker(10 * time.Second)
+				for {
+					select {
+					case recevedBlock := <-pm.ReceiveBlock:
+
+						// TODO : andus >> 블록 검증
+						// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+						if OK := isInMinerLeagueOK(recevedBlock.Header().LeagueHash, winningBlock.Header().LeagueHash); OK {
+
+							// TODO : andus >> 2. RAND 값 서명 검증
+							if OK := checkRANDSigOK(recevedBlock.Header()); OK {
+
+								winningBlock = compareBlock(winningBlock, recevedBlock)
+								count++
+
+								fmt.Println(recevedBlock.Hash(), count)
+
+							}
+						} else {
+							log.Info("andus >> isInMinerLeagueOK가 실패")
+						}
+
+					case <-t.C:
+						// TODO : andus >> 4. 10초 수집후 기다렸다가...
+						// TODO : andus >> 5. FairNode로 winningBlock 전송
+					}
+				}
+
+			}()
+
+			// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
+			// TODO : andus >> 7. 페어노드 서명 값 검증
+			// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+
 			// Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
 			if err != nil {
@@ -934,38 +989,6 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 
 	// TODO : andus >> 1. 새로운 블록 생성
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
-
-	var pm *eth.ProtocolManager
-	count := 0
-
-	// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
-	go func() {
-
-		winningBlock := block
-
-		t := time.NewTicker(10 * time.Second)
-
-		for {
-			select {
-			case recevedBlock := <-pm.ReceiveBlock:
-				// TODO : andus >> 블록 비교..
-				// TODO : andus >> 3. 높은것 TD가 높은 블록을 저장
-				winningBlock = compareBlock(winningBlock, recevedBlock)
-				count++
-
-				fmt.Println(recevedBlock.Hash(), count)
-
-			case <-t.C:
-				// TODO : andus >> 4. 10초 수집후 기다렸다가...
-				// TODO : andus >> 5. FairNode로 winningBlock 전송
-			}
-		}
-
-	}()
-
-	// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-	// TODO : andus >> 7. 페어노드 서명 값 검증
-	// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
 
 	if err != nil {
 		return err

@@ -83,6 +83,11 @@ type Header struct {
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
 	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+
+	// TODO : andus >> LeagueHash : 총 채굴리그 해시값
+	LeagueHash common.Hash `json:"leagueHash"       gencodec:"required"`
+	// TODO : andus >> RandSignature : RAND값을 개인키로 서명한값
+	RandSignature common.Hash `json:"randSignature"    gencodec:"required"`
 }
 
 // field type overrides for gencodec

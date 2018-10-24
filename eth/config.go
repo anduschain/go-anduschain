@@ -34,8 +34,10 @@ import (
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.
+// TODO : andus >> anduschain main net 컨센서스 선택부분 설정 해야함
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
+	// TODO : andus >> 여기서 컨센서스 엔진 부분 교체
 	Ethash: ethash.Config{
 		CacheDir:       "ethash",
 		CachesInMem:    2,

@@ -177,6 +177,7 @@ func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 	if len(header.Extra) < extraSeal {
 		return common.Address{}, errMissingSignature
 	}
+
 	signature := header.Extra[len(header.Extra)-extraSeal:]
 
 	// Recover the public key and the Ethereum address

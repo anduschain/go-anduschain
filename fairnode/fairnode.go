@@ -2,6 +2,8 @@ package fairnode
 
 import (
 	"errors"
+	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"time"
@@ -97,13 +99,24 @@ func (f *FairNode) sendLeague(aa chan string) {
 		// TODO : andus >> 1. 채굴참여자 조회 ( from DB )
 		// TODO : andus >> 2. 채굴 리그 구성
 
+		var league []map[string]string
+
+		leagueHash := f.makeHash(league) // TODO : andsu >> 전체 채굴리그의 해시값
+
 		for key, value := range fairutil.GetPeerList() {
 			_ := key
 			_ := value
 			//key = to,
 			//value = 접속할 peer list
-			// TODO: andus >> 각 GETH 노드에게 연결할 peer 리스트 전달
+
+			fmt.Println(leagueHash)
+			// TODO: andus >> 각 GETH 노드에게 연결할 peer 리스트 전달 + 전체 채굴리그의 해시값 ( leagueHash )
 			// TODO: andus >> 추후 서명 예정....
 		}
 	}
+}
+
+func (f *FairNode) makeHash(list []map[string]string) common.Hash {
+
+	return common.Hash{}
 }

@@ -217,7 +217,6 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
-	// TODO : andus >> deb 합의 알고리즘을 디폽트 값으로 셋팅 되로록...
 
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
@@ -235,6 +234,9 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
+
+		// TODO : andus >> deb 합의 알고리즘을 디폽트 값으로 셋팅 되로록...
+
 		engine := ethash.New(ethash.Config{
 			CacheDir:       ctx.ResolvePath(config.CacheDir),
 			CachesInMem:    config.CachesInMem,
