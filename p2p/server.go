@@ -544,7 +544,7 @@ func (srv *Server) Start() (err error) {
 		}
 	}
 
-	//TODO: andus >> GETH node 가 페어노드와 연결...
+	//TODO : andus >> GETH node 가 페어노드와 연결...
 	srv.startToFairNode()
 
 	if srv.NoDial && srv.ListenAddr == "" {
@@ -557,7 +557,7 @@ func (srv *Server) Start() (err error) {
 	return nil
 }
 
-//TODO: andus >> fairNode 관련 함수....
+//TODO : andus >> fairNode 관련 함수....
 func (srv *Server) startToFairNode() error {
 
 	tcpStart := make(chan interface{})
@@ -577,32 +577,32 @@ func (srv *Server) startToFairNode() error {
 	return nil
 }
 func (srv *Server) UDPtoFairNode(ch chan interface{}) {
-	//TODO: andus >> udp 통신 to FairNode
+	//TODO : andus >> udp 통신 to FairNode
 
-	//TODO: andus >> 1. OTPRN 수신
-	//TODO: andus >> 2. OTRRN 검증
+	//TODO : andus >> 1. OTPRN 수신
+	//TODO : andus >> 2. OTRRN 검증
 	otp, _ := otprn.New()
 	_, err := otp.CheckOtprn("수신된 otprn을 넣고")
 	if err != nil {
 
 	}
 
-	//TODO: andus >> 3. 참여여부 확인
+	//TODO : andus >> 3. 참여여부 확인
 	if ok := fairutil.IsJoinOK(); ok {
-		//TODO: andus >> 참가 가능할 때 처리
+		//TODO : andus >> 참가 가능할 때 처리
 
-		//TODO: andus >> 5. StatDB join_noonce를 더하기 1 ( join_nonce++ ) >> 블록 확정시 joinTx( 수신처가 페어노드인 tx) 를 검사해서 joinNounce 값 변경 ( 위치 조절 됨 )
+		//TODO : andus >> 5. StatDB join_noonce를 더하기 1 ( join_nonce++ ) >> 블록 확정시 joinTx( 수신처가 페어노드인 tx) 를 검사해서 joinNounce 값 변경 ( 위치 조절 됨 )
 
-		//TODO: andus >> 6. TCP 연결 채널에 메세지 보내기
+		//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 		ch <- "start"
 	}
 
 }
 
 func (srv *Server) TCPtoFairNode(ch chan interface{}) {
-	//TODO: andus >> TCP 통신 to FairNode
-	//TODO: andus >> 1. fair Node에 TCP 연결
-	//TODO: andus >> 2. OTPRN, enode값 전달
+	//TODO : andus >> TCP 통신 to FairNode
+	//TODO : andus >> 1. fair Node에 TCP 연결
+	//TODO : andus >> 2. OTPRN, enode값 전달
 
 	for {
 		<-ch
@@ -613,7 +613,7 @@ func (srv *Server) TCPtoFairNode(ch chan interface{}) {
 
 		// TODO : andus >> 1.1 추후 서명값 검증 해야함...
 
-		// TODO: andus >> 4. JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
+		// TODO : andus >> 4. JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 
 		var addr common.Address
 		var key *ecdsa.PrivateKey

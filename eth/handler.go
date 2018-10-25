@@ -91,7 +91,7 @@ type ProtocolManager struct {
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
-	// TODO: andus >> 채굴리그에서 수신된 블록
+	// TODO : andus >> 채굴리그에서 수신된 블록
 	ReceiveBlock chan *types.Block
 
 	// wait group is used for graceful shutdowns during downloading
@@ -687,7 +687,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.txpool.AddRemotes(txs)
 
 	case msg.Code == MakeLeagueBlockMsg:
-		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
+		// TODO : andus >> 위닝 블록 처리 관련 case 추가하기..
 
 		var block *types.Block
 		if err := msg.Decode(&block); err != nil {
