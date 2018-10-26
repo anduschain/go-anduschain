@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/eth"
 	"math/big"
 	"sync"
@@ -175,6 +177,9 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
+
+	AndusPM  *eth.ProtocolManager
+	Keystore *keystore.KeyStore
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -205,6 +210,10 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	// Subscribe events for blockchain
 	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
 	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
+
+	//TODO : andus >> protocolmanager : hakuna
+	worker.AndusPM = eth.ProtocolManager()
+	worker.Keystore = eth.GetKeystore()
 
 	// Sanitize recommit interval if the user-specified one is too short.
 	if recommit < minRecommitInterval {
@@ -562,10 +571,36 @@ func (w *worker) resultLoop() {
 				logs = append(logs, receipt.Logs...)
 			}
 
-			isInMinerLeagueOK := func(recevedBlockLeagueHash common.Hash, winningBlockLeagueHash common.Hash) bool {
-				// TODO : andus >> 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+			// TODO : andus >> TransferBlock 객체 생성
 
-				return recevedBlockLeagueHash == winningBlockLeagueHash
+			ks := w.Keystore
+			account := accounts.Account{
+				block.Coinbase(),
+				nil,
+			}
+
+			sig, err := ks.SignHash(account, block.Header().Hash().Bytes())
+
+			if err != nil {
+				log.Info("andus >> 블록에 서명 하는 에러 발생 ")
+			}
+
+			tfd := types.TransferBlock{Block: block, HeaderHash: block.Header().Hash(), Sig: sig}
+
+			// TODO : andus >> 연결된 채굴 리그에게 생성한 블록을 전송
+			peers := w.AndusPM.GetPeers()
+			for _, peer := range peers {
+				peer.SendMakeLeagueBlock(tfd)
+			}
+
+			isFairNodeSigOK := func(recevedBlockLeagueHash *types.TransferBlock) bool {
+				// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
+
+				if true {
+
+				}
+
+				return true
 			}
 
 			checkRANDSigOK := func(header *types.Header) bool {
@@ -577,7 +612,7 @@ func (w *worker) resultLoop() {
 				return true
 			}
 
-			var pm *eth.ProtocolManager
+			pm := w.AndusPM // TODO : andus >> 처리 필요
 			count := 0
 			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
 			go func() {
@@ -591,19 +626,20 @@ func (w *worker) resultLoop() {
 
 						// TODO : andus >> 블록 검증
 						// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-						if OK := isInMinerLeagueOK(recevedBlock.Header().LeagueHash, winningBlock.Header().LeagueHash); OK {
+						if OK := isFairNodeSigOK(recevedBlock); !OK {
 
 							// TODO : andus >> 2. RAND 값 서명 검증
-							if OK := checkRANDSigOK(recevedBlock.Header()); OK {
+							if OK := checkRANDSigOK(recevedBlock.Block.Header()); OK {
 
-								winningBlock = compareBlock(winningBlock, recevedBlock)
+								winningBlock = compareBlock(winningBlock, recevedBlock.Block)
 								count++
 
-								fmt.Println(recevedBlock.Hash(), count)
+								fmt.Println(recevedBlock.Block.Hash(), count)
 
 							}
 						} else {
-							log.Info("andus >> isInMinerLeagueOK가 실패")
+							log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
+
 						}
 
 					case <-t.C:
@@ -615,7 +651,6 @@ func (w *worker) resultLoop() {
 			}()
 
 			// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-			// TODO : andus >> 7. 페어노드 서명 값 검증
 			// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
 
 			// Commit block and state to database.

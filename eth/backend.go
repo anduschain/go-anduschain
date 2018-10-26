@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"math/big"
 	"runtime"
 	"sync"
@@ -92,6 +93,9 @@ type Ethereum struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+
+	// TODO : andus >> keystore 추가
+	Keystore *keystore.KeyStore
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -418,6 +422,10 @@ func (s *Ethereum) IsListening() bool                  { return true } // Always
 func (s *Ethereum) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
+
+//TODO : andus >> protocolmanager, GetKeystore
+func (s *Ethereum) ProtocolManager() *ProtocolManager { return s.protocolManager }
+func (s *Ethereum) GetKeystore() *keystore.KeyStore   { return s.Keystore }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

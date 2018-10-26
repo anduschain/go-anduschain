@@ -19,6 +19,8 @@ package miner
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/eth"
 	"sync/atomic"
 	"time"
 
@@ -37,6 +39,9 @@ import (
 type Backend interface {
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
+	//TODO : andus >> protocolmanager, GetKeystore
+	ProtocolManager() *eth.ProtocolManager
+	GetKeystore() *keystore.KeyStore
 }
 
 // Miner creates blocks and searches for proof-of-work values.
@@ -54,10 +59,11 @@ type Miner struct {
 
 func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64) *Miner {
 	miner := &Miner{
-		eth:      eth,
-		mux:      mux,
-		engine:   engine,
-		exitCh:   make(chan struct{}),
+		eth:    eth,
+		mux:    mux,
+		engine: engine,
+		exitCh: make(chan struct{}),
+		// TODO : andus >> andus protocol manager 추가
 		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil),
 		canStart: 1,
 	}

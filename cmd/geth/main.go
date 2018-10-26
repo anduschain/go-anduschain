@@ -28,7 +28,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/gosigar"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/cmd/utils"
@@ -39,6 +38,7 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/node"
+	"github.com/elastic/gosigar"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -344,6 +344,9 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 			gasprice = utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
 		}
 		ethereum.TxPool().SetGasPrice(gasprice)
+
+		// TODO : andus >> keystore 추가
+		ethereum.Keystore = ks
 
 		threads := ctx.GlobalInt(utils.MinerLegacyThreadsFlag.Name)
 		if ctx.GlobalIsSet(utils.MinerThreadsFlag.Name) {

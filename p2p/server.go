@@ -183,9 +183,6 @@ type Server struct {
 	loopWG        sync.WaitGroup // loop, listenLoop
 	peerFeed      event.Feed
 	log           log.Logger
-
-	// TODO : andus >> 총 채굴리그 해시.
-	LeagueHash *common.Hash
 }
 
 type peerOpFunc func(map[discover.NodeID]*Peer)
@@ -609,7 +606,7 @@ func (srv *Server) TCPtoFairNode(ch chan interface{}) {
 
 		// TODO : andus >> 1. 채굴 리스 리스트와 총 채굴리그 해시 수신
 
-		srv.LeagueHash = &common.Hash{} // TODO : andus >> 채굴리그 해시 저장
+		//srv.LeagueHash = &common.Hash{} // TODO : andus >> 채굴리그 해시 저장
 
 		// TODO : andus >> 1.1 추후 서명값 검증 해야함...
 

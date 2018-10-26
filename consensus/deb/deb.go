@@ -42,6 +42,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
+// TODO : andus >> 필요없는 소스 기능 정리
+
 const (
 	checkpointInterval = 1024 // Number of blocks after which to save the vote snapshot to the database
 	inmemorySnapshots  = 128  // Number of recent vote snapshots to keep in memory

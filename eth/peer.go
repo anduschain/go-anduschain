@@ -286,6 +286,11 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 	return p2p.Send(p.rw, ReceiptsMsg, receipts)
 }
 
+// TODO : andus >> Send MakeLeagueBlockMsg ( 채굴리그가 생성한 블록을 보냄 )
+func (p *peer) SendMakeLeagueBlock(tb types.TransferBlock) error {
+	return p2p.Send(p.rw, MakeLeagueBlockMsg, tb)
+}
+
 // RequestOneHeader is a wrapper around the header query functions to fetch a
 // single header. It is used solely by the fetcher.
 func (p *peer) RequestOneHeader(hash common.Hash) error {
