@@ -110,8 +110,8 @@ func (f *FairNode) sendLeague(aa chan string) {
 			//value = 접속할 peer list
 
 			fmt.Println(leagueHash)
-			// TODO: andus >> 각 GETH 노드에게 연결할 peer 리스트 전달 + 전체 채굴리그의 해시값 ( leagueHash )
-			// TODO: andus >> 추후 서명 예정....
+			// TODO : andus >> 각 GETH 노드에게 연결할 peer 리스트 전달 + 전체 채굴리그의 해시값 ( leagueHash )
+			// TODO : andus >> 추후 서명 예정....
 		}
 	}
 }

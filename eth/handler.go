@@ -91,7 +91,7 @@ type ProtocolManager struct {
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
-	// TODO: andus >> 채굴리그에서 수신된 블록
+	// TODO : andus >> 채굴리그에서 수신된 블록
 	ReceiveBlock chan *types.TransferBlock
 
 	// wait group is used for graceful shutdowns during downloading
@@ -114,7 +114,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		noMorePeers:  make(chan struct{}),
 		txsyncCh:     make(chan *txsync),
 		quitSync:     make(chan struct{}),
-		ReceiveBlock: make(chan *types.TransferBlock),
+		ReceiveBlock: make(chan *types.Block),
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -184,9 +184,6 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 
 	return manager, nil
 }
-
-// TODO : andus >> peerset 개터 선언
-func (pm *ProtocolManager) GetPeers() map[string]*peer { return pm.peers.peers }
 
 func (pm *ProtocolManager) removePeer(id string) {
 	// Short circuit if the peer was already removed
@@ -692,13 +689,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == MakeLeagueBlockMsg:
 		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
 
-		var tfBlock *types.TransferBlock
-		if err := msg.Decode(&tfBlock); err != nil {
+		var block *types.Block
+		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		if tfBlock != nil {
-			pm.ReceiveBlock <- tfBlock
+		if block != nil {
+			pm.ReceiveBlock <- block
 			log.Info("andus >> 블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)")
 		} else {
 			log.Info("andus >> 블록이 넘어오지 않았어요 (MakeLeagueBlockMsg)")

@@ -605,9 +605,12 @@ func (w *worker) resultLoop() {
 
 			checkRANDSigOK := func(header *types.Header) bool {
 
-				// TODO : andus >> 1. 서명 확인 해야 되느데.......ㅜㅜ
-				// TODO : andus >> 2. 서명된 RNAD 값과 헤더에 diffculty 비교
-				// TODO : andus >> 3. RAND 값 검증
+				// TODO : andus >> 1. 서명 확인 해야 되는데.......
+				//					/crypto/crypto_test.go 의 TestSign() 함수 참조..
+				// TODO : andus >> 2. 서명된 RAND 값을 복호화한 값과 헤더의 difficulty 값 같은지 비교
+				//					위에서 공개키와 주소를 얻어오고, 공개키로 복호화한다..
+				// TODO : andus >> 3. miner 의 JoinNonce 수 만큼 RAND 값을 생성하면서 헤더의 difficulty 와 같은 값이 나오는지 검증
+				//					miner 의 JoinNonce 는 어디서 가져오지?
 
 				return true
 			}
