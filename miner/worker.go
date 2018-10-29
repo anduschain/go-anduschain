@@ -615,17 +615,22 @@ func (w *worker) resultLoop() {
 				return true
 			}
 
-			pm := w.AndusPM // TODO : andus >> 처리 필요
-			count := 0
+			otprn := w.eth.GetOtprn()
+
 			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
 			go func() {
 
 				winningBlock := block
+				count, countBlock := 0, 0
+				lastBlockNum := big.NewInt(0)
+				t := time.NewTicker(1 * time.Second)
 
-				t := time.NewTicker(10 * time.Second)
+				// TODO : andus >> coinbase 저장소
+				receviedCoinbase := make(map[common.Address]string)
+
 				for {
 					select {
-					case recevedBlock := <-pm.ReceiveBlock:
+					case recevedBlock := <-w.AndusPM.ReceiveBlock:
 
 						// TODO : andus >> 블록 검증
 						// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
@@ -635,6 +640,9 @@ func (w *worker) resultLoop() {
 							if OK := checkRANDSigOK(recevedBlock.Block.Header()); OK {
 
 								winningBlock = compareBlock(winningBlock, recevedBlock.Block)
+
+								receviedCoinbase[recevedBlock.Block.Coinbase()] = "코인베이스"
+
 								count++
 
 								fmt.Println(recevedBlock.Block.Hash(), count)
@@ -642,12 +650,24 @@ func (w *worker) resultLoop() {
 							}
 						} else {
 							log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
-
+							lastBlockNum = recevedBlock.Block.Number()
 						}
 
 					case <-t.C:
-						// TODO : andus >> 4. 10초 수집후 기다렸다가...
-						// TODO : andus >> 5. FairNode로 winningBlock 전송
+						// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
+						if int64(len(receviedCoinbase)) >= otprn.Mminer-1 {
+							// TODO : andus >> 5. FairNode로 winningBlock 전송
+							countBlock = 0
+						} else {
+							countBlock++
+						}
+
+						if countBlock > 10 {
+							// TODO : andus >> 5. FairNode로 winningBlock 전송
+
+							countBlock = 0
+						}
+
 					}
 				}
 

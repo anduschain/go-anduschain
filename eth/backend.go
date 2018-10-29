@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"math/big"
 	"runtime"
 	"sync"
@@ -94,8 +95,9 @@ type Ethereum struct {
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 
-	// TODO : andus >> keystore 추가
+	// TODO : andus >> keystore, Otprn 추가
 	Keystore *keystore.KeyStore
+	Otprn    *otprn.Otprn
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -426,6 +428,7 @@ func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManage
 //TODO : andus >> protocolmanager, GetKeystore
 func (s *Ethereum) ProtocolManager() *ProtocolManager { return s.protocolManager }
 func (s *Ethereum) GetKeystore() *keystore.KeyStore   { return s.Keystore }
+func (s *Ethereum) GetOtprn() *otprn.Otprn            { return s.Otprn }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

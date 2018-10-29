@@ -328,6 +328,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 			}
 		}
 	}()
+
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running
@@ -347,6 +348,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 		// TODO : andus >> keystore 추가
 		ethereum.Keystore = ks
+		ethereum.Otprn = stack.Server().Otprn
 
 		threads := ctx.GlobalInt(utils.MinerLegacyThreadsFlag.Name)
 		if ctx.GlobalIsSet(utils.MinerThreadsFlag.Name) {

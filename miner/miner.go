@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/eth"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"sync/atomic"
 	"time"
 
@@ -42,6 +43,7 @@ type Backend interface {
 	//TODO : andus >> protocolmanager, GetKeystore
 	ProtocolManager() *eth.ProtocolManager
 	GetKeystore() *keystore.KeyStore
+	GetOtprn() *otprn.Otprn
 }
 
 // Miner creates blocks and searches for proof-of-work values.

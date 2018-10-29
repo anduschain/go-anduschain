@@ -5,9 +5,6 @@ type Otprn struct {
 	Cminer    int64
 	Mminer    int64
 	TimeStamp string
-	S         string
-	R         string
-	V         string
 }
 
 func New() (*Otprn, error) {

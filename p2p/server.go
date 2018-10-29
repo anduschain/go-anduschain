@@ -183,6 +183,9 @@ type Server struct {
 	loopWG        sync.WaitGroup // loop, listenLoop
 	peerFeed      event.Feed
 	log           log.Logger
+
+	//TODO : andus >> Otprn 저장소..
+	Otprn *otprn.Otprn
 }
 
 type peerOpFunc func(map[discover.NodeID]*Peer)
@@ -579,7 +582,11 @@ func (srv *Server) UDPtoFairNode(ch chan interface{}) {
 	//TODO : andus >> 1. OTPRN 수신
 	//TODO : andus >> 2. OTRRN 검증
 	otp, _ := otprn.New()
-	_, err := otp.CheckOtprn("수신된 otprn을 넣고")
+	checkedOtprn, err := otp.CheckOtprn("수신된 otprn을 넣고")
+
+	//TODO : andus >> Otprn 저장
+	srv.Otprn = checkedOtprn
+
 	if err != nil {
 
 	}
