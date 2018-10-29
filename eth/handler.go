@@ -114,7 +114,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		noMorePeers:  make(chan struct{}),
 		txsyncCh:     make(chan *txsync),
 		quitSync:     make(chan struct{}),
-		ReceiveBlock: make(chan *types.Block),
+		ReceiveBlock: make(chan *types.TransferBlock),
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -184,6 +184,9 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 
 	return manager, nil
 }
+
+// TODO : andus >> peerset 개터 선언
+func (pm *ProtocolManager) GetPeers() map[string]*peer { return pm.peers.peers }
 
 func (pm *ProtocolManager) removePeer(id string) {
 	// Short circuit if the peer was already removed
@@ -689,7 +692,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == MakeLeagueBlockMsg:
 		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
 
-		var block *types.Block
+		var block *types.TransferBlock
 		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
