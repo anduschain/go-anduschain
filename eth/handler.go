@@ -92,7 +92,8 @@ type ProtocolManager struct {
 	noMorePeers chan struct{}
 
 	// TODO : andus >> 채굴리그에서 수신된 블록
-	ReceiveBlock chan *types.TransferBlock
+	ReceiveBlock           chan *types.TransferBlock
+	LeagueBlockBroadcastCh chan *types.TransferBlock
 
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
@@ -101,20 +102,21 @@ type ProtocolManager struct {
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		networkID:    networkID,
-		eventMux:     mux,
-		txpool:       txpool,
-		blockchain:   blockchain,
-		chainconfig:  config,
-		peers:        newPeerSet(),
-		newPeerCh:    make(chan *peer),
-		noMorePeers:  make(chan struct{}),
-		txsyncCh:     make(chan *txsync),
-		quitSync:     make(chan struct{}),
-		ReceiveBlock: make(chan *types.TransferBlock),
+		networkID:              networkID,
+		eventMux:               mux,
+		txpool:                 txpool,
+		blockchain:             blockchain,
+		chainconfig:            config,
+		peers:                  newPeerSet(),
+		newPeerCh:              make(chan *peer),
+		noMorePeers:            make(chan struct{}),
+		txsyncCh:               make(chan *txsync),
+		quitSync:               make(chan struct{}),
+		ReceiveBlock:           receiveCh,
+		LeagueBlockBroadcastCh: leagueCh,
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -185,9 +187,6 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 	return manager, nil
 }
 
-// TODO : andus >> peerset 개터 선언
-func (pm *ProtocolManager) GetPeers() map[string]*peer { return pm.peers.peers }
-
 func (pm *ProtocolManager) removePeer(id string) {
 	// Short circuit if the peer was already removed
 	peer := pm.peers.Peer(id)
@@ -222,6 +221,21 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	// start sync handlers
 	go pm.syncer()
 	go pm.txsyncLoop()
+
+	// TODO : andus >> 리그들에게 블록 브로드 케스팅 루프
+	go pm.leagueBroadCast()
+}
+
+// TODO : andus >> 리그들에게 블록 브로드 케스팅
+func (pm *ProtocolManager) leagueBroadCast() {
+	for {
+		select {
+		case block := <-pm.LeagueBlockBroadcastCh:
+			for _, peer := range pm.peers.peers {
+				peer.SendMakeLeagueBlock(*block)
+			}
+		}
+	}
 }
 
 func (pm *ProtocolManager) Stop() {

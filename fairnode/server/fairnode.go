@@ -1,4 +1,4 @@
-package fairnode
+package server
 
 import (
 	"errors"

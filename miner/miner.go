@@ -20,8 +20,7 @@ package miner
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/eth"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/fairnode/client"
 	"sync/atomic"
 	"time"
 
@@ -40,10 +39,12 @@ import (
 type Backend interface {
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
-	//TODO : andus >> protocolmanager, GetKeystore
-	ProtocolManager() *eth.ProtocolManager
+}
+
+// TODO : andus >> DebBackend interface type 추가 ( andus deb 전용 인터페이스 )
+type DebBackend interface {
 	GetKeystore() *keystore.KeyStore
-	GetOtprn() *otprn.Otprn
+	GetFairClient() *fairnodeclient.FairnodeClient
 }
 
 // Miner creates blocks and searches for proof-of-work values.
@@ -59,14 +60,14 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64) *Miner {
+func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) *Miner {
 	miner := &Miner{
 		eth:    eth,
 		mux:    mux,
 		engine: engine,
 		exitCh: make(chan struct{}),
-		// TODO : andus >> andus protocol manager 추가
-		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil),
+		// TODO : andus >> andus keystore 추가
+		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, debBackend, leagueCh, receiveCh),
 		canStart: 1,
 	}
 	go miner.update()

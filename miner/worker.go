@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/eth"
+	"github.com/anduschain/go-anduschain/fairnode/client"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -178,32 +178,37 @@ type worker struct {
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
 
-	AndusPM  *eth.ProtocolManager
-	Keystore *keystore.KeyStore
+	// TODO : andus >> keystore
+	ks                     *keystore.KeyStore
+	LeagueBlockBroadcastCh chan *types.TransferBlock
+	ReceiveBlockCh         chan *types.TransferBlock
+	fairclient             *fairnodeclient.FairnodeClient
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) *worker {
 	worker := &worker{
-		config:             config,
-		engine:             engine,
-		eth:                eth,
-		mux:                mux,
-		chain:              eth.BlockChain(),
-		gasFloor:           gasFloor,
-		gasCeil:            gasCeil,
-		possibleUncles:     make(map[common.Hash]*types.Block),
-		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
-		pendingTasks:       make(map[common.Hash]*task),
-		txsCh:              make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
-		newWorkCh:          make(chan *newWorkReq),
-		taskCh:             make(chan *task),
-		resultCh:           make(chan *types.Block, resultQueueSize),
-		exitCh:             make(chan struct{}),
-		startCh:            make(chan struct{}, 1),
-		resubmitIntervalCh: make(chan time.Duration),
-		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
+		config:                 config,
+		engine:                 engine,
+		eth:                    eth,
+		mux:                    mux,
+		chain:                  eth.BlockChain(),
+		gasFloor:               gasFloor,
+		gasCeil:                gasCeil,
+		possibleUncles:         make(map[common.Hash]*types.Block),
+		unconfirmed:            newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
+		pendingTasks:           make(map[common.Hash]*task),
+		txsCh:                  make(chan core.NewTxsEvent, txChanSize),
+		chainHeadCh:            make(chan core.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:            make(chan core.ChainSideEvent, chainSideChanSize),
+		newWorkCh:              make(chan *newWorkReq),
+		taskCh:                 make(chan *task),
+		resultCh:               make(chan *types.Block, resultQueueSize),
+		exitCh:                 make(chan struct{}),
+		startCh:                make(chan struct{}, 1),
+		resubmitIntervalCh:     make(chan time.Duration),
+		resubmitAdjustCh:       make(chan *intervalAdjust, resubmitAdjustChanSize),
+		LeagueBlockBroadcastCh: leagueCh,
+		ReceiveBlockCh:         receiveCh,
 	}
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
@@ -211,9 +216,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
 	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
 
-	//TODO : andus >> protocolmanager : hakuna
-	worker.AndusPM = eth.ProtocolManager()
-	worker.Keystore = eth.GetKeystore()
+	worker.ks = debBackend.GetKeystore()
+	worker.fairclient = debBackend.GetFairClient()
 
 	// Sanitize recommit interval if the user-specified one is too short.
 	if recommit < minRecommitInterval {
@@ -573,25 +577,20 @@ func (w *worker) resultLoop() {
 
 			// TODO : andus >> TransferBlock 객체 생성
 
-			ks := w.Keystore
+			ks := w.ks
 			account := accounts.Account{
-				block.Coinbase(),
-				nil,
+				Address: block.Coinbase(),
+				URL:     accounts.URL{},
 			}
 
 			sig, err := ks.SignHash(account, block.Header().Hash().Bytes())
-
 			if err != nil {
 				log.Info("andus >> 블록에 서명 하는 에러 발생 ")
 			}
-
 			tfd := types.TransferBlock{Block: block, HeaderHash: block.Header().Hash(), Sig: sig}
 
-			// TODO : andus >> 연결된 채굴 리그에게 생성한 블록을 전송
-			peers := w.AndusPM.GetPeers()
-			for _, peer := range peers {
-				peer.SendMakeLeagueBlock(tfd)
-			}
+			// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
+			w.LeagueBlockBroadcastCh <- &tfd
 
 			isFairNodeSigOK := func(recevedBlockLeagueHash *types.TransferBlock) bool {
 				// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
@@ -615,14 +614,14 @@ func (w *worker) resultLoop() {
 				return true
 			}
 
-			otprn := w.eth.GetOtprn()
+			otprn := w.fairclient.Otprn
+			lastBlockNum := big.NewInt(0)
 
 			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
 			go func() {
 
 				winningBlock := block
 				count, countBlock := 0, 0
-				lastBlockNum := big.NewInt(0)
 				t := time.NewTicker(1 * time.Second)
 
 				// TODO : andus >> coinbase 저장소
@@ -630,7 +629,7 @@ func (w *worker) resultLoop() {
 
 				for {
 					select {
-					case recevedBlock := <-w.AndusPM.ReceiveBlock:
+					case recevedBlock := <-w.ReceiveBlockCh:
 
 						// TODO : andus >> 블록 검증
 						// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인

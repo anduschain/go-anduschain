@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/fairnode/client"
 	"math/big"
 	"runtime"
 	"sync"
@@ -95,9 +95,11 @@ type Ethereum struct {
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 
-	// TODO : andus >> keystore, Otprn 추가
+	// TODO : andus >> keystore 추가
 	Keystore *keystore.KeyStore
-	Otprn    *otprn.Otprn
+
+	// TODO : andus >> fairnode client
+	FairnodeClient *fairnodeclient.FairnodeClient
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -175,11 +177,16 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
 
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb); err != nil {
+	// TODO : andus >> protocolmanager랑 worker랑 공유하는 채널
+	LeagueBlockBroadcastCh := make(chan *types.TransferBlock, 4)
+	ReceiveBlockCh := make(chan *types.TransferBlock, 4)
+
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, LeagueBlockBroadcastCh, ReceiveBlockCh); err != nil {
 		return nil, err
 	}
 
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil)
+	// TODO : andus >> miner -> keystore 추가
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}
@@ -188,6 +195,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		gpoParams.Default = config.MinerGasPrice
 	}
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
+
+	// TODO : andus >> fairnode client start
+	eth.FairnodeClient = fairnodeclient.New()
+	eth.FairnodeClient.StartToFairNode()
 
 	return eth, nil
 }
@@ -425,10 +436,9 @@ func (s *Ethereum) EthVersion() int                    { return int(s.protocolMa
 func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 
-//TODO : andus >> protocolmanager, GetKeystore
-func (s *Ethereum) ProtocolManager() *ProtocolManager { return s.protocolManager }
-func (s *Ethereum) GetKeystore() *keystore.KeyStore   { return s.Keystore }
-func (s *Ethereum) GetOtprn() *otprn.Otprn            { return s.Otprn }
+//TODO : andus >> GetKeystore
+func (s *Ethereum) GetKeystore() *keystore.KeyStore               { return s.Keystore }
+func (s *Ethereum) GetFairClient() *fairnodeclient.FairnodeClient { return s.FairnodeClient }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
@@ -477,6 +487,9 @@ func (s *Ethereum) Stop() error {
 	s.txPool.Stop()
 	s.miner.Stop()
 	s.eventMux.Stop()
+
+	// TODO : andus >> eth가 죽을때 fairnode client도 같이 죽음
+	s.FairnodeClient.Stop()
 
 	s.chainDb.Close()
 	close(s.shutdownChan)

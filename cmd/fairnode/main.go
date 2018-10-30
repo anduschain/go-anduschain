@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/anduschain/go-anduschain/fairnode"
-	"github.com/anduschain/go-anduschain/fairnode/db"
+	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"log"
 )
 
