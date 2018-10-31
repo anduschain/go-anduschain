@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/anduschain/go-anduschain/fairnode"
+	"github.com/anduschain/go-anduschain/fairnode/server"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"log"
 )
 
 func main() {
 	// TODO : andus >> cli 프로그램에서 환경변수 및 운영변수를 세팅 할 수 있도록 구성...
+	// TODO : andus >> 페어노드의 키스토어를 만들어서 서명 하고 검증할 수있게 해야됨.
 	/*
 		app := cli.NewApp()
 		app.Name = "fairnode"
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// TODO : UDP Listen PORT : 60002
-	frnd, err := fairnode.New()
+	frnd, err := server.New()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,6 +40,6 @@ func main() {
 	// TODO : TCP Listen PORT : 60001
 	frnd.ListenTCP()
 
-	frnd.manageActiveNode()
+	//frnd.manageActiveNode()
 
 }
