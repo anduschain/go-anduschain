@@ -56,6 +56,34 @@ func (f *FairNode) ListenTCP() error {
 
 	go f.sendLeague(f.startMakeLeague)
 
+	// TODO : andus >> 위닝블록이 수신되는 곳 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	// TODO : andus >> 1. 수신 블록 검증 ( sig, hash )
+	// TODO : andus >> 2. 검증된 블록을 MongoDB에 저장 ( coinbase, RAND, 보낸 놈, 블록 번호 )
+	// TODO : andus >> 3. 기다림........
+	// TODO : andus >> 3-1 채굴참여자 수 만큼 투표가 진행 되거나, 아니면 15초후에 투표 종료
+
+	count := 0
+	leagueCount := 10 // TODO : andus >> 리그 채굴 참여자
+	endOfLeagueCh := make(chan interface{})
+
+	if count == leagueCount {
+		endOfLeagueCh <- "보내.."
+	}
+
+	t := time.NewTicker(15 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				// TODO : andus >> 투표 결과 서명해서, TCP로 보내준다
+			case <-endOfLeagueCh:
+				// TODO : andus >> 투표 결과 서명해서, TCP로 보내준다
+				// TODO : andus >> types.TransferBlock{}의 타입으로 전송할것..
+
+			}
+		}
+	}()
+
 	return nil
 }
 

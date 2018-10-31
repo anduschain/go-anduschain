@@ -183,9 +183,11 @@ type worker struct {
 	LeagueBlockBroadcastCh chan *types.TransferBlock
 	ReceiveBlockCh         chan *types.TransferBlock
 	fairclient             *fairnodeclient.FairnodeClient
+	WinningBlockCh         chan *types.TransferBlock
+	FinalBlockCh           chan *types.TransferBlock
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock, wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock) *worker {
 	worker := &worker{
 		config:                 config,
 		engine:                 engine,
@@ -209,6 +211,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitAdjustCh:       make(chan *intervalAdjust, resubmitAdjustChanSize),
 		LeagueBlockBroadcastCh: leagueCh,
 		ReceiveBlockCh:         receiveCh,
+		WinningBlockCh:         wbCh,
+		FinalBlockCh:           fbCh,
 	}
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
@@ -592,6 +596,8 @@ func (w *worker) resultLoop() {
 			// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 			w.LeagueBlockBroadcastCh <- &tfd
 
+			// TODO : andus >> 마이닝 종료..
+
 			isFairNodeSigOK := func(recevedBlockLeagueHash *types.TransferBlock) bool {
 				// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
 
@@ -620,7 +626,8 @@ func (w *worker) resultLoop() {
 			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
 			go func() {
 
-				winningBlock := block
+				var winningBlock *types.TransferBlock
+
 				count, countBlock := 0, 0
 				t := time.NewTicker(1 * time.Second)
 
@@ -638,7 +645,7 @@ func (w *worker) resultLoop() {
 							// TODO : andus >> 2. RAND 값 서명 검증
 							if OK := checkRANDSigOK(recevedBlock.Block.Header()); OK {
 
-								winningBlock = compareBlock(winningBlock, recevedBlock.Block)
+								winningBlock = compareBlock(winningBlock, recevedBlock)
 
 								receviedCoinbase[recevedBlock.Block.Coinbase()] = "코인베이스"
 
@@ -656,6 +663,7 @@ func (w *worker) resultLoop() {
 						// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
 						if int64(len(receviedCoinbase)) >= otprn.Mminer-1 {
 							// TODO : andus >> 5. FairNode로 winningBlock 전송
+							w.WinningBlockCh <- winningBlock
 							countBlock = 0
 						} else {
 							countBlock++
@@ -663,7 +671,7 @@ func (w *worker) resultLoop() {
 
 						if countBlock > 10 {
 							// TODO : andus >> 5. FairNode로 winningBlock 전송
-
+							w.WinningBlockCh <- winningBlock
 							countBlock = 0
 						}
 
@@ -674,6 +682,8 @@ func (w *worker) resultLoop() {
 
 			// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
 			// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+			finalBlock := <-w.FinalBlockCh
+			block = finalBlock.Block
 
 			// Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
@@ -1077,7 +1087,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	return nil
 }
 
-func compareBlock(myBlock *types.Block, receivedBlock *types.Block) *types.Block {
+func compareBlock(myBlock *types.TransferBlock, receivedBlock *types.TransferBlock) *types.TransferBlock {
 
 	return nil
 }

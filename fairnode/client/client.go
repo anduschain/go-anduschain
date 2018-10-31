@@ -4,6 +4,7 @@ package fairnodeclient
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -17,14 +18,16 @@ type FairnodeClient struct {
 	Otprn *otprn.Otprn
 	//OtprnCh chan *otprn.Otprn
 	WinningBlockCh chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
+	FinalBlockCh   chan *types.TransferBlock
 	Running        bool
 	wg             sync.WaitGroup
 }
 
-func New() *FairnodeClient {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock) *FairnodeClient {
 	return &FairnodeClient{
 		Otprn:          nil,
-		WinningBlockCh: make(chan *types.TransferBlock, 4),
+		WinningBlockCh: wbCh,
+		FinalBlockCh:   fbCh,
 		Running:        false,
 	}
 }
@@ -131,8 +134,20 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 		//if !ethereum.IsMining() {
 		//	ethereum.StartMining(1)
 		//}
+		select {
+		// type : types.TransferBlock
+		case signedBlock := <-fc.WinningBlockCh:
+			// TODO : andus >> 위닝블록 TCP전송
+			fmt.Println("위닝 블록을 받아서 페어노드에게 보내요", signedBlock)
+		}
 
 	}
+
+	// TODO : andus >> 페어노드가 전송한 최종 블록을 받는다.
+	// TODO : andus >> 받은 블록을 검증한다
+	// TODO : andus >> worker에 블록이 등록 되게 한다
+
+	fc.FinalBlockCh <- &types.TransferBlock{}
 }
 
 func (fc *FairnodeClient) Stop() {

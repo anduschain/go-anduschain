@@ -181,12 +181,16 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	LeagueBlockBroadcastCh := make(chan *types.TransferBlock, 4)
 	ReceiveBlockCh := make(chan *types.TransferBlock, 4)
 
+	// TODO : andus >> 위닝블록 전송 채널
+	WinningBlockCh := make(chan *types.TransferBlock, 4)
+	FinalBlockCh := make(chan *types.TransferBlock)
+
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, LeagueBlockBroadcastCh, ReceiveBlockCh); err != nil {
 		return nil, err
 	}
 
 	// TODO : andus >> miner -> keystore 추가
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh)
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh, WinningBlockCh, FinalBlockCh)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}
@@ -197,7 +201,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 
 	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New()
+	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh)
 	eth.FairnodeClient.StartToFairNode()
 
 	return eth, nil

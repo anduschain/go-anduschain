@@ -60,14 +60,14 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) *Miner {
+func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock, wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock) *Miner {
 	miner := &Miner{
 		eth:    eth,
 		mux:    mux,
 		engine: engine,
 		exitCh: make(chan struct{}),
 		// TODO : andus >> andus keystore 추가
-		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, debBackend, leagueCh, receiveCh),
+		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, debBackend, leagueCh, receiveCh, wbCh, fbCh),
 		canStart: 1,
 	}
 	go miner.update()
