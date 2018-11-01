@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"github.com/anduschain/go-anduschain/core/types"
 	"math"
 	"math/big"
 
@@ -132,6 +133,11 @@ func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) ([]byte, uint64, bool, 
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 
+// TODO : andus >>> DebApplyMessage add
+func DebApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, header *types.Header, fairAddr *common.Address) ([]byte, uint64, bool, error) {
+	return NewStateTransition(evm, msg, gp).DebTransitionDb(header, fairAddr)
+}
+
 // to returns the recipient of the message.
 func (st *StateTransition) to() common.Address {
 	if st.msg == nil || st.msg.To() == nil /* contract creation */ {
@@ -181,7 +187,6 @@ func (st *StateTransition) preCheck() error {
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
-	//TODO : andus >> joinNonce 처리 후보 1
 	if err = st.preCheck(); err != nil {
 		return
 	}
@@ -224,6 +229,68 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+
+	return ret, st.gasUsed(), vmerr != nil, err
+}
+
+//TODO : andus >> joinNonce 처리 헤더를 받도록 수정
+func (st *StateTransition) DebTransitionDb(header *types.Header, fnAddr *common.Address) (ret []byte, usedGas uint64, failed bool, err error) {
+	//TODO : andus >> joinNonce 처리
+	if err = st.preCheck(); err != nil {
+		return
+	}
+	msg := st.msg
+	sender := vm.AccountRef(msg.From())
+	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
+	contractCreation := msg.To() == nil
+
+	// Pay intrinsic gas
+	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	if err = st.useGas(gas); err != nil {
+		return nil, 0, false, err
+	}
+
+	var (
+		evm = st.evm
+		// vm errors do not effect consensus and are therefor
+		// not assigned to err, except for insufficient balance
+		// error.
+		vmerr error
+	)
+	if contractCreation {
+		ret, _, st.gas, vmerr = evm.Create(sender, st.data, st.gas, st.value)
+	} else {
+		// Increment the nonce for the next transaction
+		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
+		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
+	}
+	if vmerr != nil {
+		log.Debug("VM returned with error", "err", vmerr)
+		// The only possible consensus-error would be if there wasn't
+		// sufficient balance to make the transfer happen. The first
+		// balance transfer may never fail.
+		if vmerr == vm.ErrInsufficientBalance {
+			return nil, 0, false, vmerr
+		}
+	}
+	st.refundGas()
+	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+
+	// TODO : andus >> 상태쪽 업데이트
+
+	// TODO : andus >> 받는 대상이 페어노드일 경우에만 joinNonce update process
+	if msg.To() == fnAddr {
+		if header.Coinbase == st.evm.Coinbase {
+			// TODO : andus >> 1. coinbase가 블록의 코인베이스 이면 JoinNonce = 0
+			st.state.ResetJoinNonce(st.evm.Coinbase)
+		} else {
+			// TODO : andus >> 2. 아니면 JoinNonce++
+			st.state.AddJoinNonce(st.evm.Coinbase)
+		}
+	}
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }

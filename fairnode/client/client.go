@@ -3,16 +3,24 @@ package fairnodeclient
 // TODO : andus >> Geth - FairNode 사이에 연결 되는 부분..
 
 import (
-	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"log"
 	"math/big"
 	"sync"
 	"time"
 )
+
+type DebMiner interface {
+	StartMining(threads int) error
+	StopMining()
+	IsMining() bool
+}
 
 type FairnodeClient struct {
 	Otprn *otprn.Otprn
@@ -21,14 +29,24 @@ type FairnodeClient struct {
 	FinalBlockCh   chan *types.TransferBlock
 	Running        bool
 	wg             sync.WaitGroup
+	BlockChain     *core.BlockChain
+	Miner          DebMiner
+	Coinbase       *common.Address
+	keystore       *keystore.KeyStore
+	txPool         *core.TxPool
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock) *FairnodeClient {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, miner DebMiner, coinbase *common.Address, ks *keystore.KeyStore, tp *core.TxPool) *FairnodeClient {
 	return &FairnodeClient{
 		Otprn:          nil,
 		WinningBlockCh: wbCh,
 		FinalBlockCh:   fbCh,
 		Running:        false,
+		BlockChain:     blockChain,
+		Miner:          miner,
+		Coinbase:       coinbase,
+		keystore:       ks,
+		txPool:         tp,
 	}
 }
 
@@ -40,10 +58,10 @@ func (fc *FairnodeClient) StartToFairNode() error {
 	tcpStart := make(chan interface{})
 
 	// TODO : andus >> 마이닝 켜저 있으면 종료
-	//var ethereum *eth.Ethereum
-	//if ethereum.IsMining() {
-	//	ethereum.StopMining()
-	//}
+
+	if fc.Miner.IsMining() {
+		fc.Miner.StopMining()
+	}
 
 	// udp
 	go fc.UDPtoFairNode(tcpStart)
@@ -102,24 +120,32 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 
 		// TODO : andus >> 4. JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 
-		var addr common.Address
-		var key *ecdsa.PrivateKey
+		var fairNodeAddr common.Address // TODO : andus >> 보내는 fairNode의 Address(주소)
 
-		var join_nonce uint64 = 0
+		unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
+		if err != nil {
+			log.Println("andus >>", err)
+		}
+
+		// TODO : andus >> joinNonce 현재 상태 조회
+		stateDb, err := fc.BlockChain.State()
+		if err != nil {
+			log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
+		}
+		currentJoinNonce := stateDb.GetJoinNonce(*fc.Coinbase)
 
 		signer := types.NewEIP155Signer(big.NewInt(18))
-		tx, err := types.SignTx(types.NewTransaction(join_nonce, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
+
+		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
+		tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, fairNodeAddr, new(big.Int), 0, new(big.Int), nil), signer, unlockedKey)
 		if err != nil {
-
+			log.Println("andus >> JoinTx 서명 에러")
 		}
 
-		from, err := types.Sender(signer, tx)
-		if err != nil {
+		log.Println("andus >> JoinTx 생성 Success", tx)
 
-		}
-		if from != addr {
-
-		}
+		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
+		fc.txPool.AddLocal(tx)
 
 		// TODO : andus >> 2. 각 enode값을 이용해서 피어 접속
 
@@ -130,10 +156,9 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 		//}
 
 		// TODO : andsu >> 3. mining.start()
-		//var ethereum *eth.Ethereum
-		//if !ethereum.IsMining() {
-		//	ethereum.StartMining(1)
-		//}
+		if !fc.Miner.IsMining() {
+			fc.Miner.StartMining(1)
+		}
 		select {
 		// type : types.TransferBlock
 		case signedBlock := <-fc.WinningBlockCh:

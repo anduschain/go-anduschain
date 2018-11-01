@@ -341,17 +341,6 @@ func (self *stateObject) setNonce(nonce uint64) {
 	self.data.Nonce = nonce
 }
 
-//TODO : andus >> joinNonce 변경 하는 함수
-func (self *stateObject) SetJoinNonce(joinNonce uint64) {
-
-	// TODO : andus >> 이작엄은 어떻게 할지....
-	self.db.journal.append(nonceChange{
-		account: &self.address,
-		prev:    self.data.Nonce,
-	})
-	self.data.JoinNonce = joinNonce
-}
-
 func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
@@ -365,8 +354,28 @@ func (self *stateObject) Nonce() uint64 {
 }
 
 //TODO : andus >> joinNonce 조회하는 함수
-func (self *stateObject) JoinNonce() uint64 {
+func (self *stateObject) GetJoinNonce() uint64 {
 	return self.data.JoinNonce
+}
+
+//TODO : andus >> joinNonce 변경 하는 함수 + 1
+func (self *stateObject) AddJoinNonce() {
+	self.db.journal.append(nonceChange{
+		account: &self.address,
+		prev:    self.data.JoinNonce,
+	})
+
+	self.data.JoinNonce++
+}
+
+//TODO : andus >> joinNonce를 0으로 처리
+func (self *stateObject) ResetJoinNonce() {
+	self.db.journal.append(nonceChange{
+		account: &self.address,
+		prev:    self.data.JoinNonce,
+	})
+
+	self.data.JoinNonce = 0
 }
 
 // Never called, but must be present to allow stateObject to be used

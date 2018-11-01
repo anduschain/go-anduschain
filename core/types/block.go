@@ -140,6 +140,9 @@ type Block struct {
 	// inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
+
+	// TODO : andus >> FairNode 서명
+	FairNodeSig *[]byte
 }
 
 // TODO : andus >> andus 전송 블록 객체..
@@ -311,6 +314,15 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
+
+// TODO : andus >> 페어노드 서명을 조회 하는 부분
+func (b *Block) GetFairNodeSig() (*[]byte, bool) {
+	if len(*b.FairNodeSig) > 0 {
+		return b.FairNodeSig, false
+	} else {
+		return nil, true
+	}
+}
 
 // Size returns the true RLP encoded storage size of the block, either by encoding
 // and returning it, or returning a previsouly cached value.

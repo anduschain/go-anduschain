@@ -24,6 +24,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -65,13 +66,33 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
+
+	fairPub, err := crypto.SigToPub(block.Header().Hash().Bytes(), *block.FairNodeSig)
+	if err != nil {
+		log.Error("andus >> 페어노드 공개키 가져오는 에러")
+	}
+
+	fairAddr := crypto.PubkeyToAddress(*fairPub)
+
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
-		if err != nil {
-			return nil, nil, 0, err
+
+		// TODO : andus >>
+		var receipt *types.Receipt
+		if tx.To() == &fairAddr {
+			// TODO : andus >> JoinTX, JoinNunce 처리 부분
+			receipt, _, err = DebApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, &fairAddr)
+			if err != nil {
+				return nil, nil, 0, err
+			}
+		} else {
+			receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+			if err != nil {
+				return nil, nil, 0, err
+			}
 		}
+
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
 	}
@@ -96,7 +117,54 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// about the transaction and calling mechanisms.
 	vmenv := vm.NewEVM(context, statedb, config, cfg)
 	// Apply the transaction to the current state (included in the env)
+
 	_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	// Update the state with pending changes
+	var root []byte
+	if config.IsByzantium(header.Number) {
+		statedb.Finalise(true)
+	} else {
+		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+	}
+	*usedGas += gas
+
+	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
+	// based on the eip phase, we're passing whether the root touch-delete accounts.
+	receipt := types.NewReceipt(root, failed, *usedGas)
+	receipt.TxHash = tx.Hash()
+	receipt.GasUsed = gas
+	// if the transaction created a contract, store the creation address in the receipt.
+	if msg.To() == nil {
+		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
+	}
+	// Set the receipt logs and create a bloom for filtering
+	receipt.Logs = statedb.GetLogs(tx.Hash())
+	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+
+	return receipt, gas, err
+}
+
+// TODO : andus >> DebApplyTransaction
+func DebApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config, fairAddr *common.Address) (*types.Receipt, uint64, error) {
+	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
+	if err != nil {
+		return nil, 0, err
+	}
+	// Create a new context to be used in the EVM environment
+	context := NewEVMContext(msg, header, bc, author)
+	// Create a new environment which holds all relevant information
+	// about the transaction and calling mechanisms.
+	vmenv := vm.NewEVM(context, statedb, config, cfg)
+	// Apply the transaction to the current state (included in the env)
+
+	// TODO : andus >> Tx의 메시지를 적용하는 부분
+	//_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
+	_, gas, failed, err := DebApplyMessage(vmenv, msg, gp, header, fairAddr)
+
 	if err != nil {
 		return nil, 0, err
 	}

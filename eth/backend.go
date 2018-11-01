@@ -200,8 +200,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 
+	//-----
+
 	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh)
+	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth, &eth.etherbase, eth.Keystore, eth.txPool)
 	eth.FairnodeClient.StartToFairNode()
 
 	return eth, nil

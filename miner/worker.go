@@ -685,30 +685,37 @@ func (w *worker) resultLoop() {
 			finalBlock := <-w.FinalBlockCh
 			block = finalBlock.Block
 
-			// Commit block and state to database.
-			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-			if err != nil {
-				log.Error("Failed writing block to chain", "err", err)
-				continue
+			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
+			if _, ok := block.GetFairNodeSig(); ok {
+
+				// Commit block and state to database.
+				stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+				if err != nil {
+					log.Error("Failed writing block to chain", "err", err)
+					continue
+				}
+				log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+					"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+				// Broadcast the block and announce chain insertion event
+				w.mux.Post(core.NewMinedBlockEvent{Block: block})
+
+				var events []interface{}
+				switch stat {
+				case core.CanonStatTy:
+					events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+					events = append(events, core.ChainHeadEvent{Block: block})
+				case core.SideStatTy:
+					events = append(events, core.ChainSideEvent{Block: block})
+				}
+				w.chain.PostChainEvents(events, logs)
+
+				// Insert the block into the set of pending ones to resultLoop for confirmations
+				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+
+			} else {
+				log.Info("andus >> 페어노드의 서명이 없음")
 			}
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
-
-			// Broadcast the block and announce chain insertion event
-			w.mux.Post(core.NewMinedBlockEvent{Block: block})
-
-			var events []interface{}
-			switch stat {
-			case core.CanonStatTy:
-				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, core.ChainHeadEvent{Block: block})
-			case core.SideStatTy:
-				events = append(events, core.ChainSideEvent{Block: block})
-			}
-			w.chain.PostChainEvents(events, logs)
-
-			// Insert the block into the set of pending ones to resultLoop for confirmations
-			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
 		case <-w.exitCh:
 			return

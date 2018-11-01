@@ -205,6 +205,32 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 	return 0
 }
 
+//TODO : andus >> joinNonce 조회하는 함수
+func (self *StateDB) GetJoinNonce(addr common.Address) uint64 {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetJoinNonce()
+	}
+
+	return 0
+}
+
+//TODO : andus >> joinNonce 더하는 함수
+func (self *StateDB) AddJoinNonce(addr common.Address) {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddJoinNonce()
+	}
+}
+
+//TODO : andus >> joinNonce 리셋하는 함수
+func (self *StateDB) ResetJoinNonce(addr common.Address) {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		stateObject.ResetJoinNonce()
+	}
+}
+
 func (self *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
@@ -391,7 +417,6 @@ func (self *StateDB) setStateObject(object *stateObject) {
 
 // Retrieve a state object or create a new state object if nil.
 func (self *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
-	// TODO : andus >> state obj 가져와서 조회 할때 쓸곳...
 	stateObject := self.getStateObject(addr)
 	if stateObject == nil || stateObject.deleted {
 		stateObject, _ = self.createObject(addr)

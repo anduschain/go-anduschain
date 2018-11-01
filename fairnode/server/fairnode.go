@@ -49,7 +49,10 @@ func (f *FairNode) ListenUDP() error {
 func (f *FairNode) ListenTCP() error {
 
 	// TODO : andus >> 1. 접속한 GETH노드의 채굴 참여 가능 여부 확인 ( 참여 검증 )
-	_ := fairutil.IsJoinOK()
+	//
+	//
+	//
+	// _ := fairutil.IsJoinOK()
 	// TODO : andus >> 참여자 별로 가능여부 체크 후, 불가한 노드는 disconnect
 
 	// TODO : andus >> 2. 채굴 가능 노드들의 enode값 저장
@@ -76,9 +79,13 @@ func (f *FairNode) ListenTCP() error {
 			select {
 			case <-t.C:
 				// TODO : andus >> 투표 결과 서명해서, TCP로 보내준다
+				// TODO : andus >> types.TransferBlock{}의 타입으로 전송할것..
+				// TODO : andus >> 받은 블록의 블록헤더의 해시를 이용해서 서명후, FairNodeSig에 넣어서 보낼것.
+
 			case <-endOfLeagueCh:
 				// TODO : andus >> 투표 결과 서명해서, TCP로 보내준다
 				// TODO : andus >> types.TransferBlock{}의 타입으로 전송할것..
+				// TODO : andus >> 받은 블록의 블록헤더의 해시를 이용해서 서명후, FairNodeSig에 넣어서 보낼것.
 
 			}
 		}
@@ -132,12 +139,10 @@ func (f *FairNode) sendLeague(aa chan string) {
 		leagueHash := f.makeHash(league) // TODO : andsu >> 전체 채굴리그의 해시값
 
 		for key, value := range fairutil.GetPeerList() {
-			_ := key
-			_ := value
 			//key = to,
 			//value = 접속할 peer list
 
-			fmt.Println(leagueHash)
+			fmt.Println(leagueHash, key, value)
 			// TODO : andus >> 각 GETH 노드에게 연결할 peer 리스트 전달 + 전체 채굴리그의 해시값 ( leagueHash )
 			// TODO : andus >> 추후 서명 예정....
 		}
