@@ -105,16 +105,17 @@ type ProtocolManager struct {
 func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		networkID:              networkID,
-		eventMux:               mux,
-		txpool:                 txpool,
-		blockchain:             blockchain,
-		chainconfig:            config,
-		peers:                  newPeerSet(),
-		newPeerCh:              make(chan *peer),
-		noMorePeers:            make(chan struct{}),
-		txsyncCh:               make(chan *txsync),
-		quitSync:               make(chan struct{}),
+		networkID:   networkID,
+		eventMux:    mux,
+		txpool:      txpool,
+		blockchain:  blockchain,
+		chainconfig: config,
+		peers:       newPeerSet(),
+		newPeerCh:   make(chan *peer),
+		noMorePeers: make(chan struct{}),
+		txsyncCh:    make(chan *txsync),
+		quitSync:    make(chan struct{}),
+		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
 		ReceiveBlock:           receiveCh,
 		LeagueBlockBroadcastCh: leagueCh,
 	}

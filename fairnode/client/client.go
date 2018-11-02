@@ -107,12 +107,12 @@ func (fc *FairnodeClient) UDPtoFairNode(ch chan interface{}) {
 
 func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 	defer fc.wg.Done()
-	//TODO : andus >> TCP 통신 to FairNode
-	//TODO : andus >> 1. fair Node에 TCP 연결
-	//TODO : andus >> 2. OTPRN, enode값 전달
 
 	for {
 		<-ch
+		//TODO : andus >> TCP 통신 to FairNode
+		//TODO : andus >> 1. fair Node에 TCP 연결
+		//TODO : andus >> 2. OTPRN, enode값 전달
 
 		// TODO : andus >> 1. 채굴 리스 리스트와 총 채굴리그 해시 수신
 
@@ -151,8 +151,8 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 
 		//enodes := []string{"enode://12121@111.111.111:3303"}
 		//for _ := range enodes {
-		//	//old, _ := disco.ParseNode(boot)
-		//	//srv.AddPeer(old)
+		//	old, _ := disco.ParseNode(boot)
+		//	srv.AddPeer(old)
 		//}
 
 		// TODO : andsu >> 3. mining.start()
