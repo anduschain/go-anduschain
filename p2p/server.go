@@ -21,7 +21,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -179,9 +178,6 @@ type Server struct {
 	loopWG        sync.WaitGroup // loop, listenLoop
 	peerFeed      event.Feed
 	log           log.Logger
-
-	//TODO : andus >> Otprn 저장소..
-	Otprn *otprn.Otprn
 }
 
 type peerOpFunc func(map[discover.NodeID]*Peer)
