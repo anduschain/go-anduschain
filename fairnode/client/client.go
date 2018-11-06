@@ -115,30 +115,32 @@ func (fc *FairnodeClient) UDPtoFairNode(ch chan interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
 
-	select {
-	case <-t.C:
-		//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
-		// TODO : andus >> enode Sender -- start --
-		// TODO : andus >> rlp encode -> byte ( enode type )
+	nodeUrl := discv5.NewNode(
+		discv5.PubkeyID(&ecdsa.PublicKey{fc.PrivateKey.PublicKey.Curve, fc.PrivateKey.X, fc.PrivateKey.Y}),
+		LocalAddr.IP,
+		uint16(LocalAddr.Port),
+		0,
+	)
 
-		nodeUrl := discv5.NewNode(
-			discv5.PubkeyID(&ecdsa.PublicKey{fc.PrivateKey.PublicKey.Curve, fc.PrivateKey.X, fc.PrivateKey.Y}),
-			LocalAddr.IP,
-			uint16(LocalAddr.Port),
-			0,
-		)
+	enode := nodeUrl.String()                  // TODO : andus >> enode
+	enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
 
-		enode := nodeUrl.String()                  // TODO : andus >> enode
-		enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
+	log.Println("andus >> enode >>>", enode)
 
-		log.Println("andus >> enode >>>", enode)
+	if err != nil {
+		log.Fatal("andus >> EncodeToBytes", err)
+	}
 
-		if err != nil {
-			log.Fatal("andus >> EncodeToBytes", err)
-		}
-		_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
-		if err != nil {
-			log.Fatal("andus >> Write", err)
+	for {
+		select {
+		case <-t.C:
+			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
+			// TODO : andus >> enode Sender -- start --
+			// TODO : andus >> rlp encode -> byte ( enode type )
+			_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
+			if err != nil {
+				log.Fatal("andus >> Write", err)
+			}
 		}
 	}
 
@@ -191,13 +193,8 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 
 		signer := types.NewEIP155Signer(big.NewInt(18))
 
-		unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
-		if err != nil {
-			log.Println("andus >>", err)
-		}
-
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
-		tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, fairNodeAddr, new(big.Int), 0, new(big.Int), nil), signer, unlockedKey)
+		tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, fairNodeAddr, new(big.Int), 0, new(big.Int), nil), signer, fc.PrivateKey)
 		if err != nil {
 			log.Println("andus >> JoinTx 서명 에러")
 		}
