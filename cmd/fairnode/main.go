@@ -7,27 +7,22 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 )
 
+var Running bool
+var wg sync.WaitGroup
+
 func main() {
+
 	// TODO : andus >> cli 프로그램에서 환경변수 및 운영변수를 세팅 할 수 있도록 구성...
-	/*
-		app := cli.NewApp()
-		app.Name = "fairnode"
-		app.Usage = "Fairnode for AndUsChain"
-		app.Flags = []cli.Flag{
-		}
-		app.Action = func(c *cli.Context) error {
-			return nil
-		}
-		app.Run(os.Args)
-		....
-	*/
 	app := cli.NewApp()
-	app.Name = "puppeth"
-	app.Usage = "assemble and maintain private Ethereum networks"
+	app.Name = "fairnode"
+	app.Usage = "Fairnode for AndUsChain networks"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "network",
@@ -53,29 +48,38 @@ func main() {
 		// Start the wizard and relinquish control
 		//makeWizard(c.String("network")).run()
 
+		// monggo DB 연결정보 획득..
+		_, err := db.New()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// TODO : andus >> 2018-11-05 init() 이 필요한 기능 추가할 것..
+
+		// TODO : UDP Listen PORT : 60002
+		frnd, err := server.New()
+		if err != nil {
+			//log.(string(err), )
+		}
+
+		frnd.ListenUDP()
+
+		// TODO : TCP Listen PORT : 60001
+		frnd.ListenTCP()
+
+		go func() {
+			sigc := make(chan os.Signal, 1)
+			signal.Notify(sigc, syscall.SIGTERM)
+			defer signal.Stop(sigc)
+			<-sigc
+			log.Println("Got sigterm, shutting fairnode down...")
+			frnd.Stop(frnd.StopCh)
+		}()
+
+		frnd.Wait()
 
 		return nil
 	}
-	log.Println(" @ Run START !! ")
 	app.Run(os.Args)
-
-	// monggo DB 연결정보 획득..
-	_, err := db.New()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// TODO : UDP Listen PORT : 60002
-	frnd, err := server.New()
-	if err != nil {
-		//log.(string(err), )
-	}
-
-	frnd.ListenUDP()
-
-	// TODO : TCP Listen PORT : 60001
-	frnd.ListenTCP()
-
 }
