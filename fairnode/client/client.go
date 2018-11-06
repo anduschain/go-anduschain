@@ -3,6 +3,7 @@ package fairnodeclient
 // TODO : andus >> Geth - FairNode 사이에 연결 되는 부분..
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
@@ -10,8 +11,11 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/p2p/discv5"
+	"github.com/anduschain/go-anduschain/rlp"
 	"log"
 	"math/big"
+	"net"
 	"sync"
 	"time"
 )
@@ -21,6 +25,10 @@ type DebMiner interface {
 	StopMining()
 	IsMining() bool
 }
+
+const (
+	FAIRNODE_CON_INFO = "127.0.0.1:50900"
+)
 
 type FairnodeClient struct {
 	Otprn *otprn.Otprn
@@ -34,6 +42,7 @@ type FairnodeClient struct {
 	Coinbase       *common.Address
 	keystore       *keystore.KeyStore
 	txPool         *core.TxPool
+	PrivateKey     *ecdsa.PrivateKey
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, miner DebMiner, coinbase *common.Address, ks *keystore.KeyStore, tp *core.TxPool) *FairnodeClient {
@@ -57,6 +66,13 @@ func (fc *FairnodeClient) StartToFairNode() error {
 
 	tcpStart := make(chan interface{})
 
+	unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
+	if err != nil {
+		log.Println("andus >>", err)
+	}
+
+	fc.PrivateKey = unlockedKey
+
 	// TODO : andus >> 마이닝 켜저 있으면 종료
 
 	if fc.Miner.IsMining() {
@@ -69,16 +85,61 @@ func (fc *FairnodeClient) StartToFairNode() error {
 	// tcp
 	go fc.TCPtoFairNode(tcpStart)
 
+	fc.wg.Wait()
+
 	return nil
 }
 func (fc *FairnodeClient) UDPtoFairNode(ch chan interface{}) {
 	defer fc.wg.Done()
 	//TODO : andus >> udp 통신 to FairNode
 
+	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
+
+	ServerAddr, err := net.ResolveUDPAddr("udp", FAIRNODE_CON_INFO)
+	if err != nil {
+		log.Fatal("andus >> UDPtoFairNode, ServerAddr", err)
+	}
+
+	LocalAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		log.Fatal("andus >> UDPtoFairNode, LocalAddr", err)
+	}
+
+	Conn, err := net.DialUDP("udp", LocalAddr, ServerAddr)
+	if err != nil {
+		log.Fatal("andus >> UDPtoFairNode, DialUDP", err)
+	}
+
+	defer Conn.Close()
+
+	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
+
 	select {
 	case <-t.C:
 		//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
+		// TODO : andus >> enode Sender -- start --
+		// TODO : andus >> rlp encode -> byte ( enode type )
+
+		nodeUrl := discv5.NewNode(
+			discv5.PubkeyID(&ecdsa.PublicKey{fc.PrivateKey.PublicKey.Curve, fc.PrivateKey.X, fc.PrivateKey.Y}),
+			LocalAddr.IP,
+			uint16(LocalAddr.Port),
+			0,
+		)
+
+		enode := nodeUrl.String()                  // TODO : andus >> enode
+		enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
+
+		log.Println("andus >> enode >>>", enode)
+
+		if err != nil {
+			log.Fatal("andus >> EncodeToBytes", err)
+		}
+		_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
+		if err != nil {
+			log.Fatal("andus >> Write", err)
+		}
 	}
 
 	//TODO : andus >> 1. OTPRN 수신
@@ -102,7 +163,6 @@ func (fc *FairnodeClient) UDPtoFairNode(ch chan interface{}) {
 		//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 		ch <- "start"
 	}
-
 }
 
 func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
@@ -122,11 +182,6 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 
 		var fairNodeAddr common.Address // TODO : andus >> 보내는 fairNode의 Address(주소)
 
-		unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
-		if err != nil {
-			log.Println("andus >>", err)
-		}
-
 		// TODO : andus >> joinNonce 현재 상태 조회
 		stateDb, err := fc.BlockChain.State()
 		if err != nil {
@@ -135,6 +190,11 @@ func (fc *FairnodeClient) TCPtoFairNode(ch chan interface{}) {
 		currentJoinNonce := stateDb.GetJoinNonce(*fc.Coinbase)
 
 		signer := types.NewEIP155Signer(big.NewInt(18))
+
+		unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
+		if err != nil {
+			log.Println("andus >>", err)
+		}
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, fairNodeAddr, new(big.Int), 0, new(big.Int), nil), signer, unlockedKey)
