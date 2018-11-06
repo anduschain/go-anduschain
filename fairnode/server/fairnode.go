@@ -6,6 +6,8 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"log"
+	"sync"
 	"time"
 )
 
@@ -21,13 +23,15 @@ type FairNode struct {
 	SingedOtprn     *string // 전자서명값
 	startSignal     chan string
 	startMakeLeague chan string
+
+	lock   sync.RWMutex
+	StopCh chan struct{} // Channel to wait for termination notifications
 }
 
 func New() (*FairNode, error) {
 
 	// TODO : andus >> otprn 구조체 생성
 	otprn, err := otprn.New()
-
 	if err != nil {
 		return nil, makeOtprnError
 	}
@@ -39,14 +43,22 @@ func New() (*FairNode, error) {
 
 func (f *FairNode) ListenUDP() error {
 
+	log.Println(" @ FairNode Running true !! ")
+	f.Running = true
+	f.wg.Add(4)
+
+	log.Println(" @ go func() manageActiveNode START !! ")
 	go f.manageActiveNode(f.startSignal)
 
+	log.Println(" @ go func() makeLeague START !! ")
 	go f.makeLeague(f.startSignal, f.startMakeLeague)
 
 	return nil
 }
 
 func (f *FairNode) ListenTCP() error {
+
+	defer f.wg.Done()
 
 	// TODO : andus >> 1. 접속한 GETH노드의 채굴 참여 가능 여부 확인 ( 참여 검증 )
 	//
@@ -57,6 +69,7 @@ func (f *FairNode) ListenTCP() error {
 
 	// TODO : andus >> 2. 채굴 가능 노드들의 enode값 저장
 
+	log.Println(" @ go func() sendLeague START !! ")
 	go f.sendLeague(f.startMakeLeague)
 
 	// TODO : andus >> 위닝블록이 수신되는 곳 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -74,6 +87,7 @@ func (f *FairNode) ListenTCP() error {
 	}
 
 	t := time.NewTicker(15 * time.Second)
+	log.Println(" @ go func() START !! ")
 	go func() {
 		for {
 			select {
@@ -104,6 +118,8 @@ func (f *FairNode) manageActiveNode(aa chan string) {
 		case <-t.C:
 			// TODO : andus >> Active Node 카운트 최초 3개 이상 ( 에러 처리 해야함.... )
 			// Start signal <-
+
+			log.Println(" @ in manageActiveNode() ")
 		}
 	}
 }
@@ -152,4 +168,41 @@ func (f *FairNode) sendLeague(aa chan string) {
 func (f *FairNode) makeHash(list []map[string]string) common.Hash {
 
 	return common.Hash{}
+}
+
+func (f *FairNode) Wait() {
+	f.lock.RLock()
+	if f.Running {
+		log.Println(" Wait() :", f.Running)
+		f.lock.RUnlock()
+		return
+	}
+	log.Println(" Wait() : stop START !!! ")
+	stop := f.StopCh
+	f.lock.RUnlock()
+
+	<-stop
+}
+
+func (f *FairNode) Stop(stop chan struct{}) error {
+
+	select {
+	case <-stop:
+		f.lock.Lock()
+		defer f.lock.Unlock()
+
+		if f.Running {
+			return errors.New(" @@@ Forced Stopping Fairnode !!! ")
+		}
+		f.stopAll()
+
+		return nil
+	}
+
+}
+
+func (f *FairNode) stopAll() error {
+	// stop UDP()
+	// stop TCT()
+	return nil
 }
