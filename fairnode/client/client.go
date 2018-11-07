@@ -146,7 +146,7 @@ func (fc *FairnodeClient) UDPtoFairNode(ch chan interface{}) {
 
 	//TODO : andus >> 1. OTPRN 수신
 	//TODO : andus >> 2. OTRRN 검증
-	otp, _ := otprn.New()
+	otp, _ := otprn.New(10)
 	checkedOtprn, err := otp.CheckOtprn("수신된 otprn을 넣고")
 
 	//TODO : andus >> Otprn 저장
