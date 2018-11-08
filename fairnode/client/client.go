@@ -225,11 +225,8 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 		var fairNodeAddr common.Address // TODO : andus >> 보내는 fairNode의 Address(주소)
 
 		// TODO : andus >> joinNonce 현재 상태 조회
-		stateDb, err := fc.BlockChain.State()
-		if err != nil {
-			log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
-		}
-		currentJoinNonce := stateDb.GetJoinNonce(*fc.Coinbase)
+
+		currentJoinNonce := fc.GetCurrentJoinNunce()
 
 		signer := types.NewEIP155Signer(big.NewInt(18))
 
