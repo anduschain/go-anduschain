@@ -7,14 +7,16 @@ import (
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"github.com/anduschain/go-anduschain/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -26,7 +28,7 @@ var (
 )
 
 type FairNode struct {
-	Prvkey   *ecdsa.PrivateKey
+	Privkey  *ecdsa.PrivateKey
 	LaddrTcp *net.TCPAddr
 	LaddrUdp *net.UDPAddr
 	dbport   string
@@ -55,6 +57,13 @@ func New(c *cli.Context) (*FairNode, error) {
 	//	return nil, makeOtprnError
 	//}
 
+	keyfilepath := c.String("keypath")
+
+	if _, err := os.Stat(keyfilepath); err != nil {
+		log.Fatalf("Keyfile not exists at %s.", keyfilepath)
+		return nil, err
+	}
+
 	LAddrUDP, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+c.String("udp"))
 	if err != nil {
 		log.Fatal("andus >> ResolveUDPAddr, LocalAddr", err)
@@ -67,7 +76,7 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
-	return &FairNode{
+	fnNode := &FairNode{
 		ctx:           c,
 		LaddrTcp:      LAddrTCP,
 		LaddrUdp:      LAddrUDP,
@@ -75,25 +84,38 @@ func New(c *cli.Context) (*FairNode, error) {
 		dbport:        c.String("dbport"),
 		keypath:       c.String("keypath"),
 		startSignalCh: make(chan struct{}),
-	}, nil
+	}
+
+	// TODO : andus >> account, passphrase
+
+	keypath := c.String("keypath")                                //$HOME/.fairnode/key
+	keyfile := filepath.Join(c.String("keypath"), "fairkey.json") //$HOME/.fairnode/key/fairkey.json
+	pass := c.String("password")
+
+	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
+	blob, err := ioutil.ReadFile(keyfile)
+	if err != nil {
+		log.Fatalf("Failed to read account key contents", "file", keypath, "err", err)
+	}
+	acc, err := fnNode.Keystore.Import(blob, pass, pass)
+	if err != nil {
+		log.Fatalf("Failed to import faucet signer account", "err", err)
+	}
+
+	fnNode.Keystore.Unlock(acc, pass)
+
+	privkey, err := fnNode.Keystore.GetUnlockedPrivKey(acc.Address)
+	if err != nil {
+		log.Fatalf("andus >> 개인키를 가져올 수 없다")
+	}
+
+	fnNode.Privkey = privkey
+
+	return fnNode, nil
 }
 
 func (f *FairNode) Start() error {
 	f.Running = true
-
-	var privateKey *ecdsa.PrivateKey
-	var err error
-	if file := f.ctx.String("keypath"); file != "" {
-		// Load private key from file.
-		privateKey, err = crypto.LoadECDSA(file)
-		if err != nil {
-			log.Fatal("andus >> Can't load private key: %v", err)
-		}
-	} else {
-		log.Fatal("andus >> 키파일이 존재 하지 않습니다.")
-	}
-
-	f.Prvkey = privateKey
 
 	go f.ListenUDP()
 	//go fairNode.ListenTCP()

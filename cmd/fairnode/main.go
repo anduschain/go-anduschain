@@ -2,33 +2,23 @@ package main
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/console"
-	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/server"
 	"github.com/anduschain/go-anduschain/internal/debug"
-	"github.com/pborman/uuid"
 	"gopkg.in/urfave/cli.v1"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 )
 
-type outputGenerate struct {
-	Address      string
-	AddressEIP55 string
-}
+var app *cli.App
 
-func main() {
-
+func init() {
 	var w sync.WaitGroup
 
 	// TODO : andus >> cli 프로그램에서 환경변수 및 운영변수를 세팅 할 수 있도록 구성...
-	app := cli.NewApp()
+	app = cli.NewApp()
 	app.Name = "fairnode"
 	app.Usage = "Fairnode for AndUsChain networks"
 	app.Flags = []cli.Flag{
@@ -54,8 +44,13 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "keypath",
-			Value: os.Getenv("HOME") + "/.fairnode/key/fairkey",
-			Usage: "default keystore path $HOME/.fairnode/key/fairkey",
+			Value: os.Getenv("HOME") + "/.fairnode/key",
+			Usage: "default keystore path $HOME/.fairnode/key",
+		},
+		cli.StringFlag{
+			Name:  "password",
+			Value: "11111",
+			Usage: "11111",
 		},
 	}
 
@@ -64,52 +59,11 @@ func main() {
 			Name:      "generate",
 			Usage:     "generate new keyfile",
 			ArgsUsage: "[ <keyfile> ]",
-			Action: func(ctx *cli.Context) error {
-				keyfilePath := ctx.String("keypath")
-
-				// TODO : andus >> keyfile이 있으면 종료..
-				if _, err := os.Stat(keyfilePath); err == nil {
-					log.Fatalf("Keyfile already exists at %s.", keyfilePath)
-					return err
-				}
-
-				privateKey, err := crypto.GenerateKey()
-				if err != nil {
-					log.Fatal("Failed to generate random private key: %v", err)
-				}
-
-				id := uuid.NewRandom()
-				key := &keystore.Key{
-					Id:         id,
-					Address:    crypto.PubkeyToAddress(privateKey.PublicKey),
-					PrivateKey: privateKey,
-				}
-
-				passphrase := promptPassphrase(true)
-				keyjson, err := keystore.EncryptKey(key, passphrase, keystore.StandardScryptN, keystore.StandardScryptP)
-
-				// Store the file to disk.
-				if err := os.MkdirAll(filepath.Dir(keyfilePath), 0700); err != nil {
-					log.Fatal("Could not create directory %s", filepath.Dir(keyfilePath))
-				}
-
-				if err := ioutil.WriteFile(keyfilePath, keyjson, 0600); err != nil {
-					log.Fatal("Failed to write keyfile to %s: %v", keyfilePath, err)
-				}
-
-				// Output some information.
-				out := outputGenerate{
-					Address: key.Address.Hex(),
-				}
-
-				fmt.Println("Address:", out.Address)
-
-				return nil
-			},
+			Action:    makeFairNodeKey,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "keypath",
-					Value: os.Getenv("HOME") + "/.fairnode/key/fairkey",
+					Value: os.Getenv("HOME") + "/.fairnode/key/fairkey.json",
 					Usage: "file containing a raw private key to encrypt",
 				},
 			},
@@ -153,26 +107,11 @@ func main() {
 
 		return nil
 	}
-
-	app.Run(os.Args)
-
 }
 
-func promptPassphrase(confirmation bool) string {
-	passphrase, err := console.Stdin.PromptPassword("Passphrase: ")
-	if err != nil {
-		log.Fatalf("Failed to read passphrase: %v", err)
+func main() {
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-
-	if confirmation {
-		confirm, err := console.Stdin.PromptPassword("Repeat passphrase: ")
-		if err != nil {
-			log.Fatalf("Failed to read passphrase confirmation: %v", err)
-		}
-		if passphrase != confirm {
-			log.Fatalf("Passphrases do not match")
-		}
-	}
-
-	return passphrase
 }
