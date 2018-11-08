@@ -1,7 +1,25 @@
 package fairutil
 
-func IsJoinOK() bool {
+import (
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"strconv"
+)
+
+func IsJoinOK(otprn *otprn.Otprn, jn uint64, addr *common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
+	div := uint64(otprn.Cminer / otprn.Mminer)
+	lastByte := addr.Bytes()[len(addr.Bytes())-2:]
+	i, _ := strconv.ParseUint(string(lastByte), 16, 64)
+
+	if div == 0 {
+		// TODO : andus >> Mminer > Cminer
+		return true
+	} else {
+		if d := (jn + i) % div; d == 0 {
+			return true
+		}
+	}
 
 	return false
 }

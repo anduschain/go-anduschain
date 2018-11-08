@@ -126,23 +126,24 @@ func New(c *cli.Context) (*FairNode, error) {
 }
 
 func (f *FairNode) Start() error {
+	f.Wg.Add(1)
 	f.Running = true
 
 	go f.ListenUDP()
 	//go fairNode.ListenTCP()
 
+	f.Wg.Wait()
 	return nil
 }
 
-func (f *FairNode) ListenUDP() error {
-	//defer f.Wg.Done()
+func (f *FairNode) ListenUDP() {
+	defer f.Wg.Done()
+	f.Wg.Add(3)
 
 	go f.manageActiveNode()
 	// TODO : andus >> otprn 생성, 서명, 전송
 	go f.startLeague()
 	go f.makeLeague(f.startSignalCh, f.startMakeLeague)
-
-	return nil
 }
 
 func (f *FairNode) ListenTCP() error {
@@ -201,6 +202,7 @@ func (f *FairNode) ListenTCP() error {
 
 // 활성 노드 관리 ( upd enode 수신, 저장, 업데이트 )
 func (f *FairNode) manageActiveNode() {
+	defer f.Wg.Done()
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
 	// TODO : enode값 수신
 	buf := make([]byte, 4096)
@@ -224,6 +226,7 @@ func (f *FairNode) manageActiveNode() {
 
 // otprn 생성, 서명, 전송 ( 3초 반복, active node >= 3, LeagueRunningOK == false // 고루틴 )
 func (f *FairNode) startLeague() {
+	defer f.Wg.Done()
 	var otp *otprn.Otprn
 	var err error
 	t := time.NewTicker(3 * time.Second)
@@ -283,9 +286,8 @@ func (f *FairNode) startLeague() {
 }
 
 func (f *FairNode) makeLeague(startCh chan struct{}, bb chan string) {
-
+	defer f.Wg.Done()
 	log.Println(" @ run makeLeague() ")
-
 	t := time.NewTicker(1 * time.Second)
 
 	for {
