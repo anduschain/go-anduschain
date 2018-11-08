@@ -9,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"github.com/anduschain/go-anduschain/rlp"
 	"gopkg.in/urfave/cli.v1"
@@ -31,10 +32,11 @@ type FairNode struct {
 	Privkey  *ecdsa.PrivateKey
 	LaddrTcp *net.TCPAddr
 	LaddrUdp *net.UDPAddr
-	dbport   string
-	dbpath   string
 	keypath  string
 	Account  accounts.Account
+	UdpConn  *net.UDPConn
+	TcpConn  *net.TCPListener
+	Db       *db.FairNodeDB
 
 	otprn           *otprn.Otprn
 	SingedOtprn     *string // 전자서명값
@@ -51,17 +53,13 @@ type FairNode struct {
 }
 
 func New(c *cli.Context) (*FairNode, error) {
+	// TODO : andus >> account, passphrase
+	keypath := c.String("keypath")                                //$HOME/.fairnode/key
+	keyfile := filepath.Join(c.String("keypath"), "fairkey.json") //$HOME/.fairnode/key/fairkey.json
+	pass := c.String("password")
 
-	//// TODO : andus >> otprn 구조체 생성
-	//otprn, err := otprn.New()
-	//if err != nil {
-	//	return nil, makeOtprnError
-	//}
-
-	keyfilepath := c.String("keypath")
-
-	if _, err := os.Stat(keyfilepath); err != nil {
-		log.Fatalf("Keyfile not exists at %s.", keyfilepath)
+	if _, err := os.Stat(keypath); err != nil {
+		log.Fatalf("Keyfile not exists at %s.", keypath)
 		return nil, err
 	}
 
@@ -77,22 +75,31 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
+	udpConn, err := net.ListenUDP("udp", LAddrUDP)
+	if err != nil {
+		log.Fatal("Udp Server", err)
+	}
+
+	defer udpConn.Close()
+
+	tcpConn, err := net.ListenTCP("tcp", LAddrTCP)
+	if err != nil {
+		log.Fatal("Tcp Server", err)
+	}
+
+	defer tcpConn.Close()
+
 	fnNode := &FairNode{
 		ctx:             c,
 		LaddrTcp:        LAddrTCP,
 		LaddrUdp:        LAddrUDP,
-		dbpath:          c.String("dbpath"),
-		dbport:          c.String("dbport"),
 		keypath:         c.String("keypath"),
 		startSignalCh:   make(chan struct{}),
 		LeagueRunningOK: false,
+		UdpConn:         udpConn,
+		TcpConn:         tcpConn,
+		Db:              db.New(c.String("dbhost"), c.String("dbport"), "11111"),
 	}
-
-	// TODO : andus >> account, passphrase
-
-	keypath := c.String("keypath")                                //$HOME/.fairnode/key
-	keyfile := filepath.Join(c.String("keypath"), "fairkey.json") //$HOME/.fairnode/key/fairkey.json
-	pass := c.String("password")
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
 	blob, err := ioutil.ReadFile(keyfile)
@@ -130,13 +137,9 @@ func (f *FairNode) Start() error {
 func (f *FairNode) ListenUDP() error {
 	//defer f.Wg.Done()
 
-	ServerConn, err := net.ListenUDP("udp", f.LaddrUdp)
-	if err != nil {
-		log.Fatal("Udp Server", err)
-	}
-	defer ServerConn.Close()
-
-	go f.manageActiveNode(f.startSignalCh, ServerConn)
+	go f.manageActiveNode()
+	// TODO : andus >> otprn 생성, 서명, 전송
+	go f.startLeague()
 	go f.makeLeague(f.startSignalCh, f.startMakeLeague)
 
 	return nil
@@ -196,96 +199,87 @@ func (f *FairNode) ListenTCP() error {
 	return nil
 }
 
-func (f *FairNode) manageActiveNode(startCh chan struct{}, udpConn *net.UDPConn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
+// 활성 노드 관리 ( upd enode 수신, 저장, 업데이트 )
+func (f *FairNode) manageActiveNode() {
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
-
 	// TODO : enode값 수신
-	go func() {
-		defer wg.Done()
-		buf := make([]byte, 4096)
-		for {
-			n, addr, err := udpConn.ReadFromUDP(buf)
-			log.Println("andus >> enode값 수신", string(buf[:n]), " from ", addr)
+	buf := make([]byte, 4096)
+	for {
+		n, addr, err := f.UdpConn.ReadFromUDP(buf)
+		log.Println("andus >> enode값 수신", string(buf[:n]), " from ", addr)
 
-			// TODO : andus >> rlp enode 디코드
-			var enodeUrl string
-			rlp.DecodeBytes(buf, &enodeUrl)
-			node, err := discv5.ParseNode(enodeUrl)
-			log.Println(enodeUrl, node)
-			// TODO : andus >> DB에 insert Or Update
+		// TODO : andus >> rlp enode 디코드
+		var enodeUrl string
+		rlp.DecodeBytes(buf, &enodeUrl)
+		node, err := discv5.ParseNode(enodeUrl)
+		log.Println(enodeUrl, node)
 
-			if err != nil {
-				log.Fatal("andus >> Udp enode 수신중 에러", err)
-			}
+		// TODO : andus >> DB에 insert Or Update
+		f.Db.SaveActiveNode()
+		if err != nil {
+			log.Fatal("andus >> Udp enode 수신중 에러", err)
 		}
-	}()
+	}
+}
 
+// otprn 생성, 서명, 전송 ( 3초 반복, active node >= 3, LeagueRunningOK == false // 고루틴 )
+func (f *FairNode) startLeague() {
 	var otp *otprn.Otprn
 	var err error
+	t := time.NewTicker(3 * time.Second)
+	for {
+		select {
+		case <-t.C:
+			// TODO : andus >> active node 조회 3개이상
+			log.Println("andus >> 디비에서 엑티브 노드 조회")
 
-	go func() {
-		defer wg.Done()
-		t := time.NewTicker(3 * time.Second)
-		for {
-			select {
-			case <-t.C:
-				// TODO : andus >> active node 조회 3개이상
-				actNum := 0
-				if !f.LeagueRunningOK && actNum >= 3 {
-					// TODO : andus >> otprn을 생성
+			actNum := 0
+			if !f.LeagueRunningOK && actNum >= 3 {
+				// TODO : andus >> otprn을 생성
 
-					otp, err = otprn.New(11)
-					if err != nil {
-						log.Println("andus >> Otprn 생성 에러", err)
-					}
-
-					f.LeagueRunningOK = true
+				otp, err = otprn.New(11)
+				if err != nil {
+					log.Println("andus >> Otprn 생성 에러", err)
 				}
 
-				if f.LeagueRunningOK && otp != nil {
-					// TODO : andus >> otprn을 서명
-					sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
+				f.LeagueRunningOK = true
+
+				// TODO : andus >> otprn을 서명
+				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
+				if err != nil {
+					log.Println("andus >> Otprn 서명 에러", err)
+				}
+
+				tsOtp := otprn.TransferOtprn{
+					Otp:  *otp,
+					Sig:  sig,
+					Hash: otp.HashOtprn(),
+				}
+
+				ts, err := rlp.EncodeToBytes(tsOtp)
+				if err != nil {
+					log.Println("andus >> Otprn rlp 인코딩 에러", err)
+				}
+
+				// TODO : andus >> DB에서 Active node 리스트를 조회
+				activeNodeList := []string{"127.0.0.1:50900", "127.0.0.1:50900", "127.0.0.1:50900"}
+				for index := range activeNodeList {
+					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
 					if err != nil {
-						log.Println("andus >> Otprn 서명 에러", err)
+						log.Println("andus >>", err)
 					}
-
-					tsOtp := otprn.TransferOtprn{
-						Otp:  *otp,
-						Sig:  sig,
-						Hash: otp.HashOtprn(),
-					}
-
-					ts, err := rlp.EncodeToBytes(tsOtp)
+					Conn, err := net.DialUDP("udp", f.LaddrUdp, ServerAddr)
 					if err != nil {
-						log.Println("andus >> Otprn rlp 인코딩 에러", err)
+						log.Println("andus >>", err)
 					}
 
-					// TODO : andus >> DB에서 Active node 리스트를 조회
-					activeNodeList := []string{"127.0.0.1:50900", "127.0.0.1:50900", "127.0.0.1:50900"}
-					for index := range activeNodeList {
-						ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
-						if err != nil {
-							log.Println("andus >>", err)
-						}
-						Conn, err := net.DialUDP("udp", f.LaddrUdp, ServerAddr)
-						if err != nil {
-							log.Println("andus >>", err)
-						}
-
-						// TODO : andus >> Active node 노드에게 OTPRN 전송
-						Conn.Write(ts)
-						Conn.Close()
-					}
-
-					startCh <- struct{}{}
+					// TODO : andus >> Active node 노드에게 OTPRN 전송
+					Conn.Write(ts)
+					Conn.Close()
 				}
 			}
 		}
-	}()
-
-	wg.Wait()
+	}
 }
 
 func (f *FairNode) makeLeague(startCh chan struct{}, bb chan string) {

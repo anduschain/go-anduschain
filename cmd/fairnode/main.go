@@ -23,9 +23,9 @@ func init() {
 	app.Usage = "Fairnode for AndUsChain networks"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "dbpath",
-			Value: os.Getenv("HOME") + "/.fairnode/db",
-			Usage: "default dbpath $HOME/.fairnode/db",
+			Name:  "dbhost",
+			Value: "localhost",
+			Usage: "default dbpath localhost",
 		},
 		cli.StringFlag{
 			Name:  "dbport",
