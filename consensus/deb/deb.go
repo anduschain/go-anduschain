@@ -1,26 +1,11 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
-//
-// The go-ethereum library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The go-ethereum library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// Copyright 2018 The go-anduschain Authors
+// Package clique implements the proof-of-deb consensus engine.
 
-// Package clique implements the proof-of-authority consensus engine.
 package deb
 
 import (
 	"errors"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -33,10 +18,7 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
-	"github.com/hashicorp/golang-lru"
 )
-
-// TODO : andus >> 필요없는 소스 기능 정리
 
 // Deb proof-of-Deb protocol constants.
 var (
@@ -53,17 +35,17 @@ var (
 var (
 	// errUnknownBlock is returned when the list of signers is requested for a block
 	// that is not part of the local blockchain.
-	errUnknownBlock = errors.New("unknown block")
+	errUnknownBlock = errors.New("andus >> unknown block")
 
 	// errInvalidMixDigest is returned if a block's mix digest is non-zero.
-	errInvalidMixDigest = errors.New("non-zero mix digest")
+	errInvalidMixDigest = errors.New("andus >> non-zero mix digest")
 
 	// errInvalidUncleHash is returned if a block contains an non-empty uncle list.
-	errInvalidUncleHash = errors.New("non empty uncle hash")
+	errInvalidUncleHash = errors.New("andus >> non empty uncle hash")
 
 	// errInvalidDifficulty is returned if the difficulty of a block is not either
 	// of 1 or 2, or if the value does not match the turn of the signer.
-	errInvalidDifficulty = errors.New("invalid difficulty")
+	errInvalidDifficulty = errors.New("andus >> invalid difficulty")
 )
 
 // sigHash returns the hash which is used as input for the proof-of-authority
@@ -100,11 +82,6 @@ func sigHash(header *types.Header) (hash common.Hash) {
 type Deb struct {
 	config *params.DebConfig // Consensus engine configuration parameters
 	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
-
-	recents *lru.ARCCache // Snapshots for recent block to speed up reorgs
-
-	signer common.Address // Ethereum address of the signing key
-	lock   sync.RWMutex   // Protects the signer fields
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
@@ -215,7 +192,7 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 // uncles as this consensus mechanism doesn't permit uncles.
 func (c *Deb) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
 	if len(block.Uncles()) > 0 {
-		return errors.New("uncles not allowed")
+		return errors.New("andus >> uncles not allowed")
 	}
 	return nil
 }
