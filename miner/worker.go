@@ -963,10 +963,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 		header.Coinbase = w.coinbase
 	}
-	if err := w.engine.Prepare(w.chain, header); err != nil {
-		log.Error("Failed to prepare header for mining", "err", err)
-		return
+
+	// TODO : andus >> 현재 상태를 읽어옴
+	if currentStateDb, err := w.chain.State(); err == nil {
+		if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn()); err != nil {
+			log.Error("Failed to prepare header for mining", "err", err)
+			return
+		}
+	} else {
+		log.Error("andus >> currentStateDb", "err", err)
 	}
+
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 	if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
 		// Check whether the block is among the fork extra-override range

@@ -5,6 +5,8 @@ package deb
 
 import (
 	"errors"
+	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/big"
 	"time"
 
@@ -78,10 +80,33 @@ func sigHash(header *types.Header) (hash common.Hash) {
 	return hash
 }
 
+func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
+	hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("%d%s%s%s", n, otprn, coinbase, pBlockHash)))
+	return hash.Big()
+}
+
+// TODO : andus >> Rand 생성
+func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
+
+	rand := big.NewInt(0)
+
+	for i := 0; i <= int(joinNonce); i++ {
+		newRand := csprng(i, otprn, coinbase, pBlockHash)
+		if newRand.Cmp(rand) > 0 {
+			rand = newRand
+		}
+	}
+
+	return rand
+}
+
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
-	config *params.DebConfig // Consensus engine configuration parameters
-	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	config    *params.DebConfig // Consensus engine configuration parameters
+	db        ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	otprn     *common.Hash
+	joinNonce *uint64
+	coinbase  *common.Address
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
@@ -155,11 +180,18 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		if header.Difficulty == nil || (header.Difficulty.Cmp(diffInTurn) != 0 && header.Difficulty.Cmp(diffNoTurn) != 0) {
 			return errInvalidDifficulty
 		}
+
+		// TODO : andus >> Difficulty 검증
+		if header.Difficulty != MakeRand(header.Nonce.Uint64(), *c.otprn, header.Coinbase, header.ParentHash) {
+			return errInvalidDifficulty
+		}
 	}
+
 	// If all checks passed, validate any special fields for hard forks
 	if err := misc.VerifyForkHashes(chain.Config(), header, false); err != nil {
 		return err
 	}
+
 	// All basic checks passed, verify cascading fields
 	return c.verifyCascadingFields(chain, header, parents)
 }
@@ -219,10 +251,15 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
-func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
+func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
+
+	// TODO : andus >> struct 값 추가...
+	c.coinbase = &coinbase
+	c.joinNonce = &joinNonce
+	c.otprn = &otprn
+
 	header.Coinbase = common.Address{}
-	header.Nonce = types.BlockNonce{}
 
 	number := header.Number.Uint64()
 
@@ -234,6 +271,11 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
+
+	// TODO : andus >> nonce - joinNonce
+	header.Nonce = types.EncodeNonce(joinNonce)
+	// TODO : andus >> difficulty - RAND값
+	header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
 
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
@@ -269,14 +311,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 
-	return CalcDifficulty()
-}
-
-// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
-// that a new block should have based on the previous blocks in the chain and the
-// current signer.
-func CalcDifficulty() *big.Int {
-	return new(big.Int).Set(diffNoTurn)
+	return MakeRand(*c.joinNonce, *c.otprn, *c.coinbase, parent.Hash())
 }
 
 // SealHash returns the hash of a block prior to it being sealed.

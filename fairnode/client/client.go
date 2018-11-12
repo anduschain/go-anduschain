@@ -189,7 +189,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 			fc.Otprn = &tsOtprn.Otp
 			//TODO : andus >> 3. 참여여부 확인
 
-			if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNunce(), fc.Coinbase); ok {
+			if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNonce(), fc.Coinbase); ok {
 				//TODO : andus >> 참가 가능할 때 처리
 				//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 				fc.TcpConnStartCh <- struct{}{}
@@ -226,7 +226,7 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 
 		// TODO : andus >> joinNonce 현재 상태 조회
 
-		currentJoinNonce := fc.GetCurrentJoinNunce()
+		currentJoinNonce := fc.GetCurrentJoinNonce()
 
 		signer := types.NewEIP155Signer(big.NewInt(18))
 
@@ -273,7 +273,7 @@ func (fc *FairnodeClient) Stop() {
 	fc.Running = false
 }
 
-func (fc *FairnodeClient) GetCurrentJoinNunce() uint64 {
+func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()
 	if err != nil {
 		log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
