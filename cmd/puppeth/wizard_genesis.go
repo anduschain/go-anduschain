@@ -49,9 +49,10 @@ func (w *wizard) makeGenesis() {
 	}
 	// Figure out which consensus engine to choose
 	fmt.Println()
-	fmt.Println("Which consensus engine to use? (default = clique)")
+	fmt.Println("Which consensus engine to use? (default = deb)")
 	fmt.Println(" 1. Ethash - proof-of-work")
 	fmt.Println(" 2. Clique - proof-of-authority")
+	fmt.Println(" 3. Deb - proof-of-Deb")
 
 	choice := w.read()
 	switch {
@@ -60,7 +61,7 @@ func (w *wizard) makeGenesis() {
 		genesis.Config.Ethash = new(params.EthashConfig)
 		genesis.ExtraData = make([]byte, 32)
 
-	case choice == "" || choice == "2":
+	case choice == "2":
 		// In the case of clique, configure the consensus parameters
 		genesis.Difficulty = big.NewInt(1)
 		genesis.Config.Clique = &params.CliqueConfig{
@@ -97,6 +98,12 @@ func (w *wizard) makeGenesis() {
 		for i, signer := range signers {
 			copy(genesis.ExtraData[32+i*common.AddressLength:], signer[:])
 		}
+
+	// TODO : andus >> consensus
+	case choice == "" || choice == "3":
+		// In the case of Deb, configure the consensus parameters
+		genesis.Difficulty = big.NewInt(1)
+		genesis.Config.Deb = &params.DebConfig{}
 
 	default:
 		log.Crit("Invalid consensus engine choice", "choice", choice)

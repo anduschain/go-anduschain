@@ -197,8 +197,8 @@ func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 // Clique is the proof-of-authority consensus engine proposed to support the
 // Ethereum testnet following the Ropsten attacks.
 type Deb struct {
-	config *params.CliqueConfig // Consensus engine configuration parameters
-	db     ethdb.Database       // Database to store and retrieve snapshot checkpoints
+	config *params.DebConfig // Consensus engine configuration parameters
+	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
 
 	recents    *lru.ARCCache // Snapshots for recent block to speed up reorgs
 	signatures *lru.ARCCache // Signatures of recent blocks to speed up mining
@@ -212,18 +212,14 @@ type Deb struct {
 
 // New creates a Clique proof-of-authority consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.CliqueConfig, db ethdb.Database) *Deb {
-	// Set any missing consensus parameters to their defaults
-	conf := *config
-	if conf.Epoch == 0 {
-		conf.Epoch = epochLength
-	}
+func New(config *params.DebConfig, db ethdb.Database) *Deb {
+
 	// Allocate the snapshot caches and create the engine
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	signatures, _ := lru.NewARC(inmemorySignatures)
 
 	return &Deb{
-		config:     &conf,
+		config:     config,
 		db:         db,
 		recents:    recents,
 		signatures: signatures,
@@ -581,16 +577,6 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, txs, nil, receipts), nil
-}
-
-// Authorize injects a private key into the consensus engine to mint new blocks
-// with.
-func (c *Deb) Authorize(signer common.Address, signFn SignerFn) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	c.signer = signer
-	c.signFn = signFn
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using

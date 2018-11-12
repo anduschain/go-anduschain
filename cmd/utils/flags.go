@@ -140,6 +140,11 @@ var (
 		Name:  "rinkeby",
 		Usage: "Rinkeby network: pre-configured proof-of-authority test network",
 	}
+	// TODO : andus >> consensus
+	DebFlag = cli.BoolFlag{
+		Name:  "deb",
+		Usage: "deb network: andus Chain test network",
+	}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-authority network with a pre-funded developer account, mining enabled",

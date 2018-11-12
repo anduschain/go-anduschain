@@ -31,6 +31,7 @@ var Modules = map[string]string{
 	"shh":        Shh_JS,
 	"swarmfs":    SWARMFS_JS,
 	"txpool":     TxPool_JS,
+	"deb":        Deb_JS,
 }
 
 const Chequebook_JS = `
@@ -107,6 +108,15 @@ web3._extend({
 			getter: 'clique_proposals'
 		}),
 	]
+});
+`
+
+// TODO : andus >> consensus
+const Deb_JS = `
+web3._extend({
+	property: 'deb',
+	methods: [],
+	properties: []
 });
 `
 

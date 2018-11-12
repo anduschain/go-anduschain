@@ -131,6 +131,8 @@ var (
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
 		configFileFlag,
+		// TODO : andus >> consensus
+		utils.DebFlag,
 	}
 
 	rpcFlags = []cli.Flag{

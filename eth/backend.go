@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"math/big"
 	"runtime"
@@ -241,10 +242,14 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 // CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 
-	// If proof-of-authority is requested, set it up
-	if chainConfig.Clique != nil {
+	// If proof-of-Deb is requested, set it up
+	// TODO : andus >> consensus
+	if chainConfig.Deb != nil {
+		return deb.New(chainConfig.Deb, db)
+	} else if chainConfig.Clique != nil {
 		return clique.New(chainConfig.Clique, db)
 	}
+
 	// Otherwise assume proof-of-work
 	switch config.PowMode {
 	case ethash.ModeFake:
@@ -395,7 +400,16 @@ func (s *Ethereum) StartMining(threads int) error {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
-		if clique, ok := s.engine.(*clique.Clique); ok {
+
+		// TODO : andus >> andus 합의 엔진 추가
+		if _, ok := s.engine.(*deb.Deb); ok {
+			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+			if wallet == nil || err != nil {
+				log.Error("Etherbase account unavailable locally", "err", err)
+				return fmt.Errorf("signer missing: %v", err)
+			}
+
+		} else if clique, ok := s.engine.(*clique.Clique); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)
@@ -403,7 +417,6 @@ func (s *Ethereum) StartMining(threads int) error {
 			}
 			clique.Authorize(eb, wallet.SignHash)
 		}
-		// TODO : andus >> andus 합의 엔진 추가
 
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
