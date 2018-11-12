@@ -104,11 +104,11 @@ func New(c *cli.Context) (*FairNode, error) {
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
 	blob, err := ioutil.ReadFile(keyfile)
 	if err != nil {
-		log.Fatalf("Failed to read account key contents", "file", keypath, "err", err)
+		log.Fatalf("Failed to read account key contents %s , %s", keypath, err)
 	}
 	acc, err := fnNode.Keystore.Import(blob, pass, pass)
 	if err != nil {
-		log.Fatalf("Failed to import faucet signer account", "err", err)
+		log.Fatalf("Failed to import faucet signer account : %s ", err)
 	}
 
 	fnNode.Keystore.Unlock(acc, pass)
