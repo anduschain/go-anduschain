@@ -174,6 +174,7 @@ func (self *Miner) PendingBlock() *types.Block {
 }
 
 func (self *Miner) SetEtherbase(addr common.Address) {
+	fmt.Println("andus >> SetEtherbase 실행함")
 	self.coinbase = addr
 	self.worker.setEtherbase(addr)
 }

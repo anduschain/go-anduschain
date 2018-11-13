@@ -49,14 +49,16 @@ type FairnodeClient struct {
 	TcpConnStartCh chan struct{}
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, miner DebMiner, coinbase *common.Address, ks *keystore.KeyStore, tp *core.TxPool) *FairnodeClient {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, miner DebMiner, tp *core.TxPool) *FairnodeClient {
+
+	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
 	serverAddr, err := net.ResolveUDPAddr("udp", FAIRNODE_CON_INFO)
 	if err != nil {
 		log.Fatal("andus >> UDPtoFairNode, ServerAddr", err)
 	}
 
-	localAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1")
+	localAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatal("andus >> UDPtoFairNode, LocalAddr", err)
 	}
@@ -68,8 +70,6 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		Running:        false,
 		BlockChain:     blockChain,
 		Miner:          miner,
-		Coinbase:       coinbase,
-		keystore:       ks,
 		txPool:         tp,
 		SAddrUDP:       serverAddr,
 		LAddrUDP:       localAddr,
@@ -80,21 +80,40 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 }
 
 //TODO : andus >> fairNode 관련 함수....
-func (fc *FairnodeClient) StartToFairNode() error {
+func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore) error {
 	fc.Running = true
+	fc.keystore = ks
 
-	unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*fc.Coinbase)
+	// TODO : andus >> coinbase 추가
+	fmt.Println("andus >> StartToFairNode() coinbase", coinbase.String())
+
+	fc.Coinbase = coinbase
+
+	for i := 0; i < len(fc.keystore.Accounts()); i++ {
+		fmt.Println(fc.keystore.Accounts()[i].Address)
+		if fc.keystore.Accounts()[i].Address == *coinbase {
+			fmt.Println("코인베이스를 찾았다.")
+
+			fc.keystore.Unlock(fc.keystore.Accounts()[i], "11111")
+
+			fmt.Println("Andus >> 코인베이스를 계정을 언락했다")
+		}
+	}
+
+	unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*coinbase)
 	if err != nil {
 		log.Println("andus >>", err)
 	}
+
+	fmt.Println("andus >> 개인키를 추출 했다", unlockedKey)
 
 	fc.PrivateKey = unlockedKey
 
 	// TODO : andus >> 마이닝 켜저 있으면 종료
 
-	if fc.Miner.IsMining() {
-		fc.Miner.StopMining()
-	}
+	//if fc.Miner.IsMining() {
+	//	fc.Miner.StopMining()
+	//}
 
 	// udp
 	go fc.UDPtoFairNode()
@@ -249,10 +268,10 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 		//	srv.AddPeer(old)
 		//}
 
-		// TODO : andsu >> 3. mining.start()
-		if !fc.Miner.IsMining() {
-			fc.Miner.StartMining(1)
-		}
+		//// TODO : andsu >> 3. mining.start()
+		//if !fc.Miner.IsMining() {
+		//	fc.Miner.StartMining(1)
+		//}
 		select {
 		// type : types.TransferBlock
 		case signedBlock := <-fc.WinningBlockCh:

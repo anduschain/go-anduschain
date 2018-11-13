@@ -120,6 +120,8 @@ var (
 		utils.DeveloperPeriodFlag,
 		utils.TestnetFlag,
 		utils.RinkebyFlag,
+		// TODO : andus >> consensus
+		utils.DebFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
@@ -131,8 +133,6 @@ var (
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
 		configFileFlag,
-		// TODO : andus >> consensus
-		utils.DebFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -282,6 +282,15 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// Unlock any account specifically requested
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
 
+	// TODO : andus >> keystore eth에 추가
+	for key, _ := range stack.GetServices() {
+		if eth, ok := stack.GetServices()[key].(*eth.Ethereum); ok {
+
+			fmt.Println("andus >> keystore 추가")
+			eth.Keystore = ks
+		}
+	}
+
 	passwords := utils.MakePasswordList(ctx)
 	unlocks := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
 	for i, account := range unlocks {
@@ -348,9 +357,6 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 			gasprice = utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
 		}
 		ethereum.TxPool().SetGasPrice(gasprice)
-
-		// TODO : andus >> keystore 추가
-		ethereum.Keystore = ks
 
 		threads := ctx.GlobalInt(utils.MinerLegacyThreadsFlag.Name)
 		if ctx.GlobalIsSet(utils.MinerThreadsFlag.Name) {

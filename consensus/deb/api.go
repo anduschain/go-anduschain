@@ -13,3 +13,8 @@ type API struct {
 	chain consensus.ChainReader
 	deb   *Deb
 }
+
+func (api *API) GetState() (bool, error) {
+
+	return true, nil
+}

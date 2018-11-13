@@ -190,6 +190,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
+	// TODO : andus >> fairnode client start
+	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth, eth.txPool)
+
 	// TODO : andus >> miner -> keystore 추가
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh, WinningBlockCh, FinalBlockCh)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
@@ -200,12 +203,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		gpoParams.Default = config.MinerGasPrice
 	}
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
-
-	//-----
-
-	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth, &eth.etherbase, eth.Keystore, eth.txPool)
-	eth.FairnodeClient.StartToFairNode()
 
 	return eth, nil
 }
@@ -244,38 +241,40 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 
 	// If proof-of-Deb is requested, set it up
 	// TODO : andus >> consensus
-	if chainConfig.Deb != nil {
-		return deb.New(chainConfig.Deb, db)
-	} else if chainConfig.Clique != nil {
-		return clique.New(chainConfig.Clique, db)
-	}
+	//if chainConfig.Deb != nil {
+	//	return deb.New(chainConfig.Deb, db)
+	//} else if chainConfig.Clique != nil {
+	//	return clique.New(chainConfig.Clique, db)
+	//}
 
 	// Otherwise assume proof-of-work
-	switch config.PowMode {
-	case ethash.ModeFake:
-		log.Warn("Ethash used in fake mode")
-		return ethash.NewFaker()
-	case ethash.ModeTest:
-		log.Warn("Ethash used in test mode")
-		return ethash.NewTester(nil, noverify)
-	case ethash.ModeShared:
-		log.Warn("Ethash used in shared mode")
-		return ethash.NewShared()
-	default:
+	//switch config.PowMode {
+	//case ethash.ModeFake:
+	//	log.Warn("Ethash used in fake mode")
+	//	return ethash.NewFaker()
+	//case ethash.ModeTest:
+	//	log.Warn("Ethash used in test mode")
+	//	return ethash.NewTester(nil, noverify)
+	//case ethash.ModeShared:
+	//	log.Warn("Ethash used in shared mode")
+	//	return ethash.NewShared()
+	//default:
+	//
+	//	// TODO : andus >> deb 합의 알고리즘을 디폽트 값으로 셋팅 되로록...
+	//
+	//	engine := ethash.New(ethash.Config{
+	//		CacheDir:       ctx.ResolvePath(config.CacheDir),
+	//		CachesInMem:    config.CachesInMem,
+	//		CachesOnDisk:   config.CachesOnDisk,
+	//		DatasetDir:     config.DatasetDir,
+	//		DatasetsInMem:  config.DatasetsInMem,
+	//		DatasetsOnDisk: config.DatasetsOnDisk,
+	//	}, notify, noverify)
+	//	engine.SetThreads(-1) // Disable CPU mining
+	//	return engine
+	//}
 
-		// TODO : andus >> deb 합의 알고리즘을 디폽트 값으로 셋팅 되로록...
-
-		engine := ethash.New(ethash.Config{
-			CacheDir:       ctx.ResolvePath(config.CacheDir),
-			CachesInMem:    config.CachesInMem,
-			CachesOnDisk:   config.CachesOnDisk,
-			DatasetDir:     config.DatasetDir,
-			DatasetsInMem:  config.DatasetsInMem,
-			DatasetsOnDisk: config.DatasetsOnDisk,
-		}, notify, noverify)
-		engine.SetThreads(-1) // Disable CPU mining
-		return engine
-	}
+	return deb.New(chainConfig.Deb, db)
 }
 
 // APIs return the collection of RPC services the ethereum package offers.
@@ -396,6 +395,12 @@ func (s *Ethereum) StartMining(threads int) error {
 
 		// Configure the local mining addess
 		eb, err := s.Etherbase()
+
+		// TODO : andus >> Fair Client Start with etherbase
+		s.FairnodeClient.StartToFairNode(&eb, s.Keystore)
+
+		fmt.Println("andus >> StartMining etherbase", eb.String())
+
 		if err != nil {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
@@ -490,6 +495,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	if s.lesServer != nil {
 		s.lesServer.Start(srvr)
 	}
+
 	return nil
 }
 

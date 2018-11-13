@@ -132,6 +132,11 @@ var (
 		Usage: "Network identifier (integer, 1=Frontier, 2=Morden (disused), 3=Ropsten, 4=Rinkeby)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
+	// TODO : andus >> consensus
+	DebFlag = cli.BoolFlag{
+		Name:  "deb",
+		Usage: "deb network: andus Chain test network",
+	}
 	TestnetFlag = cli.BoolFlag{
 		Name:  "testnet",
 		Usage: "Ropsten network: pre-configured proof-of-work test network",
@@ -139,11 +144,6 @@ var (
 	RinkebyFlag = cli.BoolFlag{
 		Name:  "rinkeby",
 		Usage: "Rinkeby network: pre-configured proof-of-authority test network",
-	}
-	// TODO : andus >> consensus
-	DebFlag = cli.BoolFlag{
-		Name:  "deb",
-		Usage: "deb network: andus Chain test network",
 	}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
@@ -872,6 +872,7 @@ func setEtherbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *eth.Config) {
 		}
 		cfg.Etherbase = account.Address
 	}
+
 }
 
 // MakePasswordList reads password lines from the file specified by the global --password flag.
@@ -1249,6 +1250,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 			return les.New(ctx, cfg)
 		})
 	} else {
+		fmt.Println("andus >> RegisterEthService")
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 			fullNode, err := eth.New(ctx, cfg)
 			if fullNode != nil && cfg.LightServ > 0 {

@@ -38,14 +38,14 @@ import (
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
 	// TODO : andus >> 여기서 컨센서스 엔진 부분 교체
-	Ethash: ethash.Config{
-		CacheDir:       "ethash",
-		CachesInMem:    2,
-		CachesOnDisk:   3,
-		DatasetsInMem:  1,
-		DatasetsOnDisk: 2,
-	},
-	NetworkId:     1,
+	//Ethash: ethash.Config{
+	//	CacheDir:       "ethash",
+	//	CachesInMem:    2,
+	//	CachesOnDisk:   3,
+	//	DatasetsInMem:  1,
+	//	DatasetsOnDisk: 2,
+	//},
+	NetworkId:     100,
 	LightPeers:    100,
 	DatabaseCache: 768,
 	TrieCache:     256,

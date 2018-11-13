@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
+	"log"
 	"math/big"
 	"time"
 
@@ -112,6 +113,8 @@ type Deb struct {
 // New creates a Clique proof-of-authority consensus engine with the initial
 // signers set to the ones provided by the user.
 func New(config *params.DebConfig, db ethdb.Database) *Deb {
+
+	log.Println("andus >> Deb Call New()")
 
 	return &Deb{
 		config: config,
@@ -255,9 +258,9 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNon
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
 
 	// TODO : andus >> struct 값 추가...
-	c.coinbase = &coinbase
-	c.joinNonce = &joinNonce
-	c.otprn = &otprn
+	//c.coinbase = &coinbase
+	//c.joinNonce = &joinNonce
+	//c.otprn = &otprn
 
 	header.Coinbase = common.Address{}
 
@@ -272,10 +275,10 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNon
 		return consensus.ErrUnknownAncestor
 	}
 
-	// TODO : andus >> nonce - joinNonce
-	header.Nonce = types.EncodeNonce(joinNonce)
-	// TODO : andus >> difficulty - RAND값
-	header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
+	//// TODO : andus >> nonce - joinNonce
+	//header.Nonce = types.EncodeNonce(joinNonce)
+	//// TODO : andus >> difficulty - RAND값
+	//header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
 
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil

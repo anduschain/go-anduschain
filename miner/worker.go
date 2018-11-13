@@ -234,6 +234,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
+	fmt.Println("andus >> new Worker")
+
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
 
@@ -964,97 +966,107 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		header.Coinbase = w.coinbase
 	}
 
-	// TODO : andus >> 현재 상태를 읽어옴
-	if currentStateDb, err := w.chain.State(); err == nil {
-		if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn()); err != nil {
-			log.Error("Failed to prepare header for mining", "err", err)
-			return
-		}
-	} else {
-		log.Error("andus >> currentStateDb", "err", err)
-	}
+	if w.coinbase.String() != "0x0000000000000000000000000000000000000000" && w.fairclient.Running {
+		// TODO : andus >> 현재 상태를 읽어옴
+		fmt.Println("andus >> 패어노드 살아 있다.")
 
-	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
-	if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
-		// Check whether the block is among the fork extra-override range
-		limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
-		if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
-			// Depending whether we support or oppose the fork, override differently
-			if w.config.DAOForkSupport {
-				header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
-			} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
-				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
+		if currentStateDb, err := w.chain.State(); err == nil {
+
+			fmt.Println("andus >> currentStateDb success ", currentStateDb)
+
+			fmt.Println("andus >> currentStateDb success", w.fairclient.Otprn)
+
+			if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn()); err != nil {
+				log.Error("Failed to prepare header for mining", "err", err)
+				return
+			}
+		} else {
+			fmt.Println("andus >> currentStateDb", "err", err)
+		}
+
+		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
+		if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
+			// Check whether the block is among the fork extra-override range
+			limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
+			if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
+				// Depending whether we support or oppose the fork, override differently
+				if w.config.DAOForkSupport {
+					header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
+				} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
+					header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
+				}
 			}
 		}
-	}
-	// Could potentially happen if starting to mine in an odd state.
-	err := w.makeCurrent(parent, header)
-	if err != nil {
-		log.Error("Failed to create mining context", "err", err)
-		return
-	}
-	// Create the current work task and check any fork transitions needed
-	env := w.current
-	if w.config.DAOForkSupport && w.config.DAOForkBlock != nil && w.config.DAOForkBlock.Cmp(header.Number) == 0 {
-		misc.ApplyDAOHardFork(env.state)
-	}
-	// Accumulate the uncles for the current block
-	for hash, uncle := range w.possibleUncles {
-		if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
-			delete(w.possibleUncles, hash)
-		}
-	}
-	uncles := make([]*types.Header, 0, 2)
-	for hash, uncle := range w.possibleUncles {
-		if len(uncles) == 2 {
-			break
-		}
-		if err := w.commitUncle(env, uncle.Header()); err != nil {
-			log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
-		} else {
-			log.Debug("Committing new uncle to block", "hash", hash)
-			uncles = append(uncles, uncle.Header())
-		}
-	}
-
-	if !noempty {
-		// Create an empty block based on temporary copied state for sealing in advance without waiting block
-		// execution finished.
-		w.commit(uncles, nil, false, tstart)
-	}
-
-	// Fill the block with all available pending transactions.
-	pending, err := w.eth.TxPool().Pending()
-	if err != nil {
-		log.Error("Failed to fetch pending transactions", "err", err)
-		return
-	}
-	// Short circuit if there is no available pending transactions
-	if len(pending) == 0 {
-		w.updateSnapshot()
-		return
-	}
-	// Split the pending transactions into locals and remotes
-	localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
-	for _, account := range w.eth.TxPool().Locals() {
-		if txs := remoteTxs[account]; len(txs) > 0 {
-			delete(remoteTxs, account)
-			localTxs[account] = txs
-		}
-	}
-	if len(localTxs) > 0 {
-		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
-		if w.commitTransactions(txs, w.coinbase, interrupt) {
+		// Could potentially happen if starting to mine in an odd state.
+		err := w.makeCurrent(parent, header)
+		if err != nil {
+			log.Error("Failed to create mining context", "err", err)
 			return
 		}
-	}
-	if len(remoteTxs) > 0 {
-		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs)
-		if w.commitTransactions(txs, w.coinbase, interrupt) {
+		// Create the current work task and check any fork transitions needed
+		env := w.current
+		if w.config.DAOForkSupport && w.config.DAOForkBlock != nil && w.config.DAOForkBlock.Cmp(header.Number) == 0 {
+			misc.ApplyDAOHardFork(env.state)
+		}
+		// Accumulate the uncles for the current block
+		for hash, uncle := range w.possibleUncles {
+			if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
+				delete(w.possibleUncles, hash)
+			}
+		}
+		uncles := make([]*types.Header, 0, 2)
+		for hash, uncle := range w.possibleUncles {
+			if len(uncles) == 2 {
+				break
+			}
+			if err := w.commitUncle(env, uncle.Header()); err != nil {
+				log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
+			} else {
+				log.Debug("Committing new uncle to block", "hash", hash)
+				uncles = append(uncles, uncle.Header())
+			}
+		}
+
+		if !noempty {
+			// Create an empty block based on temporary copied state for sealing in advance without waiting block
+			// execution finished.
+			w.commit(uncles, nil, false, tstart)
+		}
+
+		// Fill the block with all available pending transactions.
+		pending, err := w.eth.TxPool().Pending()
+		if err != nil {
+			log.Error("Failed to fetch pending transactions", "err", err)
 			return
 		}
+		// Short circuit if there is no available pending transactions
+		if len(pending) == 0 {
+			w.updateSnapshot()
+			return
+		}
+		// Split the pending transactions into locals and remotes
+		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
+		for _, account := range w.eth.TxPool().Locals() {
+			if txs := remoteTxs[account]; len(txs) > 0 {
+				delete(remoteTxs, account)
+				localTxs[account] = txs
+			}
+		}
+		if len(localTxs) > 0 {
+			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
+			if w.commitTransactions(txs, w.coinbase, interrupt) {
+				return
+			}
+		}
+		if len(remoteTxs) > 0 {
+			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs)
+			if w.commitTransactions(txs, w.coinbase, interrupt) {
+				return
+			}
+		}
+		w.commit(uncles, w.fullTaskHook, true, tstart)
 	}
-	w.commit(uncles, w.fullTaskHook, true, tstart)
+
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
