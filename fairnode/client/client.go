@@ -53,7 +53,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
-	serverAddr, err := net.ResolveUDPAddr("udp", ":60002") // 전송 60002
+	serverAddr, err := net.ResolveUDPAddr("udp", "192.168.0.77:60002") // 전송 60002
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
@@ -168,6 +168,7 @@ func (fc *FairnodeClient) submitEnode() {
 			// TODO : andus >> enode Sender -- start --
 			// TODO : andus >> rlp encode -> byte ( enode type )
 			_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
+			fmt.Println("andus >> enode 전송")
 			if err != nil {
 				log.Println("andus >> Write", err)
 			}
@@ -180,14 +181,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 	//TODO : andus >> 1. OTPRN 수신
 
-	serverAddr2, err := net.ResolveUDPAddr("udp", ":50003") // otprn 받는 부분 수신 60003
-	if err != nil {
-		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
-	}
-
-	fmt.Println("andus >> receiveOtprn", serverAddr2)
-
-	localServerConn, err := net.ListenUDP("udp", serverAddr2)
+	localServerConn, err := net.ListenUDP("udp", fc.LAddrUDP) // 50002
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
