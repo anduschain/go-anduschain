@@ -663,7 +663,7 @@ func (w *worker) resultLoop() {
 
 					case <-t.C:
 						// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
-						if int64(len(receviedCoinbase)) >= otprn.Mminer-1 {
+						if uint64(len(receviedCoinbase)) >= otprn.Mminer-1 {
 							// TODO : andus >> 5. FairNode로 winningBlock 전송
 							w.WinningBlockCh <- winningBlock
 							countBlock = 0

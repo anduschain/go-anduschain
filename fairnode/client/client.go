@@ -27,10 +27,6 @@ type DebMiner interface {
 	IsMining() bool
 }
 
-const (
-	FAIRNODE_CON_INFO = ":60002"
-)
-
 type FairnodeClient struct {
 	Otprn *otprn.Otprn
 	//OtprnCh chan *otprn.Otprn
@@ -53,19 +49,15 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
-	serverAddr, err := net.ResolveUDPAddr("udp", "192.168.0.77:60002") // 전송 60002
+	serverAddr, err := net.ResolveUDPAddr("udp", ":60002") // 전송 60002
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
-
-	fmt.Println("andus >> serverAddr", serverAddr)
 
 	localAddr, err := net.ResolveUDPAddr("udp", ":50002") // 수신 50002
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, LocalAddr", err)
 	}
-
-	fmt.Println("andus >> localAddr", localAddr)
 
 	fcClient := &FairnodeClient{
 		Otprn:          nil,
@@ -125,8 +117,6 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 	// tcp
 	//go fc.TCPtoFairNode()
 
-	fc.wg.Wait()
-
 	return nil
 }
 func (fc *FairnodeClient) UDPtoFairNode() {
@@ -137,7 +127,7 @@ func (fc *FairnodeClient) UDPtoFairNode() {
 
 func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
-	Conn, err := net.DialUDP("udp", fc.LAddrUDP, fc.SAddrUDP)
+	Conn, err := net.DialUDP("udp", nil, fc.SAddrUDP)
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, DialUDP", err)
 	}
@@ -181,7 +171,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 	//TODO : andus >> 1. OTPRN 수신
 
-	localServerConn, err := net.ListenUDP("udp", fc.LAddrUDP) // 50002
+	localServerConn, err := net.ListenUDP("udp", fc.LAddrUDP)
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
@@ -191,49 +181,52 @@ func (fc *FairnodeClient) receiveOtprn() {
 	tsOtprnByte := make([]byte, 4096)
 
 	for {
-		n, fairServerAddr, err := localServerConn.ReadFromUDP(tsOtprnByte)
-		log.Println("andus >> otprn 수신", string(tsOtprnByte[:n]), " from ", fairServerAddr)
+		_, fairServerAddr, err := localServerConn.ReadFromUDP(tsOtprnByte)
+		fmt.Println("andus >> otprn 수신 from ", fairServerAddr)
 		if err != nil {
 			log.Println("andus >> otprn 수신 에러", err)
 		}
-	}
-	// TODO : andus >> 수신된 otprn디코딩
-	var tsOtprn otprn.TransferOtprn
-	rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
 
-	//TODO : andus >> 2. OTRRN 검증
-	fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
-	if err != nil {
-		log.Println("andus >> OTPRN 공개키 로드 에러")
-	}
+		// TODO : andus >> 수신된 otprn디코딩
+		var tsOtprn otprn.TransferOtprn
+		rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
 
-	if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig) {
-		otprnHash := tsOtprn.Otp.HashOtprn()
-		if otprnHash == tsOtprn.Hash {
-			// TODO: andus >> 검증완료, Otprn 저장
-			fc.Otprn = &tsOtprn.Otp
-			//TODO : andus >> 3. 참여여부 확인
+		fmt.Println("andus >> OTPRN 수신 ", tsOtprn.Hash.String())
+		fmt.Println("andus >> sig 값", common.BytesToHash(tsOtprn.Sig).String())
 
-			if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNonce(), fc.Coinbase); ok {
-				//TODO : andus >> 참가 가능할 때 처리
-				//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-				fc.TcpConnStartCh <- struct{}{}
-			}
-
-		} else {
-			// TODO: andus >> 검증실패..
-			log.Println("andus >> OTPRN 검증 실패")
-
+		//TODO : andus >> 2. OTRRN 검증
+		fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
+		if err != nil {
+			log.Println("andus >> OTPRN 공개키 로드 에러")
 		}
-	} else {
-		// TODO: andus >> 서명 검증실패..
-		log.Println("andus >> OTPRN 공개키 검증 실패")
+
+		if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig) {
+			otprnHash := tsOtprn.Otp.HashOtprn()
+			if otprnHash == tsOtprn.Hash {
+				// TODO: andus >> 검증완료, Otprn 저장
+				fc.Otprn = &tsOtprn.Otp
+				//TODO : andus >> 3. 참여여부 확인
+
+				if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNonce(), fc.Coinbase); ok {
+					//TODO : andus >> 참가 가능할 때 처리
+					//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
+					fc.TcpConnStartCh <- struct{}{}
+				}
+
+			} else {
+				// TODO: andus >> 검증실패..
+				log.Println("andus >> OTPRN 검증 실패")
+
+			}
+		} else {
+			// TODO: andus >> 서명 검증실패..
+			log.Println("andus >> OTPRN 공개키 검증 실패")
+		}
+
 	}
 }
 
 func (fc *FairnodeClient) TCPtoFairNode() {
-	defer fc.wg.Done()
-
 	for {
 		<-fc.TcpConnStartCh
 

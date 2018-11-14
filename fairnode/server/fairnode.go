@@ -80,14 +80,10 @@ func New(c *cli.Context) (*FairNode, error) {
 		log.Println("Udp Server", err)
 	}
 
-	//defer udpConn.Close()
-
 	tcpConn, err := net.ListenTCP("tcp", LAddrTCP)
 	if err != nil {
 		log.Fatal("Tcp Server", err)
 	}
-
-	//defer tcpConn.Close()
 
 	fnNode := &FairNode{
 		ctx:             c,
@@ -126,21 +122,15 @@ func New(c *cli.Context) (*FairNode, error) {
 }
 
 func (f *FairNode) Start() error {
-	f.Wg.Add(1)
 	f.Running = true
 
 	go f.ListenUDP()
 	//go fairNode.ListenTCP()
 
-	f.Wg.Wait()
 	return nil
 }
 
 func (f *FairNode) ListenUDP() {
-	defer f.Wg.Done()
-	//defer f.UdpConn.Close()
-
-	f.Wg.Add(3)
 
 	go f.manageActiveNode()
 	// TODO : andus >> otprn 생성, 서명, 전송
@@ -149,8 +139,6 @@ func (f *FairNode) ListenUDP() {
 }
 
 func (f *FairNode) ListenTCP() error {
-	//defer f.Wg.Done()
-
 	// TODO : andus >> 1. 접속한 GETH노드의 채굴 참여 가능 여부 확인 ( 참여 검증 )
 	//
 	//
@@ -204,7 +192,6 @@ func (f *FairNode) ListenTCP() error {
 
 // 활성 노드 관리 ( upd enode 수신, 저장, 업데이트 )
 func (f *FairNode) manageActiveNode() {
-	defer f.Wg.Done()
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
 	// TODO : enode값 수신
 	buf := make([]byte, 4096)
@@ -234,9 +221,8 @@ func (f *FairNode) manageActiveNode() {
 
 // otprn 생성, 서명, 전송 ( 3초 반복, active node >= 3, LeagueRunningOK == false // 고루틴 )
 func (f *FairNode) startLeague() {
-	defer f.Wg.Done()
-	//var otp *otprn.Otprn
-	//var err error
+	var otp *otprn.Otprn
+	var err error
 	t := time.NewTicker(3 * time.Second)
 	for {
 		select {
@@ -248,32 +234,38 @@ func (f *FairNode) startLeague() {
 			if !f.LeagueRunningOK && actNum >= 3 {
 				// TODO : andus >> otprn을 생성
 
-				//otp, err = otprn.New(11)
-				//if err != nil {
-				//	log.Println("andus >> Otprn 생성 에러", err)
-				//}
-				//
+				log.Println("andus >> otprn 생성")
+
+				otp, err = otprn.New(11)
+				if err != nil {
+					log.Println("andus >> Otprn 생성 에러", err)
+				}
+
 				//f.LeagueRunningOK = true
-				//
-				//// TODO : andus >> otprn을 서명
-				//sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
-				//if err != nil {
-				//	log.Println("andus >> Otprn 서명 에러", err)
-				//}
-				//
-				//tsOtp := otprn.TransferOtprn{
-				//	Otp:  *otp,
-				//	Sig:  sig,
-				//	Hash: otp.HashOtprn(),
-				//}
-				//
-				//ts, err := rlp.EncodeToBytes(tsOtp)
-				//if err != nil {
-				//	log.Println("andus >> Otprn rlp 인코딩 에러", err)
-				//}
+
+				// TODO : andus >> otprn을 서명
+				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
+				if err != nil {
+					log.Println("andus >> Otprn 서명 에러", err)
+				}
+
+				fmt.Println("andus >> sig 값", common.BytesToHash(sig).String())
+
+				tsOtp := otprn.TransferOtprn{
+					Otp:  *otp,
+					Sig:  sig,
+					Hash: otp.HashOtprn(),
+				}
+
+				fmt.Println("andus >> tsOtp", tsOtp.Hash.String())
+
+				ts, err := rlp.EncodeToBytes(tsOtp)
+				if err != nil {
+					log.Println("andus >> Otprn rlp 인코딩 에러", err)
+				}
 
 				// TODO : andus >> DB에서 Active node 리스트를 조회
-				activeNodeList := []string{"192.168.0.79:50002", "192.168.0.77:50002", "192.168.0.76:50002"}
+				activeNodeList := []string{":50002"}
 				for index := range activeNodeList {
 					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
 					if err != nil {
@@ -285,7 +277,7 @@ func (f *FairNode) startLeague() {
 					}
 
 					// TODO : andus >> Active node 노드에게 OTPRN 전송
-					Conn.Write([]byte("OTPRN 보냄... ------> hakuna"))
+					Conn.Write(ts)
 					Conn.Close()
 				}
 
@@ -295,7 +287,6 @@ func (f *FairNode) startLeague() {
 }
 
 func (f *FairNode) makeLeague(startCh chan struct{}, bb chan string) {
-	defer f.Wg.Done()
 	log.Println(" @ run makeLeague() ")
 	t := time.NewTicker(1 * time.Second)
 
@@ -349,4 +340,6 @@ func (f *FairNode) makeHash(list []map[string]string) common.Hash {
 
 func (f *FairNode) Stop() {
 	f.Running = false
+	f.UdpConn.Close()
+	f.TcpConn.Close()
 }

@@ -17,10 +17,10 @@ const (
 )
 
 type Otprn struct {
-	Rand      int64
-	Cminer    int64
-	Mminer    int64
-	TimeStamp int64
+	Rand      uint64
+	Cminer    uint64
+	Mminer    uint64
+	TimeStamp uint64
 }
 
 type TransferOtprn struct {
@@ -29,7 +29,7 @@ type TransferOtprn struct {
 	Hash common.Hash
 }
 
-func New(Cminer int64) (*Otprn, error) {
+func New(Cminer uint64) (*Otprn, error) {
 
 	nBig, err := crand.Int(crand.Reader, big.NewInt(9999999999999))
 	if err != nil {
@@ -39,8 +39,8 @@ func New(Cminer int64) (*Otprn, error) {
 	return &Otprn{
 		Mminer:    Mminer,
 		Cminer:    Cminer,
-		Rand:      nBig.Int64(),
-		TimeStamp: time.Now().UnixNano(),
+		Rand:      nBig.Uint64(),
+		TimeStamp: uint64(time.Now().UnixNano()),
 	}, nil
 }
 
