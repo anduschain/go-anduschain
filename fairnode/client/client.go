@@ -28,7 +28,7 @@ type DebMiner interface {
 }
 
 const (
-	FAIRNODE_CON_INFO = "127.0.0.1:50900"
+	FAIRNODE_CON_INFO = ":60002"
 )
 
 type FairnodeClient struct {
@@ -53,15 +53,19 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
-	serverAddr, err := net.ResolveUDPAddr("udp", FAIRNODE_CON_INFO)
+	serverAddr, err := net.ResolveUDPAddr("udp", ":60002") // 전송 60002
 	if err != nil {
-		log.Fatal("andus >> UDPtoFairNode, ServerAddr", err)
+		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
 
-	localAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	fmt.Println("andus >> serverAddr", serverAddr)
+
+	localAddr, err := net.ResolveUDPAddr("udp", ":50002") // 수신 50002
 	if err != nil {
-		log.Fatal("andus >> UDPtoFairNode, LocalAddr", err)
+		log.Println("andus >> UDPtoFairNode, LocalAddr", err)
 	}
+
+	fmt.Println("andus >> localAddr", localAddr)
 
 	fcClient := &FairnodeClient{
 		Otprn:          nil,
@@ -105,7 +109,7 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 		log.Println("andus >>", err)
 	}
 
-	fmt.Println("andus >> 개인키를 추출 했다", unlockedKey)
+	fmt.Println("andus >> 개인키를 추출 했다")
 
 	fc.PrivateKey = unlockedKey
 
@@ -119,7 +123,7 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 	go fc.UDPtoFairNode()
 
 	// tcp
-	go fc.TCPtoFairNode()
+	//go fc.TCPtoFairNode()
 
 	fc.wg.Wait()
 
@@ -135,7 +139,7 @@ func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
 	Conn, err := net.DialUDP("udp", fc.LAddrUDP, fc.SAddrUDP)
 	if err != nil {
-		log.Fatal("andus >> UDPtoFairNode, DialUDP", err)
+		log.Println("andus >> UDPtoFairNode, DialUDP", err)
 	}
 
 	defer Conn.Close()
@@ -165,7 +169,7 @@ func (fc *FairnodeClient) submitEnode() {
 			// TODO : andus >> rlp encode -> byte ( enode type )
 			_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
 			if err != nil {
-				log.Fatal("andus >> Write", err)
+				log.Println("andus >> Write", err)
 			}
 		}
 	}
@@ -175,9 +179,17 @@ func (fc *FairnodeClient) submitEnode() {
 func (fc *FairnodeClient) receiveOtprn() {
 
 	//TODO : andus >> 1. OTPRN 수신
-	localServerConn, err := net.ListenUDP("udp", fc.SAddrUDP)
+
+	serverAddr2, err := net.ResolveUDPAddr("udp", ":50003") // otprn 받는 부분 수신 60003
 	if err != nil {
-		log.Fatal("Udp Server", err)
+		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
+	}
+
+	fmt.Println("andus >> receiveOtprn", serverAddr2)
+
+	localServerConn, err := net.ListenUDP("udp", serverAddr2)
+	if err != nil {
+		log.Println("Udp Server", err)
 	}
 
 	defer localServerConn.Close()

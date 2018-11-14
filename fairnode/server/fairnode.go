@@ -63,31 +63,31 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
-	LAddrUDP, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+c.String("udp"))
+	LAddrUDP, err := net.ResolveUDPAddr("udp", ":60002") //60002
 	if err != nil {
-		log.Fatal("andus >> ResolveUDPAddr, LocalAddr", err)
+		log.Println("andus >> ResolveUDPAddr, LocalAddr", err)
 		return nil, err
 	}
 
-	LAddrTCP, err := net.ResolveTCPAddr("tcp", "127.0.0.1:"+c.String("tcp"))
+	LAddrTCP, err := net.ResolveTCPAddr("tcp", ":"+c.String("tcp")) //60001
 	if err != nil {
-		log.Fatal("andus >> ResolveTCPAddr, LocalAddr", err)
+		log.Println("andus >> ResolveTCPAddr, LocalAddr", err)
 		return nil, err
 	}
 
 	udpConn, err := net.ListenUDP("udp", LAddrUDP)
 	if err != nil {
-		log.Fatal("Udp Server", err)
+		log.Println("Udp Server", err)
 	}
 
-	defer udpConn.Close()
+	//defer udpConn.Close()
 
 	tcpConn, err := net.ListenTCP("tcp", LAddrTCP)
 	if err != nil {
 		log.Fatal("Tcp Server", err)
 	}
 
-	defer tcpConn.Close()
+	//defer tcpConn.Close()
 
 	fnNode := &FairNode{
 		ctx:             c,
@@ -104,11 +104,11 @@ func New(c *cli.Context) (*FairNode, error) {
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
 	blob, err := ioutil.ReadFile(keyfile)
 	if err != nil {
-		log.Fatalf("Failed to read account key contents %s , %s", keypath, err)
+		log.Println("Failed to read account key contents %s , %s", keypath, err)
 	}
 	acc, err := fnNode.Keystore.Import(blob, pass, pass)
 	if err != nil {
-		log.Fatalf("Failed to import faucet signer account : %s ", err)
+		log.Println("Failed to import faucet signer account : %s ", err)
 	}
 
 	fnNode.Keystore.Unlock(acc, pass)
@@ -117,7 +117,7 @@ func New(c *cli.Context) (*FairNode, error) {
 
 	privkey, err := fnNode.Keystore.GetUnlockedPrivKey(acc.Address)
 	if err != nil {
-		log.Fatalf("andus >> 개인키를 가져올 수 없다")
+		log.Println("andus >> 개인키를 가져올 수 없다")
 	}
 
 	fnNode.Privkey = privkey
@@ -143,7 +143,7 @@ func (f *FairNode) ListenUDP() {
 	go f.manageActiveNode()
 	// TODO : andus >> otprn 생성, 서명, 전송
 	go f.startLeague()
-	go f.makeLeague(f.startSignalCh, f.startMakeLeague)
+	//go f.makeLeague(f.startSignalCh, f.startMakeLeague)
 }
 
 func (f *FairNode) ListenTCP() error {
@@ -203,12 +203,17 @@ func (f *FairNode) ListenTCP() error {
 // 활성 노드 관리 ( upd enode 수신, 저장, 업데이트 )
 func (f *FairNode) manageActiveNode() {
 	defer f.Wg.Done()
+	defer f.UdpConn.Close()
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
 	// TODO : enode값 수신
 	buf := make([]byte, 4096)
 	for {
 		n, addr, err := f.UdpConn.ReadFromUDP(buf)
 		log.Println("andus >> enode값 수신", string(buf[:n]), " from ", addr)
+
+		if err != nil {
+			fmt.Println("andus >>", err)
+		}
 
 		// TODO : andus >> rlp enode 디코드
 		var enodeUrl string
@@ -219,7 +224,7 @@ func (f *FairNode) manageActiveNode() {
 		// TODO : andus >> DB에 insert Or Update
 		f.Db.SaveActiveNode()
 		if err != nil {
-			log.Fatal("andus >> Udp enode 수신중 에러", err)
+			log.Println("andus >> Udp enode 수신중 에러", err)
 		}
 	}
 }
@@ -236,7 +241,7 @@ func (f *FairNode) startLeague() {
 			// TODO : andus >> active node 조회 3개이상
 			log.Println("andus >> 디비에서 엑티브 노드 조회")
 
-			actNum := 0
+			actNum := 3
 			if !f.LeagueRunningOK && actNum >= 3 {
 				// TODO : andus >> otprn을 생성
 
@@ -265,21 +270,34 @@ func (f *FairNode) startLeague() {
 				}
 
 				// TODO : andus >> DB에서 Active node 리스트를 조회
-				activeNodeList := []string{"127.0.0.1:50900", "127.0.0.1:50900", "127.0.0.1:50900"}
-				for index := range activeNodeList {
-					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
-					if err != nil {
-						log.Println("andus >>", err)
-					}
-					Conn, err := net.DialUDP("udp", f.LaddrUdp, ServerAddr)
-					if err != nil {
-						log.Println("andus >>", err)
-					}
+				//activeNodeList := []string{"127.0.0.1:50900", "127.0.0.1:50900", "127.0.0.1:50900"}
+				//for index := range activeNodeList {
+				//	ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
+				//	if err != nil {
+				//		log.Println("andus >>", err)
+				//	}
+				//	Conn, err := net.DialUDP("udp", f.LaddrUdp, ServerAddr)
+				//	if err != nil {
+				//		log.Println("andus >>", err)
+				//	}
+				//
+				//	// TODO : andus >> Active node 노드에게 OTPRN 전송
+				//	Conn.Write(ts)
+				//	Conn.Close()
+				//}
 
-					// TODO : andus >> Active node 노드에게 OTPRN 전송
-					Conn.Write(ts)
-					Conn.Close()
+				ServerAddr, err := net.ResolveUDPAddr("udp", ":50003")
+				if err != nil {
+					log.Println("andus >>", err)
 				}
+				Conn, err := net.DialUDP("udp", f.LaddrUdp, ServerAddr)
+				if err != nil {
+					log.Println("andus >>", err)
+				}
+
+				// TODO : andus >> Active node 노드에게 OTPRN 전송
+				Conn.Write(ts)
+				Conn.Close()
 			}
 		}
 	}

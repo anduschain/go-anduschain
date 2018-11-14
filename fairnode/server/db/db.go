@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"gopkg.in/mgo.v2"
 	"log"
 )
@@ -14,8 +13,9 @@ type FairNodeDB struct {
 func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	// TODO : mongodb 연결 및 사용정보...
 	// mongodb://username:pwd@localhost:3000
-	username := "deb"
-	url := fmt.Sprintf("mongodb://%s:%s@%s:%s", username, pwd, dbhost, dbport)
+	//username := "deb"
+	//url := fmt.Sprintf("mongodb://%s:%s@%s:%s", username, pwd, dbhost, dbport)
+	url := "mongodb://localhost:27017"
 	session, err := mgo.Dial(url)
 	if err != nil {
 		log.Fatal("andus >> MongoDB 접속에 문제가 있습니다")

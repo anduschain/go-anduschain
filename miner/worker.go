@@ -966,22 +966,16 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		header.Coinbase = w.coinbase
 	}
 
-	if w.coinbase.String() != "0x0000000000000000000000000000000000000000" && w.fairclient.Running {
+	if w.fairclient.Running {
 		// TODO : andus >> 현재 상태를 읽어옴
-		fmt.Println("andus >> 패어노드 살아 있다.")
+		fmt.Println("andus >> 패어노드 클라이언트 살아 있다.")
 
 		if currentStateDb, err := w.chain.State(); err == nil {
-
-			fmt.Println("andus >> currentStateDb success ", currentStateDb)
-
-			fmt.Println("andus >> currentStateDb success", w.fairclient.Otprn)
 
 			if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn()); err != nil {
 				log.Error("Failed to prepare header for mining", "err", err)
 				return
 			}
-		} else {
-			fmt.Println("andus >> currentStateDb", "err", err)
 		}
 
 		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
