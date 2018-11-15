@@ -199,8 +199,14 @@ func (fc *FairnodeClient) receiveOtprn() {
 		if err != nil {
 			log.Println("andus >> OTPRN 공개키 로드 에러")
 		}
+		var r, s []byte
 
-		if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig) {
+		copy(r, tsOtprn.Sig[0:32])
+		copy(s, tsOtprn.Sig[32:64])
+
+		var rp, sp *big.Int
+
+		if ecdsa.Verify(fairPubKey, tsOtprn.Hash.Bytes(), rp.SetBytes(r), sp.SetBytes(s)) {
 			otprnHash := tsOtprn.Otp.HashOtprn()
 			if otprnHash == tsOtprn.Hash {
 				// TODO: andus >> 검증완료, Otprn 저장
