@@ -493,11 +493,10 @@ func zeroKey(k *ecdsa.PrivateKey) {
 }
 
 // TODO : andus >> 이더베이스에 개인키 뽑아내는 개터
-func (ks *KeyStore) GetUnlockedPrivKey(addr common.Address) (*ecdsa.PrivateKey, error) {
-
-	if ks.unlocked[addr].PrivateKey != nil {
-		return ks.unlocked[addr].PrivateKey, nil
+func (ks *KeyStore) GetUnlockedPrivKey(addr common.Address) *ecdsa.PrivateKey {
+	if ks.unlocked[addr] != nil {
+		return ks.unlocked[addr].PrivateKey
 	} else {
-		return nil, errors.New("andus >> 언락된 개인키가 없음")
+		return nil
 	}
 }

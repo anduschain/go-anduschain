@@ -4,6 +4,7 @@ package fairnodeclient
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
@@ -30,19 +31,21 @@ type DebMiner interface {
 type FairnodeClient struct {
 	Otprn *otprn.Otprn
 	//OtprnCh chan *otprn.Otprn
-	WinningBlockCh chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
-	FinalBlockCh   chan *types.TransferBlock
-	Running        bool
-	wg             sync.WaitGroup
-	BlockChain     *core.BlockChain
-	Miner          DebMiner
-	Coinbase       *common.Address
-	keystore       *keystore.KeyStore
-	txPool         *core.TxPool
-	PrivateKey     *ecdsa.PrivateKey
-	SAddrUDP       *net.UDPAddr
-	LAddrUDP       *net.UDPAddr
-	TcpConnStartCh chan struct{}
+	WinningBlockCh     chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
+	FinalBlockCh       chan *types.TransferBlock
+	Running            bool
+	wg                 sync.WaitGroup
+	BlockChain         *core.BlockChain
+	Miner              DebMiner
+	Coinbase           *common.Address
+	keystore           *keystore.KeyStore
+	txPool             *core.TxPool
+	PrivateKey         *ecdsa.PrivateKey
+	SAddrUDP           *net.UDPAddr
+	LAddrUDP           *net.UDPAddr
+	TcpConnStartCh     chan struct{}
+	submitEnodeExitCh  chan struct{}
+	receiveOtprnExitCh chan struct{}
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, miner DebMiner, tp *core.TxPool) *FairnodeClient {
@@ -60,16 +63,18 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	}
 
 	fcClient := &FairnodeClient{
-		Otprn:          nil,
-		WinningBlockCh: wbCh,
-		FinalBlockCh:   fbCh,
-		Running:        false,
-		BlockChain:     blockChain,
-		Miner:          miner,
-		txPool:         tp,
-		SAddrUDP:       serverAddr,
-		LAddrUDP:       localAddr,
-		TcpConnStartCh: make(chan struct{}),
+		Otprn:              nil,
+		WinningBlockCh:     wbCh,
+		FinalBlockCh:       fbCh,
+		Running:            false,
+		BlockChain:         blockChain,
+		Miner:              miner,
+		txPool:             tp,
+		SAddrUDP:           serverAddr,
+		LAddrUDP:           localAddr,
+		TcpConnStartCh:     make(chan struct{}),
+		submitEnodeExitCh:  make(chan struct{}),
+		receiveOtprnExitCh: make(chan struct{}),
 	}
 
 	return fcClient
@@ -79,44 +84,19 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore) error {
 	fc.Running = true
 	fc.keystore = ks
-
-	// TODO : andus >> coinbase 추가
-	fmt.Println("andus >> StartToFairNode() coinbase", coinbase.String())
-
 	fc.Coinbase = coinbase
 
-	for i := 0; i < len(fc.keystore.Accounts()); i++ {
-		fmt.Println(fc.keystore.Accounts()[i].Address)
-		if fc.keystore.Accounts()[i].Address == *coinbase {
-			fmt.Println("코인베이스를 찾았다.")
+	if unlockedKey := fc.keystore.GetUnlockedPrivKey(*coinbase); unlockedKey == nil {
+		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")
+	} else {
+		fc.PrivateKey = unlockedKey
 
-			fc.keystore.Unlock(fc.keystore.Accounts()[i], "11111")
+		// udp
+		go fc.UDPtoFairNode()
 
-			fmt.Println("Andus >> 코인베이스를 계정을 언락했다")
-		}
+		// tcp
+		//go fc.TCPtoFairNode()
 	}
-
-	unlockedKey, err := fc.keystore.GetUnlockedPrivKey(*coinbase)
-	if err != nil {
-		log.Println("andus >>", err)
-	}
-
-	fmt.Println("andus >> 개인키를 추출 했다")
-
-	fc.PrivateKey = unlockedKey
-
-	// TODO : andus >> 마이닝 켜저 있으면 종료
-
-	//if fc.Miner.IsMining() {
-	//	fc.Miner.StopMining()
-	//}
-
-	// udp
-	go fc.UDPtoFairNode()
-
-	// tcp
-	//go fc.TCPtoFairNode()
-
 	return nil
 }
 func (fc *FairnodeClient) UDPtoFairNode() {
@@ -133,6 +113,7 @@ func (fc *FairnodeClient) submitEnode() {
 	}
 
 	defer Conn.Close()
+	defer fmt.Println("andus >> submitEnode kill")
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
@@ -162,9 +143,11 @@ func (fc *FairnodeClient) submitEnode() {
 			if err != nil {
 				log.Println("andus >> Write", err)
 			}
+		case <-fc.submitEnodeExitCh:
+			fmt.Println("andus >> submitEnode 종료됨")
+			return
 		}
 	}
-
 }
 
 func (fc *FairnodeClient) receiveOtprn() {
@@ -177,57 +160,63 @@ func (fc *FairnodeClient) receiveOtprn() {
 	}
 
 	defer localServerConn.Close()
+	defer fmt.Println("andus >> receiveOtprn kill")
 
 	tsOtprnByte := make([]byte, 4096)
 
 	for {
-		_, fairServerAddr, err := localServerConn.ReadFromUDP(tsOtprnByte)
-		fmt.Println("andus >> otprn 수신 from ", fairServerAddr)
-		if err != nil {
-			log.Println("andus >> otprn 수신 에러", err)
-		}
+		select {
+		case <-fc.receiveOtprnExitCh:
+			fmt.Println("andus >> receiveOtprn 종료됨")
+			return
+		default:
+			_, fairServerAddr, err := localServerConn.ReadFromUDP(tsOtprnByte)
+			fmt.Println("andus >> otprn 수신 from ", fairServerAddr)
+			if err != nil {
+				log.Println("andus >> otprn 수신 에러", err)
+			}
 
-		// TODO : andus >> 수신된 otprn디코딩
-		var tsOtprn otprn.TransferOtprn
-		rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
+			// TODO : andus >> 수신된 otprn디코딩
+			var tsOtprn otprn.TransferOtprn
+			rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
 
-		fmt.Println("andus >> OTPRN 수신 ", tsOtprn.Hash.String())
-		fmt.Println("andus >> sig 값", common.BytesToHash(tsOtprn.Sig).String())
+			fmt.Println("andus >> OTPRN 수신 ", tsOtprn.Hash.String())
+			fmt.Println("andus >> sig 값", common.BytesToHash(tsOtprn.Sig).String())
 
-		//TODO : andus >> 2. OTRRN 검증
-		fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
-		if err != nil {
-			log.Println("andus >> OTPRN 공개키 로드 에러")
-		}
+			//TODO : andus >> 2. OTRRN 검증
+			fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
+			if err != nil {
+				log.Println("andus >> OTPRN 공개키 로드 에러")
+			}
 
-		if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig[:64]) {
-			otprnHash := tsOtprn.Otp.HashOtprn()
-			if otprnHash == tsOtprn.Hash {
-				// TODO: andus >> 검증완료, Otprn 저장
-				fc.Otprn = &tsOtprn.Otp
-				//TODO : andus >> 3. 참여여부 확인
+			if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig[:64]) {
+				otprnHash := tsOtprn.Otp.HashOtprn()
+				if otprnHash == tsOtprn.Hash {
+					// TODO: andus >> 검증완료, Otprn 저장
+					fc.Otprn = &tsOtprn.Otp
+					//TODO : andus >> 3. 참여여부 확인
 
-				fmt.Println("andus >> OTPRN 검증 완료")
+					fmt.Println("andus >> OTPRN 검증 완료")
 
-				if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNonce(), fc.Coinbase); ok {
-					//TODO : andus >> 참가 가능할 때 처리
-					//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-					//fc.TcpConnStartCh <- struct{}{}
+					if ok := fairutil.IsJoinOK(fc.Otprn, fc.GetCurrentJoinNonce(), fc.Coinbase); ok {
+						//TODO : andus >> 참가 가능할 때 처리
+						//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
+						//fc.TcpConnStartCh <- struct{}{}
 
-					fmt.Println("andus >> 채굴 참여 대상자 확인")
+						fmt.Println("andus >> 채굴 참여 대상자 확인")
+
+					}
+
+				} else {
+					// TODO: andus >> 검증실패..
+					log.Println("andus >> OTPRN 검증 실패")
 
 				}
-
 			} else {
-				// TODO: andus >> 검증실패..
-				log.Println("andus >> OTPRN 검증 실패")
-
+				// TODO: andus >> 서명 검증실패..
+				log.Println("andus >> OTPRN 공개키 검증 실패")
 			}
-		} else {
-			// TODO: andus >> 서명 검증실패..
-			log.Println("andus >> OTPRN 공개키 검증 실패")
 		}
-
 	}
 }
 
@@ -272,10 +261,6 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 		//	srv.AddPeer(old)
 		//}
 
-		//// TODO : andsu >> 3. mining.start()
-		//if !fc.Miner.IsMining() {
-		//	fc.Miner.StartMining(1)
-		//}
 		select {
 		// type : types.TransferBlock
 		case signedBlock := <-fc.WinningBlockCh:
@@ -294,6 +279,8 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 
 func (fc *FairnodeClient) Stop() {
 	fc.Running = false
+	fc.submitEnodeExitCh <- struct{}{}
+	fc.receiveOtprnExitCh <- struct{}{}
 }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {

@@ -397,9 +397,13 @@ func (s *Ethereum) StartMining(threads int) error {
 		eb, err := s.Etherbase()
 
 		// TODO : andus >> Fair Client Start with etherbase
-		s.FairnodeClient.StartToFairNode(&eb, s.Keystore)
-
-		fmt.Println("andus >> StartMining etherbase", eb.String())
+		if eb != (common.Address{}) {
+			err := s.FairnodeClient.StartToFairNode(&eb, s.Keystore)
+			if err != nil {
+				return fmt.Errorf("코인베이스를 언락해 주세요: %v", err)
+			}
+			fmt.Println("andus >> StartMining etherbase", eb.String())
+		}
 
 		if err != nil {
 			log.Error("Cannot start mining without etherbase", "err", err)
