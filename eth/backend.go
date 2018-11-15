@@ -444,6 +444,7 @@ func (s *Ethereum) StopMining() {
 	}
 	// Stop the block creating itself
 	s.miner.Stop()
+	s.FairnodeClient.Stop()
 }
 
 func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }
