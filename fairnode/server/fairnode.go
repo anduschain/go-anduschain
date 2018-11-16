@@ -11,6 +11,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
+	"github.com/anduschain/go-anduschain/p2p/nat"
 	"github.com/anduschain/go-anduschain/rlp"
 	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
@@ -50,6 +51,7 @@ type FairNode struct {
 	Keystore        *keystore.KeyStore
 	ctx             *cli.Context
 	LeagueRunningOK bool
+	natm            nat.Interface
 }
 
 func New(c *cli.Context) (*FairNode, error) {
@@ -57,6 +59,12 @@ func New(c *cli.Context) (*FairNode, error) {
 	keypath := c.String("keypath")                                //$HOME/.fairnode/key
 	keyfile := filepath.Join(c.String("keypath"), "fairkey.json") //$HOME/.fairnode/key/fairkey.json
 	pass := c.String("password")
+	natdesc := c.String("nat")
+
+	natm, err := nat.Parse(natdesc)
+	if err != nil {
+		log.Fatalf("-nat: %v", err)
+	}
 
 	if _, err := os.Stat(keypath); err != nil {
 		log.Fatalf("Keyfile not exists at %s.", keypath)
@@ -75,16 +83,6 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
-	udpConn, err := net.ListenUDP("udp", LAddrUDP)
-	if err != nil {
-		log.Println("Udp Server", err)
-	}
-
-	tcpConn, err := net.ListenTCP("tcp", LAddrTCP)
-	if err != nil {
-		log.Fatal("Tcp Server", err)
-	}
-
 	fnNode := &FairNode{
 		ctx:             c,
 		LaddrTcp:        LAddrTCP,
@@ -92,9 +90,8 @@ func New(c *cli.Context) (*FairNode, error) {
 		keypath:         c.String("keypath"),
 		startSignalCh:   make(chan struct{}),
 		LeagueRunningOK: false,
-		UdpConn:         udpConn,
-		TcpConn:         tcpConn,
 		Db:              db.New(c.String("dbhost"), c.String("dbport"), "11111"),
+		natm:            natm,
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -111,18 +108,35 @@ func New(c *cli.Context) (*FairNode, error) {
 
 	fnNode.Account = acc
 
-	privkey, err := fnNode.Keystore.GetUnlockedPrivKey(acc.Address)
-	if err != nil {
-		log.Println("andus >> 개인키를 가져올 수 없다")
+	if privkey := fnNode.Keystore.GetUnlockedPrivKey(acc.Address); privkey == nil {
+		return nil, errors.New("andus >> 패어노드키가 언락 되지 않았습니다")
+	} else {
+		fnNode.Privkey = privkey
 	}
-
-	fnNode.Privkey = privkey
 
 	return fnNode, nil
 }
 
 func (f *FairNode) Start() error {
 	f.Running = true
+
+	udpConn, err := net.ListenUDP("udp", f.LaddrUdp)
+	if err != nil {
+		log.Println("Udp Server", err)
+	}
+
+	realaddr := udpConn.LocalAddr().(*net.UDPAddr)
+	if f.natm != nil {
+		if !realaddr.IP.IsLoopback() {
+			go nat.Map(f.natm, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
+		}
+		// TODO: react to external IP changes over time.
+		if ext, err := f.natm.ExternalIP(); err == nil {
+			realaddr = &net.UDPAddr{IP: ext, Port: realaddr.Port}
+		}
+	}
+
+	f.UdpConn = udpConn
 
 	go f.ListenUDP()
 	//go fairNode.ListenTCP()

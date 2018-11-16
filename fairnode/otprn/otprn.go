@@ -16,7 +16,12 @@ const (
 	Mminer = 11 // TODO : andus >> 최대 채굴 참여 가능인원
 )
 
+var (
+	OtprnNum = new(uint64)
+)
+
 type Otprn struct {
+	Num       uint64
 	Rand      uint64
 	Cminer    uint64
 	Mminer    uint64
@@ -36,7 +41,11 @@ func New(Cminer uint64) (*Otprn, error) {
 		log.Println("andus >> rand값 에러", err)
 	}
 
+	// TODO : andus >> otprn 생성 넘버
+	*OtprnNum += 1
+
 	return &Otprn{
+		Num:       *OtprnNum,
 		Mminer:    Mminer,
 		Cminer:    Cminer,
 		Rand:      nBig.Uint64(),

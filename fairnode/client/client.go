@@ -14,6 +14,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
+	"github.com/anduschain/go-anduschain/p2p/nat"
 	"github.com/anduschain/go-anduschain/rlp"
 	"log"
 	"math/big"
@@ -52,7 +53,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
-	serverAddr, err := net.ResolveUDPAddr("udp", ":60002") // 전송 60002
+	serverAddr, err := net.ResolveUDPAddr("udp", "121.134.35.45:60002") // 전송 60002
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
@@ -158,6 +159,26 @@ func (fc *FairnodeClient) receiveOtprn() {
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
+
+	// TODO : andus >> NAT 추가 --- start ---
+
+	natm, err := nat.Parse("any")
+	if err != nil {
+		log.Fatalf("-nat: %v", err)
+	}
+
+	realaddr := localServerConn.LocalAddr().(*net.UDPAddr)
+	if true {
+		if !realaddr.IP.IsLoopback() {
+			go nat.Map(natm, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
+		}
+		// TODO: react to external IP changes over time.
+		if ext, err := natm.ExternalIP(); err == nil {
+			realaddr = &net.UDPAddr{IP: ext, Port: realaddr.Port}
+		}
+	}
+
+	// TODO : andus >> NAT 추가 --- end ---
 
 	defer localServerConn.Close()
 	defer fmt.Println("andus >> receiveOtprn kill")

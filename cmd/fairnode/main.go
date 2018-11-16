@@ -52,6 +52,11 @@ func init() {
 			Value: "11111",
 			Usage: "11111",
 		},
+		cli.StringFlag{
+			Name:  "nat",
+			Value: "any",
+			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
+		},
 	}
 
 	app.Commands = []cli.Command{
