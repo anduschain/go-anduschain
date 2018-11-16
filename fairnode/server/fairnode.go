@@ -279,7 +279,7 @@ func (f *FairNode) startLeague() {
 				}
 
 				// TODO : andus >> DB에서 Active node 리스트를 조회
-				activeNodeList := []string{":50002"}
+				activeNodeList := []string{"121.134.35.45:50002", "121.134.35.45:50003"}
 				for index := range activeNodeList {
 					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
 					if err != nil {

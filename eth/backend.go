@@ -518,9 +518,6 @@ func (s *Ethereum) Stop() error {
 	s.miner.Stop()
 	s.eventMux.Stop()
 
-	// TODO : andus >> eth가 죽을때 fairnode client도 같이 죽음
-	s.FairnodeClient.Stop()
-
 	s.chainDb.Close()
 	close(s.shutdownChan)
 	return nil
