@@ -64,6 +64,12 @@ func newTable(ourID NodeID, ourAddr *net.UDPAddr) *Table {
 	return tab
 }
 
+// TODO : andus >> enode값 구하는 함수
+func NewTable(ourID NodeID, ourAddr *net.UDPAddr) *Node {
+
+	return newTable(ourID, ourAddr).self
+}
+
 const printTable = false
 
 // chooseBucketRefreshTarget selects random refresh targets to keep all Kademlia

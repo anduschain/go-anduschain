@@ -71,7 +71,7 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
-	LAddrUDP, err := net.ResolveUDPAddr("udp", ":60002") //60002
+	LAddrUDP, err := net.ResolveUDPAddr("udp", ":50002") //60002
 	if err != nil {
 		log.Println("andus >> ResolveUDPAddr, LocalAddr", err)
 		return nil, err
@@ -279,7 +279,7 @@ func (f *FairNode) startLeague() {
 				}
 
 				// TODO : andus >> DB에서 Active node 리스트를 조회
-				activeNodeList := []string{"121.134.35.45:50002", "121.134.35.45:50003"}
+				activeNodeList := []string{"121.134.35.45:60002"}
 				for index := range activeNodeList {
 					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
 					if err != nil {
