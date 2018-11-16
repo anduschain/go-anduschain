@@ -114,24 +114,33 @@ func (fc *FairnodeClient) submitEnode() {
 	}
 
 	defer Conn.Close()
-	defer fmt.Println("andus >> submitEnode kill")
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
 
-	nodeUrl := discv5.NewNode(
-		discv5.PubkeyID(&ecdsa.PublicKey{fc.PrivateKey.PublicKey.Curve, fc.PrivateKey.X, fc.PrivateKey.Y}),
-		fc.LAddrUDP.IP,
-		uint16(fc.LAddrUDP.Port),
-		0,
+	realaddr := Conn.LocalAddr().(*net.UDPAddr)
+	node := discv5.NewNode(
+		discv5.PubkeyID(&fc.PrivateKey.PublicKey),
+		realaddr.IP,
+		uint16(realaddr.Port),
+		uint16(realaddr.Port),
 	)
 
-	enode := nodeUrl.String()                  // TODO : andus >> enode
+	enode := node.String()                     // TODO : andus >> enode
 	enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
-	log.Println("andus >> enode >>>", enode)
 	if err != nil {
 		log.Fatal("andus >> EncodeToBytes", err)
 	}
+
+	writeData := func() {
+		_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
+		fmt.Println("andus >> enode 전송")
+		if err != nil {
+			log.Println("andus >> Write", err)
+		}
+	}
+
+	writeData()
 
 	for {
 		select {
@@ -139,11 +148,7 @@ func (fc *FairnodeClient) submitEnode() {
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
 			// TODO : andus >> rlp encode -> byte ( enode type )
-			_, err = Conn.Write(enodeByte) // TODO : andus >> enode url 전송
-			fmt.Println("andus >> enode 전송")
-			if err != nil {
-				log.Println("andus >> Write", err)
-			}
+			writeData()
 		case <-fc.submitEnodeExitCh:
 			fmt.Println("andus >> submitEnode 종료됨")
 			return
@@ -181,7 +186,6 @@ func (fc *FairnodeClient) receiveOtprn() {
 	// TODO : andus >> NAT 추가 --- end ---
 
 	defer localServerConn.Close()
-	defer fmt.Println("andus >> receiveOtprn kill")
 
 	tsOtprnByte := make([]byte, 4096)
 
@@ -191,7 +195,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 			fmt.Println("andus >> receiveOtprn 종료됨")
 			return
 		default:
-			localServerConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+			localServerConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := localServerConn.ReadFromUDP(tsOtprnByte)
 			//fmt.Println("andus >> otprn 수신 from ", fairServerAddr)
 			if err != nil {
@@ -206,9 +210,6 @@ func (fc *FairnodeClient) receiveOtprn() {
 				// TODO : andus >> 수신된 otprn디코딩
 				var tsOtprn otprn.TransferOtprn
 				rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
-
-				fmt.Println("andus >> OTPRN 수신 ", tsOtprn.Hash.String())
-				fmt.Println("andus >> sig 값", common.BytesToHash(tsOtprn.Sig).String())
 
 				//TODO : andus >> 2. OTRRN 검증
 				fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
