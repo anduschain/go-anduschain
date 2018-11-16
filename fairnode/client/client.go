@@ -53,7 +53,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
-	serverAddr, err := net.ResolveUDPAddr("udp", "121.134.35.45:60002") // 전송 60002
+	serverAddr, err := net.ResolveUDPAddr("udp", ":60002") // 전송 60002
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
@@ -108,6 +108,7 @@ func (fc *FairnodeClient) UDPtoFairNode() {
 
 func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
+
 	Conn, err := net.DialUDP("udp", nil, fc.SAddrUDP)
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, DialUDP", err)
@@ -117,7 +118,7 @@ func (fc *FairnodeClient) submitEnode() {
 	defer fmt.Println("andus >> submitEnode kill")
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
-	t := time.NewTicker(60 * time.Second)
+	t := time.NewTicker(4 * time.Second)
 
 	nodeUrl := discv5.NewNode(
 		discv5.PubkeyID(&ecdsa.PublicKey{fc.PrivateKey.PublicKey.Curve, fc.PrivateKey.X, fc.PrivateKey.Y}),
@@ -126,8 +127,8 @@ func (fc *FairnodeClient) submitEnode() {
 		0,
 	)
 
-	enode := nodeUrl.String()                  // TODO : andus >> enode
-	enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
+	enode := nodeUrl.String()                              // TODO : andus >> enode
+	enodeByte, err := rlp.EncodeToBytes("접니다!!!!" + enode) // TODO : andus >> enode to byte
 	log.Println("andus >> enode >>>", enode)
 	if err != nil {
 		log.Fatal("andus >> EncodeToBytes", err)
@@ -146,6 +147,7 @@ func (fc *FairnodeClient) submitEnode() {
 			}
 		case <-fc.submitEnodeExitCh:
 			fmt.Println("andus >> submitEnode 종료됨")
+			Conn.Close()
 			return
 		}
 	}
@@ -154,6 +156,7 @@ func (fc *FairnodeClient) submitEnode() {
 func (fc *FairnodeClient) receiveOtprn() {
 
 	//TODO : andus >> 1. OTPRN 수신
+	fmt.Println("살아있다!@")
 
 	localServerConn, err := net.ListenUDP("udp", fc.LAddrUDP)
 	if err != nil {
@@ -184,15 +187,18 @@ func (fc *FairnodeClient) receiveOtprn() {
 	defer fmt.Println("andus >> receiveOtprn kill")
 
 	tsOtprnByte := make([]byte, 4096)
-
+EXIT:
 	for {
 		select {
 		case <-fc.receiveOtprnExitCh:
+			localServerConn.Close()
 			fmt.Println("andus >> receiveOtprn 종료됨")
-			return
+			break EXIT
 		default:
+			localServerConn.SetReadDeadline(time.Now().Add(7 * time.Second))
 			_, fairServerAddr, err := localServerConn.ReadFromUDP(tsOtprnByte)
 			fmt.Println("andus >> otprn 수신 from ", fairServerAddr)
+
 			if err != nil {
 				log.Println("andus >> otprn 수신 에러", err)
 			}
@@ -275,12 +281,6 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 		fc.txPool.AddLocal(tx)
 
 		// TODO : andus >> 2. 각 enode값을 이용해서 피어 접속
-
-		//enodes := []string{"enode://12121@111.111.111:3303"}
-		//for _ := range enodes {
-		//	old, _ := disco.ParseNode(boot)
-		//	srv.AddPeer(old)
-		//}
 
 		select {
 		// type : types.TransferBlock
