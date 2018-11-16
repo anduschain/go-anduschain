@@ -118,8 +118,7 @@ func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
 
-	realaddr := Conn.LocalAddr().(*net.UDPAddr)
-	node := discv5.NewTable(discv5.PubkeyID(&fc.PrivateKey.PublicKey), realaddr)
+	node := discv5.NewTable(discv5.PubkeyID(&fc.PrivateKey.PublicKey), fc.LAddrUDP)
 
 	enode := node.String()                     // TODO : andus >> enode
 	enodeByte, err := rlp.EncodeToBytes(enode) // TODO : andus >> enode to byte
