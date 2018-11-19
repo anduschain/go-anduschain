@@ -6,7 +6,8 @@ import (
 	"strconv"
 )
 
-func IsJoinOK(otprn *otprn.Otprn, jn uint64, addr *common.Address) bool {
+// ( otprn + Last 1byte of address ) % div
+func IsJoinOK(otprn *otprn.Otprn, addr *common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
 	div := uint64(otprn.Cminer / otprn.Mminer)
 	lastByte := addr.Bytes()[len(addr.Bytes())-2:]
@@ -16,7 +17,7 @@ func IsJoinOK(otprn *otprn.Otprn, jn uint64, addr *common.Address) bool {
 		// TODO : andus >> Mminer > Cminer
 		return true
 	} else {
-		if d := (jn + i) % div; d == 0 {
+		if d := (otprn.Rand + i) % div; d == 0 {
 			return true
 		}
 	}
@@ -25,7 +26,6 @@ func IsJoinOK(otprn *otprn.Otprn, jn uint64, addr *common.Address) bool {
 }
 
 // geth Node IP를 key로 하는 Peer map
-
 func GetPeerList() map[string][]string {
 
 	// TODO : andus >> 피어 리스트 만들어 주는 함수..

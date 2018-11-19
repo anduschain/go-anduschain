@@ -1,8 +1,11 @@
 package db
 
 import (
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"gopkg.in/mgo.v2"
 	"log"
+	"net"
 )
 
 type FairNodeDB struct {
@@ -27,7 +30,9 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	}
 }
 
-func (fnb *FairNodeDB) SaveActiveNode() bool {
+func (fnb *FairNodeDB) SaveActiveNode(enode discv5.Node, addr *net.UDPAddr, coinbase common.Address) bool {
+
+	// addr => 실제 address
 
 	log.Println("andus >> DB에 insert Or Update 호출")
 
