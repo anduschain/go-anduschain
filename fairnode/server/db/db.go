@@ -34,24 +34,22 @@ func (fnb *FairNodeDB) SaveActiveNode() bool {
 	return false
 }
 
-func (db *FairNodeDB) Create(val interface{}) bool {
+func (fnb *FairNodeDB) GetActiveNodeNum() int {
 
-	return false
+	// TODO : andus >> DB에서 Active node 갯수 조회
+	log.Println("andus >> Db.GetActiveNodeNum")
+
+	return 3
 }
 
-func (db *FairNodeDB) Select(val interface{}) ([]byte, error) {
+func (fnb *FairNodeDB) GetActiveNodeList() []string {
 
-	return []byte{}, nil
-}
+	// TODO : andus >> DB에서 Active node 리스트를 조회
+	log.Println("andus >> Db.GetActiveNodeList")
 
-func (db *FairNodeDB) Update(val interface{}) (bool, int) {
+	//return example //[]string{"121.134.35.45:50002"}
 
-	return false, 0
-}
-
-func (db *FairNodeDB) Insert(val interface{}) (bool, int) {
-
-	return false, 0
+	return []string{"121.134.35.45:50002", "121.134.35.45:50003"}
 }
 
 func JobCheckActiveNode() error {

@@ -17,6 +17,7 @@
 package node
 
 import (
+	"crypto/ecdsa"
 	"reflect"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -65,6 +66,11 @@ func (ctx *ServiceContext) Service(service interface{}) error {
 		return nil
 	}
 	return ErrServiceUnknown
+}
+
+// TODO : andus >> P2P get Node Key
+func (ctx *ServiceContext) GetNodeKey() *ecdsa.PrivateKey {
+	return ctx.config.P2P.PrivateKey
 }
 
 // ServiceConstructor is the function signature of the constructors needed to be

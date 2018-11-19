@@ -4,6 +4,7 @@
 package deb
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -49,6 +50,8 @@ var (
 	// errInvalidDifficulty is returned if the difficulty of a block is not either
 	// of 1 or 2, or if the value does not match the turn of the signer.
 	errInvalidDifficulty = errors.New("andus >> invalid difficulty")
+
+	errFailSignature = errors.New("andus >> 블록헤더 서명 실패")
 )
 
 // sigHash returns the hash which is used as input for the proof-of-authority
@@ -108,18 +111,59 @@ type Deb struct {
 	otprn     *common.Hash
 	joinNonce *uint64
 	coinbase  *common.Address
+	NodeKey   *ecdsa.PrivateKey
 }
 
-// New creates a Clique proof-of-authority consensus engine with the initial
+// New creates a Clique proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.DebConfig, db ethdb.Database) *Deb {
+func New(config *params.DebConfig, db ethdb.Database, nodeKey *ecdsa.PrivateKey) *Deb {
 
 	log.Println("andus >> Deb Call New()")
 
 	return &Deb{
-		config: config,
-		db:     db,
+		config:  config,
+		db:      db,
+		NodeKey: nodeKey,
 	}
+}
+
+// TODO : andus >> 생성된 블록(브로드케스팅용) 서명
+func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
+
+	sig, err := crypto.Sign(blockHash, c.NodeKey)
+	if err != nil {
+		return nil, errFailSignature
+	}
+
+	return sig, nil
+}
+
+func (c *Deb) IsFairNodeSigOK(recevedBlockLeagueHash *types.TransferBlock) bool {
+
+	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
+
+	if true {
+
+	}
+
+	return true
+}
+
+func (c *Deb) CheckRANDSigOK(header *types.Header) bool {
+
+	// TODO : andus >> 1. 서명 확인 해야 되는데.......
+	//					/crypto/crypto_test.go 의 TestSign() 함수 참조..
+	// TODO : andus >> 2. 서명된 RAND 값을 복호화한 값과 헤더의 difficulty 값 같은지 비교
+	//					위에서 공개키와 주소를 얻어오고, 공개키로 복호화한다..
+	// TODO : andus >> 3. miner 의 JoinNonce 수 만큼 RAND 값을 생성하면서 헤더의 difficulty 와 같은 값이 나오는지 검증
+	//					miner 의 JoinNonce 는 어디서 가져오지?
+
+	return true
+}
+
+func (c *Deb) CompareBlock(myBlock *types.TransferBlock, receivedBlock *types.TransferBlock) *types.TransferBlock {
+
+	return nil
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered

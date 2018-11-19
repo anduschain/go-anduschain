@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"math/big"
 	"sync"
@@ -581,144 +581,116 @@ func (w *worker) resultLoop() {
 				logs = append(logs, receipt.Logs...)
 			}
 
-			// TODO : andus >> TransferBlock 객체 생성
-
-			ks := w.ks
-			account := accounts.Account{
-				Address: block.Coinbase(),
-				URL:     accounts.URL{},
-			}
-
-			sig, err := ks.SignHash(account, block.Header().Hash().Bytes())
-			if err != nil {
-				log.Info("andus >> 블록에 서명 하는 에러 발생 ")
-			}
-			tfd := types.TransferBlock{Block: block, HeaderHash: block.Header().Hash(), Sig: sig}
-
-			// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
-			w.LeagueBlockBroadcastCh <- &tfd
-
-			// TODO : andus >> 마이닝 종료..
-
-			isFairNodeSigOK := func(recevedBlockLeagueHash *types.TransferBlock) bool {
-				// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
-
-				if true {
-
-				}
-
-				return true
-			}
-
-			checkRANDSigOK := func(header *types.Header) bool {
-
-				// TODO : andus >> 1. 서명 확인 해야 되는데.......
-				//					/crypto/crypto_test.go 의 TestSign() 함수 참조..
-				// TODO : andus >> 2. 서명된 RAND 값을 복호화한 값과 헤더의 difficulty 값 같은지 비교
-				//					위에서 공개키와 주소를 얻어오고, 공개키로 복호화한다..
-				// TODO : andus >> 3. miner 의 JoinNonce 수 만큼 RAND 값을 생성하면서 헤더의 difficulty 와 같은 값이 나오는지 검증
-				//					miner 의 JoinNonce 는 어디서 가져오지?
-
-				return true
-			}
-
-			otprn := w.fairclient.Otprn
-			lastBlockNum := big.NewInt(0)
-
-			// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
-			go func() {
-
-				var winningBlock *types.TransferBlock
-
-				count, countBlock := 0, 0
-				t := time.NewTicker(1 * time.Second)
-
-				// TODO : andus >> coinbase 저장소
-				receviedCoinbase := make(map[common.Address]string)
-
-				for {
-					select {
-					case recevedBlock := <-w.ReceiveBlockCh:
-
-						// TODO : andus >> 블록 검증
-						// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-						if OK := isFairNodeSigOK(recevedBlock); !OK {
-
-							// TODO : andus >> 2. RAND 값 서명 검증
-							if OK := checkRANDSigOK(recevedBlock.Block.Header()); OK {
-
-								winningBlock = compareBlock(winningBlock, recevedBlock)
-
-								receviedCoinbase[recevedBlock.Block.Coinbase()] = "코인베이스"
-
-								count++
-
-								fmt.Println(recevedBlock.Block.Hash(), count)
-
-							}
-						} else {
-							log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
-							lastBlockNum = recevedBlock.Block.Number()
-						}
-
-					case <-t.C:
-						// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
-						if uint64(len(receviedCoinbase)) >= otprn.Mminer-1 {
-							// TODO : andus >> 5. FairNode로 winningBlock 전송
-							w.WinningBlockCh <- winningBlock
-							countBlock = 0
-						} else {
-							countBlock++
-						}
-
-						if countBlock > 10 {
-							// TODO : andus >> 5. FairNode로 winningBlock 전송
-							w.WinningBlockCh <- winningBlock
-							countBlock = 0
-						}
-
-					}
-				}
-
-			}()
-
-			// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-			// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
-			finalBlock := <-w.FinalBlockCh
-			block = finalBlock.Block
-
-			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
-			if _, ok := block.GetFairNodeSig(); ok {
-
-				// Commit block and state to database.
-				stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+			// TODO : andus >> deb consensus 일때만...
+			if debEngine, ok := w.engine.(*deb.Deb); ok {
+				sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
 				if err != nil {
-					log.Error("Failed writing block to chain", "err", err)
-					continue
+					log.Error("andus >> ", err)
 				}
-				log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-					"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
-				// Broadcast the block and announce chain insertion event
-				w.mux.Post(core.NewMinedBlockEvent{Block: block})
+				// TODO : andus >> TransferBlock 객체 생성
+				tfd := types.TransferBlock{Block: block, HeaderHash: block.Header().Hash(), Sig: sig}
 
-				var events []interface{}
-				switch stat {
-				case core.CanonStatTy:
-					events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-					events = append(events, core.ChainHeadEvent{Block: block})
-				case core.SideStatTy:
-					events = append(events, core.ChainSideEvent{Block: block})
+				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
+				w.LeagueBlockBroadcastCh <- &tfd
+
+				otprn := w.fairclient.Otprn
+				lastBlockNum := big.NewInt(0)
+
+				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+				go func() {
+
+					var winningBlock *types.TransferBlock
+
+					count, countBlock := 0, 0
+					t := time.NewTicker(1 * time.Second)
+
+					// TODO : andus >> coinbase 저장소
+					receviedCoinbase := make(map[common.Address]string)
+
+					for {
+						select {
+						case recevedBlock := <-w.ReceiveBlockCh:
+
+							// TODO : andus >> 블록 검증
+							// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+							if OK := debEngine.IsFairNodeSigOK(recevedBlock); !OK {
+
+								// TODO : andus >> 2. RAND 값 서명 검증
+								if OK := debEngine.CheckRANDSigOK(recevedBlock.Block.Header()); OK {
+
+									winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
+
+									receviedCoinbase[recevedBlock.Block.Coinbase()] = "코인베이스"
+
+									count++
+
+									fmt.Println(recevedBlock.Block.Hash(), count)
+
+								}
+							} else {
+								log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
+								lastBlockNum = recevedBlock.Block.Number()
+							}
+
+						case <-t.C:
+							// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
+							if uint64(len(receviedCoinbase)) >= otprn.Mminer-1 {
+								// TODO : andus >> 5. FairNode로 winningBlock 전송
+								w.WinningBlockCh <- winningBlock
+								countBlock = 0
+							} else {
+								countBlock++
+							}
+
+							if countBlock > 10 {
+								// TODO : andus >> 5. FairNode로 winningBlock 전송
+								w.WinningBlockCh <- winningBlock
+								countBlock = 0
+							}
+
+						}
+					}
+
+				}()
+
+				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
+				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+				finalBlock := <-w.FinalBlockCh
+				block = finalBlock.Block
+
+				// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
+				if _, ok := block.GetFairNodeSig(); ok {
+
+					// Commit block and state to database.
+					stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+					if err != nil {
+						log.Error("Failed writing block to chain", "err", err)
+						continue
+					}
+					log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+						"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+					// Broadcast the block and announce chain insertion event
+					w.mux.Post(core.NewMinedBlockEvent{Block: block})
+
+					var events []interface{}
+					switch stat {
+					case core.CanonStatTy:
+						events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+						events = append(events, core.ChainHeadEvent{Block: block})
+					case core.SideStatTy:
+						events = append(events, core.ChainSideEvent{Block: block})
+					}
+					w.chain.PostChainEvents(events, logs)
+
+					// Insert the block into the set of pending ones to resultLoop for confirmations
+					w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+
+				} else {
+					log.Info("andus >> 페어노드의 서명이 없음")
 				}
-				w.chain.PostChainEvents(events, logs)
-
-				// Insert the block into the set of pending ones to resultLoop for confirmations
-				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
-
-			} else {
-				log.Info("andus >> 페어노드의 서명이 없음")
 			}
-
 		case <-w.exitCh:
 			return
 		}
@@ -1104,10 +1076,5 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if update {
 		w.updateSnapshot()
 	}
-	return nil
-}
-
-func compareBlock(myBlock *types.TransferBlock, receivedBlock *types.TransferBlock) *types.TransferBlock {
-
 	return nil
 }

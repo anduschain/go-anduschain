@@ -18,6 +18,7 @@
 package eth
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
@@ -101,6 +102,7 @@ type Ethereum struct {
 
 	// TODO : andus >> fairnode client
 	FairnodeClient *fairnodeclient.FairnodeClient
+	NodePrivKey    *ecdsa.PrivateKey
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -191,7 +193,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth, eth.txPool)
+	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth.txPool)
 
 	// TODO : andus >> miner -> keystore 추가
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh, WinningBlockCh, FinalBlockCh)
@@ -274,7 +276,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	//	return engine
 	//}
 
-	return deb.New(chainConfig.Deb, db)
+	return deb.New(chainConfig.Deb, db, ctx.GetNodeKey())
 }
 
 // APIs return the collection of RPC services the ethereum package offers.
@@ -398,7 +400,7 @@ func (s *Ethereum) StartMining(threads int) error {
 
 		// TODO : andus >> Fair Client Start with etherbase
 		if eb != (common.Address{}) {
-			err := s.FairnodeClient.StartToFairNode(&eb, s.Keystore)
+			err := s.FairnodeClient.StartToFairNode(&eb, s.Keystore, s.NodePrivKey)
 			if err != nil {
 				return fmt.Errorf("코인베이스를 언락해 주세요: %v", err)
 			}
@@ -483,6 +485,9 @@ func (s *Ethereum) Protocols() []p2p.Protocol {
 func (s *Ethereum) Start(srvr *p2p.Server) error {
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
+
+	// TODO : andus >> Node Private Key insert
+	s.NodePrivKey = srvr.PrivateKey
 
 	// Start the RPC service
 	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.NetVersion())
