@@ -67,18 +67,19 @@ func (f *FairNode) ListenTCP() {
 func (f *FairNode) readLoop(conn *net.TCPConn) {
 	buf := make([]byte, 4096)
 	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-
+		if n, err := conn.Read(buf); err == nil {
+			if n > 0 {
+				var fromGeth fairtypes.TransferCheck
+				rlp.DecodeBytes(buf, &fromGeth)
+				fmt.Println(fromGeth.Enode.ID)
+				// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
+				// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
+				// TODO : andus >> 3. 참가 대상자인지 확인
+			}
+		} else {
+			fmt.Println("andus >> readLoop 에러!!!!", err.Error())
+			continue
 		}
-
-		if n > 0 {
-			var fromGeth fairtypes.TransferCheck
-			rlp.DecodeBytes(buf, &fromGeth)
-
-			fmt.Println(fromGeth.Enode.ID)
-		}
-
 	}
 
 }

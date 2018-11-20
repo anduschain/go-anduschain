@@ -12,8 +12,11 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 	fmt.Println("andus >> TCPtoFairNode Start")
 
 	fc.wg.Add(2)
+	// 리스너가 종료 되었을때
 	tcpDisconnectCh := make(chan struct{})
+	// 리스너가 종료되고 다음 연결을 기다릴때
 	TCPtoFairNodePendingCh := make(chan struct{})
+	// 외부에서 마이닝 miner.stop() 실행시
 	fromExitCh := make(chan struct{})
 
 	defer func() {
@@ -26,18 +29,18 @@ EXIT:
 		select {
 		case <-fc.TcpConnStartCh:
 			// TODO : andus >> OTPRN이 수신되어 커넥션 만들
-			conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP)
-			if err != nil {
+			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
+				fc.TcpDialer = conn
+				fc.tcpRunning = true
+				fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
+
+				go fc.readLoop(tcpDisconnectCh)
+				go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
+
+			} else {
 				fmt.Println("andus >> GETH DialTCP 에러", err)
+				continue
 			}
-
-			fc.TcpDialer = conn
-			fc.tcpRunning = true
-			fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
-
-			go fc.readLoop(tcpDisconnectCh)
-			go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
-
 		case <-TCPtoFairNodePendingCh:
 			// TODO : andus >> 패어노드와 커낵션이 끊어 졌을때
 			fc.TcpDialer.Close()

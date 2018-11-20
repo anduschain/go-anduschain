@@ -55,7 +55,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
 	// TODO : andus >> UDP Resolve Udp
-	serverAddr, err := net.ResolveUDPAddr("udp", "121.134.35.45:60002") // 전송 60002
+	serverAddr, err := net.ResolveUDPAddr("udp", "121.134.35.45:60002") // 전송 60002 121.156.104.249 // 121.134.35.45
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
