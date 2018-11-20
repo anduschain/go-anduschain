@@ -6,10 +6,11 @@ import (
 	"gopkg.in/mgo.v2"
 	"log"
 	"net"
+	"time"
 )
 
 type FairNodeDB struct {
-	db *mgo.Session
+	Mongo *mgo.Session
 }
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
@@ -23,16 +24,18 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	if err != nil {
 		log.Fatal("andus >> MongoDB 접속에 문제가 있습니다")
 	}
-	defer session.Close()
+	session.SetMode(mgo.Monotonic, true)
 
 	return &FairNodeDB{
-		db: session,
+		Mongo: session,
 	}
 }
 
 func (fnb *FairNodeDB) SaveActiveNode(enode discv5.Node, addr *net.UDPAddr, coinbase common.Address) bool {
 
 	// addr => 실제 address
+	activenodeCol := fnb.Mongo.DB("AndusChain").C("ActiveNode")
+	activenodeCol.Insert(&activeNode{EnodeId: enode.ID.String(), Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now().UnixNano()})
 
 	log.Println("andus >> DB에 insert Or Update 호출")
 
@@ -57,8 +60,7 @@ func (fnb *FairNodeDB) GetActiveNodeList() []string {
 	return []string{"121.134.35.45:50002", "121.134.35.45:50003"}
 }
 
-func JobCheckActiveNode() error {
+func (fnb *FairNodeDB) JobCheckActiveNode() {
 	// TODO : Active Node 관리 (주기 : 3분)..
 
-	return nil
 }

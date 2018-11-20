@@ -24,17 +24,28 @@ func (f *FairNode) manageActiveNode() {
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
 	// TODO : enode값 수신
 	buf := make([]byte, 4096)
+	t := time.NewTicker(3 * time.Minute)
 	for {
-		n, addr, err := f.UdpConn.ReadFromUDP(buf)
-		if err != nil {
-			fmt.Println("andus >>", err)
-		}
+		select {
+		case <-t.C:
+			// TODO : andus >> 1분이상 들어오지 않은 enode 지우기 (mongodb)
+			f.Db.JobCheckActiveNode()
+		default:
+			f.UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
+			n, addr, err := f.UdpConn.ReadFromUDP(buf)
+			if err != nil {
+				fmt.Println("andus >>", err)
+				if err.(net.Error).Timeout() {
+					continue
+				}
+			}
 
-		if n > 0 {
-			// TODO : andus >> rlp enode 디코드
-			var fromGeth fairtypes.EnodeCoinbase
-			rlp.DecodeBytes(buf, &fromGeth)
-			f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
+			if n > 0 {
+				// TODO : andus >> rlp enode 디코드
+				var fromGeth fairtypes.EnodeCoinbase
+				rlp.DecodeBytes(buf, &fromGeth)
+				f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
+			}
 		}
 
 	}

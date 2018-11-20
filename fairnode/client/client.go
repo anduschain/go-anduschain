@@ -71,7 +71,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}
 
-	serverAddrTcp, err := net.ResolveTCPAddr("tcp", "121.134.35.45:60002") // 전송 60002
+	serverAddrTcp, err := net.ResolveTCPAddr("tcp", "121.134.35.45:60002") // 전송 60002  121.156.104.249
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
 	}

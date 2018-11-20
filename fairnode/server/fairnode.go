@@ -68,13 +68,13 @@ func New(c *cli.Context) (*FairNode, error) {
 		return nil, err
 	}
 
-	LAddrUDP, err := net.ResolveUDPAddr("udp", ":60002") //60002
+	LAddrUDP, err := net.ResolveUDPAddr("udp", ":60003") //60002
 	if err != nil {
 		log.Println("andus >> ResolveUDPAddr, LocalAddr", err)
 		return nil, err
 	}
 
-	LAddrTCP, err := net.ResolveTCPAddr("tcp", ":60002") //60002
+	LAddrTCP, err := net.ResolveTCPAddr("tcp", ":60003") //60002
 	if err != nil {
 		log.Println("andus >> ResolveTCPAddr, LocalAddr", err)
 		return nil, err
@@ -159,4 +159,5 @@ func (f *FairNode) Stop() {
 	f.Running = false
 	f.UdpConn.Close()
 	f.TcpConn.Close()
+	f.Db.Mongo.Close()
 }
