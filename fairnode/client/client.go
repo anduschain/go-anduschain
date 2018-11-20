@@ -36,14 +36,17 @@ type FairnodeClient struct {
 	SAddrTCP *net.TCPAddr
 	LaddrTCP *net.TCPAddr
 
-	TcpConnStartCh      chan struct{}
-	submitEnodeExitCh   chan struct{}
-	receiveOtprnExitCh  chan struct{}
-	tcptoFairNodeStopCh chan struct{}
+	TcpConnStartCh     chan struct{}
+	submitEnodeExitCh  chan struct{}
+	receiveOtprnExitCh chan struct{}
+	readLoopStopCh     chan struct{}
+	writeLoopStopCh    chan struct{}
 
 	NodeKey *ecdsa.PrivateKey
 
-	Enode *discv5.Node
+	Enode      *discv5.Node
+	tcpRunning bool
+	TcpDialer  *net.TCPConn
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -86,6 +89,9 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		TcpConnStartCh:     make(chan struct{}),
 		submitEnodeExitCh:  make(chan struct{}),
 		receiveOtprnExitCh: make(chan struct{}),
+		readLoopStopCh:     make(chan struct{}),
+		writeLoopStopCh:    make(chan struct{}),
+		tcpRunning:         false,
 	}
 
 	return fcClient
@@ -117,7 +123,13 @@ func (fc *FairnodeClient) Stop() {
 		fc.Running = false
 		fc.submitEnodeExitCh <- struct{}{}
 		fc.receiveOtprnExitCh <- struct{}{}
-		fc.tcptoFairNodeStopCh <- struct{}{}
+
+		if fc.tcpRunning {
+			fc.readLoopStopCh <- struct{}{}
+			fc.writeLoopStopCh <- struct{}{}
+			fc.tcpRunning = false
+		}
+
 	}
 }
 

@@ -3,12 +3,12 @@ package server
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
-func (f *FairNode) ListenTCP() error {
+func (f *FairNode) ListenTCP() {
 
 	fmt.Println("andus >> ListenTCP 리슨TCP")
 
@@ -19,7 +19,7 @@ func (f *FairNode) ListenTCP() error {
 			fmt.Println("andus >> f.TcpConn.Accept 에러!!", err)
 		}
 		conn.Read(buf)
-		var fromGeth fairnodeclient.TransferCheck
+		var fromGeth fairtypes.TransferCheck
 		rlp.DecodeBytes(buf, &fromGeth)
 
 		fmt.Println(fromGeth.Enode.ID)
@@ -65,8 +65,6 @@ func (f *FairNode) ListenTCP() error {
 	//		}
 	//	}
 	//}()
-
-	return nil
 }
 
 func (f *FairNode) sendLeague() {

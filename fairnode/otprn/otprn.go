@@ -28,12 +28,6 @@ type Otprn struct {
 	TimeStamp uint64
 }
 
-type TransferOtprn struct {
-	Otp  Otprn
-	Sig  []byte
-	Hash common.Hash
-}
-
 func New(Cminer uint64) (*Otprn, error) {
 
 	nBig, err := crand.Int(crand.Reader, big.NewInt(9999999999999))

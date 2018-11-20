@@ -2,10 +2,9 @@ package fairnodeclient
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -14,15 +13,15 @@ import (
 	"time"
 )
 
-type EnodeCoinbase struct {
-	Node     discv5.Node
-	Coinbase common.Address
-}
-
 func (fc *FairnodeClient) UDPtoFairNode() {
+	fc.wg.Add(2)
+
+	defer fmt.Println("andus >> UDPtoFairNode 죽음 >>>>>")
 	//TODO : andus >> udp 통신 to FairNode
 	go fc.submitEnode()
 	go fc.receiveOtprn()
+
+	fc.wg.Wait()
 }
 
 func (fc *FairnodeClient) submitEnode() {
@@ -33,13 +32,14 @@ func (fc *FairnodeClient) submitEnode() {
 	}
 
 	defer Conn.Close()
+	defer fc.wg.Done()
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
 
 	fc.Enode = discv5.NewTable(discv5.PubkeyID(&fc.NodeKey.PublicKey), fc.LAddrUDP)
 
-	ts := EnodeCoinbase{*fc.Enode, *fc.Coinbase}
+	ts := fairtypes.EnodeCoinbase{*fc.Enode, *fc.Coinbase}
 	tsByte, err := rlp.EncodeToBytes(ts) // TODO : andus >> enode to byte
 	if err != nil {
 		log.Fatal("andus >> EncodeToBytes", err)
@@ -99,6 +99,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 	// TODO : andus >> NAT 추가 --- end ---
 
 	defer localServerConn.Close()
+	defer fc.wg.Done()
 
 	tsOtprnByte := make([]byte, 4096)
 
@@ -120,7 +121,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 			if n > 0 {
 				// TODO : andus >> 수신된 otprn디코딩
-				var tsOtprn otprn.TransferOtprn
+				var tsOtprn fairtypes.TransferOtprn
 				rlp.DecodeBytes(tsOtprnByte, &tsOtprn)
 
 				//TODO : andus >> 2. OTRRN 검증
@@ -141,8 +142,11 @@ func (fc *FairnodeClient) receiveOtprn() {
 						if ok := fairutil.IsJoinOK(fc.Otprn, fc.Coinbase); ok {
 							//TODO : andus >> 참가 가능할 때 처리
 							//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-							fc.TcpConnStartCh <- struct{}{}
 							fmt.Println("andus >> 채굴 참여 대상자 확인")
+
+							if !fc.tcpRunning {
+								fc.TcpConnStartCh <- struct{}{}
+							}
 
 						}
 

@@ -2,84 +2,35 @@ package fairnodeclient
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
-	"github.com/anduschain/go-anduschain/p2p/discv5"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/rlp"
 	"net"
-	"sync"
+	"time"
 )
 
-type TransferCheck struct {
-	Otprn    otprn.Otprn
-	Coinbase common.Address
-	Enode    discv5.Node
-}
-
-func (tsf *TransferCheck) Hash() common.Hash {
-	return rlpHash(tsf)
-}
-
-func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
-}
-
 func (fc *FairnodeClient) TCPtoFairNode() {
-	var wg sync.WaitGroup
-	wg.Add(2)
-
+	fc.wg.Add(2)
 	fmt.Println("andus >> TCPtoFairNode Start")
+
 	conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP)
 	if err != nil {
 		fmt.Println("andus >> GETH DialTCP 에러", err)
 	}
 
-	defer conn.Close()
-	defer fmt.Println("andus >> TCPtoFairNode 죽음")
+	fc.TcpDialer = conn
+
+	defer fc.TcpDialer.Close()
+	defer func() {
+		fc.tcpRunning = false
+		fmt.Println("andus >> TCPtoFairNode 죽음")
+	}()
 
 	<-fc.TcpConnStartCh
+	fc.tcpRunning = true
 	fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
 
-	go func() {
-		defer wg.Done()
-		data := make([]byte, 4096)
-		for {
-			n, err := conn.Read(data)
-			if err != nil {
-				fmt.Println("andus >> Read 에러!!", err)
-			}
-
-			if n > 0 {
-				fmt.Println(string(data[:n]))
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for {
-			tsf := TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
-
-			sendFairnodeData, err := rlp.EncodeToBytes(tsf)
-			if err != nil {
-				fmt.Println("andus >> sendFairnodeData 에러", err)
-			}
-			conn.Write(sendFairnodeData)
-		}
-	}()
-
-	for {
-		select {
-		case <-fc.tcptoFairNodeStopCh:
-			return
-		}
-	}
-
-	wg.Wait()
+	go fc.readLoop()
+	go fc.writeLoop()
 
 	////TODO : andus >> TCP 통신 to FairNode
 	////TODO : andus >> 1. fair Node에 TCP 연결
@@ -130,4 +81,54 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 	// TODO : andus >> worker에 블록이 등록 되게 한다
 
 	//fc.FinalBlockCh <- &types.TransferBlock{}
+	fc.wg.Wait()
+}
+
+func (fc *FairnodeClient) readLoop() {
+	defer fmt.Println("andus >> FairnodeClient ReadLoop 죽음")
+	defer fc.wg.Done()
+	data := make([]byte, 4096)
+	for {
+		select {
+		case <-fc.readLoopStopCh:
+			return
+		default:
+			fc.TcpDialer.SetDeadline(time.Now().Add(3 * time.Second))
+			n, err := fc.TcpDialer.Read(data)
+			if err != nil {
+				fmt.Println("andus >> Read 에러!!", err)
+				if err.(net.Error).Timeout() {
+					continue
+				}
+				return
+			}
+
+			if n > 0 {
+				fmt.Println("andus >> sendFairnodeData 수신")
+				fmt.Println(string(data[:n]))
+			}
+		}
+
+	}
+}
+
+func (fc *FairnodeClient) writeLoop() {
+	defer fmt.Println("andus >> FairnodeClient writeLoop 죽음")
+	defer fc.wg.Done()
+	for {
+		select {
+		case <-fc.writeLoopStopCh:
+			return
+		default:
+			fmt.Println("andus >> sendFairnodeData 전송")
+			tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
+
+			sendFairnodeData, err := rlp.EncodeToBytes(tsf)
+			if err != nil {
+				fmt.Println("andus >> sendFairnodeData 에러", err)
+			}
+			fc.TcpDialer.Write(sendFairnodeData)
+			time.Sleep(1 * time.Second)
+		}
+	}
 }

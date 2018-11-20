@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
 	"log"
@@ -32,7 +32,7 @@ func (f *FairNode) manageActiveNode() {
 
 		if n > 0 {
 			// TODO : andus >> rlp enode 디코드
-			var fromGeth fairnodeclient.EnodeCoinbase
+			var fromGeth fairtypes.EnodeCoinbase
 			rlp.DecodeBytes(buf, &fromGeth)
 			f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
 		}
@@ -69,7 +69,7 @@ func (f *FairNode) startLeague() {
 
 				fmt.Println("andus >> sig 값", common.BytesToHash(sig).String())
 
-				tsOtp := otprn.TransferOtprn{
+				tsOtp := fairtypes.TransferOtprn{
 					Otp:  *otp,
 					Sig:  sig,
 					Hash: otp.HashOtprn(),
