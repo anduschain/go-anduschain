@@ -6,25 +6,22 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
+	"net"
+	"time"
 )
 
 func (f *FairNode) ListenTCP() {
 
 	fmt.Println("andus >> ListenTCP 리슨TCP")
 
-	buf := make([]byte, 4096)
 	for {
-		conn, err := f.TcpConn.Accept()
+		conn, err := f.TcpConn.AcceptTCP()
 		if err != nil {
 			fmt.Println("andus >> f.TcpConn.Accept 에러!!", err)
 		}
-		conn.Read(buf)
-		var fromGeth fairtypes.TransferCheck
-		rlp.DecodeBytes(buf, &fromGeth)
 
-		fmt.Println(fromGeth.Enode.ID)
-
-		conn.Write([]byte("넌 들어올 자격이 있어 ㅎㅎㅎ"))
+		go f.readLoop(conn)
+		go f.writeLoop(conn)
 	}
 
 	//go f.sendLeague()
@@ -65,6 +62,33 @@ func (f *FairNode) ListenTCP() {
 	//		}
 	//	}
 	//}()
+}
+
+func (f *FairNode) readLoop(conn *net.TCPConn) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+
+		}
+
+		if n > 0 {
+			var fromGeth fairtypes.TransferCheck
+			rlp.DecodeBytes(buf, &fromGeth)
+
+			fmt.Println(fromGeth.Enode.ID)
+		}
+
+	}
+
+}
+
+func (f *FairNode) writeLoop(conn *net.TCPConn) {
+	for {
+		conn.Write([]byte("넌 들어올 자격이 있어 ㅎㅎㅎ"))
+		time.Sleep(1 * time.Second)
+	}
+
 }
 
 func (f *FairNode) sendLeague() {

@@ -47,7 +47,7 @@ func (fc *FairnodeClient) submitEnode() {
 
 	writeData := func() {
 		_, err = Conn.Write(tsByte) // TODO : andus >> enode url 전송
-		fmt.Println("andus >> enode 전송")
+		//fmt.Println("andus >> enode 전송")
 		if err != nil {
 			log.Println("andus >> Write", err)
 		}
@@ -112,11 +112,10 @@ func (fc *FairnodeClient) receiveOtprn() {
 			localServerConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := localServerConn.ReadFromUDP(tsOtprnByte)
 			if err != nil {
-				log.Println("andus >> otprn 수신 에러", err)
+				//log.Println("andus >> otprn 수신 에러", err)
 				if err.(net.Error).Timeout() {
 					continue
 				}
-				return
 			}
 
 			if n > 0 {
@@ -137,12 +136,12 @@ func (fc *FairnodeClient) receiveOtprn() {
 						fc.Otprn = &tsOtprn.Otp
 						//TODO : andus >> 3. 참여여부 확인
 
-						fmt.Println("andus >> OTPRN 검증 완료")
+						//fmt.Println("andus >> OTPRN 검증 완료")
 
 						if ok := fairutil.IsJoinOK(fc.Otprn, fc.Coinbase); ok {
 							//TODO : andus >> 참가 가능할 때 처리
 							//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-							fmt.Println("andus >> 채굴 참여 대상자 확인")
+							//fmt.Println("andus >> 채굴 참여 대상자 확인")
 
 							if !fc.tcpRunning {
 								fc.TcpConnStartCh <- struct{}{}

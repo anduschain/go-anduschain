@@ -100,7 +100,6 @@ func (fc *FairnodeClient) readLoop() {
 				if err.(net.Error).Timeout() {
 					continue
 				}
-				return
 			}
 
 			if n > 0 {
