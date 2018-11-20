@@ -36,11 +36,12 @@ type FairnodeClient struct {
 	SAddrTCP *net.TCPAddr
 	LaddrTCP *net.TCPAddr
 
-	TcpConnStartCh     chan struct{}
-	submitEnodeExitCh  chan struct{}
-	receiveOtprnExitCh chan struct{}
-	readLoopStopCh     chan struct{}
-	writeLoopStopCh    chan struct{}
+	TcpConnStartCh      chan struct{}
+	submitEnodeExitCh   chan struct{}
+	receiveOtprnExitCh  chan struct{}
+	readLoopStopCh      chan struct{}
+	writeLoopStopCh     chan struct{}
+	tcptoFairNodeExitCh chan struct{}
 
 	NodeKey *ecdsa.PrivateKey
 
@@ -76,22 +77,23 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	}
 
 	fcClient := &FairnodeClient{
-		Otprn:              nil,
-		WinningBlockCh:     wbCh,
-		FinalBlockCh:       fbCh,
-		Running:            false,
-		BlockChain:         blockChain,
-		txPool:             tp,
-		SAddrUDP:           serverAddr,
-		LAddrUDP:           localAddr,
-		LaddrTCP:           localAddrTcp,
-		SAddrTCP:           serverAddrTcp,
-		TcpConnStartCh:     make(chan struct{}),
-		submitEnodeExitCh:  make(chan struct{}),
-		receiveOtprnExitCh: make(chan struct{}),
-		readLoopStopCh:     make(chan struct{}),
-		writeLoopStopCh:    make(chan struct{}),
-		tcpRunning:         false,
+		Otprn:               nil,
+		WinningBlockCh:      wbCh,
+		FinalBlockCh:        fbCh,
+		Running:             false,
+		BlockChain:          blockChain,
+		txPool:              tp,
+		SAddrUDP:            serverAddr,
+		LAddrUDP:            localAddr,
+		LaddrTCP:            localAddrTcp,
+		SAddrTCP:            serverAddrTcp,
+		TcpConnStartCh:      make(chan struct{}),
+		submitEnodeExitCh:   make(chan struct{}),
+		receiveOtprnExitCh:  make(chan struct{}),
+		readLoopStopCh:      make(chan struct{}),
+		writeLoopStopCh:     make(chan struct{}),
+		tcptoFairNodeExitCh: make(chan struct{}),
+		tcpRunning:          false,
 	}
 
 	return fcClient
@@ -128,6 +130,8 @@ func (fc *FairnodeClient) Stop() {
 			fc.readLoopStopCh <- struct{}{}
 			fc.writeLoopStopCh <- struct{}{}
 			fc.tcpRunning = false
+		} else {
+			fc.tcptoFairNodeExitCh <- struct{}{}
 		}
 
 	}

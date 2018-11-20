@@ -9,28 +9,50 @@ import (
 )
 
 func (fc *FairnodeClient) TCPtoFairNode() {
-	fc.wg.Add(2)
 	fmt.Println("andus >> TCPtoFairNode Start")
 
-	conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP)
-	if err != nil {
-		fmt.Println("andus >> GETH DialTCP 에러", err)
-	}
+	fc.wg.Add(2)
+	tcpDisconnectCh := make(chan struct{})
+	TCPtoFairNodePendingCh := make(chan struct{})
+	fromExitCh := make(chan struct{})
 
-	fc.TcpDialer = conn
-
-	defer fc.TcpDialer.Close()
 	defer func() {
 		fc.tcpRunning = false
 		fmt.Println("andus >> TCPtoFairNode 죽음")
 	}()
 
-	<-fc.TcpConnStartCh
-	fc.tcpRunning = true
-	fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
+EXIT:
+	for {
+		select {
+		case <-fc.TcpConnStartCh:
+			// TODO : andus >> OTPRN이 수신되어 커넥션 만들
+			conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP)
+			if err != nil {
+				fmt.Println("andus >> GETH DialTCP 에러", err)
+			}
 
-	go fc.readLoop()
-	go fc.writeLoop()
+			fc.TcpDialer = conn
+			fc.tcpRunning = true
+			fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
+
+			go fc.readLoop(tcpDisconnectCh)
+			go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
+
+		case <-TCPtoFairNodePendingCh:
+			// TODO : andus >> 패어노드와 커낵션이 끊어 졌을때
+			fc.TcpDialer.Close()
+			fc.tcpRunning = false
+			fmt.Println("andus >> TCPtoFairNode 패어노드와 연결이 끊어짐")
+
+		case <-fc.tcptoFairNodeExitCh:
+			// TODO : andus >> 패어노드와 커낵션이 없을때
+			return
+		case <-fromExitCh:
+			break EXIT
+		}
+	}
+
+	fc.wg.Wait()
 
 	////TODO : andus >> TCP 통신 to FairNode
 	////TODO : andus >> 1. fair Node에 TCP 연결
@@ -81,24 +103,31 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 	// TODO : andus >> worker에 블록이 등록 되게 한다
 
 	//fc.FinalBlockCh <- &types.TransferBlock{}
-	fc.wg.Wait()
 }
 
-func (fc *FairnodeClient) readLoop() {
-	defer fmt.Println("andus >> FairnodeClient ReadLoop 죽음")
-	defer fc.wg.Done()
+func (fc *FairnodeClient) readLoop(tcpDisconnectCh chan struct{}) {
+	defer func() {
+		fmt.Println("andus >> FairnodeClient ReadLoop 죽음")
+	}()
+
 	data := make([]byte, 4096)
 	for {
 		select {
 		case <-fc.readLoopStopCh:
+			fc.wg.Done()
 			return
 		default:
 			fc.TcpDialer.SetDeadline(time.Now().Add(3 * time.Second))
 			n, err := fc.TcpDialer.Read(data)
 			if err != nil {
-				fmt.Println("andus >> Read 에러!!", err)
-				if err.(net.Error).Timeout() {
-					continue
+				fmt.Println("andus >> Read 에러!!", err.Error())
+				if err.Error() != "EOF" {
+					if err.(net.Error).Timeout() {
+						continue
+					}
+				} else {
+					tcpDisconnectCh <- struct{}{}
+					return
 				}
 			}
 
@@ -111,12 +140,18 @@ func (fc *FairnodeClient) readLoop() {
 	}
 }
 
-func (fc *FairnodeClient) writeLoop() {
+func (fc *FairnodeClient) writeLoop(tcpDisconnectCh chan struct{}, pendingCh chan struct{}, exitCh chan struct{}) {
+
 	defer fmt.Println("andus >> FairnodeClient writeLoop 죽음")
-	defer fc.wg.Done()
+
 	for {
 		select {
+		case <-tcpDisconnectCh:
+			pendingCh <- struct{}{}
+			return
 		case <-fc.writeLoopStopCh:
+			exitCh <- struct{}{}
+			fc.wg.Done()
 			return
 		default:
 			fmt.Println("andus >> sendFairnodeData 전송")
