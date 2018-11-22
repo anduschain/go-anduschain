@@ -7,18 +7,20 @@ import (
 )
 
 // ( otprn + Last 1byte of address ) % div
-func IsJoinOK(otprn *otprn.Otprn, addr *common.Address) bool {
+func IsJoinOK(otprn otprn.Otprn, addr common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
-	div := uint64(otprn.Cminer / otprn.Mminer)
-	lastByte := addr.Bytes()[len(addr.Bytes())-2:]
-	i, _ := strconv.ParseUint(string(lastByte), 16, 64)
+	if otprn.Mminer > 0 {
+		div := uint64(otprn.Cminer / otprn.Mminer)
+		lastByte := addr.Bytes()[len(addr.Bytes())-2:]
+		i, _ := strconv.ParseUint(string(lastByte), 16, 64)
 
-	if div == 0 {
-		// TODO : andus >> Mminer > Cminer
-		return true
-	} else {
-		if d := (otprn.Rand + i) % div; d == 0 {
+		if div == 0 {
+			// TODO : andus >> Mminer > Cminer
 			return true
+		} else {
+			if d := (otprn.Rand + i) % div; d == 0 {
+				return true
+			}
 		}
 	}
 

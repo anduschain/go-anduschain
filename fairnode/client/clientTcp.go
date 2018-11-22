@@ -3,7 +3,7 @@ package fairnodeclient
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"net"
 	"time"
 )
@@ -11,20 +11,17 @@ import (
 func (fc *FairnodeClient) TCPtoFairNode() {
 	fmt.Println("andus >> TCPtoFairNode Start")
 
-	fc.wg.Add(2)
-	// 리스너가 종료 되었을때
+	fc.wg.Add(1)
+
+	// 연결이 종료 되었을때
 	tcpDisconnectCh := make(chan struct{})
-	// 리스너가 종료되고 다음 연결을 기다릴때
-	TCPtoFairNodePendingCh := make(chan struct{})
-	// 외부에서 마이닝 miner.stop() 실행시
-	fromExitCh := make(chan struct{})
 
 	defer func() {
 		fc.tcpRunning = false
 		fmt.Println("andus >> TCPtoFairNode 죽음")
 	}()
 
-EXIT:
+Exit:
 	for {
 		select {
 		case <-fc.TcpConnStartCh:
@@ -34,24 +31,24 @@ EXIT:
 				fc.tcpRunning = true
 				fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
 
-				go fc.readLoop(tcpDisconnectCh)
-				go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
+				fmt.Println("andus >> sendFairnodeData 전송")
+				tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
+				msg.Send(msg.ReqLeagueJoinOK, tsf, conn)
+
+				go fc.tcpLoop(tcpDisconnectCh)
+				//go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
 
 			} else {
 				fmt.Println("andus >> GETH DialTCP 에러", err)
 				continue
 			}
-		case <-TCPtoFairNodePendingCh:
+		case <-tcpDisconnectCh:
 			// TODO : andus >> 패어노드와 커낵션이 끊어 졌을때
 			fc.TcpDialer.Close()
 			fc.tcpRunning = false
 			fmt.Println("andus >> TCPtoFairNode 패어노드와 연결이 끊어짐")
-
 		case <-fc.tcptoFairNodeExitCh:
-			// TODO : andus >> 패어노드와 커낵션이 없을때
-			return
-		case <-fromExitCh:
-			break EXIT
+			break Exit
 		}
 	}
 
@@ -108,7 +105,7 @@ EXIT:
 	//fc.FinalBlockCh <- &types.TransferBlock{}
 }
 
-func (fc *FairnodeClient) readLoop(tcpDisconnectCh chan struct{}) {
+func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 	defer func() {
 		fmt.Println("andus >> FairnodeClient ReadLoop 죽음")
 	}()
@@ -116,7 +113,7 @@ func (fc *FairnodeClient) readLoop(tcpDisconnectCh chan struct{}) {
 	data := make([]byte, 4096)
 	for {
 		select {
-		case <-fc.readLoopStopCh:
+		case <-fc.tcpConnStopCh:
 			fc.wg.Done()
 			return
 		default:
@@ -135,37 +132,44 @@ func (fc *FairnodeClient) readLoop(tcpDisconnectCh chan struct{}) {
 			}
 
 			if n > 0 {
-				fmt.Println("andus >> sendFairnodeData 수신")
-				fmt.Println(string(data[:n]))
+				fromFaionodeMsg := msg.ReadMsg(fc.TcpDialer)
+				switch fromFaionodeMsg.Code {
+				case msg.ResLeagueJoinFalse:
+					// 참여 불가, Dial Close
+					tcpDisconnectCh <- struct{}{}
+				case msg.ResLeagueJoinTrue:
+
+				}
+
 			}
 		}
 
 	}
 }
 
-func (fc *FairnodeClient) writeLoop(tcpDisconnectCh chan struct{}, pendingCh chan struct{}, exitCh chan struct{}) {
-
-	defer fmt.Println("andus >> FairnodeClient writeLoop 죽음")
-
-	for {
-		select {
-		case <-tcpDisconnectCh:
-			pendingCh <- struct{}{}
-			return
-		case <-fc.writeLoopStopCh:
-			exitCh <- struct{}{}
-			fc.wg.Done()
-			return
-		default:
-			fmt.Println("andus >> sendFairnodeData 전송")
-			tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
-
-			sendFairnodeData, err := rlp.EncodeToBytes(tsf)
-			if err != nil {
-				fmt.Println("andus >> sendFairnodeData 에러", err)
-			}
-			fc.TcpDialer.Write(sendFairnodeData)
-			time.Sleep(1 * time.Second)
-		}
-	}
-}
+//func (fc *FairnodeClient) writeLoop(tcpDisconnectCh chan struct{}, pendingCh chan struct{}, exitCh chan struct{}) {
+//
+//	defer fmt.Println("andus >> FairnodeClient writeLoop 죽음")
+//
+//	for {
+//		select {
+//		case <-tcpDisconnectCh:
+//			pendingCh <- struct{}{}
+//			return
+//		case <-fc.writeLoopStopCh:
+//			exitCh <- struct{}{}
+//			fc.wg.Done()
+//			return
+//		default:
+//			fmt.Println("andus >> sendFairnodeData 전송")
+//			tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
+//
+//			sendFairnodeData, err := rlp.EncodeToBytes(tsf)
+//			if err != nil {
+//				fmt.Println("andus >> sendFairnodeData 에러", err)
+//			}
+//			fc.TcpDialer.Write(sendFairnodeData)
+//			time.Sleep(1 * time.Second)
+//		}
+//	}
+//}

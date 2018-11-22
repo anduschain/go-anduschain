@@ -71,10 +71,23 @@ func (f *FairNode) readLoop(conn *net.TCPConn) {
 			if n > 0 {
 				var fromGeth fairtypes.TransferCheck
 				rlp.DecodeBytes(buf, &fromGeth)
-				fmt.Println(fromGeth.Enode.ID)
-				// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
-				// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
-				// TODO : andus >> 3. 참가 대상자인지 확인
+				if f.Db.CheckEnodeAndCoinbse(fromGeth.Enode.ID.String(), fromGeth.Coinbase.String()) {
+					// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
+					// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
+
+					if fairutil.IsJoinOK(fromGeth.Otprn, fromGeth.Coinbase) {
+						// TODO : 채굴 리그 생성
+
+					} else {
+						//// TODO : andus >> 참여 대상자가 아니다
+						//msg.Send(msg.ResLeagueJoinFalse, nil, conn)
+						//conn.Close() // 커넥션 종료
+					}
+				} else {
+					//// TODO : andus >> 리그 참여 정보가 다르다
+					//msg.Send(msg.ResLeagueJoinFalse, nil, conn)
+					//conn.Close() // 커넥션 종료
+				}
 			}
 		} else {
 			fmt.Println("andus >> readLoop 에러!!!!", err.Error())

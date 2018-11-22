@@ -2,10 +2,9 @@ package server
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
-	"github.com/anduschain/go-anduschain/rlp"
 	"log"
 	"net"
 	"time"
@@ -28,7 +27,7 @@ func (f *FairNode) manageActiveNode() {
 	for {
 		select {
 		case <-t.C:
-			// TODO : andus >> 1분이상 들어오지 않은 enode 지우기 (mongodb)
+			// TODO : andus >> 3분이상 들어오지 않은 enode 지우기 (mongodb)
 			f.Db.JobCheckActiveNode()
 		default:
 			f.UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
@@ -42,9 +41,14 @@ func (f *FairNode) manageActiveNode() {
 
 			if n > 0 {
 				// TODO : andus >> rlp enode 디코드
-				var fromGeth fairtypes.EnodeCoinbase
-				rlp.DecodeBytes(buf, &fromGeth)
-				f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
+				fromGethMsg := msg.ReadMsg(f.UdpConn)
+				switch fromGethMsg.Code {
+				case msg.SendEnode:
+					var fromGeth fairtypes.EnodeCoinbase
+					fromGethMsg.Decode(&fromGeth)
+					f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
+				}
+
 			}
 		}
 
@@ -78,18 +82,13 @@ func (f *FairNode) startLeague() {
 					log.Println("andus >> Otprn 서명 에러", err)
 				}
 
-				fmt.Println("andus >> sig 값", common.BytesToHash(sig).String())
-
 				tsOtp := fairtypes.TransferOtprn{
 					Otp:  *otp,
 					Sig:  sig,
 					Hash: otp.HashOtprn(),
 				}
 
-				ts, err := rlp.EncodeToBytes(tsOtp)
-				if err != nil {
-					log.Println("andus >> Otprn rlp 인코딩 에러", err)
-				}
+				fmt.Println(tsOtp)
 
 				activeNodeList := f.Db.GetActiveNodeList()
 				for index := range activeNodeList {
@@ -102,7 +101,7 @@ func (f *FairNode) startLeague() {
 						log.Println("andus >>", err)
 					}
 
-					Conn.Write(ts)
+					//msg.Send(msg.SendOTPRN, tsOtp, Conn)
 					Conn.Close()
 				}
 

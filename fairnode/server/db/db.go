@@ -31,15 +31,13 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	}
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode discv5.Node, addr *net.UDPAddr, coinbase common.Address) bool {
+func (fnb *FairNodeDB) SaveActiveNode(enode discv5.Node, addr *net.UDPAddr, coinbase common.Address) {
 
 	// addr => 실제 address
 	activenodeCol := fnb.Mongo.DB("AndusChain").C("ActiveNode")
 	activenodeCol.Insert(&activeNode{EnodeId: enode.ID.String(), Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now().UnixNano()})
 
 	log.Println("andus >> DB에 insert Or Update 호출")
-
-	return false
 }
 
 func (fnb *FairNodeDB) GetActiveNodeNum() int {
@@ -62,5 +60,10 @@ func (fnb *FairNodeDB) GetActiveNodeList() []string {
 
 func (fnb *FairNodeDB) JobCheckActiveNode() {
 	// TODO : Active Node 관리 (주기 : 3분)..
+}
 
+func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) bool {
+	// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
+	// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
+	return true
 }
