@@ -132,7 +132,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 			}
 
 			if n > 0 {
-				fromFaionodeMsg := msg.ReadMsg(fc.TcpDialer)
+				fromFaionodeMsg := msg.ReadMsg(data)
 				switch fromFaionodeMsg.Code {
 				case msg.ResLeagueJoinFalse:
 					// 참여 불가, Dial Close

@@ -41,7 +41,7 @@ func (f *FairNode) manageActiveNode() {
 
 			if n > 0 {
 				// TODO : andus >> rlp enode 디코드
-				fromGethMsg := msg.ReadMsg(f.UdpConn)
+				fromGethMsg := msg.ReadMsg(buf)
 				switch fromGethMsg.Code {
 				case msg.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase

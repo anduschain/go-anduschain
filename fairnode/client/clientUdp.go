@@ -111,7 +111,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 			if n > 0 {
 				// TODO : andus >> 수신된 otprn디코딩
 
-				fromFairnodeMsg := msg.ReadMsg(localServerConn)
+				fromFairnodeMsg := msg.ReadMsg(tsOtprnByte)
 				switch fromFairnodeMsg.Code {
 				case msg.SendOTPRN:
 					var tsOtprn fairtypes.TransferOtprn
