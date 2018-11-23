@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"gopkg.in/mgo.v2"
 	"log"
@@ -34,7 +35,7 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, addr *net.UDPAddr, coinbase 
 
 	// addr => 실제 address
 	activenodeCol := fnb.Mongo.DB("AndusChain").C("ActiveNode")
-	activenodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now().UnixNano()})
+	activenodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now()})
 
 	log.Println("andus >> DB에 insert Or Update 호출")
 }
@@ -64,5 +65,11 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) bool {
 	// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 	// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
-	return false
+
+	fmt.Println("andus >> CheckEnodeAndCoinbse call")
+	return true
+}
+
+func (fnb *FairNodeDB) SaveMinerNode(otprnNum uint64, enode string) {
+	// TODO : andus >> 실제 TCP에 접속한 채굴마이너를 저장
 }

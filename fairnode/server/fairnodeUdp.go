@@ -71,7 +71,7 @@ func (f *FairNode) startLeague() {
 					log.Println("andus >> Otprn 생성 에러", err)
 				}
 
-				//f.LeagueRunningOK = true
+				f.LeagueRunningOK = true
 
 				// TODO : andus >> otprn을 서명
 				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)

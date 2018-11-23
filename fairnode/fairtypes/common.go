@@ -4,7 +4,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
-	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
@@ -22,7 +21,7 @@ type TransferOtprn struct {
 type TransferCheck struct {
 	Otprn    otprn.Otprn
 	Coinbase common.Address
-	Enode    discv5.Node
+	Enode    string
 }
 
 func (tsf *TransferCheck) Hash() common.Hash {

@@ -12,8 +12,8 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
-	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"log"
+	"math/big"
 	"net"
 	"sync"
 )
@@ -21,6 +21,10 @@ import (
 const (
 	TcpStop = iota
 	StopTCPtoFairNode
+
+	// TODO : andus >> Fair Node Address
+	FAIRNODE_ADDRESS = "0xd565fa535b187291bd7f87e4e4dc574058900dc6"
+	TICKET_PRICE     = 100
 )
 
 type FairnodeClient struct {
@@ -51,7 +55,6 @@ type FairnodeClient struct {
 	tcptoFairNodeExitCh chan int
 	tcpConnStopCh       chan int
 
-	Enode      *discv5.Node
 	tcpRunning bool
 	TcpDialer  *net.TCPConn
 
@@ -152,4 +155,13 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	}
 
 	return stateDb.GetJoinNonce(*fc.Coinbase)
+}
+
+func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
+	stateDb, err := fc.BlockChain.State()
+	if err != nil {
+		log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
+	}
+
+	return stateDb.GetBalance(*fc.Coinbase)
 }

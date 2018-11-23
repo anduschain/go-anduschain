@@ -7,7 +7,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"net"
-	"time"
 )
 
 func (f *FairNode) ListenTCP() {
@@ -21,7 +20,6 @@ func (f *FairNode) ListenTCP() {
 		}
 
 		go f.tcpLoop(conn)
-		//go f.writeLoop(conn)
 	}
 
 	//go f.sendLeague()
@@ -75,14 +73,15 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 				case msg.ReqLeagueJoinOK:
 					var tsf fairtypes.TransferCheck
 					fromGethMsg.Decode(&tsf)
-					if f.Db.CheckEnodeAndCoinbse(tsf.Enode.ID.String(), tsf.Coinbase.String()) {
+					if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-
+							f.Db.SaveMinerNode(tsf.Otprn.Num, tsf.Enode)
+							msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
 						} else {
 							// TODO : andus >> 참여 대상자가 아니다
 							msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
@@ -102,14 +101,6 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 			fmt.Println("andus >> readLoop 에러!!!!", err.Error())
 			continue
 		}
-	}
-
-}
-
-func (f *FairNode) writeLoop(conn *net.TCPConn) {
-	for {
-		conn.Write([]byte("넌 들어올 자격이 있어 ㅎㅎㅎ"))
-		time.Sleep(1 * time.Second)
 	}
 
 }

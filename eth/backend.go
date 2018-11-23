@@ -485,7 +485,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
 
-	// TODO : andus >> P2P server
+	// TODO : andus >> P2P server를 fairclient로 넘기기 위해 사용
 	s.Serv = srvr
 
 	// Start the RPC service
