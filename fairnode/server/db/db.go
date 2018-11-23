@@ -3,14 +3,16 @@ package db
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"log"
-	"net"
 	"time"
 )
 
 type FairNodeDB struct {
-	Mongo *mgo.Session
+	Mongo         *mgo.Session
+	ActiveNodeCol *mgo.Collection
 }
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
@@ -27,39 +29,62 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	session.SetMode(mgo.Monotonic, true)
 
 	return &FairNodeDB{
-		Mongo: session,
+		Mongo:         session,
+		ActiveNodeCol: session.DB("AndusChain").C("ActiveNode"),
 	}
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode string, addr *net.UDPAddr, coinbase common.Address) {
-
+func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address) {
 	// addr => 실제 address
-	activenodeCol := fnb.Mongo.DB("AndusChain").C("ActiveNode")
-	activenodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now()})
-
-	log.Println("andus >> DB에 insert Or Update 호출")
+	node, err := discv5.ParseNode(enode)
+	if err != nil {
+		fmt.Println("andus >> 노드 url 파싱에러 : ", err)
+	}
+	if n, _ := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enode}).Count(); n > 0 {
+		return
+	} else {
+		err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now()})
+		if err != nil {
+			fmt.Println("andus >> SaveActiveNode error : ", err)
+		}
+	}
 }
 
 func (fnb *FairNodeDB) GetActiveNodeNum() int {
 
+	num, err := fnb.ActiveNodeCol.Find(nil).Count()
+	if err != nil {
+		fmt.Println("andus >> GetActiveNodeNum err : ", err)
+	}
 	// TODO : andus >> DB에서 Active node 갯수 조회
-	log.Println("andus >> Db.GetActiveNodeNum")
+	log.Println("andus >> Db.GetActiveNodeNum : ", num)
 
+	//return num
 	return 3
+	// TODO : test 필요
 }
 
-func (fnb *FairNodeDB) GetActiveNodeList() []string {
+func (fnb *FairNodeDB) GetActiveNodeList() []activeNode {
 
 	// TODO : andus >> DB에서 Active node 리스트를 조회
 	log.Println("andus >> Db.GetActiveNodeList")
 
+	var enodeid []activeNode
 	//return example //[]string{"121.134.35.45:50002"}
+	var test []string
 
-	return []string{"121.134.35.45:50002", "121.134.35.45:50003"}
+	// TODO : andus >> mongodb에서 enode만 가져오기
+	fnb.ActiveNodeCol.Find(nil).All(&enodeid)
+	fnb.ActiveNodeCol.Find(nil).Select(&enodeid)
+	fmt.Println("엑티브노드들 enodeid : ", test)
+	return enodeid
 }
 
 func (fnb *FairNodeDB) JobCheckActiveNode() {
 	// TODO : Active Node 관리 (주기 : 3분)..
+
+	fmt.Println(fnb.ActiveNodeCol.Find(bson.M{"time": true}))
+
 }
 
 func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) bool {

@@ -31,7 +31,7 @@ func (f *FairNode) manageActiveNode() {
 			f.Db.JobCheckActiveNode()
 		default:
 			f.UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
-			n, addr, err := f.UdpConn.ReadFromUDP(buf)
+			n, _, err := f.UdpConn.ReadFromUDP(buf)
 			if err != nil {
 				fmt.Println("andus >>", err)
 				if err.(net.Error).Timeout() {
@@ -40,13 +40,13 @@ func (f *FairNode) manageActiveNode() {
 			}
 
 			if n > 0 {
-				// TODO : andus >> rlp enode 디코드
 				fromGethMsg := msg.ReadMsg(buf)
 				switch fromGethMsg.Code {
 				case msg.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					fromGethMsg.Decode(&fromGeth)
-					f.Db.SaveActiveNode(fromGeth.Enode, addr, fromGeth.Coinbase)
+					f.Db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase)
+
 				}
 
 			}
@@ -87,7 +87,7 @@ func (f *FairNode) startLeague() {
 
 				activeNodeList := f.Db.GetActiveNodeList()
 				for index := range activeNodeList {
-					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
+					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index].Ip+":50002")
 					if err != nil {
 						log.Println("andus >>", err)
 					}

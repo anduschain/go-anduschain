@@ -34,7 +34,7 @@ func (fc *FairnodeClient) submitEnode() {
 	defer fc.wg.Done()
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
-	t := time.NewTicker(5 * time.Second)
+	t := time.NewTicker(60 * time.Second)
 	ts := fairtypes.EnodeCoinbase{fc.Srv.NodeInfo().Enode, *fc.Coinbase}
 
 	if err := msg.Send(msg.SendEnode, ts, Conn); err != nil {

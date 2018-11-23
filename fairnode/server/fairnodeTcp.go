@@ -73,6 +73,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 				case msg.ReqLeagueJoinOK:
 					var tsf fairtypes.TransferCheck
 					fromGethMsg.Decode(&tsf)
+					fmt.Println("andus >> CheckEnodeAndCoinbse", tsf.Enode, tsf.Coinbase.String())
 					if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
@@ -98,8 +99,13 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 
 			}
 		} else {
-			fmt.Println("andus >> readLoop 에러!!!!", err.Error())
-			continue
+			if err.Error() == "EOF" {
+				conn.Close() // 커넥션 종료
+				return
+			} else {
+				fmt.Println("andus >> readLoop 에러!!!!", err.Error())
+				continue
+			}
 		}
 	}
 
