@@ -29,14 +29,10 @@ Exit:
 			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
 				fc.TcpDialer = conn
 				fc.tcpRunning = true
-				fmt.Println("andus >> TCPtoFairNode 채녈 들어옴")
-
-				fmt.Println("andus >> sendFairnodeData 전송")
 				tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
 				msg.Send(msg.ReqLeagueJoinOK, tsf, conn)
 
 				go fc.tcpLoop(tcpDisconnectCh)
-				//go fc.writeLoop(tcpDisconnectCh, TCPtoFairNodePendingCh, fromExitCh)
 
 			} else {
 				fmt.Println("andus >> GETH DialTCP 에러", err)
@@ -48,6 +44,7 @@ Exit:
 			fc.tcpRunning = false
 			fmt.Println("andus >> TCPtoFairNode 패어노드와 연결이 끊어짐")
 		case <-fc.tcptoFairNodeExitCh:
+			fc.wg.Done()
 			break Exit
 		}
 	}
@@ -107,7 +104,8 @@ Exit:
 
 func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 	defer func() {
-		fmt.Println("andus >> FairnodeClient ReadLoop 죽음")
+		fmt.Println("andus >> FairnodeClient tcpLoop 죽음")
+
 	}()
 
 	data := make([]byte, 4096)
@@ -137,7 +135,9 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 				case msg.ResLeagueJoinFalse:
 					// 참여 불가, Dial Close
 					tcpDisconnectCh <- struct{}{}
+					return
 				case msg.ResLeagueJoinTrue:
+					// 참여 가능
 
 				}
 
@@ -146,30 +146,3 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 
 	}
 }
-
-//func (fc *FairnodeClient) writeLoop(tcpDisconnectCh chan struct{}, pendingCh chan struct{}, exitCh chan struct{}) {
-//
-//	defer fmt.Println("andus >> FairnodeClient writeLoop 죽음")
-//
-//	for {
-//		select {
-//		case <-tcpDisconnectCh:
-//			pendingCh <- struct{}{}
-//			return
-//		case <-fc.writeLoopStopCh:
-//			exitCh <- struct{}{}
-//			fc.wg.Done()
-//			return
-//		default:
-//			fmt.Println("andus >> sendFairnodeData 전송")
-//			tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, *fc.Enode}
-//
-//			sendFairnodeData, err := rlp.EncodeToBytes(tsf)
-//			if err != nil {
-//				fmt.Println("andus >> sendFairnodeData 에러", err)
-//			}
-//			fc.TcpDialer.Write(sendFairnodeData)
-//			time.Sleep(1 * time.Second)
-//		}
-//	}
-//}

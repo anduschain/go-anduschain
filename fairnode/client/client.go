@@ -11,6 +11,7 @@ import (
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"log"
 	"net"
@@ -50,14 +51,14 @@ type FairnodeClient struct {
 	tcptoFairNodeExitCh chan int
 	tcpConnStopCh       chan int
 
-	NodeKey *ecdsa.PrivateKey
-
 	Enode      *discv5.Node
 	tcpRunning bool
 	TcpDialer  *net.TCPConn
+
+	Srv *p2p.Server
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool, srv *p2p.Server) *FairnodeClient {
 
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
 
@@ -101,17 +102,17 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		tcptoFairNodeExitCh: make(chan int),
 		tcpConnStopCh:       make(chan int),
 		tcpRunning:          false,
+		Srv:                 srv,
 	}
 
 	return fcClient
 }
 
 //TODO : andus >> fairNode 관련 함수....
-func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, NodeKey *ecdsa.PrivateKey) error {
+func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore) error {
 	fc.Running = true
 	fc.keystore = ks
 	fc.Coinbase = coinbase
-	fc.NodeKey = NodeKey
 
 	if unlockedKey := fc.keystore.GetUnlockedPrivKey(*coinbase); unlockedKey == nil {
 		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")

@@ -285,7 +285,6 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// TODO : andus >> keystore eth에 추가
 	for key, _ := range stack.GetServices() {
 		if eth, ok := stack.GetServices()[key].(*eth.Ethereum); ok {
-
 			fmt.Println("andus >> keystore 추가")
 			eth.Keystore = ks
 		}

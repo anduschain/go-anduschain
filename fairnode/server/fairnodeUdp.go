@@ -66,9 +66,6 @@ func (f *FairNode) startLeague() {
 			actNum := f.Db.GetActiveNodeNum()
 			if !f.LeagueRunningOK && actNum >= 3 {
 				// TODO : andus >> otprn을 생성
-
-				log.Println("andus >> otprn 생성")
-
 				otp, err = otprn.New(11)
 				if err != nil {
 					log.Println("andus >> Otprn 생성 에러", err)
@@ -88,8 +85,6 @@ func (f *FairNode) startLeague() {
 					Hash: otp.HashOtprn(),
 				}
 
-				fmt.Println(tsOtp)
-
 				activeNodeList := f.Db.GetActiveNodeList()
 				for index := range activeNodeList {
 					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index])
@@ -100,8 +95,7 @@ func (f *FairNode) startLeague() {
 					if err != nil {
 						log.Println("andus >>", err)
 					}
-
-					//msg.Send(msg.SendOTPRN, tsOtp, Conn)
+					msg.Send(msg.SendOTPRN, tsOtp, Conn)
 					Conn.Close()
 				}
 

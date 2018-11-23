@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
 	"net"
 	"time"
 )
@@ -20,8 +20,8 @@ func (f *FairNode) ListenTCP() {
 			fmt.Println("andus >> f.TcpConn.Accept 에러!!", err)
 		}
 
-		go f.readLoop(conn)
-		go f.writeLoop(conn)
+		go f.tcpLoop(conn)
+		//go f.writeLoop(conn)
 	}
 
 	//go f.sendLeague()
@@ -64,30 +64,39 @@ func (f *FairNode) ListenTCP() {
 	//}()
 }
 
-func (f *FairNode) readLoop(conn *net.TCPConn) {
+func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 	buf := make([]byte, 4096)
 	for {
 		if n, err := conn.Read(buf); err == nil {
 			if n > 0 {
-				var fromGeth fairtypes.TransferCheck
-				rlp.DecodeBytes(buf, &fromGeth)
-				if f.Db.CheckEnodeAndCoinbse(fromGeth.Enode.ID.String(), fromGeth.Coinbase.String()) {
-					// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
-					// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 
-					if fairutil.IsJoinOK(fromGeth.Otprn, fromGeth.Coinbase) {
-						// TODO : 채굴 리그 생성
+				fromGethMsg := msg.ReadMsg(buf)
+				switch fromGethMsg.Code {
+				case msg.ReqLeagueJoinOK:
+					var tsf fairtypes.TransferCheck
+					fromGethMsg.Decode(&tsf)
+					if f.Db.CheckEnodeAndCoinbse(tsf.Enode.ID.String(), tsf.Coinbase.String()) {
+						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
+						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 
+						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
+							// TODO : 채굴 리그 생성
+							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
+
+						} else {
+							// TODO : andus >> 참여 대상자가 아니다
+							msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
+							conn.Close() // 커넥션 종료
+							return
+						}
 					} else {
-						//// TODO : andus >> 참여 대상자가 아니다
-						//msg.Send(msg.ResLeagueJoinFalse, nil, conn)
-						//conn.Close() // 커넥션 종료
+						// TODO : andus >> 리그 참여 정보가 다르다
+						msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
+						conn.Close() // 커넥션 종료
+						return
 					}
-				} else {
-					//// TODO : andus >> 리그 참여 정보가 다르다
-					//msg.Send(msg.ResLeagueJoinFalse, nil, conn)
-					//conn.Close() // 커넥션 종료
 				}
+
 			}
 		} else {
 			fmt.Println("andus >> readLoop 에러!!!!", err.Error())

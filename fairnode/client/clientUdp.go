@@ -37,10 +37,17 @@ func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(5 * time.Second)
 
-	fc.Enode = discv5.NewTable(discv5.PubkeyID(&fc.NodeKey.PublicKey), fc.LAddrUDP)
+	nodeAddr, err := net.ResolveUDPAddr("udp", fc.Srv.ListenAddr) // 전송 60002 121.156.104.249 // 121.134.35.45
+	if err != nil {
+		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
+	}
+
+	fc.Enode = discv5.NewTable(discv5.PubkeyID(&fc.Srv.PrivateKey.PublicKey), nodeAddr)
+
 	ts := fairtypes.EnodeCoinbase{*fc.Enode, *fc.Coinbase}
 
-	fmt.Println("andus >> Enode 전송")
+	fmt.Println("andus >> ", fc.Enode.String())
+
 	if err := msg.Send(msg.SendEnode, ts, Conn); err != nil {
 		fmt.Println("andus >>>>>>", err)
 	}
@@ -114,6 +121,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 				fromFairnodeMsg := msg.ReadMsg(tsOtprnByte)
 				switch fromFairnodeMsg.Code {
 				case msg.SendOTPRN:
+
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
 

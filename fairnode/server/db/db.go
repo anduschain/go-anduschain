@@ -65,5 +65,5 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) bool {
 	// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 	// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
-	return true
+	return false
 }
