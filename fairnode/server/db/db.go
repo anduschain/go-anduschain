@@ -2,7 +2,6 @@ package db
 
 import (
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"gopkg.in/mgo.v2"
 	"log"
 	"net"
@@ -31,11 +30,11 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	}
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode discv5.Node, addr *net.UDPAddr, coinbase common.Address) {
+func (fnb *FairNodeDB) SaveActiveNode(enode string, addr *net.UDPAddr, coinbase common.Address) {
 
 	// addr => 실제 address
 	activenodeCol := fnb.Mongo.DB("AndusChain").C("ActiveNode")
-	activenodeCol.Insert(&activeNode{EnodeId: enode.ID.String(), Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now().UnixNano()})
+	activenodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr.IP.String(), Time: time.Now().UnixNano()})
 
 	log.Println("andus >> DB에 insert Or Update 호출")
 }

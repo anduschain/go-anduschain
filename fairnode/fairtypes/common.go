@@ -9,7 +9,7 @@ import (
 )
 
 type EnodeCoinbase struct {
-	Node     discv5.Node
+	Enode    string
 	Coinbase common.Address
 }
 

@@ -46,7 +46,7 @@ func (f *FairNode) manageActiveNode() {
 				case msg.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					fromGethMsg.Decode(&fromGeth)
-					f.Db.SaveActiveNode(fromGeth.Node, addr, fromGeth.Coinbase)
+					f.Db.SaveActiveNode(fromGeth.Enode, addr, fromGeth.Coinbase)
 				}
 
 			}
