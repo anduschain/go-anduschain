@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"github.com/mongodb/mongo-go-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 	"testing"
 )
 
@@ -32,4 +32,30 @@ func TestFairNodeDB_SaveOtprn(t *testing.T) {
 	fmt.Println(save.TsOtprn.Hash == save.TsOtprn.Otp.HashOtprn())
 
 	defer session.Mongo.Close()
+}
+
+func TestFairNodeDB_SaveMinerNode(t *testing.T) {
+	defer session.Mongo.Close()
+
+	testList := []struct {
+		otprnHash string
+		enode     string
+	}{
+		{"0x82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8daf0",
+			"enode://152a309b1c09bf3989295062e379c0f28e7ae814aed34f291f3c856f46aadde3e20d4c08f6e238b9f65b242b08b76c88bdaf97ecf386e869eba24711adca0c1f@121.134.35.45:30303"},
+		{"0x82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8daf0",
+			"enode://152a309b1c09bf3989295062e379c0f28e7ae814aed34f291f3c856f46aadde3e20d4c08f6e238b9f65b242b08b76c88bdaf97ecf386e869eba24711adca0c1f@121.134.35.45:30303"},
+		{"0x82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8daf0",
+			"enode://152a309b1c09bf3989295062e379c0f28e7ae814aed34f291f3c856f46aadde3e20d4c08f6e238b9f65b242b08b76c88bdaf97ecf386e869eba24711adca0c1f@121.134.35.45:30303"},
+		{"0x82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8daf0",
+			"enode://152a309b1c09bf3989295062e379c0f28e7ae814aed34f291f3c856f46aadde3e20d4c08f6e238b9f65b242b08b76c88bdaf97ecf386e869eba24711adca0c1f@121.134.35.45:30303"},
+	}
+
+	for i := range testList {
+		session.SaveMinerNode(testList[i].otprnHash, testList[i].enode)
+	}
+}
+
+func TestFairNodeDB_JobCheckActiveNode(t *testing.T) {
+
 }

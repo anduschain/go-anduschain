@@ -116,12 +116,14 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 	// TODO : andus >> 실제 TCP에 접속한 채굴마이너를 저장
 	if n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count(); n > 0 {
-		err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"nodes": bson.M{"$push": enode}})
+		fmt.Println("Update")
+		err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
 		if err != nil {
 			fmt.Println("andus >> MinerNodeUpdate err : ", err)
 		}
 	} else {
 		err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
+		fmt.Println("Insert")
 		if err != nil {
 			fmt.Println("andus >> MinerNodeInsert err : ", err)
 		}
