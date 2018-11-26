@@ -34,6 +34,10 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 	}
 }
 
+func TestDB() {
+
+}
+
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address) {
 	// addr => 실제 address
 	node, err := discv5.ParseNode(enode)
