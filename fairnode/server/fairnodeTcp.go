@@ -81,7 +81,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-							f.Db.SaveMinerNode(tsf.Otprn.Num, tsf.Enode)
+							f.Db.SaveMinerNode(tsf.Otprn.HashOtprn().String(), tsf.Enode)
 							msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
 						} else {
 							// TODO : andus >> 참여 대상자가 아니다

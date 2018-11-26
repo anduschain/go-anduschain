@@ -84,6 +84,8 @@ func (f *FairNode) startLeague() {
 					Sig:  sig,
 					Hash: otp.HashOtprn(),
 				}
+				// andus >> OTPRN DB 저장
+				f.Db.SaveOtprn(tsOtp)
 
 				activeNodeList := f.Db.GetActiveNodeList()
 				for index := range activeNodeList {
