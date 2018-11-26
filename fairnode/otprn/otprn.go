@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	Mminer = 11 // TODO : andus >> 최대 채굴 참여 가능인원
+	Mminer = 2 // TODO : andus >> 최대 채굴 참여 가능인원
 )
 
 var (

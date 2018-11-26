@@ -12,7 +12,7 @@ func IsJoinOK(otprn otprn.Otprn, addr common.Address) bool {
 		div := uint64(otprn.Cminer / otprn.Mminer)
 		source := mrand.NewSource(makeSeed(otprn.Rand, addr))
 		rnd := mrand.New(source)
-		rand := rnd.Int()%1000000 + 1
+		rand := rnd.Int()%int(otprn.Cminer) + 1
 
 		// TODO : andus >> Mminer > Cminer
 		if div > 0 {
