@@ -8,7 +8,6 @@ import (
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
 	"log"
-	"math/big"
 	"time"
 )
 
@@ -22,15 +21,16 @@ var (
 
 type Otprn struct {
 	Num       uint64
-	Rand      uint64
+	Rand      [20]byte
 	Cminer    uint64
 	Mminer    uint64
 	TimeStamp uint64
 }
 
-func New(Cminer uint64) (*Otprn, error) {
+func New(Cminer uint64) *Otprn {
 
-	nBig, err := crand.Int(crand.Reader, big.NewInt(9999999999999))
+	var rand [20]byte
+	_, err := crand.Read(rand[:])
 	if err != nil {
 		log.Println("andus >> rand값 에러", err)
 	}
@@ -42,9 +42,9 @@ func New(Cminer uint64) (*Otprn, error) {
 		Num:       *OtprnNum,
 		Mminer:    Mminer,
 		Cminer:    Cminer,
-		Rand:      nBig.Uint64(),
+		Rand:      rand,
 		TimeStamp: uint64(time.Now().UnixNano()),
-	}, nil
+	}
 }
 
 func (otprn *Otprn) CheckOtprn(aa string) (*Otprn, error) {

@@ -58,20 +58,15 @@ func (f *FairNode) manageActiveNode() {
 // otprn 생성, 서명, 전송 ( 3초 반복, active node >= 3, LeagueRunningOK == false // 고루틴 )
 func (f *FairNode) startLeague() {
 	var otp *otprn.Otprn
-	var err error
 	t := time.NewTicker(3 * time.Second)
 	for {
 		select {
 		case <-t.C:
 			actNum := f.Db.GetActiveNodeNum()
 			if !f.LeagueRunningOK && actNum >= 3 {
-				// TODO : andus >> otprn을 생성
-				otp, err = otprn.New(11)
-				if err != nil {
-					log.Println("andus >> Otprn 생성 에러", err)
-				}
 
-				f.LeagueRunningOK = true
+				activeNodeNum := uint64(f.Db.GetActiveNodeNum())
+				otp = otprn.New(activeNodeNum)
 
 				// TODO : andus >> otprn을 서명
 				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
@@ -87,20 +82,25 @@ func (f *FairNode) startLeague() {
 				// andus >> OTPRN DB 저장
 				f.Db.SaveOtprn(tsOtp)
 
-				activeNodeList := f.Db.GetActiveNodeList()
-				for index := range activeNodeList {
-					ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index].Ip+":50002")
-					if err != nil {
-						log.Println("andus >>", err)
-					}
-					Conn, err := net.DialUDP("udp", nil, ServerAddr)
-					if err != nil {
-						log.Println("andus >>", err)
-					}
-					msg.Send(msg.SendOTPRN, tsOtp, Conn)
-					Conn.Close()
-				}
+				// FIXME : 채굴 참여 희망 노드수가 0보다 작으면... 처리가
+				if activeNodeNum > 0 {
 
+					f.LeagueRunningOK = true
+
+					activeNodeList := f.Db.GetActiveNodeList()
+					for index := range activeNodeList {
+						ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index].Ip+":50002")
+						if err != nil {
+							log.Println("andus >>", err)
+						}
+						Conn, err := net.DialUDP("udp", nil, ServerAddr)
+						if err != nil {
+							log.Println("andus >>", err)
+						}
+						msg.Send(msg.SendOTPRN, tsOtp, Conn)
+						Conn.Close()
+					}
+				}
 			}
 		}
 	}
