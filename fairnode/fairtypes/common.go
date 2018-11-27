@@ -10,6 +10,7 @@ import (
 type EnodeCoinbase struct {
 	Enode    string
 	Coinbase common.Address
+	Port     string
 }
 
 type TransferOtprn struct {

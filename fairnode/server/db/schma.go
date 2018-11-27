@@ -10,6 +10,7 @@ type activeNode struct {
 	Coinbase string
 	Ip       string
 	Time     time.Time
+	Port     string
 }
 
 type minerNode struct {

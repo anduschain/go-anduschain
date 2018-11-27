@@ -35,7 +35,7 @@ func (fc *FairnodeClient) submitEnode() {
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
-	ts := fairtypes.EnodeCoinbase{fc.Srv.NodeInfo().Enode, *fc.Coinbase}
+	ts := fairtypes.EnodeCoinbase{fc.Srv.NodeInfo().Enode, *fc.Coinbase, DefaultConfig.ClientPort}
 
 	if err := msg.Send(msg.SendEnode, ts, Conn); err != nil {
 		fmt.Println("andus >>>>>>", err)

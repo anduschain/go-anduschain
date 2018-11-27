@@ -14,6 +14,8 @@ func (f *FairNode) ListenTCP() {
 
 	log.Println("ListenTCP 리슨TCP")
 
+	go f.sendLeague()
+
 	for {
 		conn, err := f.TcpConn.AcceptTCP()
 		if err != nil {
@@ -23,7 +25,6 @@ func (f *FairNode) ListenTCP() {
 		go f.tcpLoop(conn)
 	}
 
-	//go f.sendLeague()
 	//
 	//// TODO : andus >> 위닝블록이 수신되는 곳 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	//// TODO : andus >> 1. 수신 블록 검증 ( sig, hash )
@@ -68,7 +69,6 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 	for {
 		if n, err := conn.Read(buf); err == nil {
 			if n > 0 {
-
 				fromGethMsg := msg.ReadMsg(buf)
 				switch fromGethMsg.Code {
 				case msg.ReqLeagueJoinOK:
@@ -113,6 +113,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 }
 
 func (f *FairNode) sendLeague() {
+
 	for {
 		<-f.startSignalCh
 

@@ -50,7 +50,7 @@ func New(dbhost string, dbport string, pwd string, user string) (*FairNodeDB, er
 	}, nil
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address) {
+func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string) {
 	// addr => 실제 address
 	node, err := discv5.ParseNode(enode)
 	if err != nil {
@@ -63,7 +63,7 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address) {
 			fmt.Println("andus >> Update err : ", err)
 		}
 	} else {
-		err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now()})
+		err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport})
 		if err != nil {
 			fmt.Println("andus >> SaveActiveNode error : ", err)
 		}
@@ -142,4 +142,10 @@ func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {
 	if err != nil {
 		log.Println("andus >> saveotprn err : ", err)
 	}
+}
+
+func (fnb *FairNodeDB) GetMinerNode(otprnHash string) minerNode {
+	var minerlist minerNode
+	fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).One(&minerlist)
+	return minerlist
 }

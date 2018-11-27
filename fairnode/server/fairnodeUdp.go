@@ -44,13 +44,10 @@ func (f *FairNode) manageActiveNode() {
 				case msg.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					fromGethMsg.Decode(&fromGeth)
-					f.Db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase)
-
+					f.Db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port)
 				}
-
 			}
 		}
-
 	}
 }
 
@@ -81,15 +78,12 @@ func (f *FairNode) startLeague() {
 				// andus >> OTPRN DB 저장
 				f.Db.SaveOtprn(tsOtp)
 
-				// FIXME : 채굴 참여 희망 노드수가 0보다 작으면... 처리가
 				if activeNodeNum > 0 {
-
 					f.LeagueRunningOK = true
-
 					activeNodeList := f.Db.GetActiveNodeList()
 					for index := range activeNodeList {
-						// FIXME : -->
-						ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index].Ip+":50002")
+						url := activeNodeList[index].Ip + ":" + activeNodeList[index].Port
+						ServerAddr, err := net.ResolveUDPAddr("udp", url)
 						if err != nil {
 							log.Println("ResolveUDPAddr", err)
 						}
