@@ -6,6 +6,7 @@ import (
 	mrand "math/rand"
 )
 
+// OS 영향 받지 않게 rand값을 추출 하기 위해서 "math/rand" 사용
 func IsJoinOK(otprn otprn.Otprn, addr common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
 	if otprn.Mminer > 0 {

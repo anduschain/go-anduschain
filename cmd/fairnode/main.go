@@ -8,11 +8,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 )
 
 var app *cli.App
+var keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
 
 func init() {
 	var w sync.WaitGroup
@@ -29,28 +31,26 @@ func init() {
 		},
 		cli.StringFlag{
 			Name:  "dbport",
-			Value: "63018",
+			Value: "27017",
 			Usage: "default dbport 63018",
 		},
 		cli.StringFlag{
-			Name:  "tcp",
-			Value: "60001",
-			Usage: "default tcp port 60001",
+			Name:  "dbpass",
+			Usage: "MongoDB pass",
 		},
 		cli.StringFlag{
-			Name:  "udp",
+			Name:  "port",
 			Value: "60002",
-			Usage: "default udp port 60002",
+			Usage: "default port 60002",
 		},
 		cli.StringFlag{
 			Name:  "keypath",
-			Value: os.Getenv("HOME") + "/.fairnode/key",
-			Usage: "default keystore path $HOME/.fairnode/key",
+			Value: keypath,
+			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
 		cli.StringFlag{
-			Name:  "password",
-			Value: "11111",
-			Usage: "11111",
+			Name:  "keypass",
+			Usage: "Unlock Key file pass",
 		},
 		cli.StringFlag{
 			Name:  "nat",
@@ -79,15 +79,22 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
-		log.Println(" @ Action START !! ")
+		log.Println("패어노드 시작")
 
-		fn, err := server.New(c)
+		// Config Setting
+		server.SetFairConfig(c)
+
+		fn, err := server.New()
 		if err != nil {
-			log.Fatal("andus >> Fairnode running error", err)
+			log.Fatalln("Fairnode running error", err)
 			return err
 		}
 
-		fn.Start()
+		if err := fn.Start(); err == nil {
+			log.Println("퍠어노드 정상적으로 시작됨")
+		} else {
+			log.Println("퍠어노드 시작 에러", err)
+		}
 
 		w.Wait()
 
@@ -102,7 +109,7 @@ func init() {
 				<-sigc
 				fn.StopCh <- struct{}{}
 				if i > 1 {
-					log.Println("andus >> Already shutting down, interrupt more to panic.", "times", i-1)
+					log.Println("andus >> Already shutting down, interrupt more to panic. times", i-1)
 				}
 			}
 			w.Done()
@@ -116,7 +123,7 @@ func init() {
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Println("App Run Error ", os.Stderr, err)
 		os.Exit(1)
 	}
 }

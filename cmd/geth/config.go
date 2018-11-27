@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/client"
 	"io"
 	"os"
 	"reflect"
@@ -80,6 +81,8 @@ type gethConfig struct {
 	Node      node.Config
 	Ethstats  ethstatsConfig
 	Dashboard dashboard.Config
+	// andus >> FairNode add
+	FairNode fairnodeclient.Config
 }
 
 func loadConfig(file string, cfg *gethConfig) error {
@@ -114,6 +117,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		Shh:       whisper.DefaultConfig,
 		Node:      defaultNodeConfig(),
 		Dashboard: dashboard.DefaultConfig,
+		FairNode:  fairnodeclient.DefaultConfig,
 	}
 
 	// Load config file.
@@ -136,6 +140,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 
 	utils.SetShhConfig(ctx, stack, &cfg.Shh)
 	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
+
+	// andus >> faior ctx 설정
+	utils.SetFairNodeConfig(ctx, &cfg.FairNode)
 
 	return stack, cfg
 }

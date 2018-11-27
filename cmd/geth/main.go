@@ -164,6 +164,12 @@ var (
 		utils.MetricsInfluxDBPasswordFlag,
 		utils.MetricsInfluxDBHostTagFlag,
 	}
+
+	fairclientFlages = []cli.Flag{
+		utils.FairclientPort,
+		utils.FairserverIP,
+		utils.FairserverPort,
+	}
 )
 
 func init() {
@@ -207,6 +213,7 @@ func init() {
 	app.Flags = append(app.Flags, debug.Flags...)
 	app.Flags = append(app.Flags, whisperFlags...)
 	app.Flags = append(app.Flags, metricsFlags...)
+	app.Flags = append(app.Flags, fairclientFlages...) // andus >> fairnode 통신용 포트셋팅
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())
@@ -285,7 +292,6 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// TODO : andus >> keystore eth에 추가
 	for key, _ := range stack.GetServices() {
 		if eth, ok := stack.GetServices()[key].(*eth.Ethereum); ok {
-			fmt.Println("andus >> keystore 추가")
 			eth.Keystore = ks
 		}
 	}

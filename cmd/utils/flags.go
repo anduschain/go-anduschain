@@ -20,6 +20,7 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/client"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -614,6 +615,26 @@ var (
 		Name:  "metrics.influxdb.host.tag",
 		Usage: "InfluxDB `host` tag attached to all measurements",
 		Value: "localhost",
+	}
+
+	// andus >> FairclientFlag, UDP, TCP port
+	FairclientPort = cli.StringFlag{
+		Name:  "clientPort",
+		Usage: "fairnode port",
+		Value: "50002",
+	}
+
+	// FIXME : andus >> 기본값은 페어노드 서버 아이피
+	FairserverIP = cli.StringFlag{
+		Name:  "serverIP",
+		Usage: "fairnode connection IP",
+		Value: "121.134.35.45",
+	}
+
+	FairserverPort = cli.StringFlag{
+		Name:  "serverPort",
+		Usage: "fairnode connection Port",
+		Value: "60002",
 	}
 )
 
@@ -1240,6 +1261,16 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 	cfg.Host = ctx.GlobalString(DashboardAddrFlag.Name)
 	cfg.Port = ctx.GlobalInt(DashboardPortFlag.Name)
 	cfg.Refresh = ctx.GlobalDuration(DashboardRefreshFlag.Name)
+}
+
+// andus >> SetFairNodeConfig 추가
+func SetFairNodeConfig(ctx *cli.Context, cfg *fairnodeclient.Config) {
+	cfg.FairServerIp = ctx.GlobalString("serverIP")
+	cfg.FairServerPort = ctx.GlobalString("serverPort")
+	cfg.ClientPort = ctx.GlobalString("clientPort")
+	cfg.NAT = ctx.GlobalString("nat")
+
+	fairnodeclient.DefaultConfig = *cfg
 }
 
 // RegisterEthService adds an Ethereum client to the stack.

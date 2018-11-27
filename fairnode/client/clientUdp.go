@@ -66,13 +66,13 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 	// TODO : andus >> NAT 추가 --- start ---
 
-	natm, err := nat.Parse("any")
+	natm, err := nat.Parse(fc.NAT)
 	if err != nil {
 		log.Fatalf("-nat: %v", err)
 	}
 
 	realaddr := localServerConn.LocalAddr().(*net.UDPAddr)
-	if true {
+	if natm != nil {
 		if !realaddr.IP.IsLoopback() {
 			go nat.Map(natm, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
 		}

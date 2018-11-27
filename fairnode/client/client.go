@@ -59,45 +59,18 @@ type FairnodeClient struct {
 	TcpDialer  *net.TCPConn
 
 	Srv *p2p.Server
+	NAT string
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
-	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
-
-	// TODO : andus >> UDP Resolve Udp
-	serverAddr, err := net.ResolveUDPAddr("udp", "121.134.35.45:60002") // 전송 60002 121.156.104.249 // 121.134.35.45
-	if err != nil {
-		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
-	}
-
-	localAddr, err := net.ResolveUDPAddr("udp", ":50002") // 수신 50002
-	if err != nil {
-		log.Println("andus >> UDPtoFairNode, LocalAddr", err)
-	}
-
-	// TODO : andus >> TCP Resolve Tcp
-	localAddrTcp, err := net.ResolveTCPAddr("tcp", ":50002")
-	if err != nil {
-		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
-	}
-
-	serverAddrTcp, err := net.ResolveTCPAddr("tcp", "121.134.35.45:60002") // 전송 60002  121.156.104.249
-	if err != nil {
-		log.Println("andus >> UDPtoFairNode, ServerAddr", err)
-	}
-
-	fcClient := &FairnodeClient{
+	fc := &FairnodeClient{
 		Otprn:              nil,
 		WinningBlockCh:     wbCh,
 		FinalBlockCh:       fbCh,
 		Running:            false,
 		BlockChain:         blockChain,
 		txPool:             tp,
-		SAddrUDP:           serverAddr,
-		LAddrUDP:           localAddr,
-		LaddrTCP:           localAddrTcp,
-		SAddrTCP:           serverAddrTcp,
 		TcpConnStartCh:     make(chan struct{}),
 		submitEnodeExitCh:  make(chan struct{}),
 		receiveOtprnExitCh: make(chan struct{}),
@@ -105,18 +78,34 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		tcptoFairNodeExitCh: make(chan int),
 		tcpConnStopCh:       make(chan int),
 		tcpRunning:          false,
+		NAT:                 DefaultConfig.NAT,
 	}
 
-	return fcClient
+	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
+	faiorServerString := fmt.Sprintf("%s:%s", DefaultConfig.FairServerIp, DefaultConfig.FairServerPort)
+	clientString := fmt.Sprintf(":%s", DefaultConfig.ClientPort)
+
+	// UDP
+	fc.SAddrUDP, _ = net.ResolveUDPAddr("udp", faiorServerString)
+	fc.LAddrUDP, _ = net.ResolveUDPAddr("udp", clientString)
+
+	// TCP
+	fc.SAddrTCP, _ = net.ResolveTCPAddr("tcp", faiorServerString)
+	fc.LaddrTCP, _ = net.ResolveTCPAddr("tcp", clientString)
+
+	return fc
 }
 
 //TODO : andus >> fairNode 관련 함수....
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, srv *p2p.Server) error {
+	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
+
 	fc.Running = true
 	fc.keystore = ks
 	fc.Coinbase = coinbase
 	fc.Srv = srv
 
+	// coinbase unlock check
 	if unlockedKey := fc.keystore.GetUnlockedPrivKey(*coinbase); unlockedKey == nil {
 		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")
 	} else {
