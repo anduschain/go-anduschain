@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
@@ -33,7 +32,7 @@ func (f *FairNode) manageActiveNode() {
 			f.UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := f.UdpConn.ReadFromUDP(buf)
 			if err != nil {
-				fmt.Println("andus >>", err)
+				log.Println("ReadFromUDP 에러", err)
 				if err.(net.Error).Timeout() {
 					continue
 				}
@@ -71,7 +70,7 @@ func (f *FairNode) startLeague() {
 				// TODO : andus >> otprn을 서명
 				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
 				if err != nil {
-					log.Println("andus >> Otprn 서명 에러", err)
+					log.Println("Otprn 서명 에러", err)
 				}
 
 				tsOtp := fairtypes.TransferOtprn{
@@ -89,13 +88,14 @@ func (f *FairNode) startLeague() {
 
 					activeNodeList := f.Db.GetActiveNodeList()
 					for index := range activeNodeList {
+						// FIXME : -->
 						ServerAddr, err := net.ResolveUDPAddr("udp", activeNodeList[index].Ip+":50002")
 						if err != nil {
-							log.Println("andus >>", err)
+							log.Println("ResolveUDPAddr", err)
 						}
 						Conn, err := net.DialUDP("udp", nil, ServerAddr)
 						if err != nil {
-							log.Println("andus >>", err)
+							log.Println("DialUDP", err)
 						}
 						msg.Send(msg.SendOTPRN, tsOtp, Conn)
 						Conn.Close()

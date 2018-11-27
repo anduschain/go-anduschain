@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
@@ -20,17 +21,25 @@ type FairNodeDB struct {
 	OtprnList     *mgo.Collection
 }
 
+var (
+	MongDBConnectError = errors.New("MongoDB 접속에 문제가 있습니다")
+)
+
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-func New(dbhost string, dbport string, pwd string) *FairNodeDB {
-	// TODO : mongodb 연결 및 사용정보...
-	// mongodb://username:pwd@localhost:3000
-	//username := "deb"
-	//url := fmt.Sprintf("mongodb://%s:%s@%s:%s", username, pwd, dbhost, dbport)
-	url := "mongodb://localhost:27017"
+func New(dbhost string, dbport string, pwd string, user string) (*FairNodeDB, error) {
+	var url string
+
+	if user != "" {
+		url = fmt.Sprintf("mongodb://%s:%s@%s:%s", user, pwd, dbhost, dbport)
+	} else {
+		url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
+	}
+
 	session, err := mgo.Dial(url)
 	if err != nil {
-		log.Fatal("andus >> MongoDB 접속에 문제가 있습니다")
+		return nil, MongDBConnectError
 	}
+
 	session.SetMode(mgo.Monotonic, true)
 
 	return &FairNodeDB{
@@ -38,7 +47,7 @@ func New(dbhost string, dbport string, pwd string) *FairNodeDB {
 		ActiveNodeCol: session.DB(DBNAME).C("ActiveNode"),
 		MinerNode:     session.DB(DBNAME).C("MinerNode"),
 		OtprnList:     session.DB(DBNAME).C("OtprnList"),
-	}
+	}, nil
 }
 
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address) {
@@ -65,10 +74,10 @@ func (fnb *FairNodeDB) GetActiveNodeNum() int {
 
 	num, err := fnb.ActiveNodeCol.Find(nil).Count()
 	if err != nil {
-		fmt.Println("andus >> GetActiveNodeNum err : ", err)
+		log.Println("andus >> GetActiveNodeNum err : ", err)
 	}
 	// TODO : andus >> DB에서 Active node 갯수 조회
-	log.Println("andus >> Db.GetActiveNodeNum : ", num)
+	log.Println("Db.GetActiveNodeNum : ", num)
 
 	//return num
 	return 3
@@ -89,7 +98,7 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 		if now.Sub(activelist[index].Time) >= (3 * time.Minute) {
 			err := fnb.ActiveNodeCol.Remove(bson.M{"enodeid": activelist[index].EnodeId})
 			if err != nil {
-				fmt.Println("andus >> Remove enode err : ", err)
+				log.Println("Remove enode err : ", err)
 			}
 		}
 	}
@@ -101,7 +110,7 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	var actnode activeNode
 	err := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enodeId}).One(&actnode)
 	if err != nil {
-		fmt.Println("andus >> CheckEnodeAndCoinbse find one err : ", err)
+		log.Println("andus >> CheckEnodeAndCoinbse find one err : ", err)
 	}
 	if actnode.EnodeId == "" {
 		return false
@@ -116,16 +125,14 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 	// TODO : andus >> 실제 TCP에 접속한 채굴마이너를 저장
 	if n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count(); n > 0 {
-		fmt.Println("Update")
 		err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
 		if err != nil {
-			fmt.Println("andus >> MinerNodeUpdate err : ", err)
+			log.Println("andus >> MinerNodeUpdate err : ", err)
 		}
 	} else {
 		err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
-		fmt.Println("Insert")
 		if err != nil {
-			fmt.Println("andus >> MinerNodeInsert err : ", err)
+			log.Println("andus >> MinerNodeInsert err : ", err)
 		}
 	}
 }
@@ -133,6 +140,6 @@ func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {
 	err := fnb.OtprnList.Insert(&saveotprn{OtprnHash: tsotprn.Hash.String(), TsOtprn: tsotprn})
 	if err != nil {
-		fmt.Println("andus >> saveotprn err : ", err)
+		log.Println("andus >> saveotprn err : ", err)
 	}
 }
