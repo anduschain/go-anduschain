@@ -41,7 +41,6 @@ type FairNode struct {
 	otprn             *otprn.Otprn
 	SingedOtprn       *string // 전자서명값
 	sendLeagueStartCh chan string
-	startMakeLeague   chan string
 	Wg                sync.WaitGroup
 	lock              sync.RWMutex
 	StopCh            chan struct{} // TODO : andus >> 죽을때 처리..
