@@ -130,7 +130,9 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 						// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 						tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, common.HexToAddress(FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, fc.CoinBasePrivateKey)
 						if err != nil {
-							log.Println("Error[andus] : JoinTx 서명 에러")
+							log.Println("Error[andus] : JoinTx 서명 에러 :", err)
+							tcpDisconnectCh <- struct{}{}
+							return
 						}
 
 						log.Println("Info[andus] : JoinTx 생성 Success", tx)

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
+	"time"
 )
 
-var session = New("", "", "")
+var session, _ = New("localhost", "27017", "", "")
 
 type enodeid2 struct {
 	Enodeid string
@@ -53,6 +54,7 @@ func TestFairNodeDB_SaveMinerNode(t *testing.T) {
 
 	for i := range testList {
 		session.SaveMinerNode(testList[i].otprnHash, testList[i].enode)
+		time.Sleep(3 * time.Second)
 	}
 }
 

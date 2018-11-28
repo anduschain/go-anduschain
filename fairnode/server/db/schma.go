@@ -14,6 +14,7 @@ type activeNode struct {
 }
 
 type minerNode struct {
+	//ID        bson.ObjectId `bson:"_id,omitempty"`
 	Otprnhash string
 	Nodes     []string
 }

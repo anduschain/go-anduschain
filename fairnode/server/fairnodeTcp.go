@@ -64,6 +64,7 @@ func (f *FairNode) ListenTCP() {
 }
 
 func (f *FairNode) tcpLoop(conn *net.TCPConn) {
+	log.Println("INFO : tcpLoop 시작", conn.RemoteAddr().String())
 	buf := make([]byte, 4096)
 	for {
 		select {
@@ -88,6 +89,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 								// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 								f.Db.SaveMinerNode(tsf.Otprn.HashOtprn().String(), tsf.Enode)
 								msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
+								log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
 								f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
 							} else {
 								// TODO : andus >> 참여 대상자가 아니다
@@ -120,24 +122,31 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 
 func (f *FairNode) sendLeague() {
 	var temOtprnHash string
-	var tick *time.Ticker
+	t := time.NewTicker(15 * time.Second)
+	isSubmit := false
 
 	for {
 		select {
-		case <-tick.C:
+		case <-t.C:
 			//15 간격으로 호출
-			nodeList := f.Db.GetMinerNode(temOtprnHash)
-			if len(nodeList) >= 3 {
-				f.sendLeagueCh <- nodeList
-				tick.Stop()
-			} else {
-				continue
+			log.Println("Debug : sendLeague 타이머 호출")
+			if isSubmit {
+				nodeList := f.Db.GetMinerNode(temOtprnHash)
+				if len(nodeList) >= 3 {
+					f.sendLeagueCh <- nodeList
+					log.Println("Debug : 노드 리스트 보냄")
+				} else {
+					continue
+				}
 			}
 		case otprnHash := <-f.sendLeagueStartCh:
+			log.Println("Debug : f.sendLeagueStartCh로 해시값 전송", otprnHash)
 			if temOtprnHash != otprnHash {
 				temOtprnHash = otprnHash
-				tick = time.NewTicker(15 * time.Second)
+				isSubmit = true
+				log.Println("Debug : 타이머 생성")
 			} else {
+				isSubmit = false
 				continue
 			}
 		}

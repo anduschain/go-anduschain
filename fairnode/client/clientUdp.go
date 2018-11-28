@@ -98,7 +98,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 			localServerConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := localServerConn.ReadFromUDP(tsOtprnByte)
 			if err != nil {
-				//log.Println("andus >> otprn 수신 에러", err)
+				log.Println("Debug : Connect Error", err)
 				if err.(net.Error).Timeout() {
 					continue
 				}
@@ -110,9 +110,10 @@ func (fc *FairnodeClient) receiveOtprn() {
 				fromFairnodeMsg := msg.ReadMsg(tsOtprnByte)
 				switch fromFairnodeMsg.Code {
 				case msg.SendOTPRN:
-
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
+
+					log.Println("Debug : OTPRN 수신됨", tsOtprn.Hash.String())
 
 					//TODO : andus >> 2. OTRRN 검증
 					fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
