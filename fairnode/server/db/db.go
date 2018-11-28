@@ -79,8 +79,7 @@ func (fnb *FairNodeDB) GetActiveNodeNum() int {
 	// TODO : andus >> DB에서 Active node 갯수 조회
 	log.Println("Db.GetActiveNodeNum : ", num)
 
-	//return num
-	return 3
+	return num
 }
 
 func (fnb *FairNodeDB) GetActiveNodeList() []activeNode {
