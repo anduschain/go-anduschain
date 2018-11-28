@@ -1,7 +1,6 @@
 package fairnodeclient
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -14,7 +13,7 @@ import (
 )
 
 func (fc *FairnodeClient) TCPtoFairNode() {
-	fmt.Println("andus >> TCPtoFairNode Start")
+	log.Println("Info[andus] : TCPtoFairNode 시작")
 
 	fc.wg.Add(1)
 
@@ -23,7 +22,7 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 
 	defer func() {
 		fc.tcpRunning = false
-		fmt.Println("andus >> TCPtoFairNode 죽음")
+		log.Println("Info[andus] : TCPtoFairNode 종료됨")
 	}()
 
 Exit:
@@ -40,14 +39,14 @@ Exit:
 				go fc.tcpLoop(tcpDisconnectCh)
 
 			} else {
-				fmt.Println("andus >> GETH DialTCP 에러", err)
+				log.Println("Error[andus] : GETH DialTCP 에러", err)
 				continue
 			}
 		case <-tcpDisconnectCh:
 			// TODO : andus >> 패어노드와 커낵션이 끊어 졌을때
 			fc.TcpDialer.Close()
 			fc.tcpRunning = false
-			fmt.Println("andus >> TCPtoFairNode 패어노드와 연결이 끊어짐")
+			log.Println("Error[andus] : TCPtoFairNode 패어노드와 연결이 끊어짐")
 		case <-fc.tcptoFairNodeExitCh:
 			fc.wg.Done()
 			break Exit
@@ -80,8 +79,7 @@ Exit:
 
 func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 	defer func() {
-		fmt.Println("andus >> FairnodeClient tcpLoop 죽음")
-
+		log.Println("Info[andus] : FairnodeClient tcpLoop 죽음")
 	}()
 
 	data := make([]byte, 4096)
@@ -94,7 +92,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 			fc.TcpDialer.SetDeadline(time.Now().Add(3 * time.Second))
 			n, err := fc.TcpDialer.Read(data)
 			if err != nil {
-				fmt.Println("andus >> Read 에러!!", err.Error())
+				log.Println("Error[andus] : Read 에러!!", err.Error())
 				if err.Error() != "EOF" {
 					if err.(net.Error).Timeout() {
 						continue
@@ -125,17 +123,17 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 					if currentBalance.Cmp(price) > 0 {
 						currentJoinNonce := fc.GetCurrentJoinNonce()
 
-						fmt.Println("andus >> JOIN_TX", currentBalance, currentJoinNonce)
+						log.Println("Info[andus] : JOIN_TX", currentBalance, currentJoinNonce)
 
 						signer := types.NewEIP155Signer(big.NewInt(100)) // chainID 변경해야함..
 
 						// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 						tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, common.HexToAddress(FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, fc.CoinBasePrivateKey)
 						if err != nil {
-							log.Println("andus >> JoinTx 서명 에러")
+							log.Println("Error[andus] : JoinTx 서명 에러")
 						}
 
-						log.Println("andus >> JoinTx 생성 Success", tx)
+						log.Println("Info[andus] : JoinTx 생성 Success", tx)
 
 						// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 						fc.txPool.AddLocal(tx)
@@ -143,10 +141,14 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 						// 잔액이 부족한 경우
 						// 마이닝을 하지 못함..참여 불가, Dial Close
 						tcpDisconnectCh <- struct{}{}
-						fmt.Println("andus >> 잔액 부족으로 마이닝을 할 수 없음")
+						log.Println("Error[andus] :  잔액 부족으로 마이닝을 할 수 없음")
 						return
 					}
-
+				case msg.SendLeageNodeList:
+					// Add peer
+					var nodeList []string
+					fromFaionodeMsg.Decode(&nodeList)
+					log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
 				}
 
 			}

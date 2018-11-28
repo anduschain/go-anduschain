@@ -54,18 +54,18 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, cli
 	// addr => 실제 address
 	node, err := discv5.ParseNode(enode)
 	if err != nil {
-		fmt.Println("andus >> 노드 url 파싱에러 : ", err)
+		fmt.Println("Error : 노드 url 파싱에러 : ", err)
 	}
 	if n, _ := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enode}).Count(); n > 0 {
 		// andus >> active node update
 		err := fnb.ActiveNodeCol.Update(bson.M{"enodeid": enode}, bson.M{"$set": bson.M{"time": time.Now()}})
 		if err != nil {
-			fmt.Println("andus >> Update err : ", err)
+			fmt.Println("Error : Update err : ", err)
 		}
 	} else {
 		err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport})
 		if err != nil {
-			fmt.Println("andus >> SaveActiveNode error : ", err)
+			fmt.Println("Error : SaveActiveNode error : ", err)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 		if now.Sub(activelist[index].Time) >= (3 * time.Minute) {
 			err := fnb.ActiveNodeCol.Remove(bson.M{"enodeid": activelist[index].EnodeId})
 			if err != nil {
-				log.Println("Remove enode err : ", err)
+				log.Println("Error : Remove enode err : ", err)
 			}
 		}
 	}
@@ -110,7 +110,7 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	var actnode activeNode
 	err := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enodeId}).One(&actnode)
 	if err != nil {
-		log.Println("andus >> CheckEnodeAndCoinbse find one err : ", err)
+		log.Println("Error : CheckEnodeAndCoinbse find one err : ", err)
 	}
 	if actnode.EnodeId == "" {
 		return false
@@ -127,12 +127,12 @@ func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 	if n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count(); n > 0 {
 		err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
 		if err != nil {
-			log.Println("andus >> MinerNodeUpdate err : ", err)
+			log.Println("Error : MinerNodeUpdate err : ", err)
 		}
 	} else {
 		err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
 		if err != nil {
-			log.Println("andus >> MinerNodeInsert err : ", err)
+			log.Println("Error : MinerNodeInsert err : ", err)
 		}
 	}
 }
@@ -140,12 +140,16 @@ func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {
 	err := fnb.OtprnList.Insert(&saveotprn{OtprnHash: tsotprn.Hash.String(), TsOtprn: tsotprn})
 	if err != nil {
-		log.Println("andus >> saveotprn err : ", err)
+		log.Println("Error : saveotprn err : ", err)
 	}
 }
 
-func (fnb *FairNodeDB) GetMinerNode(otprnHash string) minerNode {
+func (fnb *FairNodeDB) GetMinerNode(otprnHash string) []string {
 	var minerlist minerNode
-	fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).One(&minerlist)
-	return minerlist
+	err := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).One(&minerlist)
+	if err != nil {
+		log.Println("Error : GetMinerNode", err)
+	}
+
+	return minerlist.Nodes
 }

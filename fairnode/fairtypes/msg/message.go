@@ -20,6 +20,7 @@ const (
 	ResLeagueJoinFalse
 	SendEnode
 	SendOTPRN
+	SendLeageNodeList
 )
 
 func ReadMsg(msg []byte) *Msg {

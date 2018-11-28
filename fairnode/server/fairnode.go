@@ -38,14 +38,15 @@ type FairNode struct {
 
 	Db *db.FairNodeDB
 
-	otprn           *otprn.Otprn
-	SingedOtprn     *string // 전자서명값
-	startSignalCh   chan struct{}
-	startMakeLeague chan string
-	Wg              sync.WaitGroup
-	lock            sync.RWMutex
-	StopCh          chan struct{} // TODO : andus >> 죽을때 처리..
-	Running         bool
+	otprn             *otprn.Otprn
+	SingedOtprn       *string // 전자서명값
+	sendLeagueStartCh chan string
+	startMakeLeague   chan string
+	sendLeagueCh      chan []string
+	Wg                sync.WaitGroup
+	lock              sync.RWMutex
+	StopCh            chan struct{} // TODO : andus >> 죽을때 처리..
+	Running           bool
 
 	Keystore        *keystore.KeyStore
 	LeagueRunningOK bool
@@ -88,13 +89,14 @@ func New() (*FairNode, error) {
 	}
 
 	fnNode := &FairNode{
-		LaddrTcp:        LAddrTCP,
-		LaddrUdp:        LAddrUDP,
-		keypath:         DefaultConfig.KeyPath,
-		startSignalCh:   make(chan struct{}),
-		LeagueRunningOK: false,
-		Db:              mongoDB,
-		natm:            natm,
+		LaddrTcp:          LAddrTCP,
+		LaddrUdp:          LAddrUDP,
+		keypath:           DefaultConfig.KeyPath,
+		sendLeagueStartCh: make(chan string),
+		sendLeagueCh:      make(chan []string),
+		LeagueRunningOK:   false,
+		Db:                mongoDB,
+		natm:              natm,
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
