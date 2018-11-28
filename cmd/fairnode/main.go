@@ -98,6 +98,8 @@ func init() {
 
 		w.Wait()
 
+		defer fn.Stop()
+
 		go func() {
 			sigc := make(chan os.Signal, 1)
 			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)

@@ -22,6 +22,8 @@ func (f *FairNode) ListenTCP() {
 		}
 
 		go f.tcpLoop(conn)
+
+		f.LeagueConList = append(f.LeagueConList, conn)
 	}
 
 	//
@@ -67,78 +69,77 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 	log.Println("INFO : tcpLoop 시작", conn.RemoteAddr().String())
 	buf := make([]byte, 4096)
 	for {
-		select {
-		case nodeList := <-f.sendLeagueCh:
-			log.Println("INFO : 리드에 참여한 노드 리스트 전송", len(nodeList))
-			msg.Send(msg.SendLeageNodeList, nodeList, conn)
-		default:
-			if n, err := conn.Read(buf); err == nil {
-				if n > 0 {
-					fromGethMsg := msg.ReadMsg(buf)
-					switch fromGethMsg.Code {
-					case msg.ReqLeagueJoinOK:
-						var tsf fairtypes.TransferCheck
-						fromGethMsg.Decode(&tsf)
-						log.Println("INFO : CheckEnodeAndCoinbse", tsf.Enode, tsf.Coinbase.String())
-						if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
-							// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
-							// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
+		if n, err := conn.Read(buf); err == nil {
+			if n > 0 {
+				fromGethMsg := msg.ReadMsg(buf)
+				switch fromGethMsg.Code {
+				case msg.ReqLeagueJoinOK:
+					var tsf fairtypes.TransferCheck
+					fromGethMsg.Decode(&tsf)
+					log.Println("INFO : CheckEnodeAndCoinbse", tsf.Enode, tsf.Coinbase.String())
+					if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
+						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
+						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 
-							if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
-								// TODO : 채굴 리그 생성
-								// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-								f.LeagueInsert(tsf.Otprn.HashOtprn().String(), tsf.Enode)
-								msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
-								log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
-								f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
-							} else {
-								// TODO : andus >> 참여 대상자가 아니다
-								msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
-								conn.Close() // 커넥션 종료
-								return
-							}
+						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
+							// TODO : 채굴 리그 생성
+							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
+							f.LeagueInsert(tsf.Otprn.HashOtprn().String(), tsf.Enode)
+							msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
+							log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
+							f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
 						} else {
-							// TODO : andus >> 리그 참여 정보가 다르다
+							// TODO : andus >> 참여 대상자가 아니다
 							msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
 							conn.Close() // 커넥션 종료
 							return
 						}
+					} else {
+						// TODO : andus >> 리그 참여 정보가 다르다
+						msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
+						conn.Close() // 커넥션 종료
+						return
 					}
+				}
 
-				}
+			}
+		} else {
+			if err.Error() == "EOF" {
+				conn.Close() // 커넥션 종료
+				return
 			} else {
-				if err.Error() == "EOF" {
-					conn.Close() // 커넥션 종료
-					return
-				} else {
-					log.Println("Error : readLoop 에러!!!!", err.Error())
-					continue
-				}
+				log.Println("Error : readLoop 에러!!!!", err.Error())
+				continue
 			}
 		}
 	}
-
 }
 
 func (f *FairNode) sendLeague() {
 	defer log.Println("Debug[andus] : sendLeague 죽음")
 	var temOtprnHash string
-	t := time.NewTicker(3 * time.Second)
+	t := time.NewTicker(15 * time.Second)
 	isSubmit := false
 
 	for {
 		select {
 		case <-t.C:
 			//15 간격으로 호출
-			log.Println(">>>>>>>>>>>>>>>>>>>>>>>>")
 			if isSubmit {
 				nodeList, index := f.GetLeague(temOtprnHash)
 				if len(nodeList) >= 3 {
-					f.sendLeagueCh <- nodeList
-					log.Println("Debug : 노드 리스트 보냄")
+
+					for i := range f.LeagueConList {
+						if f.LeagueConList[i] != nil {
+							msg.Send(msg.SendLeageNodeList, nodeList, f.LeagueConList[i])
+							log.Println("Debug : 노드 리스트 보냄 : ", len(nodeList))
+						}
+					}
+
 					f.Db.SaveMinerNode(temOtprnHash, nodeList)
 					f.DeleteLeague(index)
 					isSubmit = false
+
 				} else {
 					log.Println("Debug : 노드 리스트 PASS : ", isSubmit, len(nodeList))
 				}
@@ -147,7 +148,6 @@ func (f *FairNode) sendLeague() {
 			}
 		case otprnHash := <-f.sendLeagueStartCh:
 			if temOtprnHash != otprnHash {
-				log.Println("00000000000000000000000")
 				temOtprnHash = otprnHash
 				isSubmit = true
 			}
@@ -178,5 +178,5 @@ func (f *FairNode) GetLeague(otprnHash string) ([]string, int) {
 			return f.LeagueList[index][otprnHash], index
 		}
 	}
-	return []string{}, 0
+	return []string{}, -1
 }

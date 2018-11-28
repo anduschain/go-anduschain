@@ -42,7 +42,6 @@ type FairNode struct {
 	SingedOtprn       *string // 전자서명값
 	sendLeagueStartCh chan string
 	startMakeLeague   chan string
-	sendLeagueCh      chan []string
 	Wg                sync.WaitGroup
 	lock              sync.RWMutex
 	StopCh            chan struct{} // TODO : andus >> 죽을때 처리..
@@ -53,6 +52,9 @@ type FairNode struct {
 	natm            nat.Interface
 
 	LeagueList []map[string][]string
+
+	// 리그가 시작되었을때 커넥션 관리
+	LeagueConList []*net.TCPConn
 }
 
 func New() (*FairNode, error) {
@@ -95,7 +97,6 @@ func New() (*FairNode, error) {
 		LaddrUdp:          LAddrUDP,
 		keypath:           DefaultConfig.KeyPath,
 		sendLeagueStartCh: make(chan string),
-		sendLeagueCh:      make(chan []string),
 		LeagueRunningOK:   false,
 		Db:                mongoDB,
 		natm:              natm,
