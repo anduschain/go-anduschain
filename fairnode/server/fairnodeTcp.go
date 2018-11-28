@@ -87,7 +87,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 							if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 								// TODO : 채굴 리그 생성
 								// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-								f.Db.SaveMinerNode(tsf.Otprn.HashOtprn().String(), tsf.Enode)
+								f.LeagueInsert(tsf.Otprn.HashOtprn().String(), tsf.Enode)
 								msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
 								log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
 								f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
@@ -121,34 +121,62 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 }
 
 func (f *FairNode) sendLeague() {
+	defer log.Println("Debug[andus] : sendLeague 죽음")
 	var temOtprnHash string
-	t := time.NewTicker(15 * time.Second)
+	t := time.NewTicker(3 * time.Second)
 	isSubmit := false
 
 	for {
 		select {
 		case <-t.C:
 			//15 간격으로 호출
-			log.Println("Debug : sendLeague 타이머 호출")
+			log.Println(">>>>>>>>>>>>>>>>>>>>>>>>")
 			if isSubmit {
-				nodeList := f.Db.GetMinerNode(temOtprnHash)
+				nodeList, index := f.GetLeague(temOtprnHash)
 				if len(nodeList) >= 3 {
 					f.sendLeagueCh <- nodeList
 					log.Println("Debug : 노드 리스트 보냄")
+					f.Db.SaveMinerNode(temOtprnHash, nodeList)
+					f.DeleteLeague(index)
+					isSubmit = false
 				} else {
-					continue
+					log.Println("Debug : 노드 리스트 PASS : ", isSubmit, len(nodeList))
 				}
+			} else {
+				log.Println("Debug : 노드 리스트 PASS : ", isSubmit)
 			}
 		case otprnHash := <-f.sendLeagueStartCh:
-			log.Println("Debug : f.sendLeagueStartCh로 해시값 전송", otprnHash)
 			if temOtprnHash != otprnHash {
+				log.Println("00000000000000000000000")
 				temOtprnHash = otprnHash
 				isSubmit = true
-				log.Println("Debug : 타이머 생성")
-			} else {
-				isSubmit = false
-				continue
 			}
+
 		}
 	}
+}
+
+func (f *FairNode) LeagueInsert(otprnHash string, enode string) {
+	nodeList, index := f.GetLeague(otprnHash)
+	if len(nodeList) > 0 {
+		f.LeagueList[index][otprnHash] = append(f.LeagueList[index][otprnHash], enode)
+	} else {
+		m := make(map[string][]string)
+		m[otprnHash] = []string{enode}
+		f.LeagueList = append(f.LeagueList, m)
+	}
+}
+
+func (f *FairNode) DeleteLeague(index int) {
+	m := f.LeagueList
+	m = append(m[:index], m[index+1:]...)
+}
+
+func (f *FairNode) GetLeague(otprnHash string) ([]string, int) {
+	for index := range f.LeagueList {
+		if _, ok := f.LeagueList[index][otprnHash]; ok {
+			return f.LeagueList[index][otprnHash], index
+		}
+	}
+	return []string{}, 0
 }

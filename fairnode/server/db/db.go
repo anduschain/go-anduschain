@@ -121,23 +121,29 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	return true
 }
 
-func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
+func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enodes []string) {
 	// TODO : andus >> 실제 TCP에 접속한 채굴마이너를 저장
-	n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count()
-	log.Println("Debug[andus] : SaveMinerNode 호출 : ", n)
-	if n > 0 {
-		err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
-		if err != nil {
-			log.Println("Error : MinerNodeUpdate err : ", err)
-		}
-		log.Println("Debug[andus] : SaveMinerNode 업데이트")
-	} else {
-		err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
-		if err != nil {
-			log.Println("Error : MinerNodeInsert err : ", err)
-		}
-		log.Println("Debug[andus] : SaveMinerNode 인서트")
+	//n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count()
+	//log.Println("Debug[andus] : SaveMinerNode 호출 : ", n)
+	//if n > 0 {
+	//	err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
+	//	if err != nil {
+	//		log.Println("Error : MinerNodeUpdate err : ", err)
+	//	}
+	//	log.Println("Debug[andus] : SaveMinerNode 업데이트")
+	//} else {
+	//	err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
+	//	if err != nil {
+	//		log.Println("Error : MinerNodeInsert err : ", err)
+	//	}
+	//	log.Println("Debug[andus] : SaveMinerNode 인서트")
+	//}
+
+	err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: enodes})
+	if err != nil {
+		log.Println("Error : MinerNodeInsert err : ", err)
 	}
+	log.Println("Debug[andus] : SaveMinerNode 인서트")
 }
 
 func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {

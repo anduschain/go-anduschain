@@ -51,6 +51,8 @@ type FairNode struct {
 	Keystore        *keystore.KeyStore
 	LeagueRunningOK bool
 	natm            nat.Interface
+
+	LeagueList []map[string][]string
 }
 
 func New() (*FairNode, error) {
