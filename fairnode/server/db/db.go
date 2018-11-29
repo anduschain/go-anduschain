@@ -54,33 +54,24 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, cli
 	// addr => 실제 address
 	node, err := discv5.ParseNode(enode)
 	if err != nil {
-		fmt.Println("Error : 노드 url 파싱에러 : ", err)
+		fmt.Println("Error[DB] : 노드 url 파싱에러 : ", err)
 	}
-	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport}
-	fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp})
 
-	//if n, _ := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enode}).Count(); n > 0 {
-	//	// andus >> active node update
-	//	err := fnb.ActiveNodeCol.Update(bson.M{"enodeid": enode}, bson.M{"$set": bson.M{"time": time.Now()}})
-	//	if err != nil {
-	//		fmt.Println("Error : Update err : ", err)
-	//	}
-	//} else {
-	//	err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport})
-	//	if err != nil {
-	//		fmt.Println("Error : SaveActiveNode error : ", err)
-	//	}
-	//}
+	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport}
+
+	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
+		log.Println("Error[DB] : SaveActiveNode ", err)
+	}
 }
 
 func (fnb *FairNodeDB) GetActiveNodeNum() int {
 
 	num, err := fnb.ActiveNodeCol.Find(nil).Count()
 	if err != nil {
-		log.Println("andus >> GetActiveNodeNum err : ", err)
+		log.Println("Error[DB] : GetActiveNodeNum err : ", err)
 	}
 	// TODO : andus >> DB에서 Active node 갯수 조회
-	log.Println("Db.GetActiveNodeNum : ", num)
+	log.Println("Info[DB] :Db.GetActiveNodeNum -> ", num)
 
 	return num
 }
@@ -100,7 +91,7 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 		if now.Sub(activelist[index].Time) >= (3 * time.Minute) {
 			err := fnb.ActiveNodeCol.RemoveId(activelist[index].EnodeId)
 			if err != nil {
-				log.Println("Error : Remove enode err : ", err)
+				log.Println("Error[DB] : Remove enode err : ", err)
 			}
 		}
 	}
@@ -112,7 +103,7 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	var actnode activeNode
 	err := fnb.ActiveNodeCol.FindId(enodeId).One(&actnode)
 	if err != nil {
-		log.Println("Error : CheckEnodeAndCoinbse find one err : ", err)
+		log.Println("Error[DB] : CheckEnodeAndCoinbse find one err : ", err)
 	}
 	if actnode.EnodeId == "" {
 		return false
@@ -124,43 +115,27 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	return true
 }
 
-func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enodes []string) {
+func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 	// TODO : andus >> 실제 TCP에 접속한 채굴마이너를 저장
-	//n, _ := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).Count()
-	//log.Println("Debug[andus] : SaveMinerNode 호출 : ", n)
-	//if n > 0 {
-	//	err := fnb.MinerNode.Update(bson.M{"otprnhash": otprnHash}, bson.M{"$push": bson.M{"nodes": enode}})
-	//	if err != nil {
-	//		log.Println("Error : MinerNodeUpdate err : ", err)
-	//	}
-	//	log.Println("Debug[andus] : SaveMinerNode 업데이트")
-	//} else {
-	//	err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: []string{enode}})
-	//	if err != nil {
-	//		log.Println("Error : MinerNodeInsert err : ", err)
-	//	}
-	//	log.Println("Debug[andus] : SaveMinerNode 인서트")
-	//}
-
-	err := fnb.MinerNode.Insert(&minerNode{Otprnhash: otprnHash, Nodes: enodes})
+	m := minerNode{Otprnhash: otprnHash, Nodes: []string{enode}, Timestamp: time.Now()}
+	_, err := fnb.MinerNode.UpsertId(m.Otprnhash, bson.M{"$push": bson.M{"nodes": enode}, "$set": bson.M{"timestamp": m.Timestamp}})
 	if err != nil {
-		log.Println("Error : MinerNodeInsert err : ", err)
+		log.Println("Error[DB] : MinerNodeInsert err : ", err)
 	}
-	log.Println("Debug[andus] : SaveMinerNode 인서트")
 }
 
 func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {
 	err := fnb.OtprnList.Insert(&saveotprn{OtprnHash: tsotprn.Hash.String(), TsOtprn: tsotprn})
 	if err != nil {
-		log.Println("Error : saveotprn err : ", err)
+		log.Println("Error[DB] : saveotprn err : ", err)
 	}
 }
 
 func (fnb *FairNodeDB) GetMinerNode(otprnHash string) []string {
 	var minerlist minerNode
-	err := fnb.MinerNode.Find(bson.M{"otprnhash": otprnHash}).One(&minerlist)
+	err := fnb.MinerNode.FindId(otprnHash).One(&minerlist)
 	if err != nil {
-		log.Println("Error : GetMinerNode", err)
+		log.Println("Error[DB] : GetMinerNode", err)
 	}
 
 	return minerlist.Nodes

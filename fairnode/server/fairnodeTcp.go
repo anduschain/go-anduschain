@@ -84,7 +84,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-							f.LeagueInsert(tsf.Otprn.HashOtprn().String(), tsf.Enode)
+							f.Db.SaveMinerNode(tsf.Otprn.HashOtprn().String(), tsf.Enode)
 							msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
 							log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
 							f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
@@ -126,7 +126,7 @@ func (f *FairNode) sendLeague() {
 		case <-t.C:
 			//15 간격으로 호출
 			if isSubmit {
-				nodeList, index := f.GetLeague(temOtprnHash)
+				nodeList := f.Db.GetMinerNode(temOtprnHash)
 				if len(nodeList) >= 3 {
 
 					for i := range f.LeagueConList {
@@ -136,8 +136,6 @@ func (f *FairNode) sendLeague() {
 						}
 					}
 
-					f.Db.SaveMinerNode(temOtprnHash, nodeList)
-					f.DeleteLeague(index)
 					isSubmit = false
 
 				} else {
