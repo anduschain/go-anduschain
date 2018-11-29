@@ -56,18 +56,21 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, cli
 	if err != nil {
 		fmt.Println("Error : 노드 url 파싱에러 : ", err)
 	}
-	if n, _ := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enode}).Count(); n > 0 {
-		// andus >> active node update
-		err := fnb.ActiveNodeCol.Update(bson.M{"enodeid": enode}, bson.M{"$set": bson.M{"time": time.Now()}})
-		if err != nil {
-			fmt.Println("Error : Update err : ", err)
-		}
-	} else {
-		err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport})
-		if err != nil {
-			fmt.Println("Error : SaveActiveNode error : ", err)
-		}
-	}
+	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport}
+	fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp})
+
+	//if n, _ := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enode}).Count(); n > 0 {
+	//	// andus >> active node update
+	//	err := fnb.ActiveNodeCol.Update(bson.M{"enodeid": enode}, bson.M{"$set": bson.M{"time": time.Now()}})
+	//	if err != nil {
+	//		fmt.Println("Error : Update err : ", err)
+	//	}
+	//} else {
+	//	err = fnb.ActiveNodeCol.Insert(&activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport})
+	//	if err != nil {
+	//		fmt.Println("Error : SaveActiveNode error : ", err)
+	//	}
+	//}
 }
 
 func (fnb *FairNodeDB) GetActiveNodeNum() int {
@@ -95,7 +98,7 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 	fnb.ActiveNodeCol.Find(nil).All(&activelist)
 	for index := range activelist {
 		if now.Sub(activelist[index].Time) >= (3 * time.Minute) {
-			err := fnb.ActiveNodeCol.Remove(bson.M{"enodeid": activelist[index].EnodeId})
+			err := fnb.ActiveNodeCol.RemoveId(activelist[index].EnodeId)
 			if err != nil {
 				log.Println("Error : Remove enode err : ", err)
 			}
@@ -107,7 +110,7 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 	// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 	var actnode activeNode
-	err := fnb.ActiveNodeCol.Find(bson.M{"enodeid": enodeId}).One(&actnode)
+	err := fnb.ActiveNodeCol.FindId(enodeId).One(&actnode)
 	if err != nil {
 		log.Println("Error : CheckEnodeAndCoinbse find one err : ", err)
 	}

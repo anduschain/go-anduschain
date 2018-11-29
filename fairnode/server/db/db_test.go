@@ -5,12 +5,36 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"testing"
+	"time"
 )
 
 var session, _ = New("localhost", "27017", "", "")
 
 type enodeid2 struct {
 	Enodeid string
+}
+
+func TestFairNodeDB_SaveActiveNode(t *testing.T) {
+	p := []activeNode{
+		{EnodeId: "testenode1", Ip: "10101010", Coinbase: "0X82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8da", Time: time.Now()},
+		{EnodeId: "testenode1", Ip: "10101010", Coinbase: "0X82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8da", Time: time.Now()},
+		{EnodeId: "testenode2", Ip: "10101010", Coinbase: "0X82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8da", Time: time.Now()},
+		{EnodeId: "testenode3", Ip: "10101010", Coinbase: "0X82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8da", Time: time.Now()},
+		{EnodeId: "testenode4", Ip: "10101010", Coinbase: "0X82af8219dfe09f18d8ebf8075e31b81a01a8c4fd8b9a98f60a258e0aa1a8da", Time: time.Now()},
+	}
+
+	for index := range p {
+
+		Info, err := session.ActiveNodeCol.UpsertId(p[index].EnodeId, bson.M{"$set": p[index]})
+		if err != nil {
+			log.Println("Error : MinerNodeInsert err : ", err)
+		}
+		log.Println("Debug[andus]", Info)
+	}
+	var tmp []activeNode
+	session.ActiveNodeCol.Find(nil).All(&tmp)
+	fmt.Println(tmp[0].EnodeId)
+
 }
 
 func SaveMinerNode2(otprnHash string, enode string) {
