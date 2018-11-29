@@ -35,10 +35,10 @@ type FairnodeClient struct {
 	Running            bool
 	wg                 sync.WaitGroup
 	BlockChain         *core.BlockChain
-	Coinbase           *common.Address
+	Coinbase           common.Address
 	keystore           *keystore.KeyStore
 	txPool             *core.TxPool
-	CoinBasePrivateKey *ecdsa.PrivateKey
+	CoinBasePrivateKey ecdsa.PrivateKey
 
 	SAddrUDP *net.UDPAddr
 	LAddrUDP *net.UDPAddr
@@ -60,6 +60,8 @@ type FairnodeClient struct {
 
 	Srv *p2p.Server
 	NAT string
+
+	mux sync.Mutex
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -99,23 +101,24 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 //TODO : andus >> fairNode 관련 함수....
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, srv *p2p.Server) error {
 	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
-
 	fc.Running = true
 	fc.keystore = ks
-	fc.Coinbase = coinbase
+	fc.Coinbase = *coinbase
 	fc.Srv = srv
 
 	// coinbase unlock check
-	if unlockedKey := fc.keystore.GetUnlockedPrivKey(*coinbase); unlockedKey == nil {
-		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")
-	} else {
-		fc.CoinBasePrivateKey = unlockedKey
+	if unlockedKey, ok := fc.keystore.GetUnlockedPrivKey(fc.Coinbase); ok {
+
+		fc.CoinBasePrivateKey = *unlockedKey
 
 		// udp
 		go fc.UDPtoFairNode()
 
 		// tcp
 		go fc.TCPtoFairNode()
+
+	} else {
+		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")
 	}
 	return nil
 }
@@ -125,6 +128,9 @@ func (fc *FairnodeClient) Stop() {
 		fc.Running = false
 		fc.submitEnodeExitCh <- struct{}{}
 		fc.receiveOtprnExitCh <- struct{}{}
+
+		// 마이너 종료시 계정 Lock
+		fc.keystore.Lock(fc.Coinbase)
 
 		if fc.tcpRunning {
 			// loop kill, tcp kill
@@ -143,7 +149,7 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 		log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
 	}
 
-	return stateDb.GetJoinNonce(*fc.Coinbase)
+	return stateDb.GetJoinNonce(fc.Coinbase)
 }
 
 func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
@@ -152,5 +158,5 @@ func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 		log.Println("andus >> 상태DB을 읽어오는데 문제 발생")
 	}
 
-	return stateDb.GetBalance(*fc.Coinbase)
+	return stateDb.GetBalance(fc.Coinbase)
 }

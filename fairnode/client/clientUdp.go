@@ -35,7 +35,7 @@ func (fc *FairnodeClient) submitEnode() {
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
-	ts := fairtypes.EnodeCoinbase{fc.Srv.NodeInfo().Enode, *fc.Coinbase, DefaultConfig.ClientPort}
+	ts := fairtypes.EnodeCoinbase{fc.Srv.NodeInfo().Enode, fc.Coinbase, DefaultConfig.ClientPort}
 
 	if err := msg.Send(msg.SendEnode, ts, Conn); err != nil {
 		fmt.Println("andus >>>>>>", err)
@@ -130,7 +130,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 							//fmt.Println("andus >> OTPRN 검증 완료")
 
-							if ok := fairutil.IsJoinOK(*fc.Otprn, *fc.Coinbase); ok {
+							if ok := fairutil.IsJoinOK(*fc.Otprn, fc.Coinbase); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 								//fmt.Println("andus >> 채굴 참여 대상자 확인")

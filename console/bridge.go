@@ -170,6 +170,38 @@ func (b *bridge) UnlockAccount(call otto.FunctionCall) (response otto.Value) {
 	return val
 }
 
+// TODO : andus >> 코인베이스용 언락 : miner.stop() 일때 잠김
+func (b *bridge) UnlockCoinbase(call otto.FunctionCall) (response otto.Value) {
+	if !call.Argument(0).IsString() {
+		throwJSException("first argument must be the coinbase to unlock")
+	}
+	account := call.Argument(0)
+
+	// If password is not given or is the null value, prompt the user for it
+	var passwd otto.Value
+
+	if call.Argument(1).IsUndefined() || call.Argument(1).IsNull() {
+		fmt.Fprintf(b.printer, "Unlock coinbase %s\n", account)
+		if input, err := b.prompter.PromptPassword("Passphrase: "); err != nil {
+			throwJSException(err.Error())
+		} else {
+			passwd, _ = otto.ToValue(input)
+		}
+	} else {
+		if !call.Argument(1).IsString() {
+			throwJSException("password must be a string")
+		}
+		passwd = call.Argument(1)
+	}
+
+	// Send the request to the backend and return
+	val, err := call.Otto.Call("jeth.unlockAccount", nil, account, passwd, 0)
+	if err != nil {
+		throwJSException(err.Error())
+	}
+	return val
+}
+
 // Sign is a wrapper around the personal.sign RPC method that uses a non-echoing password
 // prompt to acquire the passphrase and executes the original RPC method (saved in
 // jeth.sign) with it to actually execute the RPC call.

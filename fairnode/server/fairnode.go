@@ -50,7 +50,7 @@ type FairNode struct {
 	LeagueRunningOK bool
 	natm            nat.Interface
 
-	LeagueList []map[string][]string
+	//LeagueList []map[string][]string
 
 	// 리그가 시작되었을때 커넥션 관리
 	LeagueConList []*net.TCPConn
@@ -114,10 +114,10 @@ func New() (*FairNode, error) {
 	if err := fnNode.Keystore.Unlock(acc, DefaultConfig.KeyPass); err == nil {
 		fnNode.Account = acc
 
-		if privkey := fnNode.Keystore.GetUnlockedPrivKey(acc.Address); privkey == nil {
-			return nil, FairnodeKeyError
-		} else {
+		if privkey, ok := fnNode.Keystore.GetUnlockedPrivKey(acc.Address); ok {
 			fnNode.Privkey = privkey
+		} else {
+			return nil, FairnodeKeyError
 		}
 	} else {
 		return nil, FairnodeKeyError

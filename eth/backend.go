@@ -403,7 +403,7 @@ func (s *Ethereum) StartMining(threads int) error {
 			if err != nil {
 				return fmt.Errorf("코인베이스를 언락해 주세요: %v", err)
 			}
-			fmt.Println("andus >> StartMining etherbase", eb.String())
+			log.Info("StartMining etherbase", "[andus]", eb.String())
 		}
 
 		if err != nil {
@@ -415,7 +415,7 @@ func (s *Ethereum) StartMining(threads int) error {
 		if _, ok := s.engine.(*deb.Deb); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err", err)
+				log.Error("Etherbase account unavailable locally", "err[andus]", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
 

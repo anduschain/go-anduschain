@@ -33,7 +33,7 @@ Exit:
 			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
 				fc.TcpDialer = conn
 				fc.tcpRunning = true
-				tsf := fairtypes.TransferCheck{*fc.Otprn, *fc.Coinbase, fc.Srv.NodeInfo().Enode}
+				tsf := fairtypes.TransferCheck{*fc.Otprn, fc.Coinbase, fc.Srv.NodeInfo().Enode}
 				msg.Send(msg.ReqLeagueJoinOK, tsf, conn)
 
 				go fc.tcpLoop(tcpDisconnectCh)
@@ -128,7 +128,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 						signer := types.NewEIP155Signer(big.NewInt(100)) // chainID 변경해야함..
 
 						// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
-						tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, common.HexToAddress(FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, fc.CoinBasePrivateKey)
+						tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, common.HexToAddress(FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, &fc.CoinBasePrivateKey)
 						if err != nil {
 							log.Println("Error[andus] : JoinTx 서명 에러 :", err)
 							tcpDisconnectCh <- struct{}{}
