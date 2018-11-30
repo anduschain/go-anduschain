@@ -140,7 +140,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 					log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
 
 					// JoinTx 생성
-					if err := fc.makeJoinTx(tcpDisconnectCh, 1000); err != nil {
+					if err := fc.makeJoinTx(tcpDisconnectCh, fc.BlockChain.Config().ChainID); err != nil {
 						log.Println("Error[andus] : ", err)
 						return
 					}
@@ -163,7 +163,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 	}
 }
 
-func (fc *FairnodeClient) makeJoinTx(tcpDisconnectCh chan bool, chanID int64) error {
+func (fc *FairnodeClient) makeJoinTx(tcpDisconnectCh chan bool, chanID *big.Int) error {
 	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 	// TODO : andus >> 잔액 조사 ( 임시 : 100 * 10^18 wei ) : 참가비 ( 수수료가 없는 tx )
 	// TODO : andus >> joinNonce 현재 상태 조회
@@ -173,7 +173,7 @@ func (fc *FairnodeClient) makeJoinTx(tcpDisconnectCh chan bool, chanID int64) er
 	if currentBalance.Cmp(price) > 0 {
 		currentJoinNonce := fc.GetCurrentJoinNonce()
 		log.Println("Info[andus] : JOIN_TX", currentBalance, currentJoinNonce)
-		signer := types.NewEIP155Signer(big.NewInt(chanID)) // chainID 변경해야함..
+		signer := types.NewEIP155Signer(chanID)
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := types.SignTx(types.NewTransaction(currentJoinNonce, common.HexToAddress(FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, &fc.CoinBasePrivateKey)
