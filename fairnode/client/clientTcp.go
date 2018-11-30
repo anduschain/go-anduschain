@@ -18,6 +18,7 @@ import (
 var (
 	ErrorMakeJoinTx = errors.New("JoinTx 서명 에러")
 	ErrorLeakCoin   = errors.New("잔액 부족으로 마이닝을 할 수 없음")
+	ErrorAddTxPool  = errors.New("TxPool 추가 에러")
 )
 
 func (fc *FairnodeClient) TCPtoFairNode() {
@@ -182,7 +183,10 @@ func (fc *FairnodeClient) makeJoinTx(tcpDisconnectCh chan bool, chanID int64) er
 		}
 		log.Println("Info[andus] : JoinTx 생성 Success", tx)
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
-		fc.txPool.AddLocal(tx)
+		if err := fc.txPool.AddLocal(tx); err != nil {
+			log.Println("Error[andus] fc.txPool.AddLocal: ", err)
+			return ErrorAddTxPool
+		}
 	} else {
 		// 잔액이 부족한 경우
 		// 마이닝을 하지 못함..참여 불가, Dial Close
