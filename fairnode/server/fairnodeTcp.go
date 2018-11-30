@@ -158,8 +158,7 @@ func (f *FairNode) sendLeague(otprnHash string) {
 		case <-t.C:
 			nodeList, index := f.GetLeaguePool(otprnHash)
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			//f.JoinTotalNum(100)
-			if len(nodeList) >= 2000 {
+			if len(nodeList) >= f.JoinTotalNum(30) {
 				for coinbase, conn := range f.LeagueConPool {
 					msg.Send(msg.SendLeageNodeList, nodeList, conn)
 					log.Println("Debug : 노드 리스트 보냄 : ", coinbase)
