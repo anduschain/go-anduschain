@@ -1,9 +1,11 @@
 package server
 
 import (
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"log"
 	"net"
 	"time"
@@ -12,8 +14,6 @@ import (
 func (f *FairNode) ListenTCP() {
 
 	log.Println("ListenTCP 리슨TCP")
-
-	go f.sendLeague()
 
 	for {
 		conn, err := f.TcpConn.AcceptTCP()
@@ -42,8 +42,7 @@ func (f *FairNode) ListenTCP() {
 	//}
 	//
 	//t := time.NewTicker(15 * time.Second)
-	//log.Println(" @ go func() START !! ")
-	//
+	//log.Println(" @ go func() START !! ")                                                                                                                                        ㅁ
 	//go func() {
 	//	for {
 	//		select {
@@ -66,7 +65,8 @@ func (f *FairNode) ListenTCP() {
 }
 
 func (f *FairNode) tcpLoop(conn *net.TCPConn) {
-	log.Println("INFO : tcpLoop 시작", conn.RemoteAddr().String())
+	log.Println("INFO[andus] : tcpLoop 시작", conn.RemoteAddr().String())
+	defer log.Println("INFO[andus] : tcpLoop 종료", conn.RemoteAddr().String())
 	buf := make([]byte, 4096)
 	for {
 		if n, err := conn.Read(buf); err == nil {
@@ -76,7 +76,7 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 				case msg.ReqLeagueJoinOK:
 					var tsf fairtypes.TransferCheck
 					fromGethMsg.Decode(&tsf)
-					log.Println("INFO : CheckEnodeAndCoinbse", tsf.Enode, tsf.Coinbase.String())
+					log.Println("INFO[andus] : 접속한 COINBASE", tsf.Coinbase.String())
 					if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
@@ -84,10 +84,17 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-							f.Db.SaveMinerNode(tsf.Otprn.HashOtprn().String(), tsf.Enode)
-							msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
-							log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
-							f.sendLeagueStartCh <- tsf.Otprn.HashOtprn().String()
+							otprnHash := tsf.Otprn.HashOtprn().String()
+							if otprn.Mminer > f.Db.GetMinerNodeNum(otprnHash) {
+								f.Db.SaveMinerNode(otprnHash, tsf.Enode)
+								msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
+								log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
+							} else {
+								// TODO : 참여 인원수 오버된 케이스
+								msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
+								conn.Close() // 커넥션 종료
+								return
+							}
 						} else {
 							// TODO : andus >> 참여 대상자가 아니다
 							msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
@@ -108,50 +115,51 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 				conn.Close() // 커넥션 종료
 				return
 			} else {
-				log.Println("Error : readLoop 에러!!!!", err.Error())
+				//log.Println("Error : readLoop 에러!!!!", err.Error())
 				continue
 			}
 		}
 	}
 }
 
-func (f *FairNode) sendLeague() {
+func (f *FairNode) sendLeague(otprnHash string) {
 	defer log.Println("Debug[andus] : sendLeague 죽음")
-	var temOtprnHash string
 	t := time.NewTicker(15 * time.Second)
-	isSubmit := false
-
 	for {
 		select {
 		case <-t.C:
-			//15 간격으로 호출
-			if isSubmit {
-				nodeList := f.Db.GetMinerNode(temOtprnHash)
-				if len(nodeList) >= 0 {
-
-					for i := range f.LeagueConList {
-						if f.LeagueConList[i] != nil {
-							msg.Send(msg.SendLeageNodeList, nodeList, f.LeagueConList[i])
-							log.Println("Debug : 노드 리스트 보냄 : ", len(nodeList))
-						}
+			nodeList := f.Db.GetMinerNode(otprnHash)
+			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
+			if len(nodeList) >= f.JoinTotalNum(30) {
+				for i := range f.LeagueConList {
+					if f.LeagueConList[i] != nil {
+						msg.Send(msg.SendLeageNodeList, nodeList, f.LeagueConList[i])
+						log.Println("Debug : 노드 리스트 보냄 : ", len(nodeList))
 					}
-
-					isSubmit = false
-
-				} else {
-					log.Println("Debug : 노드 리스트 PASS : ", isSubmit, len(nodeList))
 				}
+				return
 			} else {
-				log.Println("Debug : 노드 리스트 PASS : ", isSubmit)
+				log.Println("Debug : 노드 리스트 PASS : ", len(nodeList))
+				f.LeagueRunningOK = false
+				return
 			}
-		case otprnHash := <-f.sendLeagueStartCh:
-			if temOtprnHash != otprnHash {
-				temOtprnHash = otprnHash
-				isSubmit = true
-			}
-
 		}
 	}
+}
+
+func (f *FairNode) JoinTotalNum(persent float64) int {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	aciveNode := f.Db.GetActiveNodeList()
+	var count float64 = 0
+	for i := range aciveNode {
+		if fairutil.IsJoinOK(*f.otprn, common.HexToAddress(aciveNode[i].Coinbase)) {
+			count += 1
+		}
+	}
+
+	log.Println("Info[andus] : JoinTotalNum의 30프로 이상일때 가능", count, count*(persent/100), int(count*(persent/100)))
+	return int(count)
 }
 
 //func (f *FairNode) LeagueInsert(otprnHash string, enode string) {

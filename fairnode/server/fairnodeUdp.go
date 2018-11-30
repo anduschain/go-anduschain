@@ -32,7 +32,7 @@ func (f *FairNode) manageActiveNode() {
 			f.UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := f.UdpConn.ReadFromUDP(buf)
 			if err != nil {
-				log.Println("ReadFromUDP 에러", err)
+				//log.Println("ReadFromUDP 에러", err)
 				if err.(net.Error).Timeout() {
 					continue
 				}
@@ -53,7 +53,6 @@ func (f *FairNode) manageActiveNode() {
 
 // otprn 생성, 서명, 전송 ( 3초 반복, active node >= 3, LeagueRunningOK == false // 고루틴 )
 func (f *FairNode) startLeague() {
-	var otp *otprn.Otprn
 	t := time.NewTicker(3 * time.Second)
 	for {
 		select {
@@ -62,18 +61,18 @@ func (f *FairNode) startLeague() {
 			if !f.LeagueRunningOK && actNum >= 3 {
 
 				activeNodeNum := uint64(f.Db.GetActiveNodeNum())
-				otp = otprn.New(activeNodeNum)
+				f.otprn = otprn.New(activeNodeNum)
 
 				// TODO : andus >> otprn을 서명
-				sig, err := otp.SignOtprn(f.Account, otp.HashOtprn(), f.Keystore)
+				sig, err := f.otprn.SignOtprn(f.Account, f.otprn.HashOtprn(), f.Keystore)
 				if err != nil {
 					log.Println("Otprn 서명 에러", err)
 				}
 
 				tsOtp := fairtypes.TransferOtprn{
-					Otp:  *otp,
+					Otp:  *f.otprn,
 					Sig:  sig,
-					Hash: otp.HashOtprn(),
+					Hash: f.otprn.HashOtprn(),
 				}
 				// andus >> OTPRN DB 저장
 				f.Db.SaveOtprn(tsOtp)
@@ -81,6 +80,9 @@ func (f *FairNode) startLeague() {
 				if activeNodeNum > 0 {
 					f.LeagueRunningOK = true
 					activeNodeList := f.Db.GetActiveNodeList()
+
+					go f.sendLeague(tsOtp.Hash.String())
+
 					for index := range activeNodeList {
 						url := activeNodeList[index].Ip + ":" + activeNodeList[index].Port
 						ServerAddr, err := net.ResolveUDPAddr("udp", url)
