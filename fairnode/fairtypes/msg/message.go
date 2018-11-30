@@ -21,6 +21,7 @@ const (
 	SendEnode
 	SendOTPRN
 	SendLeageNodeList
+	MinerLeageStop
 )
 
 func ReadMsg(msg []byte) *Msg {

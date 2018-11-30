@@ -113,6 +113,13 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 					log.Println("Debug[andus] : ", str)
 					tcpDisconnectCh <- struct{}{}
 					return
+				case msg.MinerLeageStop:
+					// 종료됨
+					var str string
+					fromFaionodeMsg.Decode(&str)
+					log.Println("Debug[andus] : ", str)
+					tcpDisconnectCh <- struct{}{}
+					return
 				case msg.ResLeagueJoinTrue:
 					// 참여 가능
 					// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)

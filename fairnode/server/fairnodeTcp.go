@@ -158,7 +158,8 @@ func (f *FairNode) sendLeague(otprnHash string) {
 		case <-t.C:
 			nodeList, index := f.GetLeaguePool(otprnHash)
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			if len(nodeList) >= f.JoinTotalNum(30) {
+			//f.JoinTotalNum(100)
+			if len(nodeList) >= 2000 {
 				for coinbase, conn := range f.LeagueConPool {
 					msg.Send(msg.SendLeageNodeList, nodeList, conn)
 					log.Println("Debug : 노드 리스트 보냄 : ", coinbase)
@@ -167,6 +168,12 @@ func (f *FairNode) sendLeague(otprnHash string) {
 				return
 			} else {
 				log.Println("Debug : 리그가 성립 안됨 연결 새로운 리그 시작 : ", len(nodeList))
+
+				for coinbase, conn := range f.LeagueConPool {
+					msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", conn)
+					log.Println("Debug : 노드 리스트 보냄 : ", coinbase)
+				}
+
 				f.LeagueRunningOK = false
 				f.DeleteLeaguePool(index)
 				return
