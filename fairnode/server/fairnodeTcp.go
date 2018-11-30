@@ -140,14 +140,11 @@ Exit:
 
 // Tcp 접속 pool에 삭제 후 커넥션 종료
 func (f *FairNode) closeTcpConn(conn *net.TCPConn, coinbase string) {
-	log.Println("Debug[andus] : 접속 종료 및 커넥션 풀 삭제 전 ", len(f.LeagueConPool))
-
 	msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
 	if _, ok := f.LeagueConPool[coinbase]; ok {
 		delete(f.LeagueConPool, coinbase)
 	}
-
-	log.Println("Debug[andus] : 접속 종료 및 커넥션 풀 삭제 후 ", len(f.LeagueConPool))
+	log.Println("Info[andus] : Tcp 접속 pool에 삭제 후 커넥션 종료")
 }
 
 func (f *FairNode) sendLeague(otprnHash string) {
