@@ -22,8 +22,6 @@ func (f *FairNode) ListenTCP() {
 		}
 
 		go f.tcpLoop(conn)
-
-		f.LeagueConList = append(f.LeagueConList, conn)
 	}
 
 	//
@@ -66,8 +64,14 @@ func (f *FairNode) ListenTCP() {
 
 func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 	log.Println("INFO[andus] : tcpLoop 시작", conn.RemoteAddr().String())
+
+	defer conn.Close()
 	defer log.Println("INFO[andus] : tcpLoop 종료", conn.RemoteAddr().String())
+
 	buf := make([]byte, 4096)
+	var coinbase string
+
+Exit:
 	for {
 		if n, err := conn.Read(buf); err == nil {
 			if n > 0 {
@@ -77,6 +81,11 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 					var tsf fairtypes.TransferCheck
 					fromGethMsg.Decode(&tsf)
 					log.Println("INFO[andus] : 접속한 COINBASE", tsf.Coinbase.String())
+
+					// Tcp 접속 pool에 저장
+					f.LeagueConPool[tsf.Coinbase.String()] = conn
+					coinbase = tsf.Coinbase.String()
+
 					if f.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
@@ -85,41 +94,60 @@ func (f *FairNode) tcpLoop(conn *net.TCPConn) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 							otprnHash := tsf.Otprn.HashOtprn().String()
-							if otprn.Mminer > f.Db.GetMinerNodeNum(otprnHash) {
-								f.Db.SaveMinerNode(otprnHash, tsf.Enode)
+							nodes, _ := f.GetLeaguePool(otprnHash)
+
+							if otprn.Mminer > uint64(len(nodes)) {
 								msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
-								log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
+								f.Db.SaveMinerNode(otprnHash, tsf.Enode)
+								f.LeaguePoolInsert(otprnHash, tsf.Enode)
+								//log.Println("INFO : 리그 참여자 TCP 연결 후 저장됨", tsf.Enode)
 							} else {
 								// TODO : 참여 인원수 오버된 케이스
-								msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
-								conn.Close() // 커넥션 종료
-								return
+								f.closeTcpConn(conn, coinbase)
+								log.Println("INFO : 참여 인원수 오버된 케이스", tsf.Enode)
+								break Exit
 							}
 						} else {
 							// TODO : andus >> 참여 대상자가 아니다
-							msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
-							conn.Close() // 커넥션 종료
-							return
+							f.closeTcpConn(conn, coinbase)
+							log.Println("INFO : 참여 대상자가 아니다", tsf.Enode)
+							break Exit
 						}
 					} else {
 						// TODO : andus >> 리그 참여 정보가 다르다
-						msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
-						conn.Close() // 커넥션 종료
-						return
+						f.closeTcpConn(conn, coinbase)
+						log.Println("INFO : 리그 참여 정보가 다르다", tsf.Enode)
+						break Exit
 					}
 				}
 
 			}
 		} else {
 			if err.Error() == "EOF" {
-				conn.Close() // 커넥션 종료
-				return
+				f.closeTcpConn(conn, coinbase) // 커넥션 종료
+				log.Println("INFO : TcpConn ----> EOF")
+				break Exit
 			} else {
-				//log.Println("Error : readLoop 에러!!!!", err.Error())
+				log.Println("Error : readLoop 에러!!!!", err.Error())
 				continue
 			}
 		}
 	}
+
+	log.Println("INFO[andus] : tcpLoop Exit")
+
+}
+
+// Tcp 접속 pool에 삭제 후 커넥션 종료
+func (f *FairNode) closeTcpConn(conn *net.TCPConn, coinbase string) {
+	log.Println("Debug[andus] : 접속 종료 및 커넥션 풀 삭제 전 ", len(f.LeagueConPool))
+
+	msg.Send(msg.ResLeagueJoinFalse, "리그참여 대상자가 아님", conn)
+	if _, ok := f.LeagueConPool[coinbase]; ok {
+		delete(f.LeagueConPool, coinbase)
+	}
+
+	log.Println("Debug[andus] : 접속 종료 및 커넥션 풀 삭제 후 ", len(f.LeagueConPool))
 }
 
 func (f *FairNode) sendLeague(otprnHash string) {
@@ -128,19 +156,19 @@ func (f *FairNode) sendLeague(otprnHash string) {
 	for {
 		select {
 		case <-t.C:
-			nodeList := f.Db.GetMinerNode(otprnHash)
+			nodeList, index := f.GetLeaguePool(otprnHash)
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
 			if len(nodeList) >= f.JoinTotalNum(30) {
-				for i := range f.LeagueConList {
-					if f.LeagueConList[i] != nil {
-						msg.Send(msg.SendLeageNodeList, nodeList, f.LeagueConList[i])
-						log.Println("Debug : 노드 리스트 보냄 : ", len(nodeList))
-					}
+				for coinbase, conn := range f.LeagueConPool {
+					msg.Send(msg.SendLeageNodeList, nodeList, conn)
+					log.Println("Debug : 노드 리스트 보냄 : ", coinbase)
 				}
+				f.DeleteLeaguePool(index)
 				return
 			} else {
-				log.Println("Debug : 노드 리스트 PASS : ", len(nodeList))
+				log.Println("Debug : 리그가 성립 안됨 연결 새로운 리그 시작 : ", len(nodeList))
 				f.LeagueRunningOK = false
+				f.DeleteLeaguePool(index)
 				return
 			}
 		}
@@ -162,27 +190,27 @@ func (f *FairNode) JoinTotalNum(persent float64) int {
 	return int(count)
 }
 
-//func (f *FairNode) LeagueInsert(otprnHash string, enode string) {
-//	nodeList, index := f.GetLeague(otprnHash)
-//	if len(nodeList) > 0 {
-//		f.LeagueList[index][otprnHash] = append(f.LeagueList[index][otprnHash], enode)
-//	} else {
-//		m := make(map[string][]string)
-//		m[otprnHash] = []string{enode}
-//		f.LeagueList = append(f.LeagueList, m)
-//	}
-//}
-//
-//func (f *FairNode) DeleteLeague(index int) {
-//	m := f.LeagueList
-//	m = append(m[:index], m[index+1:]...)
-//}
-//
-//func (f *FairNode) GetLeague(otprnHash string) ([]string, int) {
-//	for index := range f.LeagueList {
-//		if _, ok := f.LeagueList[index][otprnHash]; ok {
-//			return f.LeagueList[index][otprnHash], index
-//		}
-//	}
-//	return []string{}, -1
-//}
+func (f *FairNode) LeaguePoolInit(otprnHash string) {
+	m := make(connNode)
+	m[otprnHash] = []string{}
+	f.ConnNodePool = append(f.ConnNodePool, m)
+}
+
+func (f *FairNode) LeaguePoolInsert(otprnHash string, enode string) {
+	_, index := f.GetLeaguePool(otprnHash)
+	f.ConnNodePool[index][otprnHash] = append(f.ConnNodePool[index][otprnHash], enode)
+}
+
+func (f *FairNode) DeleteLeaguePool(index int) {
+	m := f.ConnNodePool
+	m = append(m[:index], m[index+1:]...)
+}
+
+func (f *FairNode) GetLeaguePool(otprnHash string) ([]string, int) {
+	for index := range f.ConnNodePool {
+		if _, ok := f.ConnNodePool[index][otprnHash]; ok {
+			return f.ConnNodePool[index][otprnHash], index
+		}
+	}
+	return []string{}, -1
+}

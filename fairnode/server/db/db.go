@@ -142,9 +142,11 @@ func (fnb *FairNodeDB) GetMinerNode(otprnHash string) []string {
 }
 
 func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
-	num, err := fnb.MinerNode.FindId(otprnHash).Count()
+	var minerlist minerNode
+	err := fnb.MinerNode.FindId(otprnHash).One(&minerlist)
 	if err != nil {
 		log.Println("Error[DB] : GetMinerNodeNum", err)
+		return 0
 	}
-	return uint64(num)
+	return uint64(len(minerlist.Nodes))
 }

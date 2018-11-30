@@ -29,7 +29,7 @@ Exit:
 	for {
 		select {
 		case <-fc.TcpConnStartCh:
-			// TODO : andus >> OTPRN이 수신되어 커넥션 만들
+			// TODO : andus >> OTPRN이 수신되어 커넥션 만듬
 			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
 				fc.TcpDialer = conn
 				fc.tcpRunning = true
@@ -108,6 +108,9 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan struct{}) {
 				switch fromFaionodeMsg.Code {
 				case msg.ResLeagueJoinFalse:
 					// 참여 불가, Dial Close
+					var str string
+					fromFaionodeMsg.Decode(&str)
+					log.Println("Debug[andus] : ", str)
 					tcpDisconnectCh <- struct{}{}
 					return
 				case msg.ResLeagueJoinTrue:

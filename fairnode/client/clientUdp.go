@@ -133,12 +133,16 @@ func (fc *FairnodeClient) receiveOtprn() {
 							if ok := fairutil.IsJoinOK(*fc.Otprn, fc.Coinbase); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-								//fmt.Println("andus >> 채굴 참여 대상자 확인")
+
+								log.Println("Debug[andus] : 참여대상이 맞음")
 
 								if !fc.tcpRunning {
 									fc.TcpConnStartCh <- struct{}{}
+									log.Println("Debug[andus] : Tcp 연결함 >>>>>>>>>>>>>")
 								}
 
+							} else {
+								log.Println("Debug[andus] : 참여대상이 아님")
 							}
 
 						} else {

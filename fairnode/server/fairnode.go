@@ -26,6 +26,9 @@ var (
 	KeyPassError         = errors.New("패어노드 키가 입력되지 않았습니다.")
 )
 
+type connPool map[string]*net.TCPConn
+type connNode map[string][]string
+
 type FairNode struct {
 	Privkey  *ecdsa.PrivateKey
 	LaddrTcp *net.TCPAddr
@@ -50,10 +53,9 @@ type FairNode struct {
 	LeagueRunningOK bool
 	natm            nat.Interface
 
-	//LeagueList []map[string][]string
+	ConnNodePool []connNode // otrnHash를 키로 가지고 노드 리스트를 관리하는 곳
 
-	// 리그가 시작되었을때 커넥션 관리
-	LeagueConList []*net.TCPConn
+	LeagueConPool connPool // 리그가 시작되었을때 커넥션 관리
 }
 
 func New() (*FairNode, error) {
@@ -99,6 +101,7 @@ func New() (*FairNode, error) {
 		LeagueRunningOK:   false,
 		Db:                mongoDB,
 		natm:              natm,
+		LeagueConPool:     make(connPool),
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)

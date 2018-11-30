@@ -76,6 +76,7 @@ func (f *FairNode) startLeague() {
 				}
 				// andus >> OTPRN DB 저장
 				f.Db.SaveOtprn(tsOtp)
+				f.LeaguePoolInit(tsOtp.Hash.String())
 
 				if activeNodeNum > 0 {
 					f.LeagueRunningOK = true
