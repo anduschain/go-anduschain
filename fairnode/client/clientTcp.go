@@ -92,6 +92,8 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 	data := make([]byte, 4096)
 	for {
 		select {
+		case winingBlock := <-fc.WinningBlockCh:
+			fmt.Println("---------------블록 투표----------", winingBlock.Block.Hash().String())
 		case <-fc.tcpConnStopCh:
 			fc.wg.Done()
 			return
@@ -129,8 +131,6 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 					return
 				case msg.ResLeagueJoinTrue:
 					// 참여 가능???
-
-					fc.StartCh <- struct{}{}
 					log.Println("Info[andus] : ", str)
 				case msg.SendLeageNodeList:
 					// Add peer
@@ -153,6 +153,15 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 						log.Println("Error[andus] : ", err)
 						//return
 					}
+
+					go func() {
+						t := time.NewTicker(10 * time.Second)
+						select {
+						case <-t.C:
+							fc.StartCh <- struct{}{}
+							log.Println("Info[andus] : 블록 생성 시작")
+						}
+					}()
 
 				}
 

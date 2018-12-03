@@ -232,11 +232,9 @@ func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
 		case block := <-pm.LeagueBlockBroadcastCh:
-
-			fmt.Println("----------------ProtocolManager.leagueBroadCast----------", *block)
-
 			for _, peer := range pm.peers.peers {
 				peer.SendMakeLeagueBlock(*block)
+				fmt.Println("----------------ProtocolManager.leagueBroadCast----------", block.Block.Hash().String())
 			}
 		}
 	}

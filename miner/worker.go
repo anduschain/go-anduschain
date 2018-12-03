@@ -661,9 +661,13 @@ func (w *worker) sendMiningBlockAndVoting() {
 		select {
 		case recevedBlock := <-w.ReceiveBlockCh:
 
+			fmt.Println("--------recevedBlock-------")
+
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if OK := debEngine.IsFairNodeSigOK(recevedBlock); !OK {
+
+				fmt.Println("--------debEngine.IsFairNodeSigOK START-------")
 
 				// TODO : andus >> 2. RAND 값 서명 검증
 				if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
@@ -674,9 +678,14 @@ func (w *worker) sendMiningBlockAndVoting() {
 
 					count++
 
-					fmt.Println("-------------------------", recevedBlock.Block.Hash(), count)
+					fmt.Println("-------------debEngine.CheckRANDSigOK------------", recevedBlock.Block.Hash(), count)
 
+				} else {
+					fmt.Println("---------debEngine.CheckRANDSigOK-------")
 				}
+
+				fmt.Println("---------debEngine.IsFairNodeSigOK END-------")
+
 			} else {
 				log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
 			}
@@ -696,7 +705,10 @@ func (w *worker) sendMiningBlockAndVoting() {
 
 				if countBlock > 10 {
 					// TODO : andus >> 5. FairNode로 winningBlock 전송
-					w.WinningBlockCh <- winningBlock
+					if winningBlock != nil {
+						w.WinningBlockCh <- winningBlock
+						fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
+					}
 					countBlock = 0
 				}
 
