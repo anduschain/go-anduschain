@@ -29,10 +29,7 @@ func (fc *FairnodeClient) TCPtoFairNode() {
 	// 연결이 종료 되었을때
 	tcpDisconnectCh := make(chan bool)
 
-	defer func() {
-		fc.tcpRunning = false
-		log.Println("Info[andus] : TCPtoFairNode 종료됨")
-	}()
+	defer log.Println("Info[andus] : TCPtoFairNode 종료됨")
 
 Exit:
 	for {
@@ -89,6 +86,7 @@ Exit:
 func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 	defer func() {
 		log.Println("Info[andus] : FairnodeClient tcpLoop 죽음")
+		fc.tcpRunning = false
 	}()
 
 	data := make([]byte, 4096)
@@ -142,7 +140,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 					// JoinTx 생성
 					if err := fc.makeJoinTx(tcpDisconnectCh, fc.BlockChain.Config().ChainID); err != nil {
 						log.Println("Error[andus] : ", err)
-						return
+						//return
 					}
 
 					for index := range nodeList {

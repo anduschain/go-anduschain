@@ -602,9 +602,13 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if err != nil {
 		return err
 	}
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
+
+	if string(tx.Data()) != "JOIN_TX" {
+		if tx.Gas() < intrGas {
+			return ErrIntrinsicGas
+		}
 	}
+
 	return nil
 }
 

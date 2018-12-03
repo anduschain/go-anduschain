@@ -129,9 +129,6 @@ func (fc *FairnodeClient) Stop() {
 		fc.submitEnodeExitCh <- struct{}{}
 		fc.receiveOtprnExitCh <- struct{}{}
 
-		// 마이너 종료시 계정 Lock
-		fc.keystore.Lock(fc.Coinbase)
-
 		if fc.tcpRunning {
 			// loop kill, tcp kill
 			fc.tcpConnStopCh <- TcpStop
@@ -140,6 +137,10 @@ func (fc *FairnodeClient) Stop() {
 			fc.tcptoFairNodeExitCh <- StopTCPtoFairNode
 		}
 
+		// 마이너 종료시 계정 Lock
+		if err := fc.keystore.Lock(fc.Coinbase); err != nil {
+			log.Println("Error[andus] : ", err)
+		}
 	}
 }
 
