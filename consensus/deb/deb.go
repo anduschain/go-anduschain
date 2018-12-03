@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
-	"log"
+	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
 
@@ -108,29 +110,28 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 type Deb struct {
 	config    *params.DebConfig // Consensus engine configuration parameters
 	db        ethdb.Database    // Database to store and retrieve snapshot checkpoints
-	otprn     *common.Hash
-	joinNonce *uint64
-	coinbase  *common.Address
-	NodeKey   *ecdsa.PrivateKey
+	otprn     common.Hash
+	joinNonce uint64
+	coinbase  common.Address
+
+	privKey *ecdsa.PrivateKey
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.DebConfig, db ethdb.Database, nodeKey *ecdsa.PrivateKey) *Deb {
+func New(config *params.DebConfig, db ethdb.Database) *Deb {
 
-	log.Println("andus >> Deb Call New()")
+	log.Info("Deb Call New()", "andus", "--------------------")
 
 	return &Deb{
-		config:  config,
-		db:      db,
-		NodeKey: nodeKey,
+		config: config,
+		db:     db,
 	}
 }
 
 // TODO : andus >> 생성된 블록(브로드케스팅용) 서명
 func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
-
-	sig, err := crypto.Sign(blockHash, c.NodeKey)
+	sig, err := crypto.Sign(blockHash, c.privKey)
 	if err != nil {
 		return nil, errFailSignature
 	}
@@ -139,31 +140,69 @@ func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
 }
 
 func (c *Deb) IsFairNodeSigOK(recevedBlockLeagueHash *types.TransferBlock) bool {
-
 	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
+	sig := recevedBlockLeagueHash.Sig
+	headerHash := recevedBlockLeagueHash.HeaderHash
+	block := recevedBlockLeagueHash.Block
 
-	if true {
+	if _, ok := block.GetFairNodeSig(); ok {
 
+		fpKey, err := crypto.SigToPub(headerHash.Bytes(), sig)
+		if err != nil {
+			return false
+		}
+
+		addr := crypto.PubkeyToAddress(*fpKey)
+		if addr.String() == fairnodeclient.FAIRNODE_ADDRESS {
+			return true
+		} else {
+			return false
+		}
+
+	} else {
+		return false
 	}
-
-	return true
 }
 
-func (c *Deb) CheckRANDSigOK(header *types.Header) bool {
+func (c *Deb) CheckRANDSigOK(transBlock *types.TransferBlock, otprn otprn.Otprn) bool {
+	block := transBlock.Block
+	headerHash := transBlock.HeaderHash
+	sig := transBlock.Sig
+	header := block.Header()
 
-	// TODO : andus >> 1. 서명 확인 해야 되는데.......
-	//					/crypto/crypto_test.go 의 TestSign() 함수 참조..
-	// TODO : andus >> 2. 서명된 RAND 값을 복호화한 값과 헤더의 difficulty 값 같은지 비교
-	//					위에서 공개키와 주소를 얻어오고, 공개키로 복호화한다..
-	// TODO : andus >> 3. miner 의 JoinNonce 수 만큼 RAND 값을 생성하면서 헤더의 difficulty 와 같은 값이 나오는지 검증
-	//					miner 의 JoinNonce 는 어디서 가져오지?
+	pubKey, err := crypto.SigToPub(headerHash.Bytes(), sig)
+	if err != nil {
+		return false
+	}
 
-	return true
+	addr := crypto.PubkeyToAddress(*pubKey)
+	if block.Header().Coinbase.String() == addr.String() {
+		if header.Difficulty == MakeRand(header.Nonce.Uint64(), otprn.HashOtprn(), header.Coinbase, header.ParentHash) {
+			return true
+		} else {
+			return false
+		}
+	} else {
+		return false
+	}
 }
 
 func (c *Deb) CompareBlock(myBlock *types.TransferBlock, receivedBlock *types.TransferBlock) *types.TransferBlock {
 
-	return nil
+	privBlockHeader := myBlock.Block.Header()
+	receivedHeader := receivedBlock.Block.Header()
+
+	if privBlockHeader.Difficulty.Cmp(receivedHeader.Difficulty) == 1 {
+		return myBlock
+	} else if privBlockHeader.Difficulty.Cmp(receivedHeader.Difficulty) == 0 {
+		if privBlockHeader.Nonce.Uint64() > receivedHeader.Nonce.Uint64() {
+			return myBlock
+		} else {
+			return receivedBlock
+		}
+	} else {
+		return receivedBlock
+	}
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered
@@ -229,7 +268,7 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		}
 
 		// TODO : andus >> Difficulty 검증
-		if header.Difficulty != MakeRand(header.Nonce.Uint64(), *c.otprn, header.Coinbase, header.ParentHash) {
+		if header.Difficulty != MakeRand(header.Nonce.Uint64(), c.otprn, header.Coinbase, header.ParentHash) {
 			return errInvalidDifficulty
 		}
 	}
@@ -298,13 +337,16 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
-func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash) error {
+func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
 
 	// TODO : andus >> struct 값 추가...
-	//c.coinbase = &coinbase
-	//c.joinNonce = &joinNonce
-	//c.otprn = &otprn
+	c.coinbase = coinbase
+	c.joinNonce = joinNonce
+	c.otprn = otprn
+
+	// Coinbase PriveKey
+	c.privKey = privKey
 
 	header.Coinbase = common.Address{}
 
@@ -319,10 +361,10 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNon
 		return consensus.ErrUnknownAncestor
 	}
 
-	//// TODO : andus >> nonce - joinNonce
-	//header.Nonce = types.EncodeNonce(joinNonce)
-	//// TODO : andus >> difficulty - RAND값
-	//header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
+	// TODO : andus >> nonce - joinNonce
+	header.Nonce = types.EncodeNonce(joinNonce)
+	// TODO : andus >> difficulty - RAND값
+	header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
 
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
@@ -342,6 +384,9 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 // Seal implements consensus.Engine, attempting to create a sealed block using
 // the local signing credentials.
 func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+
+	fmt.Println("------------------deb.Seal--------------")
+
 	header := block.Header()
 
 	// Sealing the genesis block is not supported
@@ -349,6 +394,18 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 	if number == 0 {
 		return errUnknownBlock
 	}
+
+	go func() {
+		select {
+		case <-stop:
+			return
+		case results <- block.WithSeal(header):
+			fmt.Println("------------------deb.Seal, results <---------------", block.WithSeal(header).ParentHash())
+		default:
+			log.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
+		}
+
+	}()
 
 	return nil
 }
@@ -358,11 +415,12 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 
-	return MakeRand(*c.joinNonce, *c.otprn, *c.coinbase, parent.Hash())
+	return MakeRand(c.joinNonce, c.otprn, c.coinbase, parent.Hash())
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (c *Deb) SealHash(header *types.Header) common.Hash {
+	fmt.Println("------------------deb.SealHash--------------")
 	return sigHash(header)
 }
 

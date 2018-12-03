@@ -275,7 +275,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	//	return engine
 	//}
 
-	return deb.New(chainConfig.Deb, db, ctx.GetNodeConfig().P2P.PrivateKey)
+	return deb.New(chainConfig.Deb, db)
 }
 
 // APIs return the collection of RPC services the ethereum package offers.

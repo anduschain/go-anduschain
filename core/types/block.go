@@ -142,7 +142,8 @@ type Block struct {
 	ReceivedFrom interface{}
 
 	// TODO : andus >> FairNode 서명
-	FairNodeSig *[]byte
+	FairNodeSig []byte // header Hash + Voter Hash
+	Voter       []common.Address
 }
 
 // TODO : andus >> andus 전송 블록 객체..
@@ -316,12 +317,16 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
 
 // TODO : andus >> 페어노드 서명을 조회 하는 부분
-func (b *Block) GetFairNodeSig() (*[]byte, bool) {
-	if len(*b.FairNodeSig) > 0 {
+func (b *Block) GetFairNodeSig() ([]byte, bool) {
+	if len(b.FairNodeSig) > 0 {
 		return b.FairNodeSig, false
 	} else {
 		return nil, true
 	}
+}
+
+func (b *Block) GetVoter() []common.Address {
+	return b.Voter
 }
 
 // Size returns the true RLP encoded storage size of the block, either by encoding

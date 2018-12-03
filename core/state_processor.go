@@ -67,7 +67,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		misc.ApplyDAOHardFork(statedb)
 	}
 
-	fairPub, err := crypto.SigToPub(block.Header().Hash().Bytes(), *block.FairNodeSig)
+	fairPub, err := crypto.SigToPub(block.Header().Hash().Bytes(), block.FairNodeSig)
 	if err != nil {
 		log.Error("andus >> 페어노드 공개키 가져오는 에러")
 	}

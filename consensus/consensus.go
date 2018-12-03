@@ -18,6 +18,7 @@
 package consensus
 
 import (
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -77,7 +78,7 @@ type Engine interface {
 
 	// Prepare initializes the consensus fields of a block header according to the
 	// rules of a particular engine. The changes are executed inline.
-	Prepare(chain ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash) error
+	Prepare(chain ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error
 
 	// Finalize runs any post-transaction state modifications (e.g. block rewards)
 	// and assembles the final block.

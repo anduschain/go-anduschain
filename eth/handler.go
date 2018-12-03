@@ -232,6 +232,9 @@ func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
 		case block := <-pm.LeagueBlockBroadcastCh:
+
+			fmt.Println("----------------ProtocolManager.leagueBroadCast----------", *block)
+
 			for _, peer := range pm.peers.peers {
 				peer.SendMakeLeagueBlock(*block)
 			}
@@ -704,6 +707,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.txpool.AddRemotes(txs)
 
+		fmt.Println("-----------------TxMsg-------------", string(txs[0].Data()))
+
 	case msg.Code == MakeLeagueBlockMsg:
 		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
 
@@ -793,6 +798,7 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	for {
 		select {
 		case event := <-pm.txsCh:
+			fmt.Println("-----------------txBroadcastLoop-------------")
 			pm.BroadcastTxs(event.Txs)
 
 		// Err() channel will be closed when unsubscribing.

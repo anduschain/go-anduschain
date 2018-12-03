@@ -99,7 +99,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 			fc.TcpDialer.SetDeadline(time.Now().Add(3 * time.Second))
 			n, err := fc.TcpDialer.Read(data)
 			if err != nil {
-				log.Println("Error[andus] : Read 에러!!", err.Error())
+				//log.Println("Error[andus] : Read 에러!!", err.Error())
 				if err.Error() != "EOF" {
 					if err.(net.Error).Timeout() {
 						continue
@@ -129,19 +129,14 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 					return
 				case msg.ResLeagueJoinTrue:
 					// 참여 가능???
-					fromFaionodeMsg.Decode(&str)
+
+					fc.StartCh <- struct{}{}
 					log.Println("Info[andus] : ", str)
 				case msg.SendLeageNodeList:
 					// Add peer
 					var nodeList []string
 					fromFaionodeMsg.Decode(&nodeList)
 					log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
-
-					// JoinTx 생성
-					if err := fc.makeJoinTx(tcpDisconnectCh, fc.BlockChain.Config().ChainID); err != nil {
-						log.Println("Error[andus] : ", err)
-						//return
-					}
 
 					for index := range nodeList {
 						// addPeer 실행
@@ -151,6 +146,12 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 						}
 						fc.Srv.AddPeer(node)
 						log.Println("Info[andus] : 마이너 노드 추가")
+					}
+
+					// JoinTx 생성
+					if err := fc.makeJoinTx(tcpDisconnectCh, fc.BlockChain.Config().ChainID); err != nil {
+						log.Println("Error[andus] : ", err)
+						//return
 					}
 
 				}

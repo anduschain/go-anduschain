@@ -98,7 +98,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 			localServerConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			n, _, err := localServerConn.ReadFromUDP(tsOtprnByte)
 			if err != nil {
-				log.Println("Debug : Connect Error", err)
+				//log.Println("Debug : Connect Error", err)
 				if err.(net.Error).Timeout() {
 					continue
 				}

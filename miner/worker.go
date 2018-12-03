@@ -357,7 +357,10 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 	for {
 		select {
+		case <-w.fairclient.StartCh:
+			w.startCh <- struct{}{}
 		case <-w.startCh:
+			fmt.Println("----------------w.startCh-------------------------")
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -473,6 +476,7 @@ func (w *worker) mainLoop() {
 				w.commitTransactions(txset, coinbase, nil)
 				w.updateSnapshot()
 			} else {
+				// FIXME : ------> deb 처리
 				// If we're mining, but nothing is being processed, wake on new transactions
 				if w.config.Clique != nil && w.config.Clique.Period == 0 {
 					w.commitNewWork(nil, false, time.Now().Unix())
@@ -514,6 +518,8 @@ func (w *worker) taskLoop() {
 			if w.newTaskHook != nil {
 				w.newTaskHook(task)
 			}
+
+			fmt.Println("-----------------------w.taskCh------------------------")
 			// Reject duplicate sealing work due to resubmitting.
 			sealHash := w.engine.SealHash(task.block.Header())
 			if sealHash == prev {
@@ -594,65 +600,9 @@ func (w *worker) resultLoop() {
 				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 				w.LeagueBlockBroadcastCh <- &tfd
 
-				otprn := w.fairclient.Otprn
-				lastBlockNum := big.NewInt(0)
+				go w.sendMiningBlockAndVoting()
 
 				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
-				go func() {
-
-					var winningBlock *types.TransferBlock
-
-					count, countBlock := 0, 0
-					t := time.NewTicker(1 * time.Second)
-
-					// TODO : andus >> coinbase 저장소
-					receviedCoinbase := make(map[common.Address]string)
-
-					for {
-						select {
-						case recevedBlock := <-w.ReceiveBlockCh:
-
-							// TODO : andus >> 블록 검증
-							// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-							if OK := debEngine.IsFairNodeSigOK(recevedBlock); !OK {
-
-								// TODO : andus >> 2. RAND 값 서명 검증
-								if OK := debEngine.CheckRANDSigOK(recevedBlock.Block.Header()); OK {
-
-									winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
-
-									receviedCoinbase[recevedBlock.Block.Coinbase()] = "코인베이스"
-
-									count++
-
-									fmt.Println(recevedBlock.Block.Hash(), count)
-
-								}
-							} else {
-								log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
-								lastBlockNum = recevedBlock.Block.Number()
-							}
-
-						case <-t.C:
-							// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
-							if uint64(len(receviedCoinbase)) >= otprn.Mminer-1 {
-								// TODO : andus >> 5. FairNode로 winningBlock 전송
-								w.WinningBlockCh <- winningBlock
-								countBlock = 0
-							} else {
-								countBlock++
-							}
-
-							if countBlock > 10 {
-								// TODO : andus >> 5. FairNode로 winningBlock 전송
-								w.WinningBlockCh <- winningBlock
-								countBlock = 0
-							}
-
-						}
-					}
-
-				}()
 
 				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
 				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
@@ -693,6 +643,66 @@ func (w *worker) resultLoop() {
 			}
 		case <-w.exitCh:
 			return
+		}
+	}
+}
+
+func (w *worker) sendMiningBlockAndVoting() {
+	debEngine, _ := w.engine.(*deb.Deb)
+
+	var winningBlock *types.TransferBlock
+	count, countBlock := 0, 0
+	t := time.NewTicker(1 * time.Second)
+
+	// TODO : andus >> coinbase 저장소
+	receviedCoinbase := make(map[common.Address]string)
+
+	for {
+		select {
+		case recevedBlock := <-w.ReceiveBlockCh:
+
+			// TODO : andus >> 블록 검증
+			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+			if OK := debEngine.IsFairNodeSigOK(recevedBlock); !OK {
+
+				// TODO : andus >> 2. RAND 값 서명 검증
+				if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
+
+					winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
+
+					receviedCoinbase[recevedBlock.Block.Coinbase()] = recevedBlock.Block.Hash().String()
+
+					count++
+
+					fmt.Println("-------------------------", recevedBlock.Block.Hash(), count)
+
+				}
+			} else {
+				log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
+			}
+
+		case <-t.C:
+			// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
+
+			if w.fairclient.Otprn != nil {
+
+				if uint64(len(receviedCoinbase)) >= w.fairclient.Otprn.Mminer-1 {
+					// TODO : andus >> 5. FairNode로 winningBlock 전송
+					w.WinningBlockCh <- winningBlock
+					countBlock = 0
+				} else {
+					countBlock++
+				}
+
+				if countBlock > 10 {
+					// TODO : andus >> 5. FairNode로 winningBlock 전송
+					w.WinningBlockCh <- winningBlock
+					countBlock = 0
+				}
+
+			} else {
+				fmt.Println("-----------------리그시작전-----------------")
+			}
 		}
 	}
 }
@@ -905,6 +915,8 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 // commitNewWork generates several new sealing tasks based on the parent block.
 func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
+
+	fmt.Println("---------------------commitNewWork-------------------")
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -938,13 +950,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		header.Coinbase = w.coinbase
 	}
 
-	if w.fairclient.Running {
+	if w.fairclient.Running && w.fairclient.Otprn != nil {
 		// TODO : andus >> 현재 상태를 읽어옴
-		fmt.Println("andus >> 패어노드 클라이언트 살아 있다.")
+		fmt.Println("andus >> 패어노드 클라이언트 살아 있다고 OTPRN있음")
 
 		if currentStateDb, err := w.chain.State(); err == nil {
 
-			if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn()); err != nil {
+			if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn(), &w.fairclient.CoinBasePrivateKey); err != nil {
 				log.Error("Failed to prepare header for mining", "err", err)
 				return
 			}

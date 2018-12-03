@@ -39,6 +39,7 @@ type FairnodeClient struct {
 	keystore           *keystore.KeyStore
 	txPool             *core.TxPool
 	CoinBasePrivateKey ecdsa.PrivateKey
+	FairPubKey         ecdsa.PublicKey
 
 	SAddrUDP *net.UDPAddr
 	LAddrUDP *net.UDPAddr
@@ -62,6 +63,8 @@ type FairnodeClient struct {
 	NAT string
 
 	mux sync.Mutex
+
+	StartCh chan struct{} // 블록생성 시작 채널
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -81,6 +84,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		tcpConnStopCh:       make(chan int),
 		tcpRunning:          false,
 		NAT:                 DefaultConfig.NAT,
+		StartCh:             make(chan struct{}),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
