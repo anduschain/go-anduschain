@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -119,6 +121,12 @@ Exit:
 						log.Println("INFO : 리그 참여 정보가 다르다", tsf.Enode)
 						break Exit
 					}
+				case msg.SendBlockForVote:
+					var voteBlock types.TransferBlock
+					fromGethMsg.Decode(&voteBlock)
+					fmt.Println("-----------투표 블록 도착--------", voteBlock.HeaderHash.String())
+					f.StopCh <- struct{}{}
+					break Exit
 				}
 
 			}
@@ -165,9 +173,8 @@ func (f *FairNode) sendLeague(otprnHash string) {
 			} else {
 				log.Println("Debug : 리그가 성립 안됨 연결 새로운 리그 시작 : ", len(nodeList))
 
-				for coinbase, conn := range f.LeagueConPool {
+				for _, conn := range f.LeagueConPool {
 					msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", conn)
-					log.Println("Debug : 노드 리스트 보냄 : ", coinbase)
 				}
 
 				f.LeagueRunningOK = false

@@ -401,7 +401,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 // the local signing credentials.
 func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 
-	fmt.Println("------------------deb.Seal--------------")
+	fmt.Println("------------------deb.Seal--------------", block)
 
 	header := block.Header()
 

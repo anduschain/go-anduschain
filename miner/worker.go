@@ -519,7 +519,7 @@ func (w *worker) taskLoop() {
 				w.newTaskHook(task)
 			}
 
-			fmt.Println("-----------------------w.taskCh------------------------", task)
+			fmt.Println("-----------------------w.taskCh------------------------", task.block)
 			// Reject duplicate sealing work due to resubmitting.
 			sealHash := w.engine.SealHash(task.block.Header())
 			if sealHash == prev {
@@ -600,46 +600,46 @@ func (w *worker) resultLoop() {
 				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 				w.LeagueBlockBroadcastCh <- &tfd
 
-				go w.sendMiningBlockAndVoting()
+				go w.sendMiningBlockAndVoting(&tfd)
 
 				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
 
 				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
 				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
-				finalBlock := <-w.FinalBlockCh
-				block = finalBlock.Block
-
-				// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
-				if _, ok := block.GetFairNodeSig(); ok {
-
-					// Commit block and state to database.
-					stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-					if err != nil {
-						log.Error("Failed writing block to chain", "err", err)
-						continue
-					}
-					log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-						"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
-
-					// Broadcast the block and announce chain insertion event
-					w.mux.Post(core.NewMinedBlockEvent{Block: block})
-
-					var events []interface{}
-					switch stat {
-					case core.CanonStatTy:
-						events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-						events = append(events, core.ChainHeadEvent{Block: block})
-					case core.SideStatTy:
-						events = append(events, core.ChainSideEvent{Block: block})
-					}
-					w.chain.PostChainEvents(events, logs)
-
-					// Insert the block into the set of pending ones to resultLoop for confirmations
-					w.unconfirmed.Insert(block.NumberU64(), block.Hash())
-
-				} else {
-					log.Info("andus >> 페어노드의 서명이 없음")
-				}
+				//finalBlock := <-w.FinalBlockCh
+				//block = finalBlock.Block
+				//
+				//// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
+				//if _, ok := block.GetFairNodeSig(); ok {
+				//
+				//	// Commit block and state to database.
+				//	stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+				//	if err != nil {
+				//		log.Error("Failed writing block to chain", "err", err)
+				//		continue
+				//	}
+				//	log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+				//		"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+				//
+				//	// Broadcast the block and announce chain insertion event
+				//	w.mux.Post(core.NewMinedBlockEvent{Block: block})
+				//
+				//	var events []interface{}
+				//	switch stat {
+				//	case core.CanonStatTy:
+				//		events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+				//		events = append(events, core.ChainHeadEvent{Block: block})
+				//	case core.SideStatTy:
+				//		events = append(events, core.ChainSideEvent{Block: block})
+				//	}
+				//	w.chain.PostChainEvents(events, logs)
+				//
+				//	// Insert the block into the set of pending ones to resultLoop for confirmations
+				//	w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+				//
+				//} else {
+				//	log.Info("andus >> 페어노드의 서명이 없음")
+				//}
 			}
 		case <-w.exitCh:
 			return
@@ -647,10 +647,12 @@ func (w *worker) resultLoop() {
 	}
 }
 
-func (w *worker) sendMiningBlockAndVoting() {
+func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
+	fmt.Println("----------sendMiningBlockAndVoting Start---------")
+	defer fmt.Println("----------sendMiningBlockAndVoting END---------")
 	debEngine, _ := w.engine.(*deb.Deb)
 
-	var winningBlock *types.TransferBlock
+	winningBlock := tsfBlock
 	count, countBlock := 0, 0
 	t := time.NewTicker(1 * time.Second)
 
@@ -660,12 +662,11 @@ func (w *worker) sendMiningBlockAndVoting() {
 	for {
 		select {
 		case recevedBlock := <-w.ReceiveBlockCh:
-
-			fmt.Println("--------recevedBlock-------")
-
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if err, errType := debEngine.FairNodeSigCheck(recevedBlock); err != nil {
+
+				fmt.Println("--------recevedBlock-------", recevedBlock.HeaderHash.String())
 
 				switch errType {
 				case deb.ErrNonFairNodeSig:
@@ -702,6 +703,7 @@ func (w *worker) sendMiningBlockAndVoting() {
 				if uint64(len(receviedCoinbase)) >= w.fairclient.Otprn.Mminer-1 {
 					// TODO : andus >> 5. FairNode로 winningBlock 전송
 					w.WinningBlockCh <- winningBlock
+					fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					countBlock = 0
 				} else {
 					countBlock++

@@ -22,6 +22,7 @@ const (
 	SendOTPRN
 	SendLeageNodeList
 	MinerLeageStop
+	SendBlockForVote
 )
 
 func ReadMsg(msg []byte) *Msg {

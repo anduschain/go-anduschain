@@ -94,6 +94,7 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 		select {
 		case winingBlock := <-fc.WinningBlockCh:
 			fmt.Println("---------------블록 투표----------", winingBlock.Block.Hash().String())
+			msg.Send(msg.SendBlockForVote, winingBlock, fc.TcpDialer)
 		case <-fc.tcpConnStopCh:
 			fc.wg.Done()
 			return

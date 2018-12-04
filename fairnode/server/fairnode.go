@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/p2p/nat"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // TODO : andus >> timezone 셋팅
@@ -102,6 +104,7 @@ func New() (*FairNode, error) {
 		Db:                mongoDB,
 		natm:              natm,
 		LeagueConPool:     make(connPool),
+		StopCh:            make(chan struct{}),
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -170,8 +173,28 @@ func (f *FairNode) Start() error {
 
 	go f.ListenUDP()
 	go f.ListenTCP()
+	go f.fairnodeManager()
 
 	return nil
+}
+
+func (f *FairNode) fairnodeManager() {
+	for {
+		select {
+		case <-f.StopCh:
+			time.Sleep(10 * time.Second)
+			log.Println("Error : 새로운 리그 시작")
+
+			_, index := f.GetLeaguePool(f.otprn.HashOtprn().String())
+
+			for _, conn := range f.LeagueConPool {
+				msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", conn)
+			}
+
+			f.DeleteLeaguePool(index)
+			f.LeagueRunningOK = false
+		}
+	}
 }
 
 func (f *FairNode) Stop() {
