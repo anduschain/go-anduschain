@@ -107,7 +107,7 @@ func New() (*FairNode, error) {
 		natm:              natm,
 		LeagueConPool:     make(connPool),
 		StopCh:            make(chan struct{}),
-		LeageuStopCh:      make(chan struct{}),
+		LeageuStopCh:      make(chan struct{}, 10),
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -176,7 +176,7 @@ func (f *FairNode) Start() error {
 
 	go f.ListenUDP()
 	go f.ListenTCP()
-	//go f.fairnodeManager()
+	go f.fairnodeManager()
 
 	return nil
 }

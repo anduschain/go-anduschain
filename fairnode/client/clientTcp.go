@@ -39,6 +39,7 @@ Exit:
 			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
 				fc.TcpDialer = conn
 				fc.tcpRunning = true
+
 				tsf := fairtypes.TransferCheck{*fc.Otprn, fc.Coinbase, fc.Srv.NodeInfo().Enode}
 				msg.Send(msg.ReqLeagueJoinOK, tsf, conn)
 
@@ -89,30 +90,25 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 		fc.tcpRunning = false
 	}()
 
+	go func() {
+		defer fmt.Println("--------tcpLoop 내부 go 죽음----------")
+		for {
+			select {
+			case winingBlock := <-fc.WinningBlockCh:
+				fmt.Println("---------------블록 투표----------", winingBlock.Block.Hash().String())
+				msg.Send(msg.SendBlockForVote, winingBlock, fc.TcpDialer)
+			case <-fc.tcpConnStopCh:
+				fc.wg.Done()
+				return
+			default:
+				continue
+			}
+		}
+	}()
+
 	data := make([]byte, 4096)
 	for {
-		select {
-		case winingBlock := <-fc.WinningBlockCh:
-			fmt.Println("---------------블록 투표----------", winingBlock.Block.Hash().String())
-			msg.Send(msg.SendBlockForVote, winingBlock, fc.TcpDialer)
-		case <-fc.tcpConnStopCh:
-			fc.wg.Done()
-			return
-		default:
-			fc.TcpDialer.SetDeadline(time.Now().Add(3 * time.Second))
-			n, err := fc.TcpDialer.Read(data)
-			if err != nil {
-				//log.Println("Error[andus] : Read 에러!!", err.Error())
-				if err.Error() != "EOF" {
-					if err.(net.Error).Timeout() {
-						continue
-					}
-				} else {
-					tcpDisconnectCh <- true
-					return
-				}
-			}
-
+		if n, err := fc.TcpDialer.Read(data); err == nil {
 			var str string
 
 			if n > 0 {
@@ -166,6 +162,15 @@ func (fc *FairnodeClient) tcpLoop(tcpDisconnectCh chan bool) {
 
 				}
 
+			}
+		} else {
+			if err.Error() == "EOF" {
+				log.Println("INFO : TcpConn ----> EOF")
+				tcpDisconnectCh <- true
+				return
+			} else {
+				log.Println("Error[andus] : readLoop 에러!!!!", err.Error())
+				continue
 			}
 		}
 

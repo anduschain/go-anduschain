@@ -78,8 +78,6 @@ Exit:
 		if n, err := conn.Read(buf); err == nil {
 			if n > 0 {
 				fromGethMsg := msg.ReadMsg(buf)
-
-				fmt.Println("---------tcpLoop msg Code-------", fromGethMsg.Code)
 				switch fromGethMsg.Code {
 				case msg.ReqLeagueJoinOK:
 					var tsf fairtypes.TransferCheck
@@ -199,7 +197,7 @@ func (f *FairNode) JoinTotalNum(persent float64) int {
 	}
 
 	log.Println("Info[andus] : JoinTotalNum의 30프로 이상일때 가능", count, count*(persent/100), int(count*(persent/100)))
-	return int(count)
+	return int(count * (persent / 100))
 }
 
 func (f *FairNode) LeaguePoolInit(otprnHash string) {
