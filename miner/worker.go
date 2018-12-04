@@ -659,6 +659,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 	// TODO : andus >> coinbase 저장소
 	receviedCoinbase := make(map[common.Address]string)
 
+Exit:
 	for {
 		select {
 		case recevedBlock := <-w.ReceiveBlockCh:
@@ -699,7 +700,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 					w.WinningBlockCh <- winningBlock
 					fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					countBlock = 0
-					return
+					break Exit
 				} else {
 					countBlock++
 				}
@@ -711,11 +712,11 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 						fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					}
 					countBlock = 0
-					return
+					break Exit
 				}
 
 			} else {
-				return
+				break Exit
 			}
 		}
 	}
