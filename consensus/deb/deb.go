@@ -26,6 +26,14 @@ import (
 	"github.com/anduschain/go-anduschain/rpc"
 )
 
+type ErrorType int
+
+const (
+	ErrNonFairNodeSig ErrorType = iota
+	ErrGetPubKeyError
+	ErrNotMatchFairAddress
+)
+
 // Deb proof-of-Deb protocol constants.
 var (
 	uncleHash = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
@@ -54,6 +62,12 @@ var (
 	errInvalidDifficulty = errors.New("andus >> invalid difficulty")
 
 	errFailSignature = errors.New("andus >> 블록헤더 서명 실패")
+
+	errNonFairNodeSig = errors.New("페어노드 서명이 없다")
+
+	errGetPubKeyError = errors.New("공개키 로드 에러")
+
+	errNotMatchFairAddress = errors.New("패어노드 어드레스와 맞지 않습니다")
 )
 
 // sigHash returns the hash which is used as input for the proof-of-authority
@@ -139,7 +153,7 @@ func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
 	return sig, nil
 }
 
-func (c *Deb) IsFairNodeSigOK(recevedBlockLeagueHash *types.TransferBlock) bool {
+func (c *Deb) FairNodeSigCheck(recevedBlockLeagueHash *types.TransferBlock) (error, ErrorType) {
 	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
 	sig := recevedBlockLeagueHash.Sig
 	headerHash := recevedBlockLeagueHash.HeaderHash
@@ -149,18 +163,18 @@ func (c *Deb) IsFairNodeSigOK(recevedBlockLeagueHash *types.TransferBlock) bool 
 
 		fpKey, err := crypto.SigToPub(headerHash.Bytes(), sig)
 		if err != nil {
-			return false
+			return errGetPubKeyError, ErrGetPubKeyError
 		}
 
 		addr := crypto.PubkeyToAddress(*fpKey)
 		if addr.String() == fairnodeclient.FAIRNODE_ADDRESS {
-			return true
+			return nil, -1
 		} else {
-			return false
+			return errNotMatchFairAddress, ErrNotMatchFairAddress
 		}
 
 	} else {
-		return false
+		return errNonFairNodeSig, ErrNonFairNodeSig
 	}
 }
 
@@ -340,6 +354,8 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
 
+	fmt.Println("----------------Deb.Prepare---------------")
+
 	// TODO : andus >> struct 값 추가...
 	c.coinbase = coinbase
 	c.joinNonce = joinNonce
@@ -400,7 +416,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 		case <-stop:
 			return
 		case results <- block.WithSeal(header):
-			fmt.Println("------------------deb.Seal, results <---------------", block.WithSeal(header).ParentHash())
+			fmt.Println("------------------deb.Seal, results ---------------")
 		default:
 			log.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
 		}

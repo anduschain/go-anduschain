@@ -519,7 +519,7 @@ func (w *worker) taskLoop() {
 				w.newTaskHook(task)
 			}
 
-			fmt.Println("-----------------------w.taskCh------------------------")
+			fmt.Println("-----------------------w.taskCh------------------------", task)
 			// Reject duplicate sealing work due to resubmitting.
 			sealHash := w.engine.SealHash(task.block.Header())
 			if sealHash == prev {
@@ -665,27 +665,31 @@ func (w *worker) sendMiningBlockAndVoting() {
 
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-			if OK := debEngine.IsFairNodeSigOK(recevedBlock); !OK {
+			if err, errType := debEngine.FairNodeSigCheck(recevedBlock); err != nil {
 
-				fmt.Println("--------debEngine.IsFairNodeSigOK START-------")
+				switch errType {
+				case deb.ErrNonFairNodeSig:
 
-				// TODO : andus >> 2. RAND 값 서명 검증
-				if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
+					fmt.Println("--------debEngine.IsFairNodeSigOK START-------")
 
-					winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
+					// TODO : andus >> 2. RAND 값 서명 검증
+					if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
 
-					receviedCoinbase[recevedBlock.Block.Coinbase()] = recevedBlock.Block.Hash().String()
+						winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
 
-					count++
+						receviedCoinbase[recevedBlock.Block.Coinbase()] = recevedBlock.Block.Hash().String()
 
-					fmt.Println("-------------debEngine.CheckRANDSigOK------------", recevedBlock.Block.Hash(), count)
+						count++
 
-				} else {
-					fmt.Println("---------debEngine.CheckRANDSigOK-------")
+						fmt.Println("-------------debEngine.CheckRANDSigOK------------", recevedBlock.Block.Hash(), count)
+
+					} else {
+						fmt.Println("---------debEngine.CheckRANDSigOK-------")
+					}
+
+					fmt.Println("---------debEngine.IsFairNodeSigOK END-------")
+
 				}
-
-				fmt.Println("---------debEngine.IsFairNodeSigOK END-------")
-
 			} else {
 				log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
 			}
@@ -1072,6 +1076,8 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 
 	// TODO : andus >> 1. 새로운 블록 생성
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+
+	fmt.Println("----------------commit.Finalise----------", block)
 
 	if err != nil {
 		return err

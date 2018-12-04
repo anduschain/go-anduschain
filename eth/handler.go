@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -232,9 +233,10 @@ func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
 		case block := <-pm.LeagueBlockBroadcastCh:
+			fmt.Println("--------ProtocolManager.leagueBroadCast----------", pm.peers.peers)
 			for _, peer := range pm.peers.peers {
 				peer.SendMakeLeagueBlock(*block)
-				fmt.Println("----------------ProtocolManager.leagueBroadCast----------", block.Block.Hash().String())
+				fmt.Println("---ProtocolManager.leagueBroadCast.SendBlock----", block.Block.Hash().String())
 			}
 		}
 	}
@@ -266,6 +268,9 @@ func (pm *ProtocolManager) Stop() {
 }
 
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
+	if strings.Contains(p.RemoteAddr().String(), "121.134.35.45") {
+		fmt.Println("--------------ProtocalManager.newPeer------------", p.RemoteAddr().String())
+	}
 	return newPeer(pv, p, newMeteredMsgWriter(rw))
 }
 
@@ -716,8 +721,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 
 		if block != nil {
+			log.Info("andus >> 블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)", block.Block.Hash().String())
 			pm.ReceiveBlock <- block
-			log.Info("andus >> 블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)")
 		} else {
 			log.Info("andus >> 블록이 넘어오지 않았어요 (MakeLeagueBlockMsg)")
 		}

@@ -319,9 +319,9 @@ func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
 // TODO : andus >> 페어노드 서명을 조회 하는 부분
 func (b *Block) GetFairNodeSig() ([]byte, bool) {
 	if len(b.FairNodeSig) > 0 {
-		return b.FairNodeSig, false
+		return b.FairNodeSig, true
 	} else {
-		return nil, true
+		return nil, false
 	}
 }
 
