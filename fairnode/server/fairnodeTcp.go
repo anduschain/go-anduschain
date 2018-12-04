@@ -125,8 +125,13 @@ Exit:
 					var voteBlock types.TransferBlock
 					fromGethMsg.Decode(&voteBlock)
 					fmt.Println("-----------투표 블록 도착--------", voteBlock.HeaderHash.String())
-					f.StopCh <- struct{}{}
+					f.LeageuStopCh <- struct{}{}
 					break Exit
+				default:
+					var str string
+					fromGethMsg.Decode(&str)
+
+					fmt.Println("-----default------", str)
 				}
 
 			}

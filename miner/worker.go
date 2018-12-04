@@ -674,6 +674,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 					fmt.Println("--------debEngine.IsFairNodeSigOK START-------")
 
 					// TODO : andus >> 2. RAND 값 서명 검증
+					// FIXME : ----->
 					if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
 
 						winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
@@ -681,14 +682,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 						receviedCoinbase[recevedBlock.Block.Coinbase()] = recevedBlock.Block.Hash().String()
 
 						count++
-
-						fmt.Println("-------------debEngine.CheckRANDSigOK------------", recevedBlock.Block.Hash(), count)
-
-					} else {
-						fmt.Println("---------debEngine.CheckRANDSigOK-------")
 					}
-
-					fmt.Println("---------debEngine.IsFairNodeSigOK END-------")
 
 				}
 			} else {
@@ -705,6 +699,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 					w.WinningBlockCh <- winningBlock
 					fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					countBlock = 0
+					return
 				} else {
 					countBlock++
 				}
@@ -716,10 +711,11 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
 						fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					}
 					countBlock = 0
+					return
 				}
 
 			} else {
-				fmt.Println("-----------------리그시작전-----------------")
+				return
 			}
 		}
 	}

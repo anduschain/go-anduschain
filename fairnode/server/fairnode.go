@@ -55,6 +55,8 @@ type FairNode struct {
 	LeagueRunningOK bool
 	natm            nat.Interface
 
+	LeageuStopCh chan struct{}
+
 	ConnNodePool []connNode // otrnHash를 키로 가지고 노드 리스트를 관리하는 곳
 
 	LeagueConPool connPool // 리그가 시작되었을때 커넥션 관리
@@ -105,6 +107,7 @@ func New() (*FairNode, error) {
 		natm:              natm,
 		LeagueConPool:     make(connPool),
 		StopCh:            make(chan struct{}),
+		LeageuStopCh:      make(chan struct{}),
 	}
 
 	fnNode.Keystore = keystore.NewKeyStore(keypath, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -173,7 +176,7 @@ func (f *FairNode) Start() error {
 
 	go f.ListenUDP()
 	go f.ListenTCP()
-	go f.fairnodeManager()
+	//go f.fairnodeManager()
 
 	return nil
 }
@@ -181,9 +184,9 @@ func (f *FairNode) Start() error {
 func (f *FairNode) fairnodeManager() {
 	for {
 		select {
-		case <-f.StopCh:
+		case <-f.LeageuStopCh:
 			time.Sleep(10 * time.Second)
-			log.Println("Error : 새로운 리그 시작")
+			log.Println("Info : 새로운 리그 시작")
 
 			_, index := f.GetLeaguePool(f.otprn.HashOtprn().String())
 
