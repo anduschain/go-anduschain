@@ -78,6 +78,8 @@ Exit:
 		if n, err := conn.Read(buf); err == nil {
 			if n > 0 {
 				fromGethMsg := msg.ReadMsg(buf)
+
+				fmt.Println("---------tcpLoop msg Code-------", fromGethMsg.Code)
 				switch fromGethMsg.Code {
 				case msg.ReqLeagueJoinOK:
 					var tsf fairtypes.TransferCheck
@@ -127,11 +129,6 @@ Exit:
 					fmt.Println("-----------투표 블록 도착--------", voteBlock.HeaderHash.String())
 					f.LeageuStopCh <- struct{}{}
 					break Exit
-				default:
-					var str string
-					fromGethMsg.Decode(&str)
-
-					fmt.Println("-----default------", str)
 				}
 
 			}

@@ -15,7 +15,7 @@ type Msg struct {
 }
 
 const (
-	ReqLeagueJoinOK = iota
+	ReqLeagueJoinOK = iota << 1
 	ResLeagueJoinTrue
 	ResLeagueJoinFalse
 	SendEnode
