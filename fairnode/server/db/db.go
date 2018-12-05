@@ -15,6 +15,7 @@ import (
 const DBNAME = "AndusChain"
 
 type FairNodeDB struct {
+	url           string
 	Mongo         *mgo.Session
 	ActiveNodeCol *mgo.Collection
 	MinerNode     *mgo.Collection
@@ -27,27 +28,37 @@ var (
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
 func New(dbhost string, dbport string, pwd string, user string) (*FairNodeDB, error) {
-	var url string
+	var fnb FairNodeDB
 
 	if user != "" {
-		url = fmt.Sprintf("mongodb://%s:%s@%s:%s", user, pwd, dbhost, dbport)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s", user, pwd, dbhost, dbport)
 	} else {
-		url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
 	}
 
-	session, err := mgo.Dial(url)
+	return &fnb, nil
+}
+
+func (fnb *FairNodeDB) Start() error {
+
+	session, err := mgo.Dial(fnb.url)
 	if err != nil {
-		return nil, MongDBConnectError
+		return MongDBConnectError
 	}
 
 	session.SetMode(mgo.Monotonic, true)
 
-	return &FairNodeDB{
-		Mongo:         session,
-		ActiveNodeCol: session.DB(DBNAME).C("ActiveNode"),
-		MinerNode:     session.DB(DBNAME).C("MinerNode"),
-		OtprnList:     session.DB(DBNAME).C("OtprnList"),
-	}, nil
+	fnb.Mongo = session
+	fnb.ActiveNodeCol = session.DB(DBNAME).C("ActiveNode")
+	fnb.MinerNode = session.DB(DBNAME).C("MinerNode")
+	fnb.OtprnList = session.DB(DBNAME).C("OtprnList")
+
+	return nil
+}
+
+func (fnb *FairNodeDB) Stop() error {
+	fnb.Mongo.Close()
+	return nil
 }
 
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string) {

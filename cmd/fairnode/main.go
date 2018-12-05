@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/server"
+	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/internal/debug"
 	"gopkg.in/urfave/cli.v1"
 	"log"
@@ -82,11 +83,11 @@ func init() {
 		log.Println("패어노드 시작")
 
 		// Config Setting
-		server.SetFairConfig(c)
+		backend.SetFairConfig(c)
 
 		fn, err := server.New()
 		if err != nil {
-			log.Fatalln("Fairnode running error", err)
+			log.Fatalln("Fairnode running error : ", err)
 			return err
 		}
 
@@ -94,6 +95,7 @@ func init() {
 			log.Println("퍠어노드 정상적으로 시작됨")
 		} else {
 			log.Println("퍠어노드 시작 에러", err)
+			w.Done()
 		}
 
 		w.Wait()
@@ -105,13 +107,13 @@ func init() {
 			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Println("andus >> Got interrupt, shutting down fairnode...")
+			log.Println("Got interrupt, shutting down fairnode...")
 			go fn.Stop()
 			for i := 10; i > 0; i-- {
 				<-sigc
 				fn.StopCh <- struct{}{}
 				if i > 1 {
-					log.Println("andus >> Already shutting down, interrupt more to panic. times", i-1)
+					log.Println("Already shutting down, interrupt more to panic. times", i-1)
 				}
 			}
 			w.Done()

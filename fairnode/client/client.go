@@ -92,12 +92,12 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	clientString := fmt.Sprintf(":%s", DefaultConfig.ClientPort)
 
 	// UDP
-	fc.SAddrUDP, _ = net.ResolveUDPAddr("udp", faiorServerString)
-	fc.LAddrUDP, _ = net.ResolveUDPAddr("udp", clientString)
+	fc.SAddrUDP, _ = net.ResolveUDPAddr("fairudp", faiorServerString)
+	fc.LAddrUDP, _ = net.ResolveUDPAddr("fairudp", clientString)
 
 	// TCP
-	fc.SAddrTCP, _ = net.ResolveTCPAddr("tcp", faiorServerString)
-	fc.LaddrTCP, _ = net.ResolveTCPAddr("tcp", clientString)
+	fc.SAddrTCP, _ = net.ResolveTCPAddr("fairtcp", faiorServerString)
+	fc.LaddrTCP, _ = net.ResolveTCPAddr("fairtcp", clientString)
 
 	return fc
 }
@@ -115,10 +115,10 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 
 		fc.CoinBasePrivateKey = *unlockedKey
 
-		// udp
+		// fairudp
 		go fc.UDPtoFairNode()
 
-		// tcp
+		// fairtcp
 		go fc.TCPtoFairNode()
 
 	} else {
@@ -134,7 +134,7 @@ func (fc *FairnodeClient) Stop() {
 		fc.receiveOtprnExitCh <- struct{}{}
 
 		if fc.tcpRunning {
-			// loop kill, tcp kill
+			// loop kill, fairtcp kill
 			fc.tcpConnStopCh <- TcpStop
 			fc.tcpRunning = false
 		} else {
