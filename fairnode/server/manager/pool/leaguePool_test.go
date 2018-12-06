@@ -2,10 +2,16 @@ package pool
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	"runtime"
+	"sync"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	leaugePool := New(nil)
 
 	err := leaugePool.Start()
@@ -18,11 +24,18 @@ func TestNew(t *testing.T) {
 	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode", common.Address{}, nil}}
 	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode2", common.Address{}, nil}}
 	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode3", common.Address{}, nil}}
+	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode4", common.Address{}, nil}}
 
-	t.Log(leaugePool.pool[otprnhash])
+	// 업데이트..
+	leaugePool.UpdateCh <- PoolIn{otprnhash, Node{"enode4", common.Address{}, nil}}
+
+	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode5", common.Address{}, nil}}
+
+	leaugePool.SnapShot <- otprnhash
+
+	leaugePool.DeleteCh <- otprnhash
 
 	_, num, enodes := leaugePool.GetLeagueList(otprnhash)
 	t.Log(num, enodes)
 
-	leaugePool.Stop()
 }

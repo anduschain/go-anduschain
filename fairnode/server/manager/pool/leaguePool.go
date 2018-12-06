@@ -40,7 +40,7 @@ type LeaguePool struct {
 	SnapShot chan OtprnHash
 	StopCh   chan struct{}
 	Db       *db.FairNodeDB
-	mux      sync.Mutex
+	mux      sync.RWMutex
 }
 
 func New(db *db.FairNodeDB) *LeaguePool {
@@ -70,6 +70,8 @@ func (l *LeaguePool) Stop() error {
 func (l *LeaguePool) GetLeagueList(h OtprnHash) (Nodes, uint64, []string) {
 	l.mux.Lock()
 	defer l.mux.Unlock()
+
+	fmt.Println("-------GetLeagueList-----------", h)
 	var enodes []string
 	if val, ok := l.pool[h]; ok {
 		for index := range val {
@@ -83,55 +85,54 @@ func (l *LeaguePool) GetLeagueList(h OtprnHash) (Nodes, uint64, []string) {
 func (l *LeaguePool) loop() {
 	defer log.Println("Info[andus] LeaguePool Kill")
 
-	fmt.Println("리그풀 시작됨")
 Exit:
 	for {
 		select {
 		case n := <-l.InsertCh:
-			l.mux.Lock()
 			if val, ok := l.pool[n.Hash]; ok {
 				isDouble := false
 				for i := range val {
 					// 중복 삽입 방지
 					if val[i].Enode == n.Node.Enode {
 						isDouble = true
-						return
+						break
 					}
 				}
 
 				if !isDouble {
+					l.mux.Lock()
 					l.pool[n.Hash] = append(val, n.Node)
-					log.Println("-------------저장됨1--------------", l.pool[n.Hash])
+					l.mux.Unlock()
 				}
 
 			} else {
+				l.mux.Lock()
 				l.pool[n.Hash] = Nodes{n.Node}
-				log.Println("-------------저장됨2--------------", l.pool[n.Hash])
+				l.mux.Unlock()
 			}
-			l.mux.Unlock()
 		case n := <-l.UpdateCh:
 			if val, ok := l.pool[n.Hash]; ok {
 				for i := range val {
-					if val[i].Coinbase == n.Node.Coinbase {
-						val[i] = n.Node
-						return
+					if val[i].Enode == n.Node.Enode {
+						l.pool[n.Hash][i] = n.Node
+						break
 					}
 				}
 			}
 		case hash := <-l.DeleteCh:
 			if _, ok := l.pool[hash]; ok {
+				l.mux.Lock()
 				delete(l.pool, hash)
+				l.mux.Unlock()
 			}
-			log.Println("-------------삭제됨--------------")
 		case hash := <-l.SnapShot:
 			if val, ok := l.pool[hash]; ok {
 				for i := range val {
-					//l.Db.SaveMinerNode(hash.String(), val[i].Enode)
-					fmt.Println(hash.String(), val[i].Enode)
+					l.Db.SaveMinerNode(hash.String(), val[i].Enode)
+					//fmt.Println(hash.String(), val[i].Enode)
 				}
 			}
 		case <-l.StopCh:
-			log.Println("-------------종료됨--------------")
 			break Exit
 		}
 	}

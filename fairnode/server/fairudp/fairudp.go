@@ -241,13 +241,14 @@ Exit:
 func (fu *FairUdp) sendLeague(otprnHash string) {
 	defer log.Println("Debug[andus] : sendLeague 죽음")
 	t := time.NewTicker(15 * time.Second)
+	leaguePool := fu.fm.GetLeaguePool()
+
+	fmt.Println("-------------sendLeague Start-----------", otprnHash)
 	for {
 		select {
 		case <-t.C:
-			leaguePool := fu.fm.GetLeaguePool()
 			nodes, num, enodes := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-
 			log.Println("----------------sendLeague-------------", num, enodes)
 			if num >= fu.JoinTotalNum(30) {
 				for index := range nodes {

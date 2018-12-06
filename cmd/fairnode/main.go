@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"syscall"
 )
@@ -126,6 +127,7 @@ func init() {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	if err := app.Run(os.Args); err != nil {
 		fmt.Println("App Run Error ", os.Stderr, err)
 		os.Exit(1)
