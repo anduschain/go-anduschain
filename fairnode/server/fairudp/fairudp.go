@@ -265,7 +265,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 						nodes[i].Conn.Close()
 					}
 				}
-
+				leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
 				leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 				fu.fm.SetLeagueRunning(false)
 				return
