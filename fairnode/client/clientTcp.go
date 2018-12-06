@@ -36,7 +36,7 @@ Exit:
 		select {
 		case <-fc.TcpConnStartCh:
 			// TODO : andus >> OTPRN이 수신되어 커넥션 만듬
-			if conn, err := net.DialTCP("fairtcp", nil, fc.SAddrTCP); err == nil {
+			if conn, err := net.DialTCP("tcp", nil, fc.SAddrTCP); err == nil {
 				fc.TcpDialer = conn
 				fc.tcpRunning = true
 

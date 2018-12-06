@@ -3,11 +3,14 @@ package fairudp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
 	"log"
@@ -26,10 +29,12 @@ type goroutine struct {
 }
 
 type Manager interface {
+	GetOtprn() otprn.Otprn
 	SetOtprn(otprn otprn.Otprn)
 	GetLeagueRunning() bool
 	GetServerKey() *backend.SeverKey
 	SetLeagueRunning(status bool)
+	GetLeaguePool() *pool.LeaguePool
 }
 
 type FairUdp struct {
@@ -63,9 +68,9 @@ func New(db *db.FairNodeDB, fm Manager) (*FairUdp, error) {
 		fm:       fm,
 	}
 
-	fu.services["manageActiveNode"] = goroutine{fu.manageActiveNode, make(chan struct{})}
-	fu.services["manageOtprn"] = goroutine{fu.manageOtprn, make(chan struct{})}
-	fu.services["JobActiveNode"] = goroutine{fu.JobActiveNode, make(chan struct{})}
+	fu.services["manageActiveNode"] = goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
+	fu.services["manageOtprn"] = goroutine{fu.manageOtprn, make(chan struct{}, 1)}
+	fu.services["JobActiveNode"] = goroutine{fu.JobActiveNode, make(chan struct{}, 1)}
 
 	return fu, nil
 }
@@ -145,11 +150,11 @@ Exit:
 		select {
 		case err := <-notify:
 			if io.EOF == err {
-				fmt.Println("connection dropped message", err)
+				fmt.Println("udp connection dropped message", err)
 				return
 			}
 		case <-time.After(time.Second * 1):
-			fmt.Println("timeout 1, still alive")
+			fmt.Println("UDP timeout, still alive")
 		case <-exit:
 			break Exit
 		}
@@ -210,7 +215,7 @@ Exit:
 					fu.fm.SetLeagueRunning(true)
 					activeNodeList := fu.db.GetActiveNodeList()
 
-					//go f.sendLeague(tsOtp.Hash.String())
+					go fu.sendLeague(tsOtp.Hash.String())
 
 					for index := range activeNodeList {
 						url := activeNodeList[index].Ip + ":" + activeNodeList[index].Port
@@ -231,4 +236,51 @@ Exit:
 			break Exit
 		}
 	}
+}
+
+func (fu *FairUdp) sendLeague(otprnHash string) {
+	defer log.Println("Debug[andus] : sendLeague 죽음")
+	t := time.NewTicker(15 * time.Second)
+	for {
+		select {
+		case <-t.C:
+			leaguePool := fu.fm.GetLeaguePool()
+			nodes, num, enodes := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
+			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
+
+			log.Println("----------------sendLeague-------------", num, enodes)
+			if num >= fu.JoinTotalNum(30) {
+				for index := range nodes {
+					if nodes[index].Conn != nil {
+						msg.Send(msg.SendLeageNodeList, enodes, nodes[index].Conn)
+					}
+				}
+				return
+			} else {
+				log.Println("Info[andus] : 리그가 성립 안됨 연결 새로운 리그 시작 : ", num)
+				for i := range nodes {
+					if nodes[i].Conn == nil {
+						msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", nodes[i].Conn)
+						nodes[i].Conn.Close()
+					}
+				}
+
+				leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+				fu.fm.SetLeagueRunning(false)
+				return
+			}
+		}
+	}
+}
+
+func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
+	aciveNode := fu.db.GetActiveNodeList()
+	var count float64 = 0
+	for i := range aciveNode {
+		if fairutil.IsJoinOK(fu.fm.GetOtprn(), common.HexToAddress(aciveNode[i].Coinbase)) {
+			count += 1
+		}
+	}
+
+	return uint64(count * (persent / 100))
 }

@@ -4,7 +4,9 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/server/fairtcp"
 	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
+	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"log"
 )
 
@@ -18,7 +20,7 @@ type FairManager struct {
 	Otprn           otprn.Otprn
 	Services        map[string]ServiceFunc
 	srvKey          *backend.SeverKey
-	leaguePool      *LeaguePool
+	leaguePool      *pool.LeaguePool
 }
 
 func New() (*FairManager, error) {
@@ -36,11 +38,17 @@ func New() (*FairManager, error) {
 		return nil, err
 	}
 
-	fm.leaguePool = NewLeaguePool(mongoDB)
+	ft, err := fairtcp.New(mongoDB, fm)
+	if err != nil {
+		return nil, err
+	}
+
+	fm.leaguePool = pool.New(mongoDB)
 
 	fm.Services["mongoDB"] = mongoDB
 	fm.Services["fairudp"] = fu
 	fm.Services["LeaguePool"] = fm.leaguePool
+	fm.Services["fairtcp"] = ft
 
 	return fm, nil
 }
@@ -84,6 +92,10 @@ func (fm *FairManager) SetOtprn(otp otprn.Otprn) {
 	fm.Otprn = otp
 }
 
+func (fm *FairManager) GetOtprn() otprn.Otprn {
+	return fm.Otprn
+}
+
 func (fm *FairManager) GetLeagueRunning() bool {
 	return fm.LeagueRunningOK
 }
@@ -96,6 +108,6 @@ func (fm *FairManager) GetServerKey() *backend.SeverKey {
 	return fm.srvKey
 }
 
-func (fm *FairManager) GetLeaguePool() *LeaguePool {
+func (fm *FairManager) GetLeaguePool() *pool.LeaguePool {
 	return fm.leaguePool
 }

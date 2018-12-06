@@ -25,7 +25,7 @@ func (fc *FairnodeClient) UDPtoFairNode() {
 
 func (fc *FairnodeClient) submitEnode() {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
-	Conn, err := net.DialUDP("fairudp", nil, fc.SAddrUDP)
+	Conn, err := net.DialUDP("udp", nil, fc.SAddrUDP)
 	if err != nil {
 		log.Println("andus >> UDPtoFairNode, DialUDP", err)
 	}
@@ -59,7 +59,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 
 	//TODO : andus >> 1. OTPRN 수신
 
-	localServerConn, err := net.ListenUDP("fairudp", fc.LAddrUDP)
+	localServerConn, err := net.ListenUDP("udp", fc.LAddrUDP)
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
@@ -74,7 +74,7 @@ func (fc *FairnodeClient) receiveOtprn() {
 	realaddr := localServerConn.LocalAddr().(*net.UDPAddr)
 	if natm != nil {
 		if !realaddr.IP.IsLoopback() {
-			go nat.Map(natm, nil, "fairudp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
+			go nat.Map(natm, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
 		}
 		// TODO: react to external IP changes over time.
 		if ext, err := natm.ExternalIP(); err == nil {
