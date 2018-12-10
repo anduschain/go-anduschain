@@ -213,7 +213,7 @@ Exit:
 				break Exit
 			}
 		case <-time.After(time.Second * 1):
-			log.Println("Debug[andus] : UDP timeout, still alive")
+			//log.Println("Debug[andus] : UDP timeout, still alive")
 		case <-exit:
 			localServerConn.Close()
 		}

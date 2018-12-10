@@ -8,6 +8,7 @@ import (
 	gethTypes "github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"io"
@@ -86,6 +87,15 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		return
 	}
 
+	// 전송 받은 otprn을 이용해서 참가 여부 확인
+	if err := msg.Send(msg.ReqLeagueJoinOK,
+		fairtypes.TransferCheck{
+			*t.manger.GetOtprn(),
+			t.manger.GetCoinbase(),
+			t.manger.GetP2PServer().NodeInfo().Enode}, conn); err != nil {
+		log.Println("Error[andus] : ", err)
+	}
+
 	noify := make(chan error)
 
 	go func() {
@@ -162,7 +172,7 @@ Exit:
 	for {
 		select {
 		case <-time.After(time.Second * 1):
-			fmt.Println("tcp timeout 1, still alive")
+			//fmt.Println("tcp timeout 1, still alive")
 		case err := <-noify:
 			if io.EOF == err {
 				fmt.Println("tcp connection dropped message", err)

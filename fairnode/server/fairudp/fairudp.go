@@ -154,7 +154,7 @@ Exit:
 				return
 			}
 		case <-time.After(time.Second * 1):
-			fmt.Println("UDP timeout, still alive")
+			//fmt.Println("UDP timeout, still alive")
 		case <-exit:
 			break Exit
 		}
