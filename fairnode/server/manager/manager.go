@@ -33,6 +33,8 @@ func New() (*FairManager, error) {
 		return nil, err
 	}
 
+	fm.leaguePool = pool.New(mongoDB)
+
 	fu, err := fairudp.New(mongoDB, fm)
 	if err != nil {
 		return nil, err
@@ -42,8 +44,6 @@ func New() (*FairManager, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fm.leaguePool = pool.New(mongoDB)
 
 	fm.Services["mongoDB"] = mongoDB
 	fm.Services["fairudp"] = fu
@@ -88,26 +88,9 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
-func (fm *FairManager) SetOtprn(otp otprn.Otprn) {
-	fm.Otprn = otp
-}
-
-func (fm *FairManager) GetOtprn() otprn.Otprn {
-	return fm.Otprn
-}
-
-func (fm *FairManager) GetLeagueRunning() bool {
-	return fm.LeagueRunningOK
-}
-
-func (fm *FairManager) SetLeagueRunning(status bool) {
-	fm.LeagueRunningOK = status
-}
-
-func (fm *FairManager) GetServerKey() *backend.SeverKey {
-	return fm.srvKey
-}
-
-func (fm *FairManager) GetLeaguePool() *pool.LeaguePool {
-	return fm.leaguePool
-}
+func (fm *FairManager) SetOtprn(otp otprn.Otprn)        { fm.Otprn = otp }
+func (fm *FairManager) GetOtprn() otprn.Otprn           { return fm.Otprn }
+func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
+func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
+func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
+func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }

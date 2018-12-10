@@ -3,14 +3,11 @@ package pool
 import (
 	"github.com/anduschain/go-anduschain/common"
 	"runtime"
-	"sync"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	var wg sync.WaitGroup
-	wg.Add(1)
 
 	leaugePool := New(nil)
 

@@ -4,27 +4,27 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"io"
 	"log"
 	"net"
 	"time"
 )
 
-var ()
-
 type Udp struct {
-	SAddrUDP *net.UDPAddr
-	LAddrUDP *net.UDPAddr
-	services map[string]types.Goroutine
-	manger   types.Client
+	SAddrUDP   *net.UDPAddr
+	LAddrUDP   *net.UDPAddr
+	services   map[string]types.Goroutine
+	manger     types.Client
+	tcpService *tcp.Tcp
+	isRuning   bool
 }
 
-func New(faiorServerString string, clientString string, manger types.Client) (*Udp, error) {
+func New(faiorServerString string, clientString string, manger types.Client, tcpService *tcp.Tcp) (*Udp, error) {
 
 	SAddrUDP, err := net.ResolveUDPAddr("udp", faiorServerString)
 	if err != nil {
@@ -37,10 +37,12 @@ func New(faiorServerString string, clientString string, manger types.Client) (*U
 	}
 
 	udp := &Udp{
-		SAddrUDP: SAddrUDP,
-		LAddrUDP: LAddrUDP,
-		services: make(map[string]types.Goroutine),
-		manger:   manger,
+		SAddrUDP:   SAddrUDP,
+		LAddrUDP:   LAddrUDP,
+		services:   make(map[string]types.Goroutine),
+		manger:     manger,
+		tcpService: tcpService,
+		isRuning:   false,
 	}
 
 	udp.services["submitEnode"] = types.Goroutine{udp.submitEnode, make(chan struct{})}
@@ -51,11 +53,27 @@ func New(faiorServerString string, clientString string, manger types.Client) (*U
 }
 
 func (u *Udp) Start() error {
+	if !u.isRuning {
+		for name, serv := range u.services {
+			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+			go serv.Fn(serv.Exit)
+		}
+
+		u.isRuning = true
+	}
 
 	return nil
 }
 
 func (u *Udp) Stop() error {
+	if u.isRuning {
+		for _, srv := range u.services {
+			srv.Exit <- struct{}{}
+		}
+
+		u.tcpService.Stop()
+		u.isRuning = false
+	}
 
 	return nil
 }
@@ -64,8 +82,10 @@ func (u *Udp) submitEnode(exit chan struct{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
 	Conn, err := net.DialUDP("udp", nil, u.SAddrUDP)
 	if err != nil {
-		log.Println("andus >> UDPtoFairNode, DialUDP", err)
+		log.Println("Error[andus] : UDPtoFairNode, DialUDP", err)
 	}
+
+	defer Conn.Close()
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
@@ -75,19 +95,23 @@ func (u *Udp) submitEnode(exit chan struct{}) {
 		Port:     config.DefaultConfig.ClientPort,
 	}
 
-	if err := msg.Send(msg.SendEnode, ts, Conn); err != nil {
-		fmt.Println("andus >>>>>>", err)
-	}
+	// 처음 한번 보내기
+	msg.Send(msg.SendEnode, ts, Conn)
 
+Exit:
 	for {
 		select {
 		case <-t.C:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
-			fmt.Println("andus >> Enode 전송")
+			fmt.Println("Info[andus] : Enode 전송")
 			msg.Send(msg.SendEnode, ts, Conn)
+		case <-exit:
+			break Exit
 		}
 	}
+
+	defer fmt.Println("submitEnode kill")
 }
 
 func (u *Udp) receiveOtprn(exit chan struct{}) {
@@ -124,10 +148,12 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 	go func() {
 		tsOtprnByte := make([]byte, 4096)
 		for {
-			n, _, err := localServerConn.ReadFromUDP(tsOtprnByte)
+			n, err := localServerConn.Read(tsOtprnByte)
 			if err != nil {
 				notify <- err
-				return
+				if _, ok := err.(*net.OpError); ok {
+					return
+				}
 			}
 
 			if n > 0 {
@@ -158,11 +184,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 
 								log.Println("Debug[andus] : 참여대상이 맞음")
-
-								//if !fc.tcpRunning {
-								//	fc.TcpConnStartCh <- struct{}{}
-								//	log.Println("Debug[andus] : Tcp 연결함 >>>>>>>>>>>>>")
-								//}
+								u.tcpService.Start()
 
 							} else {
 								log.Println("Debug[andus] : 참여대상이 아님")
@@ -170,12 +192,12 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 
 						} else {
 							// TODO: andus >> 검증실패..
-							log.Println("andus >> OTPRN 검증 실패")
+							log.Println("Debug[andus] : OTPRN 검증 실패")
 
 						}
 					} else {
 						// TODO: andus >> 서명 검증실패..
-						log.Println("andus >> OTPRN 공개키 검증 실패")
+						log.Println("Debug[andus] : OTPRN 공개키 검증 실패")
 					}
 				}
 			}
@@ -186,14 +208,16 @@ Exit:
 	for {
 		select {
 		case err := <-notify:
-			if io.EOF == err {
-				fmt.Println("udp connection dropped message", err)
-				return
+			if _, ok := err.(*net.OpError); ok {
+				log.Println("Debug[andus] : udp connection dropped message", err)
+				break Exit
 			}
 		case <-time.After(time.Second * 1):
-			fmt.Println("UDP timeout, still alive")
+			//log.Println("Debug[andus] : UDP timeout, still alive")
 		case <-exit:
-			break Exit
+			localServerConn.Close()
 		}
 	}
+
+	defer fmt.Println("receiveOtprn kill")
 }

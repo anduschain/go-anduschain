@@ -18,38 +18,34 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"log"
 	"math/big"
-	"net"
 	"sync"
 )
 
 const (
 	TcpStop = iota
 	StopTCPtoFairNode
+)
 
-	//// TODO : andus >> Fair Node Address
-	//FAIRNODE_ADDRESS = "0x5922af64E91f4B10AF896De8Fd372075569a1440"
-	//TICKET_PRICE     = 100
+var (
+	errUnlockCoinbase = errors.New("코인베이스가 언락되지 않았습니다.")
 )
 
 type FairnodeClient struct {
-	Otprn *otprn.Otprn
-	//OtprnCh chan *otprn.Otprn
-	WinningBlockCh     chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
-	FinalBlockCh       chan *types.TransferBlock
-	Running            bool
-	wg                 sync.WaitGroup
+	Otprn              *otprn.Otprn
+	Services           map[string]clinetTypes.ServiceFunc
+	Srv                *p2p.Server
+	CoinBasePrivateKey ecdsa.PrivateKey
+	txPool             *core.TxPool
 	BlockChain         *core.BlockChain
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
-	txPool             *core.TxPool
-	CoinBasePrivateKey ecdsa.PrivateKey
-	FairPubKey         ecdsa.PublicKey
 
-	//SAddrUDP *net.UDPAddr
-	//LAddrUDP *net.UDPAddr
+	WinningBlockCh chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
+	FinalBlockCh   chan *types.TransferBlock
+	Running        bool
+	wg             sync.WaitGroup
 
-	//SAddrTCP *net.TCPAddr
-	//LaddrTCP *net.TCPAddr
+	//FairPubKey         ecdsa.PublicKey
 
 	TcpConnStartCh     chan struct{}
 	submitEnodeExitCh  chan struct{}
@@ -57,20 +53,16 @@ type FairnodeClient struct {
 	readLoopStopCh     chan struct{}
 	writeLoopStopCh    chan struct{}
 
-	tcptoFairNodeExitCh chan int
-	tcpConnStopCh       chan int
+	//tcptoFairNodeExitCh chan int
+	//tcpConnStopCh       chan int
 
-	tcpRunning bool
-	TcpDialer  *net.TCPConn
+	//tcpRunning bool
+	//TcpDialer  *net.TCPConn
 
-	Srv *p2p.Server
-	NAT string
-
-	mux sync.Mutex
+	//mux sync.Mutex
 
 	StartCh chan struct{} // 블록생성 시작 채널
 
-	Services map[string]clinetTypes.ServiceFunc
 }
 
 func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -86,11 +78,11 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		submitEnodeExitCh:  make(chan struct{}),
 		receiveOtprnExitCh: make(chan struct{}),
 
-		tcptoFairNodeExitCh: make(chan int),
-		tcpConnStopCh:       make(chan int),
-		tcpRunning:          false,
-		NAT:                 config.DefaultConfig.NAT,
-		StartCh:             make(chan struct{}),
+		//tcptoFairNodeExitCh: make(chan int),
+		//tcpConnStopCh:       make(chan int),
+		//tcpRunning:          false,
+		//
+		StartCh: make(chan struct{}),
 
 		Services: make(map[string]clinetTypes.ServiceFunc),
 	}
@@ -99,25 +91,10 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	faiorServerString := fmt.Sprintf("%s:%s", config.DefaultConfig.FairServerIp, config.DefaultConfig.FairServerPort)
 	clientString := fmt.Sprintf(":%s", config.DefaultConfig.ClientPort)
 
-	//// UDP
-	//fc.SAddrUDP, _ = net.ResolveUDPAddr("udp", faiorServerString)
-	//fc.LAddrUDP, _ = net.ResolveUDPAddr("udp", clientString)
+	t, _ := clinetTcp.New(faiorServerString, clientString, fc)
 
-	// TCP
-	//fc.SAddrTCP, _ = net.ResolveTCPAddr("tcp", faiorServerString)
-	//fc.LaddrTCP, _ = net.ResolveTCPAddr("tcp", clientString)
+	u, _ := clinetUdp.New(faiorServerString, clientString, fc, t)
 
-	t, err := clinetTcp.New(faiorServerString, clientString, fc)
-	if err != nil {
-
-	}
-
-	u, err := clinetUdp.New(faiorServerString, clientString, fc)
-	if err != nil {
-
-	}
-
-	fc.Services["clinetTcp"] = t
 	fc.Services["clinetUdp"] = u
 
 	return fc
@@ -133,41 +110,52 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 
 	// coinbase unlock check
 	if unlockedKey, ok := fc.keystore.GetUnlockedPrivKey(fc.Coinbase); ok {
-
 		fc.CoinBasePrivateKey = *unlockedKey
-
-		//// fairudp
-		//go fc.UDPtoFairNode()
-		//
-		//// fairtcp
-		//go fc.TCPtoFairNode()
-
 	} else {
-		return errors.New("andus >> 코인베이스가 언락되지 않았습니다.")
+		return errUnlockCoinbase
+	}
+
+	// Udp Service running
+	for name, serv := range fc.Services {
+		log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+		err := serv.Start()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (fc *FairnodeClient) Stop() {
-	if fc.Running {
-		fc.Running = false
-		fc.submitEnodeExitCh <- struct{}{}
-		fc.receiveOtprnExitCh <- struct{}{}
+	//if fc.Running {
+	//	fc.Running = false
+	//	fc.submitEnodeExitCh <- struct{}{}
+	//	fc.receiveOtprnExitCh <- struct{}{}
+	//
+	//	if fc.tcpRunning {
+	//		// loop kill, fairtcp kill
+	//		fc.tcpConnStopCh <- TcpStop
+	//		fc.tcpRunning = false
+	//	} else {
+	//		fc.tcptoFairNodeExitCh <- StopTCPtoFairNode
+	//	}
+	//
+	//}
 
-		if fc.tcpRunning {
-			// loop kill, fairtcp kill
-			fc.tcpConnStopCh <- TcpStop
-			fc.tcpRunning = false
-		} else {
-			fc.tcptoFairNodeExitCh <- StopTCPtoFairNode
-		}
-
-		// 마이너 종료시 계정 Lock
-		if err := fc.keystore.Lock(fc.Coinbase); err != nil {
+	for name, serv := range fc.Services {
+		log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+		err := serv.Stop()
+		if err != nil {
 			log.Println("Error[andus] : ", err)
 		}
 	}
+
+	// 마이너 종료시 계정 Lock
+	if err := fc.keystore.Lock(fc.Coinbase); err != nil {
+		log.Println("Error[andus] : ", err)
+	}
+
 }
 
 func (fc *FairnodeClient) GetP2PServer() *p2p.Server            { return fc.Srv }
