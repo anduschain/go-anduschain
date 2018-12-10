@@ -1,4 +1,4 @@
-package fairnodeclient
+package config
 
 type Config struct {
 	FairServerIp   string
@@ -13,3 +13,8 @@ var DefaultConfig = Config{
 	ClientPort:     "50002",
 	NAT:            "any",
 }
+
+const (
+	FAIRNODE_ADDRESS = "0x5922af64E91f4B10AF896De8Fd372075569a1440"
+	TICKET_PRICE     = 100
+)

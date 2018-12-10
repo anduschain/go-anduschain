@@ -20,17 +20,17 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/client"
 	"io"
 	"os"
 	"reflect"
 	"unicode"
 
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/dashboard"
 	"github.com/anduschain/go-anduschain/eth"
+	fairconfig "github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
@@ -82,7 +82,7 @@ type gethConfig struct {
 	Ethstats  ethstatsConfig
 	Dashboard dashboard.Config
 	// andus >> FairNode add
-	FairNode fairnodeclient.Config
+	FairNode fairconfig.Config
 }
 
 func loadConfig(file string, cfg *gethConfig) error {
@@ -117,7 +117,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		Shh:       whisper.DefaultConfig,
 		Node:      defaultNodeConfig(),
 		Dashboard: dashboard.DefaultConfig,
-		FairNode:  fairnodeclient.DefaultConfig,
+		FairNode:  fairconfig.DefaultConfig,
 	}
 
 	// Load config file.
