@@ -20,7 +20,6 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/client"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -46,6 +45,7 @@ import (
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/ethstats"
+	fairconfig "github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/les"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
@@ -1264,13 +1264,13 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 }
 
 // andus >> SetFairNodeConfig 추가
-func SetFairNodeConfig(ctx *cli.Context, cfg *fairnodeclient.Config) {
+func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
 	cfg.FairServerIp = ctx.GlobalString("serverIP")
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
 	cfg.ClientPort = ctx.GlobalString("clientPort")
 	cfg.NAT = ctx.GlobalString("nat")
 
-	fairnodeclient.DefaultConfig = *cfg
+	fairconfig.DefaultConfig = *cfg
 }
 
 // RegisterEthService adds an Ethereum client to the stack.

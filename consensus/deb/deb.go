@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
@@ -167,7 +167,7 @@ func (c *Deb) FairNodeSigCheck(recevedBlockLeagueHash *types.TransferBlock) (err
 		}
 
 		addr := crypto.PubkeyToAddress(*fpKey)
-		if addr.String() == fairnodeclient.FAIRNODE_ADDRESS {
+		if addr.String() == config.FAIRNODE_ADDRESS {
 			return nil, -1
 		} else {
 			return errNotMatchFairAddress, ErrNotMatchFairAddress
