@@ -362,6 +362,7 @@ func (c *bn256Pairing) Run(input []byte) ([]byte, error) {
 	return false32Byte, nil
 }
 
+// Andus : ING의 zkrangeproof precompiled contract
 type zkpRangeProof struct{}
 
 func (c *zkpRangeProof) RequiredGas(input []byte) uint64 {
