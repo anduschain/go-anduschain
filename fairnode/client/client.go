@@ -61,11 +61,11 @@ type FairnodeClient struct {
 
 	//mux sync.Mutex
 
-	//StartCh chan struct{} // 블록생성 시작 채널
+	StartCh chan struct{} // 블록생성 시작 채널
 
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) (*FairnodeClient, error) {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
 		Otprn:              nil,
@@ -82,7 +82,7 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 		//tcpConnStopCh:       make(chan int),
 		//tcpRunning:          false,
 		//
-		//StartCh:             make(chan struct{}),
+		StartCh: make(chan struct{}),
 
 		Services: make(map[string]clinetTypes.ServiceFunc),
 	}
@@ -91,19 +91,13 @@ func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockCh
 	faiorServerString := fmt.Sprintf("%s:%s", config.DefaultConfig.FairServerIp, config.DefaultConfig.FairServerPort)
 	clientString := fmt.Sprintf(":%s", config.DefaultConfig.ClientPort)
 
-	t, err := clinetTcp.New(faiorServerString, clientString, fc)
-	if err != nil {
-		return nil, err
-	}
+	t, _ := clinetTcp.New(faiorServerString, clientString, fc)
 
-	u, err := clinetUdp.New(faiorServerString, clientString, fc, t)
-	if err != nil {
-		return nil, err
-	}
+	u, _ := clinetUdp.New(faiorServerString, clientString, fc, t)
 
 	fc.Services["clinetUdp"] = u
 
-	return fc, nil
+	return fc
 }
 
 //TODO : andus >> fairNode 관련 함수....
