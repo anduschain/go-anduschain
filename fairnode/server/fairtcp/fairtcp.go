@@ -169,17 +169,14 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					fromGethMsg.Decode(&tsf)
 
 					if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
-						fmt.Println("11111111111")
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
-							fmt.Println("222222222222")
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 							otprnHash := tsf.Otprn.HashOtprn().String()
 							_, n, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 							if otprn.Mminer > n {
-								//msg.Send(msg.ResLeagueJoinTrue, "리그참여 대상자가 맞습니다", conn)
 								leaguePool.InsertCh <- pool.PoolIn{
 									Hash: pool.StringToOtprn(otprnHash),
 									Node: pool.Node{Enode: tsf.Enode, Coinbase: tsf.Coinbase, Conn: conn},

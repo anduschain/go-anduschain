@@ -128,9 +128,6 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					log.Println("Debug[andus] : ", str)
 					noify <- closeConnection
 					return
-				case msg.ResLeagueJoinTrue:
-					// 참여 가능???
-					log.Println("Info[andus] : ", str)
 				case msg.SendLeageNodeList:
 					// Add peer
 					var nodeList []string
@@ -150,16 +147,16 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					// JoinTx 생성
 					if err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID); err != nil {
 						log.Println("Error[andus] : ", err)
-						noify <- closeConnection
+						//noify <- closeConnection
 						return
 					}
 
 					go func() {
-						t := time.NewTicker(10 * time.Second)
+						tic := time.NewTicker(10 * time.Second)
 						select {
-						case <-t.C:
-							//fc.StartCh <- struct{}{}
-							//log.Println("Info[andus] : 블록 생성 시작")
+						case <-tic.C:
+							t.manger.BlockMakeStart() <- struct{}{}
+							log.Println("Info[andus] : 블록 생성 시작")
 						}
 					}()
 
@@ -187,6 +184,8 @@ Exit:
 			log.Println("Error[andus] : ", err)
 		case <-exit:
 			conn.Close()
+		case winingBlock := <-t.manger.VoteBlock():
+			msg.Send(msg.SendBlockForVote, winingBlock, conn)
 		}
 	}
 

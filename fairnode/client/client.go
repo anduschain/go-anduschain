@@ -165,6 +165,8 @@ func (fc *FairnodeClient) GetOtprn() *otprn.Otprn               { return fc.Otpr
 func (fc *FairnodeClient) GetTxpool() *core.TxPool              { return fc.txPool }
 func (fc *FairnodeClient) GetBlockChain() *core.BlockChain      { return fc.BlockChain }
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey { return &fc.CoinBasePrivateKey }
+func (fc *FairnodeClient) BlockMakeStart() chan struct{}        { return fc.StartCh }
+func (fc *FairnodeClient) VoteBlock() chan *types.TransferBlock { return fc.WinningBlockCh }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()

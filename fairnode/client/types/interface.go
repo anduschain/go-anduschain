@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"math/big"
@@ -24,4 +25,6 @@ type Client interface {
 	GetTxpool() *core.TxPool
 	GetBlockChain() *core.BlockChain
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
+	BlockMakeStart() chan struct{}
+	VoteBlock() chan *types.TransferBlock
 }
