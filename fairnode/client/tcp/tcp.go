@@ -21,6 +21,7 @@ var (
 	errorMakeJoinTx = errors.New("JoinTx 서명 에러")
 	errorLeakCoin   = errors.New("잔액 부족으로 마이닝을 할 수 없음")
 	errorAddTxPool  = errors.New("TxPool 추가 에러")
+	closeConnection = errors.New("close")
 )
 
 type Tcp struct {
@@ -28,6 +29,7 @@ type Tcp struct {
 	LaddrTCP *net.TCPAddr
 	manger   types.Client
 	services map[string]types.Goroutine
+	IsRuning bool
 }
 
 func New(faiorServerString string, clientString string, manger types.Client) (*Tcp, error) {
@@ -47,6 +49,7 @@ func New(faiorServerString string, clientString string, manger types.Client) (*T
 		LaddrTCP: LaddrTCP,
 		manger:   manger,
 		services: make(map[string]types.Goroutine),
+		IsRuning: false,
 	}
 
 	tcp.services["tcpLoop"] = types.Goroutine{tcp.tcpLoop, make(chan struct{})}
@@ -55,11 +58,24 @@ func New(faiorServerString string, clientString string, manger types.Client) (*T
 }
 
 func (t *Tcp) Start() error {
+	if !t.IsRuning {
+		for name, serv := range t.services {
+			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+			go serv.Fn(serv.Exit)
+		}
+		t.IsRuning = true
+	}
 
 	return nil
 }
 
 func (t *Tcp) Stop() error {
+	if t.IsRuning {
+		for _, srv := range t.services {
+			srv.Exit <- struct{}{}
+		}
+		t.IsRuning = false
+	}
 
 	return nil
 }
@@ -92,13 +108,13 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					// 참여 불가, Dial Close
 					fromFaionodeMsg.Decode(&str)
 					log.Println("Debug[andus] : ", str)
-					noify <- errors.New("Close")
+					noify <- closeConnection
 					return
 				case msg.MinerLeageStop:
 					// 종료됨
 					fromFaionodeMsg.Decode(&str)
 					log.Println("Debug[andus] : ", str)
-					noify <- errors.New("Close")
+					noify <- closeConnection
 					return
 				case msg.ResLeagueJoinTrue:
 					// 참여 가능???
@@ -122,7 +138,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					// JoinTx 생성
 					if err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID); err != nil {
 						log.Println("Error[andus] : ", err)
-						noify <- errors.New("Close")
+						noify <- closeConnection
 						return
 					}
 
@@ -145,7 +161,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		case <-time.After(time.Second * 1):
 			fmt.Println("tcp timeout 1, still alive")
 		case err := <-noify:
-			if io.EOF == err || "Close" == err.Error() {
+			if io.EOF == err || "close" == err.Error() {
 				fmt.Println("tcp connection dropped message", err)
 				return
 			}
@@ -168,9 +184,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int) error {
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS), price,
-				0, big.NewInt(0), []byte("JOIN_TX")),
-			signer, t.manger.GetCoinbsePrivKey())
+			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
