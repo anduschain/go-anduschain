@@ -166,6 +166,7 @@ Exit:
 		case err := <-noify:
 			if io.EOF == err {
 				fmt.Println("tcp connection dropped message", err)
+				conn.Close()
 				break Exit
 			} else if "close" == err.Error() {
 				conn.Close()
