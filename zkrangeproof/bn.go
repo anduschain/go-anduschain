@@ -18,11 +18,162 @@ package zkrangeproof
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/anduschain/go-anduschain/byteconversion"
 	"math/big"
 )
 
 var k1 = new(big.Int).SetBit(big.NewInt(0), 160, 1) // 2^160, security parameter that should match prover
+
+func ValidateRangeProof(lowerLimit *big.Int,
+	upperLimit *big.Int,
+	commitment []*big.Int,
+	proof []*big.Int) bool {
+
+	if len(commitment) < 4 || len(proof) < 22 {
+		return false
+	}
+
+	c := commitment[0] // firstC
+	N := commitment[1] // modulo
+	g := commitment[2] // generator
+	h := commitment[3] // cyclic group generator
+
+	if N.Cmp(big.NewInt(0)) <= 0 {
+		fmt.Println("Invalid group")
+		return false
+	}
+
+	equalityProof2 := proof[14:18]
+	squareProof3 := proof[4:9]
+	squareProof4 := proof[9:14]
+
+	cPrime := proof[0]
+	cPrime1 := proof[1]
+	cPrime2 := proof[2]
+	cPrime3 := proof[3]
+
+	u := proof[18]
+	v := proof[19]
+	x := proof[20]
+	y := proof[21]
+
+	// Derived information
+	tmp := ModPow(g, Sub(lowerLimit, big.NewInt(1)), N)
+
+	if tmp.Cmp(big.NewInt(0)) == 0 {
+		return false
+	}
+	if c.Cmp(big.NewInt(0)) == 0 {
+		return false
+	}
+	if ModInverse(c, N) == nil {
+		return false
+	}
+
+	c1 := Mod(Multiply(ModInverse(tmp, N), c), N)
+	c2 := Mod(Multiply(ModPow(g, Add(upperLimit, big.NewInt(1)), N), ModInverse(c, N)), N)
+
+	cPrimePrime := Mod(Multiply(Multiply(cPrime1, cPrime2), cPrime3), N)
+
+	if !HPAKEEqualityConstraintValidateZeroKnowledgeProof(N, g, c1,
+		h, h, c2, cPrime, equalityProof2) {
+		fmt.Println("HPAKEEqualityConstraint failure")
+		return false
+	}
+
+	hashC1, errC1 := CalculateHash(c1, nil)
+	hashC2, errC2 := CalculateHash(c2, nil)
+	if errC1 != nil || errC2 != nil {
+		fmt.Println("Failure: empty ByteArray in CalculateHash [c1 or c2]")
+		return false
+	}
+	s := Add(Mod(hashC1, k1), big.NewInt(1))
+	t := Add(Mod(hashC2, k1), big.NewInt(1))
+
+	if !HPAKESquareValidateZeroKnowledgeProof(N, cPrime, h, cPrimePrime, squareProof3) {
+		fmt.Println("HPAKESquare failure at first square")
+		return false
+	}
+
+	if !HPAKESquareValidateZeroKnowledgeProof(N, g, h, cPrime3, squareProof4) {
+		fmt.Println("HPAKESquare failure at second square")
+		return false
+	}
+
+	nineLeft := Mod(Multiply(Multiply(ModPow(cPrime1, s, N), cPrime2), cPrime3), N)
+	nineRight := Mod(Multiply(ModPow(g, x, N), ModPow(h, u, N)), N)
+
+	if nineLeft.Cmp(nineRight) != 0 {
+		fmt.Println("Failure: nineLeft != nineRight")
+		return false
+	}
+
+	tenLeft := Mod(Multiply(Multiply(cPrime1, ModPow(cPrime2, t, N)), cPrime3), N)
+	tenRight := Mod(Multiply(ModPow(g, y, N), ModPow(h, v, N)), N)
+
+	if tenLeft.Cmp(tenRight) != 0 {
+		fmt.Println("Failure: tenLeft != tenRight")
+		return false
+	}
+
+	if x.Cmp(big.NewInt(0)) <= 0 {
+		fmt.Println("Failure: x <= 0")
+		return false
+	}
+
+	if y.Cmp(big.NewInt(0)) <= 0 {
+		fmt.Println("Failure: y <= 0")
+		return false
+	}
+
+	return true
+}
+
+func HPAKESquareValidateZeroKnowledgeProof(
+	N *big.Int,
+	g *big.Int,
+	h *big.Int,
+	E *big.Int,
+	sqProof []*big.Int) bool {
+
+	F := sqProof[0]
+	ecProof := sqProof[1:]
+
+	return HPAKEEqualityConstraintValidateZeroKnowledgeProof(N, g, F, h, h, F, E, ecProof)
+}
+
+func HPAKEEqualityConstraintValidateZeroKnowledgeProof(
+	N *big.Int,
+	g1 *big.Int,
+	g2 *big.Int,
+	h1 *big.Int,
+	h2 *big.Int,
+	E *big.Int,
+	F *big.Int,
+	ecProof []*big.Int) bool {
+
+	C := ecProof[0]
+	D := ecProof[1]
+	D1 := ecProof[2]
+	D2 := ecProof[3]
+
+	if E.Cmp(big.NewInt(0)) == 0 {
+		return false
+	}
+	if F.Cmp(big.NewInt(0)) == 0 {
+		return false
+	}
+	W1 := Mod(Multiply(Multiply(ModPow(g1, D, N), ModPow(h1, D1, N)), ModPow(E, Multiply(C, new(big.Int).SetInt64(-1)), N)), N)
+	W2 := Mod(Multiply(Multiply(ModPow(g2, D, N), ModPow(h2, D2, N)), ModPow(F, Multiply(C, new(big.Int).SetInt64(-1)), N)), N)
+
+	hashW, errW := CalculateHash(W1, W2)
+	if errW != nil {
+		fmt.Println("Failure: empty ByteArray in CalculateHash [W1, W2]")
+		return false
+	}
+	return C.Cmp(hashW) == 0
+}
 
 func CalculateHash(b1 *big.Int, b2 *big.Int) (*big.Int, error) {
 
