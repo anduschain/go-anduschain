@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	errNat       = errors.New("NAT 설정에 문제가 있습니다")
-	errTcpListen = errors.New("TCP Lister 설정에 문제가 있습니다")
+	errNat          = errors.New("NAT 설정에 문제가 있습니다")
+	errTcpListen    = errors.New("TCP Lister 설정에 문제가 있습니다")
+	closeConnection = errors.New("close")
 )
 
 type goroutine struct {
@@ -143,10 +144,16 @@ Exit:
 }
 
 func (ft *FairTcp) handeler(conn net.Conn) {
-	defer conn.Close()
 	defer log.Println("Info[andus] : hander kill")
 
 	noify := make(chan error)
+
+	poolUpdate := func(leaguePool *pool.LeaguePool, otprn string, tsf fairtypes.TransferCheck) {
+		leaguePool.UpdateCh <- pool.PoolIn{
+			Hash: pool.StringToOtprn(otprn),
+			Node: pool.Node{Enode: tsf.Enode, Coinbase: tsf.Coinbase, Conn: nil},
+		}
+	}
 
 	go func() {
 		defer log.Println("Info[andus] : ReadMsg Loop 죽음")
@@ -159,6 +166,9 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 				if err == io.EOF {
 					return
 				}
+				if _, ok := err.(*net.OpError); ok {
+					return
+				}
 			}
 
 			if n > 0 {
@@ -168,35 +178,42 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					var tsf fairtypes.TransferCheck
 					fromGethMsg.Decode(&tsf)
 
+					otprnHash := tsf.Otprn.HashOtprn().String()
+
 					if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
-							otprnHash := tsf.Otprn.HashOtprn().String()
+
 							_, n, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 							if otprn.Mminer > n {
+								log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
 								leaguePool.InsertCh <- pool.PoolIn{
 									Hash: pool.StringToOtprn(otprnHash),
 									Node: pool.Node{Enode: tsf.Enode, Coinbase: tsf.Coinbase, Conn: conn},
 								}
-
-								log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
 							} else {
 								// TODO : 참여 인원수 오버된 케이스
 								log.Println("INFO : 참여 인원수 오버된 케이스", tsf.Enode)
-								return
+								noify <- closeConnection
+								poolUpdate(leaguePool, otprnHash, tsf)
+
 							}
 						} else {
 							// TODO : andus >> 참여 대상자가 아니다
 							log.Println("INFO : 참여 대상자가 아니다", tsf.Enode)
-							return
+							noify <- closeConnection
+							poolUpdate(leaguePool, otprnHash, tsf)
+
 						}
 					} else {
 						// TODO : andus >> 리그 참여 정보가 다르다
 						log.Println("INFO : 리그 참여 정보가 다르다", tsf.Enode)
-						return
+						noify <- closeConnection
+						poolUpdate(leaguePool, otprnHash, tsf)
+
 					}
 				case msg.SendBlockForVote:
 					var voteBlock types.TransferBlock
@@ -208,6 +225,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 	}()
 
+Exit:
 	for {
 		select {
 		case <-time.After(time.Second * 1):
@@ -215,7 +233,13 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 		case err := <-noify:
 			if io.EOF == err {
 				fmt.Println("tcp connection dropped message", err)
-				return
+				conn.Close()
+				break Exit
+			} else if "close" == err.Error() {
+				conn.Close()
+			} else if _, ok := err.(*net.OpError); ok {
+				fmt.Println("tcp connection dropped message", err)
+				break Exit
 			}
 			log.Println("Error[andus] : ", err)
 		}

@@ -1,0 +1,97 @@
+package pool
+
+import (
+	"fmt"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"sync"
+)
+
+type Coinbase common.Address
+
+type VoteBlock struct {
+	Block  types.Block
+	Count  uint64
+	Voters []Coinbase
+}
+
+type VoteBlocks []VoteBlock
+
+type Vote struct {
+	Hash     OtprnHash
+	Block    types.Block
+	Coinbase Coinbase
+}
+
+type VotePool struct {
+	pool     map[OtprnHash]VoteBlocks
+	InsertCh chan Vote
+	SnapShot chan OtprnHash
+	StopCh   chan struct{}
+	db       *db.FairNodeDB
+	mux      sync.RWMutex
+}
+
+func NewVotePool(db *db.FairNodeDB) *VotePool {
+	vp := &VotePool{
+		pool:   make(map[OtprnHash]VoteBlocks),
+		StopCh: make(chan struct{}, 1),
+		db:     db,
+	}
+
+	return vp
+}
+
+func (vp *VotePool) Start() error {
+	go vp.loop()
+	return nil
+}
+
+func (vp *VotePool) Stop() error {
+	vp.StopCh <- struct{}{}
+	return nil
+}
+
+func (vp *VotePool) loop() {
+
+Exit:
+	for {
+		select {
+		case vote := <-vp.InsertCh:
+			fmt.Println(vote)
+
+			if val, ok := vp.pool[vote.Hash]; ok {
+				isDouble := false
+				for i := range val {
+					// 중복 삽입 방지
+					if val[i].Block.Hash() == vote.Block.Hash() {
+						// 동일한 블록이면, 카운터 +1, 투표자 추가
+						vp.mux.Lock()
+						vp.pool[vote.Hash][i].Count++
+						vp.pool[vote.Hash][i].Voters = append(vp.pool[vote.Hash][i].Voters, vote.Coinbase)
+						vp.mux.Unlock()
+						isDouble = true
+						break
+					}
+				}
+
+				if !isDouble {
+					vp.mux.Lock()
+					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 0, []Coinbase{vote.Coinbase}})
+					vp.mux.Unlock()
+				}
+
+			} else {
+				vp.mux.Lock()
+				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 0, []Coinbase{vote.Coinbase}}}
+				vp.mux.Unlock()
+			}
+		case h := <-vp.SnapShot:
+			fmt.Println(h)
+
+		case <-vp.StopCh:
+			break Exit
+		}
+	}
+}

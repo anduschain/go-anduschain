@@ -21,6 +21,7 @@ type FairManager struct {
 	Services        map[string]ServiceFunc
 	srvKey          *backend.SeverKey
 	leaguePool      *pool.LeaguePool
+	votePool        *pool.VotePool
 }
 
 func New() (*FairManager, error) {
@@ -34,6 +35,7 @@ func New() (*FairManager, error) {
 	}
 
 	fm.leaguePool = pool.New(mongoDB)
+	fm.votePool = pool.NewVotePool(mongoDB)
 
 	fu, err := fairudp.New(mongoDB, fm)
 	if err != nil {
@@ -46,8 +48,9 @@ func New() (*FairManager, error) {
 	}
 
 	fm.Services["mongoDB"] = mongoDB
-	fm.Services["fairudp"] = fu
 	fm.Services["LeaguePool"] = fm.leaguePool
+	fm.Services["VotePool"] = fm.votePool
+	fm.Services["fairudp"] = fu
 	fm.Services["fairtcp"] = ft
 
 	return fm, nil
@@ -94,3 +97,4 @@ func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunnin
 func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
+func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }

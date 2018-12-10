@@ -121,13 +121,11 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					fromFaionodeMsg.Decode(&str)
 					log.Println("Debug[andus] : ", str)
 					noify <- closeConnection
-					return
 				case msg.MinerLeageStop:
 					// 종료됨
 					fromFaionodeMsg.Decode(&str)
 					log.Println("Debug[andus] : ", str)
 					noify <- closeConnection
-					return
 				case msg.SendLeageNodeList:
 					// Add peer
 					var nodeList []string
@@ -147,8 +145,6 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					// JoinTx 생성
 					if err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID); err != nil {
 						log.Println("Error[andus] : ", err)
-						//noify <- closeConnection
-						return
 					}
 
 					go func() {
