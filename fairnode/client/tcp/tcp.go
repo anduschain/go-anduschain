@@ -179,7 +179,10 @@ Exit:
 		}
 	}
 
-	defer fmt.Println("tcpLoop kill")
+	defer func() {
+		t.IsRuning = false
+		fmt.Println("tcpLoop kill")
+	}()
 }
 
 func (t *Tcp) makeJoinTx(chanID *big.Int) error {
