@@ -298,6 +298,11 @@ func (e *G2) Unmarshal(m []byte) ([]byte, error) {
 	return m[4*numBytes:], nil
 }
 
+// IsOne returns true iff a = 0.
+func (e *GT) IsOne() bool {
+	return e.p.IsOne()
+}
+
 // GT is an abstract cyclic group. The zero value is suitable for use as the
 // output of an operation, but cannot be used as an input.
 type GT struct {
@@ -478,4 +483,44 @@ func (e *GT) Unmarshal(m []byte) ([]byte, error) {
 	montEncode(&e.p.y.z.y, &e.p.y.z.y)
 
 	return m[12*numBytes:], nil
+}
+
+/** FOR ING ZKPRANGEPROOF  **/
+// IsZero returns true iff a = 0.
+func (e *G1) IsZero() bool {
+	return e.p.IsInfinity()
+}
+
+// IsZero returns true iff a = 0.
+func (e *G2) IsZero() bool {
+	return e.p.IsInfinity()
+}
+
+// IsZero returns true iff a = 0.
+func (e *GT) IsZero() bool {
+	return e.p.IsZero()
+}
+
+func (e *GT) Invert(a *GT) *GT {
+	if e.p == nil {
+		e.p = new(gfP12)
+	}
+	e.p.Invert(a.p)
+	return e
+}
+
+// Set to identity element on the group.
+func (e *G1) SetInfinity() *G1 {
+	e.p = &curvePoint{}
+	e.p.SetInfinity()
+	return e
+}
+
+// Set to identity element on the group.
+func (e *G2) SetInfinity() *G2 {
+	if e.p == nil {
+		e.p = &twistPoint{}
+	}
+	e.p.SetInfinity()
+	return e
 }
