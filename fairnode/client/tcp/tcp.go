@@ -85,7 +85,6 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
 
 	noify := make(chan error)
 
@@ -96,6 +95,9 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 			if err != nil {
 				noify <- err
 				if err == io.EOF {
+					return
+				}
+				if _, ok := err.(*net.OpError); ok {
 					return
 				}
 			}
@@ -156,18 +158,28 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		}
 	}()
 
+Exit:
 	for {
 		select {
 		case <-time.After(time.Second * 1):
 			fmt.Println("tcp timeout 1, still alive")
 		case err := <-noify:
-			if io.EOF == err || "close" == err.Error() {
+			if io.EOF == err {
 				fmt.Println("tcp connection dropped message", err)
-				return
+				break Exit
+			} else if "close" == err.Error() {
+				conn.Close()
+			} else if _, ok := err.(*net.OpError); ok {
+				fmt.Println("tcp connection dropped message", err)
+				break Exit
 			}
 			log.Println("Error[andus] : ", err)
+		case <-exit:
+			conn.Close()
 		}
 	}
+
+	defer fmt.Println("tcpLoop kill")
 }
 
 func (t *Tcp) makeJoinTx(chanID *big.Int) error {

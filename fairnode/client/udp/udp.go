@@ -10,7 +10,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"io"
 	"log"
 	"net"
 	"time"
@@ -124,8 +123,6 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 		log.Println("Udp Server", err)
 	}
 
-	defer localServerConn.Close()
-
 	// TODO : andus >> NAT 추가 --- start ---
 
 	natm, err := nat.Parse(config.DefaultConfig.NAT)
@@ -154,7 +151,9 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 			n, err := localServerConn.Read(tsOtprnByte)
 			if err != nil {
 				notify <- err
-				return
+				if _, ok := err.(*net.OpError); ok {
+					return
+				}
 			}
 
 			if n > 0 {
@@ -209,14 +208,14 @@ Exit:
 	for {
 		select {
 		case err := <-notify:
-			if io.EOF == err {
+			if _, ok := err.(*net.OpError); ok {
 				log.Println("Debug[andus] : udp connection dropped message", err)
-				return
+				break Exit
 			}
 		case <-time.After(time.Second * 1):
 			log.Println("Debug[andus] : UDP timeout, still alive")
 		case <-exit:
-			break Exit
+			localServerConn.Close()
 		}
 	}
 
