@@ -10,7 +10,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
-	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
@@ -25,21 +24,16 @@ var (
 	closeConnection = errors.New("close")
 )
 
-type goroutine struct {
-	fn   func(exit chan struct{})
-	exit chan struct{}
-}
-
 type FairTcp struct {
 	LAddrTCP *net.TCPAddr
 	natm     nat.Interface
 	listener *net.TCPListener
 	Db       *db.FairNodeDB
-	manager  fairudp.Manager
-	services map[string]goroutine
+	manager  backend.Manager
+	services map[string]backend.Goroutine
 }
 
-func New(db *db.FairNodeDB, fm fairudp.Manager) (*FairTcp, error) {
+func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
 	addr := fmt.Sprintf(":%s", backend.DefaultConfig.Port)
 
 	LAddrTCP, err := net.ResolveTCPAddr("tcp", addr)
@@ -57,10 +51,10 @@ func New(db *db.FairNodeDB, fm fairudp.Manager) (*FairTcp, error) {
 		natm:     natm,
 		Db:       db,
 		manager:  fm,
-		services: make(map[string]goroutine),
+		services: make(map[string]backend.Goroutine),
 	}
 
-	ft.services["accepter"] = goroutine{ft.accepter, make(chan struct{}, 1)}
+	ft.services["accepter"] = backend.Goroutine{ft.accepter, make(chan struct{}, 1)}
 
 	return ft, nil
 }
@@ -86,7 +80,7 @@ func (ft *FairTcp) Start() error {
 
 	for name, srv := range ft.services {
 		log.Printf("Info[andus] : TCP 서비스 %s 실행됨", name)
-		go srv.fn(srv.exit)
+		go srv.Fn(srv.Exit)
 	}
 
 	return nil
@@ -102,7 +96,7 @@ func (ft *FairTcp) Stop() error {
 	time.Sleep(1 * time.Second)
 
 	for _, srv := range ft.services {
-		srv.exit <- struct{}{}
+		srv.Exit <- struct{}{}
 	}
 
 	return nil
@@ -218,7 +212,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 				case msg.SendBlockForVote:
 					var voteBlock types.TransferBlock
 					fromGethMsg.Decode(&voteBlock)
-					fmt.Println("-----------투표 블록 도착--------", voteBlock.HeaderHash.String())
+
 				}
 			}
 		}

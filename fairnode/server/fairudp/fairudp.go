@@ -23,30 +23,16 @@ var (
 	errUdpConn = errors.New("UDP 커넥션 설정에 에러가 있음")
 )
 
-type goroutine struct {
-	fn   func(exit chan struct{})
-	exit chan struct{}
-}
-
-type Manager interface {
-	GetOtprn() otprn.Otprn
-	SetOtprn(otprn otprn.Otprn)
-	GetLeagueRunning() bool
-	GetServerKey() *backend.SeverKey
-	SetLeagueRunning(status bool)
-	GetLeaguePool() *pool.LeaguePool
-}
-
 type FairUdp struct {
 	LAddrUDP *net.UDPAddr
 	natm     nat.Interface
 	udpConn  *net.UDPConn
-	services map[string]goroutine
+	services map[string]backend.Goroutine
 	db       *db.FairNodeDB
-	fm       Manager
+	fm       backend.Manager
 }
 
-func New(db *db.FairNodeDB, fm Manager) (*FairUdp, error) {
+func New(db *db.FairNodeDB, fm backend.Manager) (*FairUdp, error) {
 
 	addr := fmt.Sprintf(":%s", backend.DefaultConfig.Port)
 
@@ -63,14 +49,14 @@ func New(db *db.FairNodeDB, fm Manager) (*FairUdp, error) {
 	fu := &FairUdp{
 		LAddrUDP: laddr,
 		natm:     natm,
-		services: make(map[string]goroutine),
+		services: make(map[string]backend.Goroutine),
 		db:       db,
 		fm:       fm,
 	}
 
-	fu.services["manageActiveNode"] = goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
-	fu.services["manageOtprn"] = goroutine{fu.manageOtprn, make(chan struct{}, 1)}
-	fu.services["JobActiveNode"] = goroutine{fu.JobActiveNode, make(chan struct{}, 1)}
+	fu.services["manageActiveNode"] = backend.Goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
+	fu.services["manageOtprn"] = backend.Goroutine{fu.manageOtprn, make(chan struct{}, 1)}
+	fu.services["JobActiveNode"] = backend.Goroutine{fu.JobActiveNode, make(chan struct{}, 1)}
 
 	return fu, nil
 }
@@ -97,7 +83,7 @@ func (fu *FairUdp) Start() error {
 
 	for name, srv := range fu.services {
 		log.Printf("Info[andus] : UDP 서비스 %s 실행됨", name)
-		go srv.fn(srv.exit)
+		go srv.Fn(srv.Exit)
 	}
 
 	return nil
@@ -113,7 +99,7 @@ func (fu *FairUdp) Stop() error {
 	time.Sleep(1 * time.Second)
 
 	for _, srv := range fu.services {
-		srv.exit <- struct{}{}
+		srv.Exit <- struct{}{}
 	}
 
 	return nil

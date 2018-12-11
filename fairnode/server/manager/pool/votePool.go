@@ -35,9 +35,11 @@ type VotePool struct {
 
 func NewVotePool(db *db.FairNodeDB) *VotePool {
 	vp := &VotePool{
-		pool:   make(map[OtprnHash]VoteBlocks),
-		StopCh: make(chan struct{}, 1),
-		db:     db,
+		pool:     make(map[OtprnHash]VoteBlocks),
+		InsertCh: make(chan Vote),
+		SnapShot: make(chan OtprnHash),
+		StopCh:   make(chan struct{}, 1),
+		db:       db,
 	}
 
 	return vp
@@ -59,18 +61,27 @@ Exit:
 	for {
 		select {
 		case vote := <-vp.InsertCh:
-			fmt.Println(vote)
-
 			if val, ok := vp.pool[vote.Hash]; ok {
 				isDouble := false
+
+			ex:
 				for i := range val {
 					// 중복 삽입 방지
 					if val[i].Block.Hash() == vote.Block.Hash() {
 						// 동일한 블록이면, 카운터 +1, 투표자 추가
+
+						for j := range val[i].Voters {
+							if val[i].Voters[j] == vote.Coinbase {
+								isDouble = true
+								break ex
+							}
+						}
+
 						vp.mux.Lock()
 						vp.pool[vote.Hash][i].Count++
 						vp.pool[vote.Hash][i].Voters = append(vp.pool[vote.Hash][i].Voters, vote.Coinbase)
 						vp.mux.Unlock()
+
 						isDouble = true
 						break
 					}
@@ -78,13 +89,13 @@ Exit:
 
 				if !isDouble {
 					vp.mux.Lock()
-					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 0, []Coinbase{vote.Coinbase}})
+					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 1, []Coinbase{vote.Coinbase}})
 					vp.mux.Unlock()
 				}
 
 			} else {
 				vp.mux.Lock()
-				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 0, []Coinbase{vote.Coinbase}}}
+				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []Coinbase{vote.Coinbase}}}
 				vp.mux.Unlock()
 			}
 		case h := <-vp.SnapShot:
