@@ -17,4 +17,5 @@ type Manager interface {
 	GetServerKey() *SeverKey
 	SetLeagueRunning(status bool)
 	GetLeaguePool() *pool.LeaguePool
+	GetVotePool() *pool.VotePool
 }

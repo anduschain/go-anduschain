@@ -153,6 +153,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 		defer log.Println("Info[andus] : ReadMsg Loop 죽음")
 		buf := make([]byte, 4096)
 		leaguePool := ft.manager.GetLeaguePool()
+		votePool := ft.manager.GetVotePool()
 		for {
 			n, err := conn.Read(buf)
 			if err != nil {
@@ -173,7 +174,6 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					fromGethMsg.Decode(&tsf)
 
 					otprnHash := tsf.Otprn.HashOtprn().String()
-
 					if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
@@ -212,7 +212,11 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 				case msg.SendBlockForVote:
 					var voteBlock types.TransferBlock
 					fromGethMsg.Decode(&voteBlock)
-
+					votePool.InsertCh <- pool.Vote{
+						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
+						Block:    *voteBlock.Block,
+						Coinbase: voteBlock.Voter,
+					}
 				}
 			}
 		}

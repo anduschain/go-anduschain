@@ -3,7 +3,10 @@ package fairudp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -201,7 +204,17 @@ Exit:
 					fu.fm.SetLeagueRunning(true)
 					activeNodeList := fu.db.GetActiveNodeList()
 
-					go fu.sendLeague(tsOtp.Hash.String())
+					go func() {
+						t := time.NewTicker(10 * time.Second)
+						for {
+							select {
+							case <-t.C:
+								go fu.sendLeague(tsOtp.Hash.String())
+								return
+							}
+						}
+
+					}()
 
 					for index := range activeNodeList {
 						url := activeNodeList[index].Ip + ":" + activeNodeList[index].Port
@@ -226,36 +239,69 @@ Exit:
 
 func (fu *FairUdp) sendLeague(otprnHash string) {
 	defer log.Println("Debug[andus] : sendLeague 죽음")
-	t := time.NewTicker(15 * time.Second)
+	t := time.NewTicker(5 * time.Second)
 	leaguePool := fu.fm.GetLeaguePool()
-
-	fmt.Println("-------------sendLeague Start-----------", otprnHash)
+	var percent float64 = 30
 	for {
 		select {
 		case <-t.C:
 			nodes, num, enodes := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			log.Println("----------------sendLeague-------------", num, enodes)
-			if num >= fu.JoinTotalNum(30) {
+			if num >= fu.JoinTotalNum(percent) && num > 0 {
 				for index := range nodes {
 					if nodes[index].Conn != nil {
 						msg.Send(msg.SendLeageNodeList, enodes, nodes[index].Conn)
 					}
 				}
-				return
-			} else {
-				log.Println("Info[andus] : 리그가 성립 안됨 연결 새로운 리그 시작 : ", num)
-				for i := range nodes {
-					if nodes[i].Conn == nil {
-						msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", nodes[i].Conn)
-						nodes[i].Conn.Close()
-					}
-				}
-				leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
-				leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
-				fu.fm.SetLeagueRunning(false)
+
+				// peer list 전송후 30초
+				go fu.sendFinalBlock(otprnHash)
+
 				return
 			}
+
+			//if num >= fu.JoinTotalNum(percent) {
+			//	for index := range nodes {
+			//		if nodes[index].Conn != nil {
+			//			msg.Send(msg.SendLeageNodeList, enodes, nodes[index].Conn)
+			//		}
+			//	}
+			//
+			//	// peer list 전송후 30초
+			//	go fu.sendWiningBlock(otprnHash)
+			//
+			//	return
+			//} else {
+			//log.Println("Info[andus] : 리그가 성립 안됨 연결 새로운 리그 시작 : ", num)
+			//for i := range nodes {
+			//	if nodes[i].Conn == nil {
+			//		msg.Send(msg.MinerLeageStop, "리그가 종료 되었습니다", nodes[i].Conn)
+			//		nodes[i].Conn.Close()
+			//	}
+			//}
+			//leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
+			//leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+			//fu.fm.SetLeagueRunning(false)
+			//return
+			//}
+		}
+	}
+}
+
+func (fu *FairUdp) sendFinalBlock(otprnHash string) {
+	t := time.NewTicker(30 * time.Second)
+	leaguePool := fu.fm.GetLeaguePool()
+	nodes, _, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
+	for {
+		select {
+		case <-t.C:
+			for index := range nodes {
+				if nodes[index].Conn != nil {
+					msg.Send(msg.SendFinalBlock, fu.GetFinalBlock(otprnHash), nodes[index].Conn)
+				}
+			}
+
+			return
 		}
 	}
 }
@@ -270,4 +316,78 @@ func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
 	}
 
 	return uint64(count * (persent / 100))
+}
+
+func (fu *FairUdp) GetFinalBlock(otprnHash string) types.Block {
+	votePool := fu.fm.GetVotePool()
+	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
+	acc := fu.fm.GetServerKey()
+	var fBlock types.Block
+
+	if len(voteBlocks) == 0 {
+		return fBlock
+	} else if len(voteBlocks) == 1 {
+		SignFairNode(&fBlock, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
+	} else {
+		var cnt uint64 = 0
+		var pvBlock pool.VoteBlock
+		for i := range voteBlocks {
+			// 1. count가 높은 블록
+			// 2. Rand == diffcult 값이 높은 블록
+			// 3. joinNunce	== nonce 값이 놓은 블록
+			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
+			if cnt < voteBlocks[i].Count {
+				fBlock = voteBlocks[i].Block
+				pvBlock = voteBlocks[i]
+				cnt = voteBlocks[i].Count
+			} else if cnt == voteBlocks[i].Count {
+				// 동수인 투표일때
+				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
+					// diffcult 값이 높은 블록
+					fBlock = voteBlocks[i].Block
+					pvBlock = voteBlocks[i]
+				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
+					// diffcult 값이 같을때
+					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
+						// nonce 값이 큰 블록
+						fBlock = voteBlocks[i].Block
+						pvBlock = voteBlocks[i]
+					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
+						// nonce 값이 같을 때
+						if voteBlocks[i].Block.Number().Uint64()%2 == 0 {
+							// 블록 번호가 짝수 일때
+							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
+								// 주소값이 큰 블록
+								fBlock = voteBlocks[i].Block
+								pvBlock = voteBlocks[i]
+							}
+						} else {
+							// 블록 번호가 홀수 일때
+							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
+								// 주소값이 작은 블록
+								fBlock = voteBlocks[i].Block
+								pvBlock = voteBlocks[i]
+							}
+						}
+
+					}
+				}
+			}
+		}
+
+		SignFairNode(&fBlock, pvBlock, acc.ServerAcc, acc.KeyStore)
+	}
+
+	return fBlock
+}
+
+func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {
+	sig, err := ks.SignHash(account, vBlock.Block.Hash().Bytes())
+	if err != nil {
+		log.Println("Error[andus] : SignFairNode 서명에러", err)
+	}
+
+	*block = vBlock.Block
+	block.Voter = vBlock.Voters
+	block.FairNodeSig = sig
 }

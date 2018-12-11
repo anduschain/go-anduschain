@@ -595,7 +595,13 @@ func (w *worker) resultLoop() {
 				}
 
 				// TODO : andus >> TransferBlock 객체 생성
-				tfd := types.TransferBlock{Block: block, HeaderHash: block.Header().Hash(), Sig: sig}
+				tfd := types.TransferBlock{
+					Block:      block,
+					HeaderHash: block.Header().Hash(),
+					Sig:        sig,
+					OtprnHash:  w.fairclient.Otprn.HashOtprn(),
+					Voter:      w.coinbase,
+				}
 
 				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 				w.LeagueBlockBroadcastCh <- &tfd

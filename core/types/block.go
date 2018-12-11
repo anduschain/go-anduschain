@@ -151,6 +151,8 @@ type TransferBlock struct {
 	Block      *Block
 	HeaderHash common.Hash
 	Sig        []byte
+	Voter      common.Address // coinbase
+	OtprnHash  common.Hash
 }
 
 // DeprecatedTd is an old relic for extracting the TD of a block. It is in the

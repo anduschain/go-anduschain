@@ -22,6 +22,7 @@ const (
 	SendLeageNodeList
 	MinerLeageStop
 	SendBlockForVote
+	SendFinalBlock
 )
 
 func ReadMsg(msg []byte) *Msg {

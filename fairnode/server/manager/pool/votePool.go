@@ -8,12 +8,10 @@ import (
 	"sync"
 )
 
-type Coinbase common.Address
-
 type VoteBlock struct {
 	Block  types.Block
 	Count  uint64
-	Voters []Coinbase
+	Voters []common.Address
 }
 
 type VoteBlocks []VoteBlock
@@ -21,7 +19,7 @@ type VoteBlocks []VoteBlock
 type Vote struct {
 	Hash     OtprnHash
 	Block    types.Block
-	Coinbase Coinbase
+	Coinbase common.Address
 }
 
 type VotePool struct {
@@ -43,6 +41,17 @@ func NewVotePool(db *db.FairNodeDB) *VotePool {
 	}
 
 	return vp
+}
+
+func (vp *VotePool) GetVoteBlocks(hash OtprnHash) VoteBlocks {
+	vp.mux.Lock()
+	defer vp.mux.Unlock()
+
+	if val, ok := vp.pool[hash]; ok {
+		return val
+	}
+
+	return nil
 }
 
 func (vp *VotePool) Start() error {
@@ -89,13 +98,13 @@ Exit:
 
 				if !isDouble {
 					vp.mux.Lock()
-					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 1, []Coinbase{vote.Coinbase}})
+					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}})
 					vp.mux.Unlock()
 				}
 
 			} else {
 				vp.mux.Lock()
-				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []Coinbase{vote.Coinbase}}}
+				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}}}
 				vp.mux.Unlock()
 			}
 		case h := <-vp.SnapShot:
