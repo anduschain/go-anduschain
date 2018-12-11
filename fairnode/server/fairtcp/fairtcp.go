@@ -218,7 +218,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 						Coinbase: voteBlock.Voter,
 					}
 
-					fmt.Println("-----블록 투표 됨-----")
+					fmt.Println("-----블록 투표 됨-----", voteBlock.Block.Coinbase())
 				}
 			}
 		}

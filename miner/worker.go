@@ -552,6 +552,7 @@ func (w *worker) resultLoop() {
 	for {
 		select {
 		case block := <-w.resultCh:
+			fmt.Println("-------resultCH-------", block.Coinbase().String())
 			// Short circuit when receiving empty result.
 			if block == nil {
 				continue
@@ -603,6 +604,8 @@ func (w *worker) resultLoop() {
 					Voter:      w.coinbase,
 				}
 
+				fmt.Println("--------투표 블록 생성-------", tfd.Block.Coinbase().String())
+
 				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 				w.LeagueBlockBroadcastCh <- &tfd
 
@@ -613,6 +616,8 @@ func (w *worker) resultLoop() {
 				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
 				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
 				block := <-w.FinalBlockCh
+
+				fmt.Println("fairnode sig--------", len(block.FairNodeSig))
 
 				// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 				if _, ok := block.GetFairNodeSig(); ok {

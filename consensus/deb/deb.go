@@ -364,7 +364,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNon
 	// Coinbase PriveKey
 	c.privKey = privKey
 
-	header.Coinbase = common.Address{}
+	header.Coinbase = coinbase
 
 	number := header.Number.Uint64()
 

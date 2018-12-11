@@ -295,6 +295,9 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		select {
 		case <-t.C:
 			block := fu.GetFinalBlock(otprnHash)
+
+			fmt.Println("--------------", len(block.FairNodeSig))
+
 			for index := range nodes {
 				if nodes[index].Conn != nil {
 					msg.Send(msg.SendFinalBlock, &block, nodes[index].Conn)
@@ -389,7 +392,6 @@ func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Ac
 		log.Println("Error[andus] : SignFairNode 서명에러", err)
 	}
 
-	*block = vBlock.Block
 	block.Voter = vBlock.Voters
 	block.FairNodeSig = sig
 }

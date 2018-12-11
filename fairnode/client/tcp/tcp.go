@@ -158,10 +158,14 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					}()
 
 				case msg.SendFinalBlock:
-					var block gethTypes.Block
+					var block *gethTypes.Block
 					fromFaionodeMsg.Decode(&block)
-					fmt.Println("----파이널 블록 수신됨----", block.Hash().String())
-					t.manger.FinalBlock() <- &block
+
+					fmt.Println("----파이널 블록 수신됨----", block.Coinbase().String())
+					fmt.Println("----------------------", len(block.FairNodeSig))
+
+					t.manger.FinalBlock() <- block
+					noify <- closeConnection
 				}
 
 			}
@@ -188,6 +192,8 @@ Exit:
 		case <-exit:
 			conn.Close()
 		case winingBlock := <-t.manger.VoteBlock():
+
+			fmt.Println("----블록 투표-----", winingBlock.Block.Coinbase().String())
 			msg.Send(msg.SendBlockForVote, winingBlock, conn)
 		}
 	}

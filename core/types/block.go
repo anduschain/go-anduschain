@@ -136,14 +136,13 @@ type Block struct {
 	// of the chain up to and including the block.
 	td *big.Int
 
+	// TODO : andus >> FairNode 서명
+	FairNodeSig []byte // header Hash + Voter Hash
+	Voter       []common.Address
 	// These fields are used by package eth to track
 	// inter-peer block relay.
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
-
-	// TODO : andus >> FairNode 서명
-	FairNodeSig []byte // header Hash + Voter Hash
-	Voter       []common.Address
 }
 
 // TODO : andus >> andus 전송 블록 객체..
@@ -192,7 +191,7 @@ type storageblock struct {
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
 func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*Receipt) *Block {
-	b := &Block{header: CopyHeader(header), td: new(big.Int)}
+	b := &Block{header: CopyHeader(header), td: new(big.Int), FairNodeSig: []byte{}, Voter: []common.Address{}}
 
 	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
