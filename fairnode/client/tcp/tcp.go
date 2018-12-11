@@ -159,6 +159,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 				case msg.SendFinalBlock:
 					var block gethTypes.Block
 					fromFaionodeMsg.Decode(&block)
+					fmt.Println("----파이널 블록 수신됨----", block.Hash().String())
 					t.manger.FinalBlock() <- &block
 				}
 

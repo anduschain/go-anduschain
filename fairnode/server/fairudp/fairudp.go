@@ -295,13 +295,15 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 	for {
 		select {
 		case <-t.C:
+			block := fu.GetFinalBlock(otprnHash)
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					msg.Send(msg.SendFinalBlock, fu.GetFinalBlock(otprnHash), nodes[index].Conn)
+					msg.Send(msg.SendFinalBlock, &block, nodes[index].Conn)
 				}
 			}
 
 			fu.fm.SetLeagueRunning(false)
+			fmt.Println("----sendFinalBlock-----", block.Hash().String())
 			return
 		}
 	}

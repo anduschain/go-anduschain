@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"log"
@@ -71,7 +70,6 @@ func (l *LeaguePool) GetLeagueList(h OtprnHash) (Nodes, uint64, []string) {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	fmt.Println("-------GetLeagueList-----------", h)
 	var enodes []string
 	if val, ok := l.pool[h]; ok {
 		for index := range val {

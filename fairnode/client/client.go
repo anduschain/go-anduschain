@@ -144,16 +144,18 @@ func (fc *FairnodeClient) Stop() {
 	//}
 
 	for name, serv := range fc.Services {
-		log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+		log.Println(fmt.Sprintf("Info[andus] : %s Stop", name))
 		err := serv.Stop()
 		if err != nil {
 			log.Println("Error[andus] : ", err)
 		}
 	}
 
-	// 마이너 종료시 계정 Lock
-	if err := fc.keystore.Lock(fc.Coinbase); err != nil {
-		log.Println("Error[andus] : ", err)
+	if fc.Coinbase != (common.Address{}) {
+		// 마이너 종료시 계정 Lock
+		if err := fc.keystore.Lock(fc.Coinbase); err != nil {
+			log.Println("Error[andus] : ", err)
+		}
 	}
 
 }
