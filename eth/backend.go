@@ -185,7 +185,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	// TODO : andus >> 위닝블록 전송 채널
 	WinningBlockCh := make(chan *types.TransferBlock, 4)
-	FinalBlockCh := make(chan *types.TransferBlock)
+	FinalBlockCh := make(chan *types.Block, 4)
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, LeagueBlockBroadcastCh, ReceiveBlockCh); err != nil {
 		return nil, err

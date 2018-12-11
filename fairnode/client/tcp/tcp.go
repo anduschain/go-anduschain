@@ -156,7 +156,12 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						}
 					}()
 
+				case msg.SendFinalBlock:
+					var block gethTypes.Block
+					fromFaionodeMsg.Decode(&block)
+					t.manger.FinalBlock() <- &block
 				}
+
 			}
 		}
 	}()

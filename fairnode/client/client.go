@@ -41,7 +41,7 @@ type FairnodeClient struct {
 	keystore           *keystore.KeyStore
 
 	WinningBlockCh chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
-	FinalBlockCh   chan *types.TransferBlock
+	FinalBlockCh   chan *types.Block
 	Running        bool
 	wg             sync.WaitGroup
 
@@ -65,7 +65,7 @@ type FairnodeClient struct {
 
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
+func New(wbCh chan *types.TransferBlock, fbCh chan *types.Block, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
 		Otprn:              nil,
@@ -167,6 +167,7 @@ func (fc *FairnodeClient) GetBlockChain() *core.BlockChain      { return fc.Bloc
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey { return &fc.CoinBasePrivateKey }
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}        { return fc.StartCh }
 func (fc *FairnodeClient) VoteBlock() chan *types.TransferBlock { return fc.WinningBlockCh }
+func (fc *FairnodeClient) FinalBlock() chan *types.Block        { return fc.FinalBlockCh }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()

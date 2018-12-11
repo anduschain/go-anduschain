@@ -184,10 +184,10 @@ type worker struct {
 	ReceiveBlockCh         chan *types.TransferBlock
 	fairclient             *fairnodeclient.FairnodeClient
 	WinningBlockCh         chan *types.TransferBlock
-	FinalBlockCh           chan *types.TransferBlock
+	FinalBlockCh           chan *types.Block
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock, wbCh chan *types.TransferBlock, fbCh chan *types.TransferBlock) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock, wbCh chan *types.TransferBlock, fbCh chan *types.Block) *worker {
 	worker := &worker{
 		config:                 config,
 		engine:                 engine,
@@ -612,40 +612,39 @@ func (w *worker) resultLoop() {
 
 				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
 				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
-				//finalBlock := <-w.FinalBlockCh
-				//block = finalBlock.Block
-				//
-				//// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
-				//if _, ok := block.GetFairNodeSig(); ok {
-				//
-				//	// Commit block and state to database.
-				//	stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-				//	if err != nil {
-				//		log.Error("Failed writing block to chain", "err", err)
-				//		continue
-				//	}
-				//	log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-				//		"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
-				//
-				//	// Broadcast the block and announce chain insertion event
-				//	w.mux.Post(core.NewMinedBlockEvent{Block: block})
-				//
-				//	var events []interface{}
-				//	switch stat {
-				//	case core.CanonStatTy:
-				//		events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				//		events = append(events, core.ChainHeadEvent{Block: block})
-				//	case core.SideStatTy:
-				//		events = append(events, core.ChainSideEvent{Block: block})
-				//	}
-				//	w.chain.PostChainEvents(events, logs)
-				//
-				//	// Insert the block into the set of pending ones to resultLoop for confirmations
-				//	w.unconfirmed.Insert(block.NumberU64(), block.Hash())
-				//
-				//} else {
-				//	log.Info("andus >> 페어노드의 서명이 없음")
-				//}
+				block := <-w.FinalBlockCh
+
+				// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
+				if _, ok := block.GetFairNodeSig(); ok {
+
+					// Commit block and state to database.
+					stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+					if err != nil {
+						log.Error("Failed writing block to chain", "err", err)
+						continue
+					}
+					log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+						"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+					// Broadcast the block and announce chain insertion event
+					w.mux.Post(core.NewMinedBlockEvent{Block: block})
+
+					var events []interface{}
+					switch stat {
+					case core.CanonStatTy:
+						events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+						events = append(events, core.ChainHeadEvent{Block: block})
+					case core.SideStatTy:
+						events = append(events, core.ChainSideEvent{Block: block})
+					}
+					w.chain.PostChainEvents(events, logs)
+
+					// Insert the block into the set of pending ones to resultLoop for confirmations
+					w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+
+				} else {
+					log.Info("페어노드의 서명이 없음")
+				}
 			}
 		case <-w.exitCh:
 			return

@@ -27,4 +27,5 @@ type Client interface {
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
 	BlockMakeStart() chan struct{}
 	VoteBlock() chan *types.TransferBlock
+	FinalBlock() chan *types.Block
 }
