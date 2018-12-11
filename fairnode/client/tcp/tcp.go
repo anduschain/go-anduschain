@@ -153,6 +153,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						case <-tic.C:
 							t.manger.BlockMakeStart() <- struct{}{}
 							log.Println("Info[andus] : 블록 생성 시작")
+							return
 						}
 					}()
 

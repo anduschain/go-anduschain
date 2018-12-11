@@ -238,7 +238,6 @@ Exit:
 }
 
 func (fu *FairUdp) sendLeague(otprnHash string) {
-	defer log.Println("Debug[andus] : sendLeague 죽음")
 	t := time.NewTicker(5 * time.Second)
 	leaguePool := fu.fm.GetLeaguePool()
 	var percent float64 = 30
@@ -256,7 +255,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 
 				// peer list 전송후 30초
 				go fu.sendFinalBlock(otprnHash)
-
+				fmt.Println("-------리그 전송---------")
 				return
 			}
 
