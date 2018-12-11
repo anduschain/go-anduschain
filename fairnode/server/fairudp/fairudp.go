@@ -301,6 +301,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 				}
 			}
 
+			fu.fm.SetLeagueRunning(false)
 			return
 		}
 	}
