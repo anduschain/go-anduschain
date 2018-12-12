@@ -19,6 +19,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
 	"strings"
 	"sync"
@@ -288,7 +289,7 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 }
 
 // TODO : andus >> Send MakeLeagueBlockMsg ( 채굴리그(나포함)가 생성한 블록을 보냄 )
-func (p *peer) SendMakeLeagueBlock(tb types.TransferBlock) error {
+func (p *peer) SendMakeLeagueBlock(tb fairtypes.VoteBlock) error {
 	return p2p.Send(p.rw, MakeLeagueBlockMsg, tb)
 }
 

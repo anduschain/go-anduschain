@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
 	"runtime"
 	"sync"
@@ -180,11 +181,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
 
 	// TODO : andus >> protocolmanager랑 worker랑 공유하는 채널
-	LeagueBlockBroadcastCh := make(chan *types.TransferBlock, 4)
-	ReceiveBlockCh := make(chan *types.TransferBlock, 4)
+	LeagueBlockBroadcastCh := make(chan *fairtypes.VoteBlock, 4)
+	ReceiveBlockCh := make(chan *fairtypes.VoteBlock, 4)
 
 	// TODO : andus >> 위닝블록 전송 채널
-	WinningBlockCh := make(chan *types.TransferBlock, 4)
+	WinningBlockCh := make(chan *fairtypes.VoteBlock, 4)
 	FinalBlockCh := make(chan *types.Block, 4)
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, LeagueBlockBroadcastCh, ReceiveBlockCh); err != nil {

@@ -145,15 +145,6 @@ type Block struct {
 	ReceivedFrom interface{}
 }
 
-// TODO : andus >> andus 전송 블록 객체..
-type TransferBlock struct {
-	Block      *Block
-	HeaderHash common.Hash
-	Sig        []byte
-	Voter      common.Address // coinbase
-	OtprnHash  common.Hash
-}
-
 // DeprecatedTd is an old relic for extracting the TD of a block. It is in the
 // code solely to facilitate upgrading the database from the old format to the
 // new, after which it should be deleted. Do not use!
@@ -169,9 +160,11 @@ type StorageBlock Block
 
 // "external" block encoding. used for eth protocol, etc.
 type extblock struct {
-	Header *Header
-	Txs    []*Transaction
-	Uncles []*Header
+	Header      *Header
+	Txs         []*Transaction
+	Uncles      []*Header
+	FairNodeSig []byte // header Hash + Voter Hash
+	Voter       []common.Address
 }
 
 // [deprecated by eth/63]
@@ -191,7 +184,7 @@ type storageblock struct {
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
 func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*Receipt) *Block {
-	b := &Block{header: CopyHeader(header), td: new(big.Int), FairNodeSig: []byte{}, Voter: []common.Address{}}
+	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
 	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
@@ -257,6 +250,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 	b.header, b.uncles, b.transactions = eb.Header, eb.Uncles, eb.Txs
+	b.FairNodeSig, b.Voter = eb.FairNodeSig, eb.Voter
 	b.size.Store(common.StorageSize(rlp.ListSize(size)))
 	return nil
 }
@@ -264,9 +258,11 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 // EncodeRLP serializes b into the Ethereum RLP block format.
 func (b *Block) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, extblock{
-		Header: b.header,
-		Txs:    b.transactions,
-		Uncles: b.uncles,
+		Header:      b.header,
+		Txs:         b.transactions,
+		Uncles:      b.uncles,
+		FairNodeSig: b.FairNodeSig,
+		Voter:       b.Voter,
 	})
 }
 
@@ -362,6 +358,8 @@ func (b *Block) WithSeal(header *Header) *Block {
 		header:       &cpy,
 		transactions: b.transactions,
 		uncles:       b.uncles,
+		FairNodeSig:  []byte("Hello FairSig"),
+		Voter:        []common.Address{},
 	}
 }
 

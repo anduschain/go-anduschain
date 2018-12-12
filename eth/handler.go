@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
 	"strings"
@@ -93,8 +94,8 @@ type ProtocolManager struct {
 	noMorePeers chan struct{}
 
 	// TODO : andus >> 채굴리그에서 수신된 블록
-	ReceiveBlock           chan *types.TransferBlock
-	LeagueBlockBroadcastCh chan *types.TransferBlock
+	ReceiveBlock           chan *fairtypes.VoteBlock
+	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
 
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
@@ -103,7 +104,7 @@ type ProtocolManager struct {
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, leagueCh chan *fairtypes.VoteBlock, receiveCh chan *fairtypes.VoteBlock) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -715,7 +716,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == MakeLeagueBlockMsg:
 		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
 
-		var block *types.TransferBlock
+		var block *fairtypes.VoteBlock
 		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}

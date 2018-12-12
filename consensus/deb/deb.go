@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
@@ -153,15 +154,13 @@ func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
 	return sig, nil
 }
 
-func (c *Deb) FairNodeSigCheck(recevedBlockLeagueHash *types.TransferBlock) (error, ErrorType) {
+func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
 	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
-	sig := recevedBlockLeagueHash.Sig
-	headerHash := recevedBlockLeagueHash.HeaderHash
-	block := recevedBlockLeagueHash.Block
+	sig := rSig
 
-	if _, ok := block.GetFairNodeSig(); ok {
+	if _, ok := recivedBlock.GetFairNodeSig(); ok {
 
-		fpKey, err := crypto.SigToPub(headerHash.Bytes(), sig)
+		fpKey, err := crypto.SigToPub(recivedBlock.Header().Hash().Bytes(), sig)
 		if err != nil {
 			return errGetPubKeyError, ErrGetPubKeyError
 		}
@@ -178,13 +177,11 @@ func (c *Deb) FairNodeSigCheck(recevedBlockLeagueHash *types.TransferBlock) (err
 	}
 }
 
-func (c *Deb) CheckRANDSigOK(transBlock *types.TransferBlock, otprn otprn.Otprn) bool {
-	block := transBlock.Block
-	headerHash := transBlock.HeaderHash
-	sig := transBlock.Sig
-	header := block.Header()
+func (c *Deb) CheckRANDSigOK(recivedBlock *types.Block, rSig []byte, otprn otprn.Otprn) bool {
+	block := recivedBlock
+	header := recivedBlock.Header()
 
-	pubKey, err := crypto.SigToPub(headerHash.Bytes(), sig)
+	pubKey, err := crypto.SigToPub(recivedBlock.Hash().Bytes(), rSig)
 	if err != nil {
 		return false
 	}
@@ -201,7 +198,7 @@ func (c *Deb) CheckRANDSigOK(transBlock *types.TransferBlock, otprn otprn.Otprn)
 	}
 }
 
-func (c *Deb) CompareBlock(myBlock *types.TransferBlock, receivedBlock *types.TransferBlock) *types.TransferBlock {
+func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtypes.VoteBlock {
 
 	privBlockHeader := myBlock.Block.Header()
 	receivedHeader := receivedBlock.Block.Header()
@@ -401,7 +398,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 // the local signing credentials.
 func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 
-	fmt.Println("------------------deb.Seal--------------", block)
+	fmt.Println("------------------deb.Seal--------------", string(block.FairNodeSig), len(block.FairNodeSig))
 
 	header := block.Header()
 

@@ -1,6 +1,7 @@
 package fairtcp
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -12,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/p2p/nat"
+	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
 	"net"
@@ -210,15 +212,26 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					var voteBlock types.TransferBlock
-					fromGethMsg.Decode(&voteBlock)
+					var voteBlock *fairtypes.TransferBlock
+					fromGethMsg.Decode(voteBlock)
+
+					stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 4096)
+
+					block := &types.Block{}
+
+					if err := block.DecodeRLP(stream); err != nil {
+						fmt.Println("-------디코딩 테스트 에러 ----------", err)
+					}
+
+					fmt.Println("-----디코드 결과---------", string(block.FairNodeSig))
+
 					votePool.InsertCh <- pool.Vote{
 						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
-						Block:    *voteBlock.Block,
+						Block:    block,
 						Coinbase: voteBlock.Voter,
 					}
 
-					fmt.Println("-----블록 투표 됨-----", voteBlock.Block.Coinbase())
+					fmt.Println("-----블록 투표 됨-----", string(block.FairNodeSig))
 				}
 			}
 		}

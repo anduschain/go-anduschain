@@ -9,7 +9,7 @@ import (
 )
 
 type VoteBlock struct {
-	Block  types.Block
+	Block  *types.Block
 	Count  uint64
 	Voters []common.Address
 }
@@ -18,7 +18,7 @@ type VoteBlocks []VoteBlock
 
 type Vote struct {
 	Hash     OtprnHash
-	Block    types.Block
+	Block    *types.Block
 	Coinbase common.Address
 }
 

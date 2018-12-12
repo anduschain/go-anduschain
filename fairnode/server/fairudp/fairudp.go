@@ -295,8 +295,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		select {
 		case <-t.C:
 			block := fu.GetFinalBlock(otprnHash)
-
-			fmt.Println("--------------", len(block.FairNodeSig))
+			fmt.Println("--------------", len(block.Voter), block.Voter)
 
 			for index := range nodes {
 				if nodes[index].Conn != nil {
@@ -342,20 +341,20 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string) types.Block {
 			// 3. joinNunce	== nonce 값이 놓은 블록
 			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
 			if cnt < voteBlocks[i].Count {
-				fBlock = voteBlocks[i].Block
+				fBlock = *voteBlocks[i].Block
 				pvBlock = voteBlocks[i]
 				cnt = voteBlocks[i].Count
 			} else if cnt == voteBlocks[i].Count {
 				// 동수인 투표일때
 				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
 					// diffcult 값이 높은 블록
-					fBlock = voteBlocks[i].Block
+					fBlock = *voteBlocks[i].Block
 					pvBlock = voteBlocks[i]
 				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
 					// diffcult 값이 같을때
 					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
 						// nonce 값이 큰 블록
-						fBlock = voteBlocks[i].Block
+						fBlock = *voteBlocks[i].Block
 						pvBlock = voteBlocks[i]
 					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
 						// nonce 값이 같을 때
@@ -363,14 +362,14 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string) types.Block {
 							// 블록 번호가 짝수 일때
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
 								// 주소값이 큰 블록
-								fBlock = voteBlocks[i].Block
+								fBlock = *voteBlocks[i].Block
 								pvBlock = voteBlocks[i]
 							}
 						} else {
 							// 블록 번호가 홀수 일때
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
 								// 주소값이 작은 블록
-								fBlock = voteBlocks[i].Block
+								fBlock = *voteBlocks[i].Block
 								pvBlock = voteBlocks[i]
 							}
 						}

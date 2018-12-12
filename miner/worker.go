@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -180,14 +181,14 @@ type worker struct {
 
 	// TODO : andus >> keystore
 	ks                     *keystore.KeyStore
-	LeagueBlockBroadcastCh chan *types.TransferBlock
-	ReceiveBlockCh         chan *types.TransferBlock
+	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
+	ReceiveBlockCh         chan *fairtypes.VoteBlock
 	fairclient             *fairnodeclient.FairnodeClient
-	WinningBlockCh         chan *types.TransferBlock
+	WinningBlockCh         chan *fairtypes.VoteBlock
 	FinalBlockCh           chan *types.Block
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *types.TransferBlock, receiveCh chan *types.TransferBlock, wbCh chan *types.TransferBlock, fbCh chan *types.Block) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *fairtypes.VoteBlock, receiveCh chan *fairtypes.VoteBlock, wbCh chan *fairtypes.VoteBlock, fbCh chan *types.Block) *worker {
 	worker := &worker{
 		config:                 config,
 		engine:                 engine,
@@ -595,8 +596,15 @@ func (w *worker) resultLoop() {
 					log.Error("andus >> ", err)
 				}
 
+				//var b bytes.Buffer
+				//if err := block.EncodeRLP(&b); err != nil {
+				//	fmt.Println("-------인코딩 테스트 에러 ----------", err)
+				//}
+				//
+				//fmt.Println("-----인코딩 결과--------",b.Len())
+
 				// TODO : andus >> TransferBlock 객체 생성
-				tfd := types.TransferBlock{
+				tfd := fairtypes.VoteBlock{
 					Block:      block,
 					HeaderHash: block.Header().Hash(),
 					Sig:        sig,
@@ -604,7 +612,7 @@ func (w *worker) resultLoop() {
 					Voter:      w.coinbase,
 				}
 
-				fmt.Println("--------투표 블록 생성-------", tfd.Block.Coinbase().String())
+				fmt.Println("--------투표 블록 생성-------")
 
 				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 				w.LeagueBlockBroadcastCh <- &tfd
@@ -657,9 +665,7 @@ func (w *worker) resultLoop() {
 	}
 }
 
-func (w *worker) sendMiningBlockAndVoting(tsfBlock *types.TransferBlock) {
-	fmt.Println("----------sendMiningBlockAndVoting Start---------")
-	defer fmt.Println("----------sendMiningBlockAndVoting END---------")
+func (w *worker) sendMiningBlockAndVoting(tsfBlock *fairtypes.VoteBlock) {
 	debEngine, _ := w.engine.(*deb.Deb)
 
 	winningBlock := tsfBlock
@@ -675,7 +681,7 @@ Exit:
 		case recevedBlock := <-w.ReceiveBlockCh:
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-			if err, errType := debEngine.FairNodeSigCheck(recevedBlock); err != nil {
+			if err, errType := debEngine.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
 
 				fmt.Println("--------recevedBlock-------", recevedBlock.HeaderHash.String())
 
@@ -686,7 +692,7 @@ Exit:
 
 					// TODO : andus >> 2. RAND 값 서명 검증
 					// FIXME : ----->
-					if OK := debEngine.CheckRANDSigOK(recevedBlock, *w.fairclient.Otprn); OK {
+					if OK := debEngine.CheckRANDSigOK(recevedBlock.Block, recevedBlock.Sig, *w.fairclient.Otprn); OK {
 
 						winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
 

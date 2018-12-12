@@ -14,6 +14,7 @@ import (
 	clinetTcp "github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	clinetTypes "github.com/anduschain/go-anduschain/fairnode/client/types"
 	clinetUdp "github.com/anduschain/go-anduschain/fairnode/client/udp"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"log"
@@ -40,7 +41,7 @@ type FairnodeClient struct {
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
 
-	WinningBlockCh chan *types.TransferBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
+	WinningBlockCh chan *fairtypes.VoteBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
 	FinalBlockCh   chan *types.Block
 	Running        bool
 	wg             sync.WaitGroup
@@ -65,7 +66,7 @@ type FairnodeClient struct {
 
 }
 
-func New(wbCh chan *types.TransferBlock, fbCh chan *types.Block, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
+func New(wbCh chan *fairtypes.VoteBlock, fbCh chan *types.Block, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
 		Otprn:              nil,
@@ -168,7 +169,7 @@ func (fc *FairnodeClient) GetTxpool() *core.TxPool              { return fc.txPo
 func (fc *FairnodeClient) GetBlockChain() *core.BlockChain      { return fc.BlockChain }
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey { return &fc.CoinBasePrivateKey }
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}        { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *types.TransferBlock { return fc.WinningBlockCh }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock { return fc.WinningBlockCh }
 func (fc *FairnodeClient) FinalBlock() chan *types.Block        { return fc.FinalBlockCh }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {

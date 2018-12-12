@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -162,7 +163,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					fromFaionodeMsg.Decode(&block)
 
 					fmt.Println("----파이널 블록 수신됨----", block.Coinbase().String())
-					fmt.Println("----------------------", len(block.FairNodeSig))
+					fmt.Println("----------------------", len(block.Voter), block.Voter)
 
 					t.manger.FinalBlock() <- block
 					noify <- closeConnection
@@ -193,8 +194,25 @@ Exit:
 			conn.Close()
 		case winingBlock := <-t.manger.VoteBlock():
 
-			fmt.Println("----블록 투표-----", winingBlock.Block.Coinbase().String())
-			msg.Send(msg.SendBlockForVote, winingBlock, conn)
+			fmt.Println("--------블록 인코딩 전--------", string(winingBlock.Block.FairNodeSig))
+
+			var b bytes.Buffer
+			err := winingBlock.Block.EncodeRLP(&b)
+			if err != nil {
+				fmt.Println("-------인코딩 테스트 에러 ----------", err)
+			}
+
+			fmt.Println("-----인코딩 결과--------", b.Len())
+
+			tsfBlock := &fairtypes.TransferBlock{
+				EncodedBlock: b.Bytes(),
+				HeaderHash:   winingBlock.HeaderHash,
+				Sig:          winingBlock.Sig,
+				Voter:        winingBlock.Voter,
+				OtprnHash:    winingBlock.OtprnHash,
+			}
+			fmt.Println("----블록 투표-----", string(winingBlock.Block.FairNodeSig))
+			msg.Send(msg.SendBlockForVote, tsfBlock, conn)
 		}
 	}
 

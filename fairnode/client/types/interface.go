@@ -5,6 +5,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"math/big"
@@ -26,6 +27,6 @@ type Client interface {
 	GetBlockChain() *core.BlockChain
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
 	BlockMakeStart() chan struct{}
-	VoteBlock() chan *types.TransferBlock
+	VoteBlock() chan *fairtypes.VoteBlock
 	FinalBlock() chan *types.Block
 }

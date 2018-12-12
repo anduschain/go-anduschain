@@ -2,6 +2,7 @@ package fairtypes
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -34,4 +35,21 @@ func rlpHash(x interface{}) (h common.Hash) {
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
+}
+
+// TODO : andus >> andus 전송 블록 객체..
+type TransferBlock struct {
+	EncodedBlock []byte
+	HeaderHash   common.Hash
+	Sig          []byte
+	Voter        common.Address // coinbase
+	OtprnHash    common.Hash
+}
+
+type VoteBlock struct {
+	Block      *types.Block
+	HeaderHash common.Hash
+	Sig        []byte
+	Voter      common.Address // coinbase
+	OtprnHash  common.Hash
 }
