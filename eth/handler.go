@@ -716,17 +716,15 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == MakeLeagueBlockMsg:
 		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
 
-		var block *fairtypes.VoteBlock
+		var block fairtypes.VoteBlock
 		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		if block != nil {
-			log.Info("andus >> 블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)", block.Block.Hash().String())
-			pm.ReceiveBlock <- block
-		} else {
-			log.Info("andus >> 블록이 넘어오지 않았어요 (MakeLeagueBlockMsg)")
-		}
+		fmt.Println("-----MakeLeagueBlockMsg------", string(block.Block.FairNodeSig))
+		log.Info("블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)", block.Block.Hash().String())
+
+		pm.ReceiveBlock <- &block
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)

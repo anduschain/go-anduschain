@@ -296,7 +296,6 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		select {
 		case <-t.C:
 			block := fu.GetFinalBlock(otprnHash)
-			fmt.Println("--------------", len(block.Voter), block.Voter)
 
 			var b bytes.Buffer
 			err := block.EncodeRLP(&b)
@@ -304,14 +303,16 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 				fmt.Println("-------인코딩 테스트 에러 ----------", err)
 			}
 
+			ts := &fairtypes.TransferFinalBlock{b.Bytes()}
+
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					msg.Send(msg.SendFinalBlock, b.Bytes(), nodes[index].Conn)
+					msg.Send(msg.SendFinalBlock, ts, nodes[index].Conn)
 				}
 			}
 
 			fu.fm.SetLeagueRunning(false)
-			fmt.Println("----sendFinalBlock-----", block.Hash().String())
+			fmt.Println("----sendFinalBlock-----", common.BytesToHash(block.FairNodeSig).String())
 			return
 		}
 	}

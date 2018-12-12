@@ -160,20 +160,21 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					}()
 
 				case msg.SendFinalBlock:
-					var received []byte
+					var received fairtypes.TransferFinalBlock
+
 					if err := fromFaionodeMsg.Decode(&received); err != nil {
-						fmt.Println("------SendFinalBlock Err----", err)
+						fmt.Println("-------SendFinalBlock 디코드----------", err)
 					}
 
-					stream := rlp.NewStream(bytes.NewReader(received), 4096)
+					stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 4096)
 
 					block := &gethTypes.Block{}
 
 					if err := block.DecodeRLP(stream); err != nil {
-						fmt.Println("-------디코딩 테스트 에러 ----------", err)
+						fmt.Println("-------SendFinalBlock 블록 디코딩 에러 ----------", err)
 					}
 
-					fmt.Println("----파이널 블록 수신됨----", string(block.FairNodeSig))
+					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
 
 					t.manger.FinalBlock() <- block
 					noify <- closeConnection
@@ -210,7 +211,7 @@ Exit:
 				fmt.Println("-------인코딩 테스트 에러 ----------", err)
 			}
 
-			tsfBlock := &fairtypes.TransferBlock{
+			tsfBlock := &fairtypes.TransferVoteBlock{
 				EncodedBlock: b.Bytes(),
 				HeaderHash:   winingBlock.HeaderHash,
 				Sig:          winingBlock.Sig,

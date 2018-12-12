@@ -38,7 +38,7 @@ func rlpHash(x interface{}) (h common.Hash) {
 }
 
 // TODO : andus >> andus 전송 블록 객체..
-type TransferBlock struct {
+type TransferVoteBlock struct {
 	EncodedBlock []byte
 	HeaderHash   common.Hash
 	Sig          []byte
@@ -52,4 +52,8 @@ type VoteBlock struct {
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
+}
+
+type TransferFinalBlock struct {
+	EncodedBlock []byte
 }

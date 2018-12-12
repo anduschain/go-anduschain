@@ -212,7 +212,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					var voteBlock fairtypes.TransferBlock
+					var voteBlock fairtypes.TransferVoteBlock
 
 					if err := fromGethMsg.Decode(&voteBlock); err != nil {
 						fmt.Println("------SendBlockForVote------", err)
