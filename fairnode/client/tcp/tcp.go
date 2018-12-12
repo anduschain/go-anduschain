@@ -166,7 +166,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						fmt.Println("-------SendFinalBlock 디코드----------", err)
 					}
 
-					stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 4096)
+					stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
 
 					block := &gethTypes.Block{}
 

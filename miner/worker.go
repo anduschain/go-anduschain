@@ -625,8 +625,6 @@ func (w *worker) resultLoop() {
 				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
 				block := <-w.FinalBlockCh
 
-				fmt.Println("fairnode sig--------", len(block.FairNodeSig))
-
 				// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 				if _, ok := block.GetFairNodeSig(); ok {
 

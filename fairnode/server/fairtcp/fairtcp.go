@@ -226,6 +226,8 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 						fmt.Println("-------디코딩 테스트 에러 ----------", err)
 					}
 
+					fmt.Println("---------SendBlockForVote------------", voteBlock.OtprnHash.String())
+
 					votePool.InsertCh <- pool.Vote{
 						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
 						Block:    block,

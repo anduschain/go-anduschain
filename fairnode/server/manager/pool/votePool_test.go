@@ -26,40 +26,74 @@ func TestNewVotePool(t *testing.T) {
 	pool.Start()
 
 	hash := OtprnHash("0x123asd456")
+	hash2 := OtprnHash("0x123asd458")
 
-	voters := []Coinbase{
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")), // 1
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")), // 1
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")), // 2
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")), // 3
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d90")), // 4
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d90")), // 4
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d91")), // 5
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d92")), // 6
-		Coinbase(common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d93")), // 7
+	//voters := []common.Address{
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87"), // 1
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87"), // 1
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88"), // 2
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89"), // 3
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d90"), // 4
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d90"), // 4
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d91"), // 5
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d92"), // 6
+	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d93"), // 7
+	//}
+
+	test := []struct {
+		hash OtprnHash
+		addr common.Address
+	}{
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, // 1
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, // 1
+
+		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
+		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
+
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")}, // 2
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")}, // 3
+
+		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")}, //   2
+		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")}, //   3
 	}
+
+	fmt.Println("---Block count-------", len(blocks))
 
 	for i, block := range blocks {
 		//headers[i] = block.Header()
 		pool.InsertCh <- Vote{
-			hash,
-			*block,
-			voters[i],
+			test[i].hash,
+			block,
+			test[i].addr,
 		}
 
 	}
 
-	for i := range voters {
-		pool.InsertCh <- Vote{
-			hash,
-			*blocks[0],
-			voters[i],
-		}
-	}
+	//for i := range voters {
+	//	pool.InsertCh <- Vote{
+	//		hash,
+	//		blocks[0],
+	//		voters[i],
+	//	}
+	//}
 
-	for i := range pool.pool[hash] {
-		fmt.Println(pool.pool[hash][i].Count)
-	}
+	//fmt.Println("----hash---")
+	//
+	//for i := range pool.pool[hash] {
+	//	fmt.Println(pool.pool[hash][i].Count)
+	//}
+	//
+	//fmt.Println("----hash2---")
+	//
+	//for i := range pool.pool[hash2] {
+	//	fmt.Println(pool.pool[hash][i].Count)
+	//}
+
+	vblocks := pool.GetVoteBlocks(hash)
+	fmt.Println(len(vblocks))
+
+	vblocks2 := pool.GetVoteBlocks(hash2)
+	fmt.Println(len(vblocks2))
 
 	pool.Stop()
 
