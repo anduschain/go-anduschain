@@ -212,8 +212,11 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					var voteBlock *fairtypes.TransferBlock
-					fromGethMsg.Decode(voteBlock)
+					var voteBlock fairtypes.TransferBlock
+
+					if err := fromGethMsg.Decode(&voteBlock); err != nil {
+						fmt.Println("------SendBlockForVote------", err)
+					}
 
 					stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 4096)
 
@@ -222,8 +225,6 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					if err := block.DecodeRLP(stream); err != nil {
 						fmt.Println("-------디코딩 테스트 에러 ----------", err)
 					}
-
-					fmt.Println("-----디코드 결과---------", string(block.FairNodeSig))
 
 					votePool.InsertCh <- pool.Vote{
 						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),

@@ -1,6 +1,7 @@
 package fairudp
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
@@ -297,9 +298,15 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 			block := fu.GetFinalBlock(otprnHash)
 			fmt.Println("--------------", len(block.Voter), block.Voter)
 
+			var b bytes.Buffer
+			err := block.EncodeRLP(&b)
+			if err != nil {
+				fmt.Println("-------인코딩 테스트 에러 ----------", err)
+			}
+
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					msg.Send(msg.SendFinalBlock, &block, nodes[index].Conn)
+					msg.Send(msg.SendFinalBlock, b.Bytes(), nodes[index].Conn)
 				}
 			}
 

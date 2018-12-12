@@ -12,6 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
 	"math/big"
@@ -159,11 +160,20 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					}()
 
 				case msg.SendFinalBlock:
-					var block *gethTypes.Block
-					fromFaionodeMsg.Decode(&block)
+					var received []byte
+					if err := fromFaionodeMsg.Decode(&received); err != nil {
+						fmt.Println("------SendFinalBlock Err----", err)
+					}
 
-					fmt.Println("----파이널 블록 수신됨----", block.Coinbase().String())
-					fmt.Println("----------------------", len(block.Voter), block.Voter)
+					stream := rlp.NewStream(bytes.NewReader(received), 4096)
+
+					block := &gethTypes.Block{}
+
+					if err := block.DecodeRLP(stream); err != nil {
+						fmt.Println("-------디코딩 테스트 에러 ----------", err)
+					}
+
+					fmt.Println("----파이널 블록 수신됨----", string(block.FairNodeSig))
 
 					t.manger.FinalBlock() <- block
 					noify <- closeConnection
@@ -194,15 +204,11 @@ Exit:
 			conn.Close()
 		case winingBlock := <-t.manger.VoteBlock():
 
-			fmt.Println("--------블록 인코딩 전--------", string(winingBlock.Block.FairNodeSig))
-
 			var b bytes.Buffer
 			err := winingBlock.Block.EncodeRLP(&b)
 			if err != nil {
 				fmt.Println("-------인코딩 테스트 에러 ----------", err)
 			}
-
-			fmt.Println("-----인코딩 결과--------", b.Len())
 
 			tsfBlock := &fairtypes.TransferBlock{
 				EncodedBlock: b.Bytes(),
