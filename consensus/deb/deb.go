@@ -129,6 +129,8 @@ type Deb struct {
 	db        ethdb.Database    // Database to store and retrieve snapshot checkpoints
 	joinNonce uint64
 	privKey   *ecdsa.PrivateKey
+	otprnHash common.Hash
+	coinbase  common.Address
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
@@ -282,7 +284,7 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		}
 
 		// TODO : andus >> Difficulty 검증
-		if header.Difficulty != MakeRand(header.Nonce.Uint64(), c.otprn, header.Coinbase, header.ParentHash) {
+		if header.Difficulty != MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash) {
 			return errInvalidDifficulty
 		}
 	}
@@ -370,12 +372,14 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return errGetState
 	}
 
-	joinNonce := curState.GetJoinNonce(header.Coinbase)
+	c.joinNonce = curState.GetJoinNonce(header.Coinbase)
+	c.otprnHash = common.BytesToHash(header.Extra)
+	c.coinbase = header.Coinbase
 	// TODO : andus >> nonce = joinNonce
-	header.Nonce = types.EncodeNonce(joinNonce)
+	header.Nonce = types.EncodeNonce(c.joinNonce)
 	// TODO : andus >> difficulty = RAND값
-	otprnHash := common.BytesToHash(header.Extra)
-	header.Difficulty = MakeRand(joinNonce, otprnHash, header.Coinbase, parent.Hash())
+
+	header.Difficulty = MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }
@@ -425,7 +429,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 
-	return MakeRand(c.joinNonce, c.otprn, c.coinbase, parent.Hash())
+	return MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
