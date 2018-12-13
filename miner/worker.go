@@ -556,32 +556,32 @@ func (w *worker) resultLoop() {
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
 				continue
 			}
-			var (
-				sealhash = w.engine.SealHash(block.Header())
-				hash     = block.Hash()
-			)
-			w.pendingMu.RLock()
-			task, exist := w.pendingTasks[sealhash]
-			w.pendingMu.RUnlock()
-			if !exist {
-				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				continue
-			}
+			//var (
+			//	sealhash = w.engine.SealHash(block.Header())
+			//	hash     = block.Hash()
+			//)
+			//w.pendingMu.RLock()
+			//task, exist := w.pendingTasks[sealhash]
+			//w.pendingMu.RUnlock()
+			//if !exist {
+			//	log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+			//	continue
+			//}
 			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			var (
-				receipts = make([]*types.Receipt, len(task.receipts))
-				logs     []*types.Log
-			)
-			for i, receipt := range task.receipts {
-				receipts[i] = new(types.Receipt)
-				*receipts[i] = *receipt
-				// Update the block hash in all logs since it is now available and not when the
-				// receipt/log of individual transactions were created.
-				for _, log := range receipt.Logs {
-					log.BlockHash = hash
-				}
-				logs = append(logs, receipt.Logs...)
-			}
+			//var (
+			//	receipts = make([]*types.Receipt, len(task.receipts))
+			//	logs     []*types.Log
+			//)
+			//for i, receipt := range task.receipts {
+			//	receipts[i] = new(types.Receipt)
+			//	*receipts[i] = *receipt
+			//	// Update the block hash in all logs since it is now available and not when the
+			//	// receipt/log of individual transactions were created.
+			//	for _, log := range receipt.Logs {
+			//		log.BlockHash = hash
+			//	}
+			//	logs = append(logs, receipt.Logs...)
+			//}
 
 			// TODO : andus >> deb consensus 일때만...
 			if debEngine, ok := w.engine.(*deb.Deb); ok {
@@ -614,6 +614,9 @@ func (w *worker) resultLoop() {
 			}
 		case block := <-w.FinalBlockCh:
 
+			//final block
+			w.commitFianlBlock(block)
+
 			var (
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
@@ -627,10 +630,21 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			//Different block could share same sealhash, deep copy here to prevent write-write conflict.
 			var (
 				receipts = make([]*types.Receipt, len(task.receipts))
 				logs     []*types.Log
 			)
+			for i, receipt := range task.receipts {
+				receipts[i] = new(types.Receipt)
+				*receipts[i] = *receipt
+				// Update the block hash in all logs since it is now available and not when the
+				// receipt/log of individual transactions were created.
+				for _, log := range receipt.Logs {
+					log.BlockHash = hash
+				}
+				logs = append(logs, receipt.Logs...)
+			}
 
 			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
@@ -1116,5 +1130,48 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if update {
 		w.updateSnapshot()
 	}
+	return nil
+}
+
+// commit runs any post-transaction state modifications, assembles the final block
+// and commits new work if consensus engine is running.
+func (w *worker) commitFianlBlock(block *types.Block) error {
+	// Deep copy receipts here to avoid interaction between different tasks.
+	start := time.Now()
+	receipts := make([]*types.Receipt, len(w.current.receipts))
+	for i, l := range w.current.receipts {
+		receipts[i] = new(types.Receipt)
+		*receipts[i] = *l
+	}
+	s := w.current.state.Copy()
+
+	// TODO : andus >> 1. 새로운 블록 생성
+	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, nil, w.current.receipts)
+
+	if err != nil {
+		return err
+	}
+
+	if w.isRunning() {
+		select {
+		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
+			w.unconfirmed.Shift(block.NumberU64() - 1)
+
+			feesWei := new(big.Int)
+			for i, tx := range block.Transactions() {
+				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
+			}
+			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
+
+			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
+				"txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
+
+		case <-w.exitCh:
+			log.Info("Worker has exited")
+		}
+	}
+
+	w.updateSnapshot()
+
 	return nil
 }
