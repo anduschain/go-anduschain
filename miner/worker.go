@@ -982,6 +982,9 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		header.Coinbase = w.coinbase
 		header.Extra = w.fairclient.Otprn.HashOtprn().Bytes()
 
+		// 엔진에 서명키 셋팅
+		w.engine.(*deb.Deb).SetSignKey(&w.fairclient.CoinBasePrivateKey)
+
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
 			return

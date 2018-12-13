@@ -127,11 +127,8 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 type Deb struct {
 	config    *params.DebConfig // Consensus engine configuration parameters
 	db        ethdb.Database    // Database to store and retrieve snapshot checkpoints
-	otprn     common.Hash
 	joinNonce uint64
-	coinbase  common.Address
-
-	privKey *ecdsa.PrivateKey
+	privKey   *ecdsa.PrivateKey
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
@@ -144,6 +141,10 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 		config: config,
 		db:     db,
 	}
+}
+
+func (c *Deb) SetSignKey(signKey *ecdsa.PrivateKey) {
+	c.privKey = signKey
 }
 
 // TODO : andus >> 생성된 블록(브로드케스팅용) 서명
