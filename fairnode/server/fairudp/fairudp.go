@@ -254,9 +254,30 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 					}
 				}
 
+				fmt.Println("-------리그 전송---------")
+
+				time.Sleep(5 * time.Second)
+
+				for index := range nodes {
+					if nodes[index].Conn != nil {
+						msg.Send(msg.MakeJoinTx, otprnHash, nodes[index].Conn)
+					}
+				}
+
+				fmt.Println("-------조인 tx 생성--------")
+
+				time.Sleep(5 * time.Second)
+
+				for index := range nodes {
+					if nodes[index].Conn != nil {
+						msg.Send(msg.MakeBlock, otprnHash, nodes[index].Conn)
+					}
+				}
+
+				fmt.Println("-------블록 생성--------")
+
 				// peer list 전송후 30초
 				go fu.sendFinalBlock(otprnHash)
-				fmt.Println("-------리그 전송---------")
 				return
 			}
 
@@ -289,25 +310,19 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 }
 
 func (fu *FairUdp) sendFinalBlock(otprnHash string) {
-	t := time.NewTicker(30 * time.Second)
+	t := time.NewTicker(20 * time.Second)
 	leaguePool := fu.fm.GetLeaguePool()
 	nodes, _, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 
 	notify := make(chan *types.Block)
 
 	go func() {
-		t := time.NewTicker(5 * time.Second)
-		cnt := 0
+		t := time.NewTicker(1 * time.Second)
 		for {
 			select {
 			case <-t.C:
 				block := fu.GetFinalBlock(otprnHash)
 				if block == nil {
-					cnt++
-					if cnt > 2 {
-						notify <- nil
-						return
-					}
 					continue
 				} else {
 					notify <- block
@@ -322,15 +337,13 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		case <-t.C:
 			block := <-notify
 
-			b := bytes.Buffer{}
+			var b bytes.Buffer
 
-			if block != nil {
-				fmt.Println("----sendFinalBlock-----", common.BytesToHash(block.FairNodeSig).String(), block.Header().Hash().String())
+			fmt.Println("----sendFinalBlock-----", common.BytesToHash(block.FairNodeSig).String(), block.Header().Hash().String())
 
-				err := block.EncodeRLP(&b)
-				if err != nil {
-					fmt.Println("-------인코딩 테스트 에러 ----------", err)
-				}
+			err := block.EncodeRLP(&b)
+			if err != nil {
+				fmt.Println("-------인코딩 테스트 에러 ----------", err)
 			}
 
 			ts := &fairtypes.TransferFinalBlock{b.Bytes()}

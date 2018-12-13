@@ -133,7 +133,6 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					var nodeList []string
 					fromFaionodeMsg.Decode(&nodeList)
 					log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
-
 					for index := range nodeList {
 						// addPeer 실행
 						node, err := discover.ParseNode(nodeList[index])
@@ -143,22 +142,14 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						t.manger.GetP2PServer().AddPeer(node)
 						log.Println("Info[andus] : 마이너 노드 추가")
 					}
-
+				case msg.MakeJoinTx:
 					// JoinTx 생성
-					if err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID); err != nil {
+					err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID)
+					if err != nil {
 						log.Println("Error[andus] : ", err)
 					}
-
-					go func() {
-						tic := time.NewTicker(10 * time.Second)
-						select {
-						case <-tic.C:
-							t.manger.BlockMakeStart() <- struct{}{}
-							log.Println("Info[andus] : 블록 생성 시작")
-							return
-						}
-					}()
-
+				case msg.MakeBlock:
+					t.manger.BlockMakeStart() <- struct{}{}
 				case msg.SendFinalBlock:
 					var received fairtypes.TransferFinalBlock
 

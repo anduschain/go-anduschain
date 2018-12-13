@@ -20,6 +20,8 @@ const (
 	SendEnode
 	SendOTPRN
 	SendLeageNodeList
+	MakeJoinTx
+	MakeBlock
 	MinerLeageStop
 	SendBlockForVote
 	SendFinalBlock

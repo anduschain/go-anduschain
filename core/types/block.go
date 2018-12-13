@@ -358,8 +358,6 @@ func (b *Block) WithSeal(header *Header) *Block {
 		header:       &cpy,
 		transactions: b.transactions,
 		uncles:       b.uncles,
-		FairNodeSig:  []byte("Hello FairSig"),
-		Voter:        []common.Address{},
 	}
 }
 
