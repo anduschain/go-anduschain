@@ -19,7 +19,6 @@ package clique
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"errors"
 	"math/big"
 	"math/rand"
@@ -505,7 +504,7 @@ func (c *Clique) verifySeal(chain consensus.ChainReader, header *types.Header, p
 
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
-func (c *Clique) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error {
+func (c *Clique) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
 	header.Coinbase = common.Address{}
 	header.Nonce = types.BlockNonce{}

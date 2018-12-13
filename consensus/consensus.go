@@ -18,7 +18,6 @@
 package consensus
 
 import (
-	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -48,6 +47,9 @@ type ChainReader interface {
 
 	// GetBlock retrieves a block from the database by hash and number.
 	GetBlock(hash common.Hash, number uint64) *types.Block
+
+	// andus >> GetState
+	State() (*state.StateDB, error)
 }
 
 // Engine is an algorithm agnostic consensus engine.
@@ -78,7 +80,7 @@ type Engine interface {
 
 	// Prepare initializes the consensus fields of a block header according to the
 	// rules of a particular engine. The changes are executed inline.
-	Prepare(chain ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error
+	Prepare(chain ChainReader, header *types.Header) error
 
 	// Finalize runs any post-transaction state modifications (e.g. block rewards)
 	// and assembles the final block.

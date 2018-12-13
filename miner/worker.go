@@ -235,8 +235,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
-	fmt.Println("andus >> new Worker")
-
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
 
@@ -361,7 +359,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case <-w.fairclient.StartCh:
 			w.startCh <- struct{}{}
 		case <-w.startCh:
-			fmt.Println("----------------w.startCh-------------------------")
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -519,8 +516,6 @@ func (w *worker) taskLoop() {
 			if w.newTaskHook != nil {
 				w.newTaskHook(task)
 			}
-
-			fmt.Println("-----------------------w.taskCh------------------------", task.block)
 			// Reject duplicate sealing work due to resubmitting.
 			sealHash := w.engine.SealHash(task.block.Header())
 			if sealHash == prev {
@@ -664,7 +659,7 @@ func (w *worker) resultLoop() {
 				// Insert the block into the set of pending ones to resultLoop for confirmations
 				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 			} else {
-				log.Error("페어노드 서명 화인 에러", "andus", err)
+				log.Error("페어노드 서명 확인 에러", "andus", err)
 			}
 
 		case <-w.exitCh:
@@ -954,8 +949,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 // commitNewWork generates several new sealing tasks based on the parent block.
 func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
-
-	fmt.Println("---------------------commitNewWork-------------------")
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -981,24 +974,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() {
+	if w.isRunning() && w.fairclient.Running && w.fairclient.Otprn != nil {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without etherbase")
 			return
 		}
 		header.Coinbase = w.coinbase
-	}
+		header.Extra = w.fairclient.Otprn.HashOtprn().Bytes()
 
-	if w.fairclient.Running && w.fairclient.Otprn != nil {
-		// TODO : andus >> 현재 상태를 읽어옴
-		fmt.Println("andus >> 패어노드 클라이언트 살아 있다고 OTPRN있음")
-
-		if currentStateDb, err := w.chain.State(); err == nil {
-
-			if err := w.engine.Prepare(w.chain, header, currentStateDb.GetJoinNonce(w.coinbase), w.coinbase, w.fairclient.Otprn.HashOtprn(), &w.fairclient.CoinBasePrivateKey); err != nil {
-				log.Error("Failed to prepare header for mining", "err", err)
-				return
-			}
+		if err := w.engine.Prepare(w.chain, header); err != nil {
+			log.Error("Failed to prepare header for mining", "err", err)
+			return
 		}
 
 		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
@@ -1099,8 +1085,6 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 
 	// TODO : andus >> 1. 새로운 블록 생성
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
-
-	fmt.Println("----------------commit.Finalise----------", block)
 
 	if err != nil {
 		return err

@@ -69,6 +69,8 @@ var (
 	errGetPubKeyError = errors.New("공개키 로드 에러")
 
 	errNotMatchFairAddress = errors.New("패어노드 어드레스와 맞지 않습니다")
+
+	errGetState = errors.New("상태 디비 조회 에러 발생")
 )
 
 // sigHash returns the hash which is used as input for the proof-of-authority
@@ -348,20 +350,8 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
-func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNonce uint64, coinbase common.Address, otprn common.Hash, privKey *ecdsa.PrivateKey) error {
+func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
-
-	fmt.Println("----------------Deb.Prepare---------------")
-
-	// TODO : andus >> struct 값 추가...
-	c.coinbase = coinbase
-	c.joinNonce = joinNonce
-	c.otprn = otprn
-
-	// Coinbase PriveKey
-	c.privKey = privKey
-
-	header.Coinbase = coinbase
 
 	number := header.Number.Uint64()
 
@@ -374,11 +364,17 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header, joinNon
 		return consensus.ErrUnknownAncestor
 	}
 
-	// TODO : andus >> nonce - joinNonce
-	header.Nonce = types.EncodeNonce(joinNonce)
-	// TODO : andus >> difficulty - RAND값
-	header.Difficulty = MakeRand(joinNonce, otprn, coinbase, parent.Hash())
+	curState, err := chain.State()
+	if err != nil {
+		return errGetState
+	}
 
+	joinNonce := curState.GetJoinNonce(header.Coinbase)
+	// TODO : andus >> nonce = joinNonce
+	header.Nonce = types.EncodeNonce(joinNonce)
+	// TODO : andus >> difficulty = RAND값
+	otprnHash := common.BytesToHash(header.Extra)
+	header.Difficulty = MakeRand(joinNonce, otprnHash, header.Coinbase, parent.Hash())
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }

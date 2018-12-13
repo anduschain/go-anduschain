@@ -711,18 +711,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.txpool.AddRemotes(txs)
 
-		fmt.Println("-----------------TxMsg-------------", string(txs[0].Data()))
-
 	case msg.Code == MakeLeagueBlockMsg:
-		// TODO :  andus >> 위닝 블록 처리 관련 case 추가하기..
-
 		var block fairtypes.VoteBlock
 		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-
-		fmt.Println("-----MakeLeagueBlockMsg------", string(block.Block.FairNodeSig))
-		log.Info("블록이 성공적으로 수신됨 (MakeLeagueBlockMsg)", block.Block.Hash().String())
 
 		pm.ReceiveBlock <- &block
 

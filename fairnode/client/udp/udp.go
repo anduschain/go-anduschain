@@ -175,10 +175,11 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 					if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig[:64]) {
 						otprnHash := tsOtprn.Otp.HashOtprn()
 						if otprnHash == tsOtprn.Hash {
+
 							// TODO: andus >> 검증완료, Otprn 저장
 							u.manger.SetOtprn(&tsOtprn.Otp)
-							//TODO : andus >> 3. 참여여부 확인
 
+							//TODO : andus >> 3. 참여여부 확인
 							if ok := fairutil.IsJoinOK(tsOtprn.Otp, u.manger.GetCoinbase()); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
