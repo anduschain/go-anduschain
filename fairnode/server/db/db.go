@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"gopkg.in/mgo.v2"
@@ -20,6 +21,7 @@ type FairNodeDB struct {
 	ActiveNodeCol *mgo.Collection
 	MinerNode     *mgo.Collection
 	OtprnList     *mgo.Collection
+	BlockChain    *mgo.Collection
 }
 
 var (
@@ -52,6 +54,7 @@ func (fnb *FairNodeDB) Start() error {
 	fnb.ActiveNodeCol = session.DB(DBNAME).C("ActiveNode")
 	fnb.MinerNode = session.DB(DBNAME).C("MinerNode")
 	fnb.OtprnList = session.DB(DBNAME).C("OtprnList")
+	fnb.BlockChain = session.DB(DBNAME).C("BlockChain")
 
 	return nil
 }
@@ -160,4 +163,53 @@ func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
 		return 0
 	}
 	return uint64(len(minerlist.Nodes))
+}
+
+func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
+	header := header{
+		block.Header().ParentHash.String(),
+		block.Header().UncleHash.String(),
+		block.Header().Coinbase.String(),
+		block.Header().Root.String(),
+		block.Header().TxHash.String(),
+		block.Header().ReceiptHash.String(),
+		block.Header().Difficulty.Uint64(),
+		block.Header().Number.Uint64(),
+		block.Header().GasLimit,
+		block.Header().GasUsed,
+		block.Header().Time.String(),
+		string(block.Header().Extra),
+		block.Header().MixDigest.String(),
+		block.Header().Nonce.Uint64(),
+	}
+
+	var txs []transaction
+	for i := range block.Transactions() {
+		tx := block.Transactions()[i]
+		txs = append(txs, transaction{
+			tx.Nonce(),
+			tx.GasPrice().Uint64(),
+			tx.To().String(),
+			tx.Value().Uint64(),
+			string(tx.Data()),
+		})
+	}
+
+	var voter []string
+	for i := range block.Voter {
+		voter = append(voter, block.Voter[i].String())
+	}
+
+	b := storedBlock{
+		header,
+		txs,
+		common.BytesToHash(block.FairNodeSig).String(),
+		voter,
+	}
+
+	err := fnb.BlockChain.Insert(b)
+	if err != nil {
+		log.Println("Error[DB] : SaveFianlBlock", err)
+	}
+
 }

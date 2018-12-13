@@ -312,6 +312,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 	t := time.NewTicker(20 * time.Second)
 	leaguePool := fu.fm.GetLeaguePool()
+	votePool := fu.fm.GetVotePool()
 	nodes, _, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 
 	notify := make(chan *types.Block)
@@ -321,7 +322,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		for {
 			select {
 			case <-t.C:
-				block := fu.GetFinalBlock(otprnHash)
+				block := fu.GetFinalBlock(otprnHash, votePool)
 				if block == nil {
 					continue
 				} else {
@@ -355,6 +356,12 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 			}
 
 			fu.fm.SetLeagueRunning(false)
+			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
+			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+
+			// DB에 블록 저장
+			votePool.SnapShot <- block
+			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 			return
 		}
 	}
@@ -372,8 +379,7 @@ func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
 	return uint64(count * (persent / 100))
 }
 
-func (fu *FairUdp) GetFinalBlock(otprnHash string) *types.Block {
-	votePool := fu.fm.GetVotePool()
+func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *types.Block {
 	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
 	acc := fu.fm.GetServerKey()
 	var fBlock *types.Block
@@ -383,6 +389,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string) *types.Block {
 	if len(voteBlocks) == 0 {
 		return nil
 	} else if len(voteBlocks) == 1 {
+		fBlock = voteBlocks[0].Block
 		SignFairNode(fBlock, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
 	} else {
 		var cnt uint64 = 0

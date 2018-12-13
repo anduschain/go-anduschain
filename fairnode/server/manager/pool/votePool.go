@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -25,7 +24,8 @@ type Vote struct {
 type VotePool struct {
 	pool     map[OtprnHash]VoteBlocks
 	InsertCh chan Vote
-	SnapShot chan OtprnHash
+	SnapShot chan *types.Block
+	DeleteCh chan OtprnHash
 	StopCh   chan struct{}
 	db       *db.FairNodeDB
 	mux      sync.RWMutex
@@ -35,8 +35,9 @@ func NewVotePool(db *db.FairNodeDB) *VotePool {
 	vp := &VotePool{
 		pool:     make(map[OtprnHash]VoteBlocks),
 		InsertCh: make(chan Vote),
-		SnapShot: make(chan OtprnHash),
+		SnapShot: make(chan *types.Block),
 		StopCh:   make(chan struct{}, 1),
+		DeleteCh: make(chan OtprnHash),
 		db:       db,
 	}
 
@@ -107,9 +108,14 @@ Exit:
 				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}}}
 				vp.mux.Unlock()
 			}
-		case h := <-vp.SnapShot:
-			fmt.Println(h)
-
+		case block := <-vp.SnapShot:
+			vp.db.SaveFianlBlock(block)
+		case h := <-vp.DeleteCh:
+			if _, ok := vp.pool[h]; ok {
+				vp.mux.Lock()
+				delete(vp.pool, h)
+				vp.mux.Unlock()
+			}
 		case <-vp.StopCh:
 			break Exit
 		}
