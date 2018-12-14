@@ -226,16 +226,22 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 						fmt.Println("-------디코딩 테스트 에러 ----------", err)
 					}
 
-					fmt.Println("---------SendBlockForVote------------", voteBlock.OtprnHash.String())
+					otp := ft.manager.GetOtprn()
+					if otp.HashOtprn() == voteBlock.OtprnHash {
 
-					votePool.InsertCh <- pool.Vote{
-						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
-						Block:    block,
-						Coinbase: voteBlock.Voter,
-						Receipts: voteBlock.Receipts,
+						votePool.InsertCh <- pool.Vote{
+							Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
+							Block:    block,
+							Coinbase: voteBlock.Voter,
+							Receipts: voteBlock.Receipts,
+						}
+
+						fmt.Println("-----블록 투표 됨-----", block.Coinbase().String(), block.NumberU64())
+					} else {
+						fmt.Println("-----다른 OTPRN으로 투표함 거절됨-----", block.Coinbase().String(), block.NumberU64())
+						noify <- closeConnection
 					}
 
-					fmt.Println("-----블록 투표 됨-----", string(block.FairNodeSig))
 				}
 			}
 		}

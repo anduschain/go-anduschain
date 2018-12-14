@@ -10,7 +10,6 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
@@ -182,18 +181,19 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 	}
 }
 
-func (c *Deb) CheckRANDSigOK(recivedBlock *types.Block, rSig []byte, otprn otprn.Otprn) bool {
-	block := recivedBlock
-	header := recivedBlock.Header()
+func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
+	block := voteBlock.Block
+	header := voteBlock.Block.Header()
+	otprnHash := common.BytesToHash(voteBlock.Block.Header().Extra)
 
-	pubKey, err := crypto.SigToPub(recivedBlock.Hash().Bytes(), rSig)
+	pubKey, err := crypto.SigToPub(header.Hash().Bytes(), voteBlock.Sig)
 	if err != nil {
 		return false
 	}
 
 	addr := crypto.PubkeyToAddress(*pubKey)
 	if block.Header().Coinbase.String() == addr.String() {
-		if header.Difficulty == MakeRand(header.Nonce.Uint64(), otprn.HashOtprn(), header.Coinbase, header.ParentHash) {
+		if header.Difficulty == MakeRand(header.Nonce.Uint64(), otprnHash, header.Coinbase, header.ParentHash) {
 			return true
 		} else {
 			return false
@@ -203,22 +203,42 @@ func (c *Deb) CheckRANDSigOK(recivedBlock *types.Block, rSig []byte, otprn otprn
 	}
 }
 
+// 다른데서 받은 투표 블록을 비교하여 위닝 블록으로 교체 하는 함수
 func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtypes.VoteBlock {
 
-	privBlockHeader := myBlock.Block.Header()
-	receivedHeader := receivedBlock.Block.Header()
+	pvBlock := myBlock // 가지고 있던 블록
+	voteBlocks := receivedBlock
 
-	if privBlockHeader.Difficulty.Cmp(receivedHeader.Difficulty) == 1 {
-		return myBlock
-	} else if privBlockHeader.Difficulty.Cmp(receivedHeader.Difficulty) == 0 {
-		if privBlockHeader.Nonce.Uint64() > receivedHeader.Nonce.Uint64() {
-			return myBlock
-		} else {
-			return receivedBlock
+	if voteBlocks.Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
+		// diffcult 값이 높은 블록
+		return voteBlocks
+	} else if voteBlocks.Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
+		// diffcult 값이 같을때
+		if voteBlocks.Block.Nonce() > pvBlock.Block.Nonce() {
+			// nonce 값이 큰 블록
+			return voteBlocks
+		} else if voteBlocks.Block.Nonce() == pvBlock.Block.Nonce() {
+			// nonce 값이 같을 때
+			if voteBlocks.Block.Number().Uint64()%2 == 0 {
+				// 블록 번호가 짝수 일때
+				if voteBlocks.Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
+					// 주소값이 큰 블록
+					return voteBlocks
+				}
+			} else {
+				// 블록 번호가 홀수 일때
+				if voteBlocks.Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
+					// 주소값이 작은 블록
+					return pvBlock
+				}
+			}
+
 		}
 	} else {
-		return receivedBlock
+		return pvBlock
 	}
+
+	return pvBlock
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered

@@ -623,37 +623,37 @@ func (w *worker) resultLoop() {
 			}
 		case finalBlock := <-w.chans.GetFinalBlockCh():
 
-			var logs []*types.Log
+			//var logs []*types.Log
 			block := finalBlock.Block
-			receipts := finalBlock.Receipts
+			//receipts := finalBlock.Receipts
 
 			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
 
-				hash := block.Hash()
-				for _, receipt := range receipts {
-					for _, log := range receipt.Logs {
-						log.BlockHash = hash
-					}
-					logs = append(logs, receipt.Logs...)
-				}
+				//hash := block.Hash()
+				//for _, receipt := range receipts {
+				//	for _, log := range receipt.Logs {
+				//		log.BlockHash = hash
+				//	}
+				//	logs = append(logs, receipt.Logs...)
+				//}
 
 				w.mux.Post(core.NewMinedBlockEvent{Block: block})
-				stat := core.CanonStatTy
-
-				var events []interface{}
-				switch stat {
-				case core.CanonStatTy:
-					events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
-					events = append(events, core.ChainHeadEvent{Block: block})
-				case core.SideStatTy:
-					events = append(events, core.ChainSideEvent{Block: block})
-				}
-
-				w.chain.PostChainEvents(events, logs)
-
-				// Insert the block into the set of pending ones to resultLoop for confirmations
-				w.unconfirmed.Insert(block.NumberU64(), hash)
+				//stat := core.CanonStatTy
+				//
+				//var events []interface{}
+				//switch stat {
+				//case core.CanonStatTy:
+				//	events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
+				//	events = append(events, core.ChainHeadEvent{Block: block})
+				//case core.SideStatTy:
+				//	events = append(events, core.ChainSideEvent{Block: block})
+				//}
+				//
+				//w.chain.PostChainEvents(events, logs)
+				//
+				//// Insert the block into the set of pending ones to resultLoop for confirmations
+				//w.unconfirmed.Insert(block.NumberU64(), hash)
 			} else {
 				log.Error("페어노드 서명 확인 에러", "andus", err)
 			}
@@ -666,13 +666,8 @@ func (w *worker) resultLoop() {
 
 func (w *worker) sendMiningBlockAndVoting(tsfBlock *fairtypes.VoteBlock) {
 	debEngine, _ := w.engine.(*deb.Deb)
-
 	winningBlock := tsfBlock
-	count, countBlock := 0, 0
-	t := time.NewTicker(1 * time.Second)
-
-	// TODO : andus >> coinbase 저장소
-	receviedCoinbase := make(map[common.Address]string)
+	t := time.NewTicker(10 * time.Second)
 
 Exit:
 	for {
@@ -681,58 +676,20 @@ Exit:
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if err, errType := debEngine.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
-
-				fmt.Println("--------recevedBlock-------", recevedBlock.HeaderHash.String())
-
 				switch errType {
 				case deb.ErrNonFairNodeSig:
-
-					fmt.Println("--------debEngine.IsFairNodeSigOK START-------")
-
 					// TODO : andus >> 2. RAND 값 서명 검증
-					// FIXME : ----->
-					if OK := debEngine.CheckRANDSigOK(recevedBlock.Block, recevedBlock.Sig, *w.fairclient.Otprn); OK {
-
+					if OK := debEngine.CheckRANDSigOK(recevedBlock); OK {
+						fmt.Println("-------CheckRANDSigOK---winningBlock 교체-----")
 						winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
-
-						receviedCoinbase[recevedBlock.Block.Coinbase()] = recevedBlock.Block.Hash().String()
-
-						count++
 					}
-
 				}
-			} else {
-				log.Info("andus >> isFairNodeSigOK == true 패어노드 서명 있음.")
 			}
-
 		case <-t.C:
-			// TODO : andus >> 4. 받은 코인베이스 수가 높거나 같으면 투표
-
-			if w.fairclient.Otprn != nil {
-
-				if uint64(len(receviedCoinbase)) >= w.fairclient.Otprn.Mminer-1 {
-					// TODO : andus >> 5. FairNode로 winningBlock 전송
-					w.chans.GetWinningBlockCh() <- winningBlock
-					fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
-					countBlock = 0
-					break Exit
-				} else {
-					countBlock++
-				}
-
-				if countBlock > 10 {
-					// TODO : andus >> 5. FairNode로 winningBlock 전송
-					if winningBlock != nil {
-						w.chans.GetWinningBlockCh() <- winningBlock
-						fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
-					}
-					countBlock = 0
-					break Exit
-				}
-
-			} else {
-				break Exit
-			}
+			// 위닝블록 전송
+			w.chans.GetWinningBlockCh() <- winningBlock
+			fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
+			break Exit
 		}
 	}
 }
