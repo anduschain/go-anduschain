@@ -629,6 +629,13 @@ func (w *worker) resultLoop() {
 			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
 
+				blocks := []*types.Block{block}
+				int, err := w.chain.InsertChain(blocks)
+				fmt.Println("-----InsertChain-----", int)
+				if err != nil {
+					fmt.Println("------InsertChain Err-------", err)
+				}
+
 				//hash := block.Hash()
 				//for _, receipt := range receipts {
 				//	for _, log := range receipt.Logs {
@@ -637,8 +644,24 @@ func (w *worker) resultLoop() {
 				//	logs = append(logs, receipt.Logs...)
 				//}
 
-				w.mux.Post(core.NewMinedBlockEvent{Block: block})
-				//stat := core.CanonStatTy
+				//for i, receipt := range receipts {
+				//	receipts[i] = new(types.Receipt)
+				//	*receipts[i] = *receipt
+				//	// Update the block hash in all logs since it is now available and not when the
+				//	// receipt/log of individual transactions were created.
+				//	for _, log := range receipt.Logs {
+				//		log.BlockHash = hash
+				//	}
+				//	logs = append(logs, receipt.Logs...)
+				//}
+
+				//stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
+				//if err != nil {
+				//	log.Error("Failed writing block to chain", "err", err)
+				//	continue
+				//}
+				//
+				//w.mux.Post(core.NewMinedBlockEvent{Block: block})
 				//
 				//var events []interface{}
 				//switch stat {

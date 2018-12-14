@@ -399,7 +399,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Nonce = types.EncodeNonce(c.joinNonce)
 	// TODO : andus >> difficulty = RAND값
 
-	header.Difficulty = MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
+	header.Difficulty = big.NewInt(MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash()).Int64())
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }
@@ -445,7 +445,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 
-	return MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
+	return big.NewInt(MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash()).Int64())
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
