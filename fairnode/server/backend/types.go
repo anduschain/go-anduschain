@@ -18,4 +18,6 @@ type Manager interface {
 	SetLeagueRunning(status bool)
 	GetLeaguePool() *pool.LeaguePool
 	GetVotePool() *pool.VotePool
+	SetLastBlockNum(num uint64)
+	GetLastBlockNum() uint64
 }

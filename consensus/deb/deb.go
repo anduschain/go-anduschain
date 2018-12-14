@@ -418,9 +418,6 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 // Seal implements consensus.Engine, attempting to create a sealed block using
 // the local signing credentials.
 func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
-
-	fmt.Println("------------------deb.Seal--------------", string(block.FairNodeSig), len(block.FairNodeSig))
-
 	header := block.Header()
 
 	// Sealing the genesis block is not supported
@@ -434,7 +431,6 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 		case <-stop:
 			return
 		case results <- block.WithSeal(header):
-			fmt.Println("------------------deb.Seal, results ---------------")
 		default:
 			log.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
 		}
@@ -454,7 +450,6 @@ func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *t
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (c *Deb) SealHash(header *types.Header) common.Hash {
-	fmt.Println("------------------deb.SealHash--------------")
 	return sigHash(header)
 }
 

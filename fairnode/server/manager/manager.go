@@ -22,6 +22,7 @@ type FairManager struct {
 	srvKey          *backend.SeverKey
 	leaguePool      *pool.LeaguePool
 	votePool        *pool.VotePool
+	LastBlockNum    uint64
 }
 
 func New() (*FairManager, error) {
@@ -98,3 +99,5 @@ func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = s
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
 func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }
+func (fm *FairManager) SetLastBlockNum(num uint64)      { fm.LastBlockNum = num }
+func (fm *FairManager) GetLastBlockNum() uint64         { return fm.LastBlockNum }

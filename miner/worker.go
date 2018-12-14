@@ -277,7 +277,7 @@ func (w *worker) pendingBlock() *types.Block {
 // start sets the running status as 1 and triggers new work submitting.
 func (w *worker) start() {
 	atomic.StoreInt32(&w.running, 1)
-	w.startCh <- struct{}{}
+	//w.startCh <- struct{}{}
 }
 
 // stop sets the running status as 0.
@@ -469,8 +469,7 @@ func (w *worker) mainLoop() {
 				w.commitTransactions(txset, coinbase, nil)
 				w.updateSnapshot()
 			} else {
-				// FIXME : ------> deb 처리
-				// If we're mining, but nothing is being processed, wake on new transactions
+				//If we're mining, but nothing is being processed, wake on new transactions
 				if w.config.Clique != nil && w.config.Clique.Period == 0 {
 					w.commitNewWork(nil, false, time.Now().Unix())
 				}

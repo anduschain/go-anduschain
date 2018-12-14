@@ -210,7 +210,7 @@ Exit:
 				OtprnHash:    winingBlock.OtprnHash,
 				Receipts:     winingBlock.Receipts,
 			}
-			fmt.Println("----블록 투표-----", string(winingBlock.Block.FairNodeSig))
+			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
 			msg.Send(msg.SendBlockForVote, tsfBlock, conn)
 		}
 	}
