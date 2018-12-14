@@ -108,7 +108,7 @@ func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common
 }
 
 // TODO : andus >> Rand 생성
-func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
+func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) int64 {
 
 	rand := big.NewInt(0)
 
@@ -119,7 +119,12 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 		}
 	}
 
-	return rand
+	r := rand.Int64()
+	if r < 0 {
+		return -1 * r
+	}
+
+	return r
 }
 
 // Deb is the proof-of-Deb consensus engine proposed to support the
@@ -185,6 +190,8 @@ func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
 	block := voteBlock.Block
 	header := voteBlock.Block.Header()
 	otprnHash := common.BytesToHash(voteBlock.Block.Header().Extra)
+	rand := MakeRand(header.Nonce.Uint64(), otprnHash, header.Coinbase, header.ParentHash)
+	diff := big.NewInt(rand)
 
 	pubKey, err := crypto.SigToPub(header.Hash().Bytes(), voteBlock.Sig)
 	if err != nil {
@@ -193,7 +200,7 @@ func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
 
 	addr := crypto.PubkeyToAddress(*pubKey)
 	if block.Header().Coinbase.String() == addr.String() {
-		if header.Difficulty == MakeRand(header.Nonce.Uint64(), otprnHash, header.Coinbase, header.ParentHash) {
+		if header.Difficulty.Cmp(diff) == 0 {
 			return true
 		} else {
 			return false
@@ -303,8 +310,11 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 			return errInvalidDifficulty
 		}
 
+		rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
+		diff := big.NewInt(rand)
+
 		// TODO : andus >> Difficulty 검증
-		if header.Difficulty != MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash) {
+		if header.Difficulty.Cmp(diff) != 0 {
 			return errInvalidDifficulty
 		}
 	}
@@ -399,7 +409,10 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Nonce = types.EncodeNonce(c.joinNonce)
 	// TODO : andus >> difficulty = RAND값
 
-	header.Difficulty = big.NewInt(MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash()).Int64())
+	rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
+	diff := big.NewInt(rand)
+
+	header.Difficulty = diff
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }
@@ -444,8 +457,8 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // that a new block should have based on the previous blocks in the chain and the
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-
-	return big.NewInt(MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash()).Int64())
+	rand := MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
+	return big.NewInt(rand)
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
