@@ -348,8 +348,6 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 			var b bytes.Buffer
 
-			fmt.Println("----sendFinalBlock-----", common.BytesToHash(block.FairNodeSig).String(), block.Header().Hash().String())
-
 			err := block.EncodeRLP(&b)
 			if err != nil {
 				fmt.Println("-------인코딩 테스트 에러 ----------", err)
@@ -362,6 +360,8 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 					msg.Send(msg.SendFinalBlock, ts, nodes[index].Conn)
 				}
 			}
+
+			fmt.Println("----파이널 블록 전송-----", block.NumberU64(), block.Coinbase().String())
 
 			fu.fm.SetLeagueRunning(false)
 			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)

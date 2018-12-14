@@ -16,6 +16,7 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"time"
 )
@@ -156,6 +157,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 		buf := make([]byte, 4096)
 		leaguePool := ft.manager.GetLeaguePool()
 		votePool := ft.manager.GetVotePool()
+		var prevBlock *types.Block
 		for {
 			n, err := conn.Read(buf)
 			if err != nil {
@@ -221,6 +223,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 4096)
 
 					block := &types.Block{}
+					prevBlock = block
 
 					if err := block.DecodeRLP(stream); err != nil {
 						fmt.Println("-------디코딩 테스트 에러 ----------", err)
@@ -228,15 +231,30 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					otp := ft.manager.GetOtprn()
 					if otp.HashOtprn() == voteBlock.OtprnHash {
+						if block.NumberU64() > 1 {
+							if prevBlock.Number().Add(prevBlock.Number(), big.NewInt(1)) == block.Number() {
+								votePool.InsertCh <- pool.Vote{
+									Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
+									Block:    block,
+									Coinbase: voteBlock.Voter,
+									Receipts: voteBlock.Receipts,
+								}
 
-						votePool.InsertCh <- pool.Vote{
-							Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
-							Block:    block,
-							Coinbase: voteBlock.Voter,
-							Receipts: voteBlock.Receipts,
+								fmt.Println("-----블록 투표 됨-----", block.Coinbase().String(), block.NumberU64())
+							} else {
+								fmt.Println("-----다른 블로 넘버로 투표함 거절됨-----", block.Coinbase().String(), block.NumberU64())
+								noify <- closeConnection
+							}
+						} else {
+							votePool.InsertCh <- pool.Vote{
+								Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
+								Block:    block,
+								Coinbase: voteBlock.Voter,
+								Receipts: voteBlock.Receipts,
+							}
+
+							fmt.Println("-----블록 투표 됨-----", block.Coinbase().String(), block.NumberU64())
 						}
-
-						fmt.Println("-----블록 투표 됨-----", block.Coinbase().String(), block.NumberU64())
 					} else {
 						fmt.Println("-----다른 OTPRN으로 투표함 거절됨-----", block.Coinbase().String(), block.NumberU64())
 						noify <- closeConnection

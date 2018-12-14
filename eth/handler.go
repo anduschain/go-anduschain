@@ -664,6 +664,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
+
+		fmt.Println("-------전파 불록 도착(NewBlockMsg)--------", request.Block.Coinbase().String(), len(request.Block.FairNodeSig))
+
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
 
