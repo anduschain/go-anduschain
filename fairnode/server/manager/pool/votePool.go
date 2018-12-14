@@ -8,9 +8,10 @@ import (
 )
 
 type VoteBlock struct {
-	Block  *types.Block
-	Count  uint64
-	Voters []common.Address
+	Block    *types.Block
+	Count    uint64
+	Voters   []common.Address
+	Receipts []*types.Receipt
 }
 
 type VoteBlocks []VoteBlock
@@ -19,6 +20,7 @@ type Vote struct {
 	Hash     OtprnHash
 	Block    *types.Block
 	Coinbase common.Address
+	Receipts []*types.Receipt
 }
 
 type VotePool struct {
@@ -99,13 +101,13 @@ Exit:
 
 				if !isDouble {
 					vp.mux.Lock()
-					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}})
+					vp.pool[vote.Hash] = append(val, VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}, vote.Receipts})
 					vp.mux.Unlock()
 				}
 
 			} else {
 				vp.mux.Lock()
-				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}}}
+				vp.pool[vote.Hash] = VoteBlocks{VoteBlock{vote.Block, 1, []common.Address{vote.Coinbase}, vote.Receipts}}
 				vp.mux.Unlock()
 			}
 		case block := <-vp.SnapShot:

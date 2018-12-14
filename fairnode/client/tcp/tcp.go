@@ -167,7 +167,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 
 					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
 
-					t.manger.FinalBlock() <- block
+					t.manger.FinalBlock() <- fairtypes.FinalBlock{block, received.Receipts}
 					noify <- closeConnection
 				}
 
@@ -208,6 +208,7 @@ Exit:
 				Sig:          winingBlock.Sig,
 				Voter:        winingBlock.Voter,
 				OtprnHash:    winingBlock.OtprnHash,
+				Receipts:     winingBlock.Receipts,
 			}
 			fmt.Println("----블록 투표-----", string(winingBlock.Block.FairNodeSig))
 			msg.Send(msg.SendBlockForVote, tsfBlock, conn)

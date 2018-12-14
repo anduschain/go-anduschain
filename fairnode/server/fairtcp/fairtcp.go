@@ -232,6 +232,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 						Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
 						Block:    block,
 						Coinbase: voteBlock.Voter,
+						Receipts: voteBlock.Receipts,
 					}
 
 					fmt.Println("-----블록 투표 됨-----", string(block.FairNodeSig))

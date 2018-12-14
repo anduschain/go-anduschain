@@ -94,8 +94,7 @@ type ProtocolManager struct {
 	noMorePeers chan struct{}
 
 	// TODO : andus >> 채굴리그에서 수신된 블록
-	ReceiveBlock           chan *fairtypes.VoteBlock
-	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
+	chans fairtypes.Channals
 
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
@@ -104,7 +103,7 @@ type ProtocolManager struct {
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, leagueCh chan *fairtypes.VoteBlock, receiveCh chan *fairtypes.VoteBlock) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, chans fairtypes.Channals) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -118,8 +117,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
 		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
-		ReceiveBlock:           receiveCh,
-		LeagueBlockBroadcastCh: leagueCh,
+		chans: chans,
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -233,7 +231,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
-		case block := <-pm.LeagueBlockBroadcastCh:
+		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
 			fmt.Println("--------ProtocolManager.leagueBroadCast----------", pm.peers.peers)
 			for _, peer := range pm.peers.peers {
 				peer.SendMakeLeagueBlock(*block)
@@ -717,7 +715,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		pm.ReceiveBlock <- &block
+		pm.chans.GetReceiveBlockCh() <- &block
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)

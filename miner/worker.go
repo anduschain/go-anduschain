@@ -180,40 +180,35 @@ type worker struct {
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
 
 	// TODO : andus >> keystore
-	ks                     *keystore.KeyStore
-	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
-	ReceiveBlockCh         chan *fairtypes.VoteBlock
-	fairclient             *fairnodeclient.FairnodeClient
-	WinningBlockCh         chan *fairtypes.VoteBlock
-	FinalBlockCh           chan *types.Block
+	ks         *keystore.KeyStore
+	fairclient *fairnodeclient.FairnodeClient
+	chans      fairtypes.Channals
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, leagueCh chan *fairtypes.VoteBlock, receiveCh chan *fairtypes.VoteBlock, wbCh chan *fairtypes.VoteBlock, fbCh chan *types.Block) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, chans fairtypes.Channals) *worker {
 	worker := &worker{
-		config:                 config,
-		engine:                 engine,
-		eth:                    eth,
-		mux:                    mux,
-		chain:                  eth.BlockChain(),
-		gasFloor:               gasFloor,
-		gasCeil:                gasCeil,
-		possibleUncles:         make(map[common.Hash]*types.Block),
-		unconfirmed:            newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
-		pendingTasks:           make(map[common.Hash]*task),
-		txsCh:                  make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:            make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:            make(chan core.ChainSideEvent, chainSideChanSize),
-		newWorkCh:              make(chan *newWorkReq),
-		taskCh:                 make(chan *task),
-		resultCh:               make(chan *types.Block, resultQueueSize),
-		exitCh:                 make(chan struct{}),
-		startCh:                make(chan struct{}, 1),
-		resubmitIntervalCh:     make(chan time.Duration),
-		resubmitAdjustCh:       make(chan *intervalAdjust, resubmitAdjustChanSize),
-		LeagueBlockBroadcastCh: leagueCh,
-		ReceiveBlockCh:         receiveCh,
-		WinningBlockCh:         wbCh,
-		FinalBlockCh:           fbCh,
+		config:             config,
+		engine:             engine,
+		eth:                eth,
+		mux:                mux,
+		chain:              eth.BlockChain(),
+		gasFloor:           gasFloor,
+		gasCeil:            gasCeil,
+		possibleUncles:     make(map[common.Hash]*types.Block),
+		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
+		pendingTasks:       make(map[common.Hash]*task),
+		txsCh:              make(chan core.NewTxsEvent, txChanSize),
+		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
+		newWorkCh:          make(chan *newWorkReq),
+		taskCh:             make(chan *task),
+		resultCh:           make(chan *types.Block, resultQueueSize),
+		exitCh:             make(chan struct{}),
+		startCh:            make(chan struct{}, 1),
+		resubmitIntervalCh: make(chan time.Duration),
+		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
+
+		chans: chans,
 	}
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
@@ -556,66 +551,6 @@ func (w *worker) resultLoop() {
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
 				continue
 			}
-			//var (
-			//	sealhash = w.engine.SealHash(block.Header())
-			//	hash     = block.Hash()
-			//)
-			//w.pendingMu.RLock()
-			//task, exist := w.pendingTasks[sealhash]
-			//w.pendingMu.RUnlock()
-			//if !exist {
-			//	log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-			//	continue
-			//}
-			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			//var (
-			//	receipts = make([]*types.Receipt, len(task.receipts))
-			//	logs     []*types.Log
-			//)
-			//for i, receipt := range task.receipts {
-			//	receipts[i] = new(types.Receipt)
-			//	*receipts[i] = *receipt
-			//	// Update the block hash in all logs since it is now available and not when the
-			//	// receipt/log of individual transactions were created.
-			//	for _, log := range receipt.Logs {
-			//		log.BlockHash = hash
-			//	}
-			//	logs = append(logs, receipt.Logs...)
-			//}
-
-			// TODO : andus >> deb consensus 일때만...
-			if debEngine, ok := w.engine.(*deb.Deb); ok {
-				sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
-				if err != nil {
-					log.Error("andus >> ", err)
-				}
-
-				// TODO : andus >> TransferBlock 객체 생성
-				tfd := fairtypes.VoteBlock{
-					Block:      block,
-					HeaderHash: block.Header().Hash(),
-					Sig:        sig,
-					OtprnHash:  w.fairclient.Otprn.HashOtprn(),
-					Voter:      w.coinbase,
-				}
-
-				fmt.Println("--------투표 블록 생성-------")
-
-				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
-				w.LeagueBlockBroadcastCh <- &tfd
-
-				go w.sendMiningBlockAndVoting(&tfd)
-
-				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
-
-				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
-
-			}
-		case block := <-w.FinalBlockCh:
-
-			//final block
-			w.commitFianlBlock(block)
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -625,6 +560,7 @@ func (w *worker) resultLoop() {
 			w.pendingMu.RLock()
 			task, exist := w.pendingTasks[sealhash]
 			w.pendingMu.RUnlock()
+
 			if !exist {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
@@ -646,32 +582,78 @@ func (w *worker) resultLoop() {
 				logs = append(logs, receipt.Logs...)
 			}
 
+			_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+			if err != nil {
+				log.Error("Failed writing block to chain", "err", err)
+				continue
+			}
+
+			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+			// TODO : andus >> deb consensus 일때만...
+			if debEngine, ok := w.engine.(*deb.Deb); ok {
+				sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
+				if err != nil {
+					log.Error("andus >> ", err)
+				}
+
+				// TODO : andus >> TransferBlock 객체 생성
+				tfd := fairtypes.VoteBlock{
+					Block:      block,
+					HeaderHash: block.Header().Hash(),
+					Sig:        sig,
+					OtprnHash:  w.fairclient.Otprn.HashOtprn(),
+					Voter:      w.coinbase,
+					Receipts:   receipts,
+				}
+
+				fmt.Println("--------투표 블록 생성-------")
+
+				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
+				w.chans.GetLeagueBlockBroadcastCh() <- &tfd
+
+				go w.sendMiningBlockAndVoting(&tfd)
+
+				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+
+				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
+				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+
+			}
+		case finalBlock := <-w.chans.GetFinalBlockCh():
+
+			var logs []*types.Log
+			block := finalBlock.Block
+			receipts := finalBlock.Receipts
+
 			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
-				// Commit block and state to database.
-				stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-				if err != nil {
-					log.Error("Failed writing block to chain", "err", err)
-					continue
-				}
-				log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-					"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
-				// Broadcast the block and announce chain insertion event
+				hash := block.Hash()
+				for _, receipt := range receipts {
+					for _, log := range receipt.Logs {
+						log.BlockHash = hash
+					}
+					logs = append(logs, receipt.Logs...)
+				}
+
 				w.mux.Post(core.NewMinedBlockEvent{Block: block})
+				stat := core.CanonStatTy
 
 				var events []interface{}
 				switch stat {
 				case core.CanonStatTy:
-					events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+					events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
 					events = append(events, core.ChainHeadEvent{Block: block})
 				case core.SideStatTy:
 					events = append(events, core.ChainSideEvent{Block: block})
 				}
+
 				w.chain.PostChainEvents(events, logs)
 
 				// Insert the block into the set of pending ones to resultLoop for confirmations
-				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+				w.unconfirmed.Insert(block.NumberU64(), hash)
 			} else {
 				log.Error("페어노드 서명 확인 에러", "andus", err)
 			}
@@ -695,7 +677,7 @@ func (w *worker) sendMiningBlockAndVoting(tsfBlock *fairtypes.VoteBlock) {
 Exit:
 	for {
 		select {
-		case recevedBlock := <-w.ReceiveBlockCh:
+		case recevedBlock := <-w.chans.GetReceiveBlockCh():
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if err, errType := debEngine.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
@@ -730,7 +712,7 @@ Exit:
 
 				if uint64(len(receviedCoinbase)) >= w.fairclient.Otprn.Mminer-1 {
 					// TODO : andus >> 5. FairNode로 winningBlock 전송
-					w.WinningBlockCh <- winningBlock
+					w.chans.GetWinningBlockCh() <- winningBlock
 					fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					countBlock = 0
 					break Exit
@@ -741,7 +723,7 @@ Exit:
 				if countBlock > 10 {
 					// TODO : andus >> 5. FairNode로 winningBlock 전송
 					if winningBlock != nil {
-						w.WinningBlockCh <- winningBlock
+						w.chans.GetWinningBlockCh() <- winningBlock
 						fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
 					}
 					countBlock = 0
@@ -1130,48 +1112,5 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if update {
 		w.updateSnapshot()
 	}
-	return nil
-}
-
-// commit runs any post-transaction state modifications, assembles the final block
-// and commits new work if consensus engine is running.
-func (w *worker) commitFianlBlock(block *types.Block) error {
-	// Deep copy receipts here to avoid interaction between different tasks.
-	start := time.Now()
-	receipts := make([]*types.Receipt, len(w.current.receipts))
-	for i, l := range w.current.receipts {
-		receipts[i] = new(types.Receipt)
-		*receipts[i] = *l
-	}
-	s := w.current.state.Copy()
-
-	// TODO : andus >> 1. 새로운 블록 생성
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, nil, w.current.receipts)
-
-	if err != nil {
-		return err
-	}
-
-	if w.isRunning() {
-		select {
-		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
-			w.unconfirmed.Shift(block.NumberU64() - 1)
-
-			feesWei := new(big.Int)
-			for i, tx := range block.Transactions() {
-				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
-			}
-			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
-
-			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
-
-		case <-w.exitCh:
-			log.Info("Worker has exited")
-		}
-	}
-
-	w.updateSnapshot()
-
 	return nil
 }

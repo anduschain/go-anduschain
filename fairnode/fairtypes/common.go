@@ -44,6 +44,7 @@ type TransferVoteBlock struct {
 	Sig          []byte
 	Voter        common.Address // coinbase
 	OtprnHash    common.Hash
+	Receipts     []*types.Receipt
 }
 
 type VoteBlock struct {
@@ -52,8 +53,22 @@ type VoteBlock struct {
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
+	Receipts   []*types.Receipt
 }
 
 type TransferFinalBlock struct {
 	EncodedBlock []byte
+	Receipts     []*types.Receipt
+}
+
+type FinalBlock struct {
+	Block    *types.Block
+	Receipts []*types.Receipt
+}
+
+type Channals interface {
+	GetLeagueBlockBroadcastCh() chan *VoteBlock
+	GetReceiveBlockCh() chan *VoteBlock
+	GetWinningBlockCh() chan *VoteBlock
+	GetFinalBlockCh() chan FinalBlock
 }

@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
@@ -28,5 +27,5 @@ type Client interface {
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
 	BlockMakeStart() chan struct{}
 	VoteBlock() chan *fairtypes.VoteBlock
-	FinalBlock() chan *types.Block
+	FinalBlock() chan fairtypes.FinalBlock
 }

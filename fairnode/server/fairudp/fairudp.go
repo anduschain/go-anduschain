@@ -315,18 +315,23 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 	votePool := fu.fm.GetVotePool()
 	nodes, _, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 
-	notify := make(chan *types.Block)
+	type noti struct {
+		Block    *types.Block
+		Receipts []*types.Receipt
+	}
+
+	notify := make(chan noti)
 
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for {
 			select {
 			case <-t.C:
-				block := fu.GetFinalBlock(otprnHash, votePool)
+				block, Receipts := fu.GetFinalBlock(otprnHash, votePool)
 				if block == nil {
 					continue
 				} else {
-					notify <- block
+					notify <- noti{block, Receipts}
 					return
 				}
 			}
@@ -336,7 +341,10 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 	for {
 		select {
 		case <-t.C:
-			block := <-notify
+			n := <-notify
+
+			recei := n.Receipts
+			block := n.Block
 
 			var b bytes.Buffer
 
@@ -347,7 +355,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 				fmt.Println("-------인코딩 테스트 에러 ----------", err)
 			}
 
-			ts := &fairtypes.TransferFinalBlock{b.Bytes()}
+			ts := &fairtypes.TransferFinalBlock{b.Bytes(), recei}
 
 			for index := range nodes {
 				if nodes[index].Conn != nil {
@@ -379,17 +387,19 @@ func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
 	return uint64(count * (persent / 100))
 }
 
-func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *types.Block {
+func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*types.Block, []*types.Receipt) {
 	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
 	acc := fu.fm.GetServerKey()
 	var fBlock *types.Block
+	var Receipts []*types.Receipt
 
 	fmt.Println("----GetFinalBlock-----", otprnHash, voteBlocks)
 
 	if len(voteBlocks) == 0 {
-		return nil
+		return nil, nil
 	} else if len(voteBlocks) == 1 {
 		fBlock = voteBlocks[0].Block
+		Receipts = voteBlocks[0].Receipts
 		SignFairNode(fBlock, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
 	} else {
 		var cnt uint64 = 0
@@ -401,6 +411,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *typ
 			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
 			if cnt < voteBlocks[i].Count {
 				fBlock = voteBlocks[i].Block
+				Receipts = voteBlocks[i].Receipts
 				pvBlock = voteBlocks[i]
 				cnt = voteBlocks[i].Count
 			} else if cnt == voteBlocks[i].Count {
@@ -408,12 +419,14 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *typ
 				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
 					// diffcult 값이 높은 블록
 					fBlock = voteBlocks[i].Block
+					Receipts = voteBlocks[i].Receipts
 					pvBlock = voteBlocks[i]
 				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
 					// diffcult 값이 같을때
 					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
 						// nonce 값이 큰 블록
 						fBlock = voteBlocks[i].Block
+						Receipts = voteBlocks[i].Receipts
 						pvBlock = voteBlocks[i]
 					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
 						// nonce 값이 같을 때
@@ -422,6 +435,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *typ
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
 								// 주소값이 큰 블록
 								fBlock = voteBlocks[i].Block
+								Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						} else {
@@ -429,6 +443,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *typ
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
 								// 주소값이 작은 블록
 								fBlock = voteBlocks[i].Block
+								Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						}
@@ -441,7 +456,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *typ
 		SignFairNode(fBlock, pvBlock, acc.ServerAcc, acc.KeyStore)
 	}
 
-	return fBlock
+	return fBlock, Receipts
 }
 
 func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {

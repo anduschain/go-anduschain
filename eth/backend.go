@@ -103,6 +103,13 @@ type Ethereum struct {
 	// TODO : andus >> fairnode client
 	FairnodeClient *fairnodeclient.FairnodeClient
 	Serv           *p2p.Server
+
+	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
+	ReceiveBlockCh         chan *fairtypes.VoteBlock
+
+	// TODO : andus >> 위닝블록 전송 채널
+	WinningBlockCh chan *fairtypes.VoteBlock
+	FinalBlockCh   chan fairtypes.FinalBlock
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -148,6 +155,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		etherbase:      config.Etherbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
+
+		// TODO : andus >> 위닝블록 전송 채널
+		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 4),
+		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
+		WinningBlockCh:         make(chan *fairtypes.VoteBlock, 4),
+		FinalBlockCh:           make(chan fairtypes.FinalBlock, 4),
 	}
 
 	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId)
@@ -180,23 +193,15 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
 
-	// TODO : andus >> protocolmanager랑 worker랑 공유하는 채널
-	LeagueBlockBroadcastCh := make(chan *fairtypes.VoteBlock, 4)
-	ReceiveBlockCh := make(chan *fairtypes.VoteBlock, 4)
-
-	// TODO : andus >> 위닝블록 전송 채널
-	WinningBlockCh := make(chan *fairtypes.VoteBlock, 4)
-	FinalBlockCh := make(chan *types.Block, 4)
-
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, LeagueBlockBroadcastCh, ReceiveBlockCh); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth); err != nil {
 		return nil, err
 	}
 
 	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New(WinningBlockCh, FinalBlockCh, eth.blockchain, eth.txPool)
+	eth.FairnodeClient = fairnodeclient.New(eth, eth.blockchain, eth.txPool)
 
 	// TODO : andus >> miner -> keystore 추가
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, LeagueBlockBroadcastCh, ReceiveBlockCh, WinningBlockCh, FinalBlockCh)
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, eth)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}
@@ -208,6 +213,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	return eth, nil
 }
+
+func (s *Ethereum) GetLeagueBlockBroadcastCh() chan *fairtypes.VoteBlock {
+	return s.LeagueBlockBroadcastCh
+}
+func (s *Ethereum) GetReceiveBlockCh() chan *fairtypes.VoteBlock { return s.ReceiveBlockCh }
+func (s *Ethereum) GetWinningBlockCh() chan *fairtypes.VoteBlock { return s.WinningBlockCh }
+func (s *Ethereum) GetFinalBlockCh() chan fairtypes.FinalBlock   { return s.FinalBlockCh }
 
 func makeExtraData(extra []byte) []byte {
 	if len(extra) == 0 {

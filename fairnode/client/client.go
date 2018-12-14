@@ -9,7 +9,6 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	clinetTcp "github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	clinetTypes "github.com/anduschain/go-anduschain/fairnode/client/types"
@@ -41,10 +40,10 @@ type FairnodeClient struct {
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
 
-	WinningBlockCh chan *fairtypes.VoteBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
-	FinalBlockCh   chan *types.Block
-	Running        bool
-	wg             sync.WaitGroup
+	//WinningBlockCh chan *fairtypes.VoteBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
+	//FinalBlockCh   chan *types.Block
+	Running bool
+	wg      sync.WaitGroup
 
 	//FairPubKey         ecdsa.PublicKey
 
@@ -64,14 +63,16 @@ type FairnodeClient struct {
 
 	StartCh chan struct{} // 블록생성 시작 채널
 
+	chans fairtypes.Channals
 }
 
-func New(wbCh chan *fairtypes.VoteBlock, fbCh chan *types.Block, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
+func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
-		Otprn:              nil,
-		WinningBlockCh:     wbCh,
-		FinalBlockCh:       fbCh,
+		Otprn: nil,
+		//WinningBlockCh:     wbCh,
+		//FinalBlockCh:       fbCh,
+		chans:              chans,
 		Running:            false,
 		BlockChain:         blockChain,
 		txPool:             tp,
@@ -161,16 +162,16 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
-func (fc *FairnodeClient) GetP2PServer() *p2p.Server            { return fc.Srv }
-func (fc *FairnodeClient) GetCoinbase() common.Address          { return fc.Coinbase }
-func (fc *FairnodeClient) SetOtprn(otprn *otprn.Otprn)          { fc.Otprn = otprn }
-func (fc *FairnodeClient) GetOtprn() *otprn.Otprn               { return fc.Otprn }
-func (fc *FairnodeClient) GetTxpool() *core.TxPool              { return fc.txPool }
-func (fc *FairnodeClient) GetBlockChain() *core.BlockChain      { return fc.BlockChain }
-func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey { return &fc.CoinBasePrivateKey }
-func (fc *FairnodeClient) BlockMakeStart() chan struct{}        { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock { return fc.WinningBlockCh }
-func (fc *FairnodeClient) FinalBlock() chan *types.Block        { return fc.FinalBlockCh }
+func (fc *FairnodeClient) GetP2PServer() *p2p.Server             { return fc.Srv }
+func (fc *FairnodeClient) GetCoinbase() common.Address           { return fc.Coinbase }
+func (fc *FairnodeClient) SetOtprn(otprn *otprn.Otprn)           { fc.Otprn = otprn }
+func (fc *FairnodeClient) GetOtprn() *otprn.Otprn                { return fc.Otprn }
+func (fc *FairnodeClient) GetTxpool() *core.TxPool               { return fc.txPool }
+func (fc *FairnodeClient) GetBlockChain() *core.BlockChain       { return fc.BlockChain }
+func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.CoinBasePrivateKey }
+func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock  { return fc.chans.GetWinningBlockCh() }
+func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.chans.GetFinalBlockCh() }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()
