@@ -180,7 +180,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 							u.manger.SetOtprn(&tsOtprn.Otp)
 
 							//TODO : andus >> 3. 참여여부 확인
-							if ok := fairutil.IsJoinOK(tsOtprn.Otp, u.manger.GetCoinbase()); ok {
+							if ok := fairutil.IsJoinOK(&tsOtprn.Otp, u.manger.GetCoinbase()); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 

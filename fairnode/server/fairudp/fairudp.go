@@ -184,7 +184,6 @@ Exit:
 				activeNodeNum := uint64(fu.db.GetActiveNodeNum())
 
 				otp := otprn.New(activeNodeNum)
-				fu.fm.SetOtprn(*otp)
 
 				// TODO : andus >> otprn을 서명
 				acc := fu.fm.GetServerKey()
@@ -210,6 +209,7 @@ Exit:
 						for {
 							select {
 							case <-t.C:
+								fu.fm.SetOtprn(otp)
 								go fu.sendLeague(tsOtp.Hash.String())
 								return
 							}

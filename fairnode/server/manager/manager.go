@@ -17,7 +17,7 @@ type ServiceFunc interface {
 
 type FairManager struct {
 	LeagueRunningOK bool
-	Otprn           otprn.Otprn
+	Otprn           *otprn.Otprn
 	Services        map[string]ServiceFunc
 	srvKey          *backend.SeverKey
 	leaguePool      *pool.LeaguePool
@@ -95,8 +95,8 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
-func (fm *FairManager) SetOtprn(otp otprn.Otprn)        { fm.Otprn = otp }
-func (fm *FairManager) GetOtprn() otprn.Otprn           { return fm.Otprn }
+func (fm *FairManager) SetOtprn(otp *otprn.Otprn)       { fm.Otprn = otp }
+func (fm *FairManager) GetOtprn() *otprn.Otprn          { return fm.Otprn }
 func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
 func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }

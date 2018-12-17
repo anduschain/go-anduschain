@@ -179,7 +179,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 						// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 						// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
-						if fairutil.IsJoinOK(tsf.Otprn, tsf.Coinbase) {
+						if fairutil.IsJoinOK(&tsf.Otprn, tsf.Coinbase) {
 							// TODO : 채굴 리그 생성
 							// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 
@@ -228,6 +228,9 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					otp := ft.manager.GetOtprn()
 					lastNum := ft.manager.GetLastBlockNum()
+
+					fmt.Println("My :", otp.HashOtprn().String())
+					fmt.Println("Receivec : ", voteBlock.OtprnHash.String())
 
 					if otp.HashOtprn() == voteBlock.OtprnHash && lastNum+1 == block.NumberU64() {
 						votePool.InsertCh <- pool.Vote{

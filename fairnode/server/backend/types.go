@@ -11,8 +11,8 @@ type Goroutine struct {
 }
 
 type Manager interface {
-	GetOtprn() otprn.Otprn
-	SetOtprn(otprn otprn.Otprn)
+	GetOtprn() *otprn.Otprn
+	SetOtprn(otprn *otprn.Otprn)
 	GetLeagueRunning() bool
 	GetServerKey() *SeverKey
 	SetLeagueRunning(status bool)
