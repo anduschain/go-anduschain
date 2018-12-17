@@ -609,15 +609,21 @@ func (w *worker) resultLoop() {
 
 				fmt.Println("--------투표 블록 생성-------")
 
-				// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
-				w.chans.GetLeagueBlockBroadcastCh() <- &tfd
+				// OTPRN과 블록 생성시 셋팅한 OTPRN이 동일 할때 투표 가능
+				if w.fairclient.Otprn.HashOtprn() == common.BytesToHash(block.Header().Extra) {
 
-				go w.sendMiningBlockAndVoting(&tfd)
+					// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
+					w.chans.GetLeagueBlockBroadcastCh() <- &tfd
 
-				// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+					go w.sendMiningBlockAndVoting(&tfd)
 
-				// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-				// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+					// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
+
+					// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
+					// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
+				} else {
+					fmt.Println("현재 OTPRN과 블록 생성한 OTPRN이 다르다")
+				}
 
 			}
 		case finalBlock := <-w.chans.GetFinalBlockCh():
