@@ -237,7 +237,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 							Receipts: voteBlock.Receipts,
 						}
 
-						fmt.Println("-----블록 투표 됨-----", block.Coinbase().String(), block.NumberU64())
+						fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
 					} else {
 						fmt.Println("-----다른 OTPRN으로 투표 또는 숫자가 맞지 않아 거절됨-----", block.Coinbase().String(), block.NumberU64())
 						noify <- closeConnection

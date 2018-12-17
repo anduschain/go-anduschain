@@ -26,7 +26,7 @@ func TestNewVotePool(t *testing.T) {
 	pool.Start()
 
 	hash := OtprnHash("0x123asd456")
-	hash2 := OtprnHash("0x123asd458")
+	//hash2 := OtprnHash("0x123asd458")
 
 	//voters := []common.Address{
 	//	common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87"), // 1
@@ -46,25 +46,26 @@ func TestNewVotePool(t *testing.T) {
 	}{
 		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, // 1
 		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, // 1
-
-		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
-		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
+		//
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")}, //   1
 
 		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")}, // 2
 		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")}, // 3
-
-		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")}, //   2
-		{OtprnHash("0x123asd458"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")}, //   3
+		//
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d88")}, //   2
+		{OtprnHash("0x123asd456"), common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d89")}, //   3
 	}
 
 	fmt.Println("---Block count-------", len(blocks))
 
-	for i, block := range blocks {
+	for i, _ := range blocks {
 		//headers[i] = block.Header()
 		pool.InsertCh <- Vote{
 			test[i].hash,
-			block,
+			blocks[0],
 			test[i].addr,
+			nil,
 		}
 
 	}
@@ -90,10 +91,13 @@ func TestNewVotePool(t *testing.T) {
 	//}
 
 	vblocks := pool.GetVoteBlocks(hash)
-	fmt.Println(len(vblocks))
 
-	vblocks2 := pool.GetVoteBlocks(hash2)
-	fmt.Println(len(vblocks2))
+	for i := range vblocks[0].Voters {
+		fmt.Println(vblocks[0].Voters[i].String())
+	}
+
+	//vblocks2 := pool.GetVoteBlocks(hash2)
+	//fmt.Println(len(vblocks2))
 
 	pool.Stop()
 

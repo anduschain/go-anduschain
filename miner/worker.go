@@ -581,11 +581,11 @@ func (w *worker) resultLoop() {
 				logs = append(logs, receipt.Logs...)
 			}
 
-			_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-			if err != nil {
-				log.Error("Failed writing block to chain", "err", err)
-				continue
-			}
+			//_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+			//if err != nil {
+			//	log.Error("Failed writing block to chain", "err", err)
+			//	continue
+			//}
 
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
@@ -622,60 +622,53 @@ func (w *worker) resultLoop() {
 			}
 		case finalBlock := <-w.chans.GetFinalBlockCh():
 
-			//var logs []*types.Log
+			var logs []*types.Log
 			block := finalBlock.Block
-			//receipts := finalBlock.Receipts
+			receipts := finalBlock.Receipts
 
 			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
 			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
 
-				blocks := []*types.Block{block}
-				int, err := w.chain.InsertChain(blocks)
-				fmt.Println("-----InsertChain-----", int)
-				if err != nil {
-					fmt.Println("------InsertChain Err-------", err)
+				hash := block.Hash()
+				for _, receipt := range receipts {
+					for _, log := range receipt.Logs {
+						log.BlockHash = hash
+					}
+					logs = append(logs, receipt.Logs...)
 				}
 
-				//hash := block.Hash()
-				//for _, receipt := range receipts {
-				//	for _, log := range receipt.Logs {
-				//		log.BlockHash = hash
-				//	}
-				//	logs = append(logs, receipt.Logs...)
-				//}
+				for i, receipt := range receipts {
+					receipts[i] = new(types.Receipt)
+					*receipts[i] = *receipt
+					// Update the block hash in all logs since it is now available and not when the
+					// receipt/log of individual transactions were created.
+					for _, log := range receipt.Logs {
+						log.BlockHash = hash
+					}
+					logs = append(logs, receipt.Logs...)
+				}
 
-				//for i, receipt := range receipts {
-				//	receipts[i] = new(types.Receipt)
-				//	*receipts[i] = *receipt
-				//	// Update the block hash in all logs since it is now available and not when the
-				//	// receipt/log of individual transactions were created.
-				//	for _, log := range receipt.Logs {
-				//		log.BlockHash = hash
-				//	}
-				//	logs = append(logs, receipt.Logs...)
-				//}
+				stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
+				if err != nil {
+					log.Error("Failed writing block to chain", "err", err)
+					continue
+				}
 
-				//stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
-				//if err != nil {
-				//	log.Error("Failed writing block to chain", "err", err)
-				//	continue
-				//}
-				//
-				//w.mux.Post(core.NewMinedBlockEvent{Block: block})
-				//
-				//var events []interface{}
-				//switch stat {
-				//case core.CanonStatTy:
-				//	events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
-				//	events = append(events, core.ChainHeadEvent{Block: block})
-				//case core.SideStatTy:
-				//	events = append(events, core.ChainSideEvent{Block: block})
-				//}
-				//
-				//w.chain.PostChainEvents(events, logs)
-				//
-				//// Insert the block into the set of pending ones to resultLoop for confirmations
-				//w.unconfirmed.Insert(block.NumberU64(), hash)
+				w.mux.Post(core.NewMinedBlockEvent{Block: block})
+
+				var events []interface{}
+				switch stat {
+				case core.CanonStatTy:
+					events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
+					events = append(events, core.ChainHeadEvent{Block: block})
+				case core.SideStatTy:
+					events = append(events, core.ChainSideEvent{Block: block})
+				}
+
+				w.chain.PostChainEvents(events, logs)
+
+				// Insert the block into the set of pending ones to resultLoop for confirmations
+				w.unconfirmed.Insert(block.NumberU64(), hash)
 			} else {
 				log.Error("페어노드 서명 확인 에러", "andus", err)
 			}

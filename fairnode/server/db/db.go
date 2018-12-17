@@ -197,6 +197,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 
 	var voter []string
 	for i := range block.Voter {
+		fmt.Println("----", block.Voter[i].String())
 		voter = append(voter, block.Voter[i].String())
 	}
 

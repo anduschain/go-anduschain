@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/server"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
-	"github.com/anduschain/go-anduschain/internal/debug"
 	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
@@ -88,38 +87,29 @@ func init() {
 
 		fn, err := server.New()
 		if err != nil {
-			log.Fatalln("Fairnode running error : ", err)
+			log.Println("Fairnode running error : ", err)
 			return err
 		}
 
 		if err := fn.Start(); err == nil {
 			log.Println("퍠어노드 정상적으로 시작됨")
 		} else {
-			log.Println("퍠어노드 시작 에러", err)
+			log.Println("퍠어노드 시작 에러 : ", err)
 			w.Done()
+			return err
 		}
-
-		w.Wait()
 
 		defer fn.Stop()
 
+		w.Wait()
+
 		go func() {
 			sigc := make(chan os.Signal, 1)
-			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+			signal.Notify(sigc, syscall.SIGTERM)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Println("Got interrupt, shutting down fairnode...")
-			go fn.Stop()
-			for i := 10; i > 0; i-- {
-				<-sigc
-				fn.StopCh <- struct{}{}
-				if i > 1 {
-					log.Println("Already shutting down, interrupt more to panic. times", i-1)
-				}
-			}
+			log.Println("Got sigterm, shutting swarm down...")
 			w.Done()
-			debug.Exit() // ensure trace and CPU profile data is flushed.
-			debug.LoudPanic("boom")
 		}()
 
 		return nil
