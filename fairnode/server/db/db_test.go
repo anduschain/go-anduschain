@@ -106,3 +106,26 @@ func TestFairNodeDB_SaveMinerNode(t *testing.T) {
 func TestFairNodeDB_JobCheckActiveNode(t *testing.T) {
 
 }
+
+func TestFairNodeDB_GetCurrentBlock(t *testing.T) {
+	defer session.Stop()
+	session.Start()
+
+	qury := func() uint64 {
+		var count *storedBlock
+		err := session.BlockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(&count)
+		if err != nil {
+			log.Println("Error[DB] : GetCurrentBlock", err)
+		}
+
+		if count == nil {
+			return 0
+		}
+
+		return count.Header.Number
+	}
+
+	for i := 0; i < 10; i++ {
+		fmt.Println("Currnet block", qury())
+	}
+}

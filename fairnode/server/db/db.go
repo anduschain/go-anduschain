@@ -165,6 +165,22 @@ func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
 	return uint64(len(minerlist.Nodes))
 }
 
+func (fnb *FairNodeDB) GetCurrentBlock() uint64 {
+
+	var sBlock *storedBlock
+
+	err := fnb.BlockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(&sBlock)
+	if err != nil {
+		log.Println("Error[DB] : GetCurrentBlock", err)
+	}
+
+	if sBlock == nil {
+		return 0
+	}
+
+	return sBlock.Header.Number
+}
+
 func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	header := header{
 		block.Header().ParentHash.String(),

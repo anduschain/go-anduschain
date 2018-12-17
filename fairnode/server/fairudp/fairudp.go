@@ -363,7 +363,6 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 			fmt.Println("----파이널 블록 전송-----", block.NumberU64(), block.Coinbase().String())
 
-			fu.fm.SetLastBlockNum(block.NumberU64()) // 마지막 블록 넘버 기억함
 			fu.fm.SetLeagueRunning(false)
 			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
 			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
@@ -399,6 +398,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*ty
 	if len(voteBlocks) == 0 {
 		return nil, nil
 	} else if len(voteBlocks) == 1 {
+		fmt.Println("--------------count == 1----------")
 		fBlock = voteBlocks[0].Block
 		Receipts = voteBlocks[0].Receipts
 		SignFairNode(fBlock, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
