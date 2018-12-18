@@ -577,8 +577,10 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
 	var joinTxdata *clientType.JoinTxData
-	if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-		log.Info("validateTx decode 에러", err)
+	if tx.To().String() == config.FAIRNODE_ADDRESS {
+		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
+			log.Info("validateTx decode 에러", err)
+		}
 	}
 
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks

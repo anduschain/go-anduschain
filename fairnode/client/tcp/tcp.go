@@ -253,7 +253,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		if err != nil {
 			return errorMakeJoinTx
 		}
-		log.Println("Info[andus] : JoinTx 생성 Success", tx)
+		log.Println("Info[andus] : JoinTx 생성 Success", tx.Hash())
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
 			log.Println("Error[andus] fc.txPool.AddLocal: ", err)
