@@ -200,6 +200,15 @@ func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Addre
 	return false
 }
 
+func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.Block) bool {
+	if chain.CurrentHeader().Number.Uint64()+1 == voteblock.Number().Uint64() {
+		if c.otprnHash == common.BytesToHash(voteblock.Extra()) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
 	block := voteBlock.Block
 	header := voteBlock.Block.Header()
