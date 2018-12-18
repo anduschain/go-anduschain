@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	"github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
@@ -19,12 +20,12 @@ type Udp struct {
 	SAddrUDP   *net.UDPAddr
 	LAddrUDP   *net.UDPAddr
 	services   map[string]types.Goroutine
-	manger     types.Client
+	manger     _interface.Client
 	tcpService *tcp.Tcp
 	isRuning   bool
 }
 
-func New(faiorServerString string, clientString string, manger types.Client, tcpService *tcp.Tcp) (*Udp, error) {
+func New(faiorServerString string, clientString string, manger _interface.Client, tcpService *tcp.Tcp) (*Udp, error) {
 
 	SAddrUDP, err := net.ResolveUDPAddr("udp", faiorServerString)
 	if err != nil {
@@ -177,7 +178,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 						if otprnHash == tsOtprn.Hash {
 
 							// TODO: andus >> 검증완료, Otprn 저장
-							u.manger.SetOtprn(&tsOtprn.Otp)
+							u.manger.SetOtprnWithSig(&tsOtprn.Otp, tsOtprn.Sig)
 
 							//TODO : andus >> 3. 참여여부 확인
 							if ok := fairutil.IsJoinOK(&tsOtprn.Otp, u.manger.GetCoinbase()); ok {

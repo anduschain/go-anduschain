@@ -3,6 +3,7 @@ package otprn
 import (
 	crand "crypto/rand"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	mrand "math/rand"
 	"testing"
 )
@@ -42,4 +43,10 @@ func TestNew(t *testing.T) {
 	rnd.Int()
 
 	fmt.Println(rand, rnd.Int())
+}
+
+func TestNew2(t *testing.T) {
+	otp := New(10)
+
+	fmt.Println(common.Bytes2Hex(otp.Rand[:]))
 }

@@ -186,6 +186,20 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 	}
 }
 
+func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Address) bool {
+	fpKey, err := crypto.SigToPub(hash.Bytes(), sig)
+	if err != nil {
+		return false
+	}
+
+	addr := crypto.PubkeyToAddress(*fpKey)
+	if addr == fairAddr {
+		return true
+	}
+
+	return false
+}
+
 func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
 	block := voteBlock.Block
 	header := voteBlock.Block.Header()

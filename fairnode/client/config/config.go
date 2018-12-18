@@ -1,5 +1,10 @@
 package config
 
+import (
+	"github.com/anduschain/go-anduschain/common/math"
+	"math/big"
+)
+
 type Config struct {
 	FairServerIp   string
 	FairServerPort string
@@ -17,4 +22,9 @@ var DefaultConfig = Config{
 const (
 	FAIRNODE_ADDRESS = "0x5922af64E91f4B10AF896De8Fd372075569a1440"
 	TICKET_PRICE     = 100
+)
+
+var (
+	Coin  = big.NewInt(TICKET_PRICE)
+	Price = Coin.Mul(Coin, math.BigPow(10, 18))
 )

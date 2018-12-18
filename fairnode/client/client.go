@@ -10,6 +10,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	clinetTcp "github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	clinetTypes "github.com/anduschain/go-anduschain/fairnode/client/types"
 	clinetUdp "github.com/anduschain/go-anduschain/fairnode/client/udp"
@@ -31,8 +32,8 @@ var (
 )
 
 type FairnodeClient struct {
-	Otprn              *otprn.Otprn
-	Services           map[string]clinetTypes.ServiceFunc
+	OtprnWithSig       *clinetTypes.OtprnWithSig
+	Services           map[string]_interface.ServiceFunc
 	Srv                *p2p.Server
 	CoinBasePrivateKey ecdsa.PrivateKey
 	txPool             *core.TxPool
@@ -69,7 +70,7 @@ type FairnodeClient struct {
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
-		Otprn: nil,
+		OtprnWithSig: nil,
 		//WinningBlockCh:     wbCh,
 		//FinalBlockCh:       fbCh,
 		chans:              chans,
@@ -86,7 +87,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		//
 		StartCh: make(chan struct{}),
 
-		Services: make(map[string]clinetTypes.ServiceFunc),
+		Services: make(map[string]_interface.ServiceFunc),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -162,16 +163,18 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
-func (fc *FairnodeClient) GetP2PServer() *p2p.Server             { return fc.Srv }
-func (fc *FairnodeClient) GetCoinbase() common.Address           { return fc.Coinbase }
-func (fc *FairnodeClient) SetOtprn(otprn *otprn.Otprn)           { fc.Otprn = otprn }
-func (fc *FairnodeClient) GetOtprn() *otprn.Otprn                { return fc.Otprn }
-func (fc *FairnodeClient) GetTxpool() *core.TxPool               { return fc.txPool }
-func (fc *FairnodeClient) GetBlockChain() *core.BlockChain       { return fc.BlockChain }
-func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.CoinBasePrivateKey }
-func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock  { return fc.chans.GetWinningBlockCh() }
-func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.chans.GetFinalBlockCh() }
+func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
+func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
+func (fc *FairnodeClient) SetOtprnWithSig(otprn *otprn.Otprn, sig []byte) {
+	fc.OtprnWithSig = &clinetTypes.OtprnWithSig{otprn, sig}
+}
+func (fc *FairnodeClient) GetOtprnWithSig() *clinetTypes.OtprnWithSig { return fc.OtprnWithSig }
+func (fc *FairnodeClient) GetTxpool() *core.TxPool                    { return fc.txPool }
+func (fc *FairnodeClient) GetBlockChain() *core.BlockChain            { return fc.BlockChain }
+func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey       { return &fc.CoinBasePrivateKey }
+func (fc *FairnodeClient) BlockMakeStart() chan struct{}              { return fc.StartCh }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock       { return fc.chans.GetWinningBlockCh() }
+func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return fc.chans.GetFinalBlockCh() }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()

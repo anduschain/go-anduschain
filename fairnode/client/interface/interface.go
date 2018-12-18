@@ -1,9 +1,10 @@
-package types
+package _interface
 
 import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
@@ -18,8 +19,8 @@ type ServiceFunc interface {
 type Client interface {
 	GetP2PServer() *p2p.Server
 	GetCoinbase() common.Address
-	SetOtprn(otprn *otprn.Otprn)
-	GetOtprn() *otprn.Otprn
+	SetOtprnWithSig(otprn *otprn.Otprn, sig []byte)
+	GetOtprnWithSig() *types.OtprnWithSig
 	GetCurrentBalance() *big.Int
 	GetCurrentJoinNonce() uint64
 	GetTxpool() *core.TxPool

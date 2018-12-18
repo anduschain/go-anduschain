@@ -19,6 +19,9 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/rlp"
 	"math"
 	"math/big"
 	"sort"
@@ -30,6 +33,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
+	clientType "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/params"
@@ -76,6 +80,11 @@ var (
 	// than some meaningful limit a user might use. This is not a consensus error
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
+
+	ErrJoinNonceNotMmatch  = errors.New("JOIN NONCE 값이 올바르지 않습니다.")
+	ErrBlockNumberNotMatch = errors.New("JOIN TX의 생성할 블록 넘버와 맞지 않습니다")
+	ErrTicketPriceNotMatch = errors.New("JOIN TX의 참가비가 올바르지 않습니다.")
+	ErrFairNodeSigNotMatch = errors.New("패어 노드의 서명이 올바르지 않습니다")
 )
 
 var (
@@ -566,6 +575,12 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
+
+	var joinTxdata *clientType.JoinTxData
+	if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
+		return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
+	}
+
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
@@ -589,23 +604,42 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 		return ErrUnderpriced
 	}
-	// Ensure the transaction adheres to nonce ordering
-	if pool.currentState.GetNonce(from) > tx.Nonce() {
-		return ErrNonceTooLow
-	}
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
-	if err != nil {
-		return err
-	}
 
-	if string(tx.Data()) != "JOIN_TX" {
+	// JOINTX가 아닌 케이스
+	if joinTxdata == nil {
+		// Ensure the transaction adheres to nonce ordering
+		if pool.currentState.GetNonce(from) > tx.Nonce() {
+			return ErrNonceTooLow
+		}
+		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+		if err != nil {
+			return err
+		}
 		if tx.Gas() < intrGas {
 			return ErrIntrinsicGas
+		}
+	} else {
+		// JOINTX 맞는 케이스
+		// nonce가 joinNounc와 같은가?
+		if pool.currentState.GetJoinNonce(from) != tx.Nonce() {
+			return ErrJoinNonceNotMmatch
+		}
+		// 데이터의 블록의 번호가 이번에 생성할 블록의 넘버인가?
+		if pool.chain.CurrentBlock().Number().Uint64() != joinTxdata.NextBlockNum {
+			return ErrBlockNumberNotMatch
+		}
+		// 참가비가 제대로 지정되어 있는가?
+		if tx.Value().Cmp(config.Price) != 0 {
+			return ErrTicketPriceNotMatch
+		}
+		// fairnode의 서명이 맞는가?
+		if !deb.ValidationFairSignature(joinTxdata.OtprnHash, joinTxdata.FairNodeSig, *tx.To()) {
+			return ErrFairNodeSigNotMatch
 		}
 	}
 

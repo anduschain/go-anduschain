@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/common/math"
 	gethTypes "github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
@@ -30,12 +31,12 @@ var (
 type Tcp struct {
 	SAddrTCP *net.TCPAddr
 	LaddrTCP *net.TCPAddr
-	manger   types.Client
+	manger   _interface.Client
 	services map[string]types.Goroutine
 	IsRuning bool
 }
 
-func New(faiorServerString string, clientString string, manger types.Client) (*Tcp, error) {
+func New(faiorServerString string, clientString string, manger _interface.Client) (*Tcp, error) {
 
 	SAddrTCP, err := net.ResolveTCPAddr("tcp", faiorServerString)
 	if err != nil {
@@ -92,7 +93,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 	// 전송 받은 otprn을 이용해서 참가 여부 확인
 	if err := msg.Send(msg.ReqLeagueJoinOK,
 		fairtypes.TransferCheck{
-			*t.manger.GetOtprn(),
+			*t.manger.GetOtprnWithSig().Otprn,
 			t.manger.GetCoinbase(),
 			t.manger.GetP2PServer().NodeInfo().Enode}, conn); err != nil {
 		log.Println("Error[andus] : ", err)
@@ -144,7 +145,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					}
 				case msg.MakeJoinTx:
 					// JoinTx 생성
-					err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID)
+					err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
 					if err != nil {
 						log.Println("Error[andus] : ", err)
 					}
@@ -221,21 +222,34 @@ Exit:
 	}()
 }
 
-func (t *Tcp) makeJoinTx(chanID *big.Int) error {
+func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error {
 	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 	// TODO : andus >> 잔액 조사 ( 임시 : 100 * 10^18 wei ) : 참가비 ( 수수료가 없는 tx )
 	// TODO : andus >> joinNonce 현재 상태 조회
 	currentBalance := t.manger.GetCurrentBalance()
-	coin := big.NewInt(config.TICKET_PRICE)
-	price := coin.Mul(coin, math.BigPow(10, 18))
-	if currentBalance.Cmp(price) > 0 {
+
+	if currentBalance.Cmp(config.Price) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
 		log.Println("Info[andus] : JOIN_TX", currentBalance, currentJoinNonce)
 		signer := gethTypes.NewEIP155Signer(chanID)
 
+		data := types.JoinTxData{
+			OtprnHash:    otprn.HashOtprn(),
+			FairNodeSig:  sig,
+			TimeStamp:    time.Now(),
+			NextBlockNum: t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64() + 1,
+		}
+
+		joinTxData, err := rlp.EncodeToBytes(&data)
+		if err != nil {
+			log.Println("Error[andus] : EncodeToBytes", err)
+		}
+
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS), price, 0, big.NewInt(0), []byte("JOIN_TX")), signer, t.manger.GetCoinbsePrivKey())
+			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS),
+				config.Price, 0, big.NewInt(0), joinTxData), signer, t.manger.GetCoinbsePrivKey())
+
 		if err != nil {
 			return errorMakeJoinTx
 		}

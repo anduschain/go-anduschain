@@ -602,7 +602,7 @@ func (w *worker) resultLoop() {
 					Block:      block,
 					HeaderHash: block.Header().Hash(),
 					Sig:        sig,
-					OtprnHash:  w.fairclient.Otprn.HashOtprn(),
+					OtprnHash:  w.fairclient.OtprnWithSig.Otprn.HashOtprn(),
 					Voter:      w.coinbase,
 					Receipts:   receipts,
 				}
@@ -610,7 +610,7 @@ func (w *worker) resultLoop() {
 				fmt.Println("--------투표 블록 생성-------")
 
 				// OTPRN과 블록 생성시 셋팅한 OTPRN이 동일 할때 투표 가능
-				if w.fairclient.Otprn.HashOtprn() == common.BytesToHash(block.Header().Extra) {
+				if w.fairclient.OtprnWithSig.Otprn.HashOtprn() == common.BytesToHash(block.Header().Extra) {
 
 					// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 					w.chans.GetLeagueBlockBroadcastCh() <- &tfd
@@ -948,13 +948,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() && w.fairclient.Running && w.fairclient.Otprn != nil {
+	if w.isRunning() && w.fairclient.Running && w.fairclient.OtprnWithSig.Otprn != nil {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without etherbase")
 			return
 		}
 		header.Coinbase = w.coinbase
-		header.Extra = w.fairclient.Otprn.HashOtprn().Bytes()
+		header.Extra = w.fairclient.OtprnWithSig.Otprn.HashOtprn().Bytes()
 
 		// 엔진에 서명키 셋팅
 		w.engine.(*deb.Deb).SetSignKey(&w.fairclient.CoinBasePrivateKey)
