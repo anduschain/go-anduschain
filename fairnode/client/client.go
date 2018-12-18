@@ -179,7 +179,7 @@ func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return f
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.State()
 	if err != nil {
-		log.Println("Error[andus] : 상태DB을 읽어오는데 문제 발생")
+		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생")
 	}
 
 	return stateDb.GetJoinNonce(fc.Coinbase)
@@ -188,7 +188,7 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 	stateDb, err := fc.BlockChain.State()
 	if err != nil {
-		log.Println("Error[andus] : 상태DB을 읽어오는데 문제 발생")
+		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생")
 	}
 
 	return stateDb.GetBalance(fc.Coinbase)

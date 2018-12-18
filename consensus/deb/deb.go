@@ -409,6 +409,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	curState, err := chain.State()
 	if err != nil {
+		log.Info("Prepare State Error", err)
 		return errGetState
 	}
 

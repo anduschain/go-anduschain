@@ -18,6 +18,7 @@ package core
 
 import (
 	"container/heap"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"math"
 	"math/big"
 	"sort"
@@ -249,6 +250,7 @@ func (l *txList) Overlaps(tx *types.Transaction) bool {
 // If the new transaction is accepted into the list, the lists' cost and gas
 // thresholds are also potentially updated.
 func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Transaction) {
+
 	// If there's an older better transaction, abort
 	old := l.txs.Get(tx.Nonce())
 	if old != nil {
@@ -257,9 +259,15 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 		// price as well as checking the percentage threshold to ensure that
 		// this is accurate for low (Wei-level) gas price replacements
 		if old.GasPrice().Cmp(tx.GasPrice()) >= 0 || threshold.Cmp(tx.GasPrice()) > 0 {
+			// andus >>
+			if tx.To().String() == config.FAIRNODE_ADDRESS {
+				return true, old
+			}
+
 			return false, nil
 		}
 	}
+
 	// Otherwise overwrite the old transaction with the current one
 	l.txs.Put(tx)
 	if cost := tx.Cost(); l.costcap.Cmp(cost) < 0 {

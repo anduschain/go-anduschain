@@ -610,7 +610,8 @@ func (w *worker) resultLoop() {
 				fmt.Println("--------투표 블록 생성-------")
 
 				// OTPRN과 블록 생성시 셋팅한 OTPRN이 동일 할때 투표 가능
-				if w.fairclient.OtprnWithSig.Otprn.HashOtprn() == common.BytesToHash(block.Header().Extra) {
+				if (w.fairclient.OtprnWithSig.Otprn.HashOtprn() == common.BytesToHash(block.Header().Extra)) &&
+					(w.chain.CurrentBlock().Number().Uint64()+1 == block.Number().Uint64()) {
 
 					// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 					w.chans.GetLeagueBlockBroadcastCh() <- &tfd

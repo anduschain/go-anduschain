@@ -578,7 +578,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
 	var joinTxdata *clientType.JoinTxData
 	if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-		return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
+		log.Info("validateTx decode 에러", err)
 	}
 
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
@@ -630,7 +630,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 			return ErrJoinNonceNotMmatch
 		}
 		// 데이터의 블록의 번호가 이번에 생성할 블록의 넘버인가?
-		if pool.chain.CurrentBlock().Number().Uint64() != joinTxdata.NextBlockNum {
+		if (joinTxdata.NextBlockNum - pool.chain.CurrentBlock().Number().Uint64()) != 1 {
 			return ErrBlockNumberNotMatch
 		}
 		// 참가비가 제대로 지정되어 있는가?
