@@ -141,7 +141,6 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 							fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
 						}
 						t.manger.GetP2PServer().AddPeer(node)
-						log.Println("Info[andus] : 마이너 노드 추가")
 					}
 				case msg.MakeJoinTx:
 					// JoinTx 생성
@@ -155,7 +154,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					var received fairtypes.TransferFinalBlock
 
 					if err := fromFaionodeMsg.Decode(&received); err != nil {
-						fmt.Println("-------SendFinalBlock 디코드----------", err)
+						log.Println("Error[andus] : ", err)
 					}
 
 					stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
@@ -163,7 +162,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 					block := &gethTypes.Block{}
 
 					if err := block.DecodeRLP(stream); err != nil {
-						fmt.Println("-------SendFinalBlock 블록 디코딩 에러 ----------", err)
+						log.Println("Error[andus] : ", err)
 					}
 
 					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
@@ -230,7 +229,6 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 	if currentBalance.Cmp(config.Price) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		log.Println("Info[andus] : JOIN_TX", currentBalance, currentJoinNonce)
 		signer := gethTypes.NewEIP155Signer(chanID)
 
 		data := types.JoinTxData{
@@ -248,12 +246,13 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
 			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS),
-				config.Price, 0, big.NewInt(0), joinTxData), signer, t.manger.GetCoinbsePrivKey())
+				config.Price, 90000, big.NewInt(1000000000), joinTxData), signer, t.manger.GetCoinbsePrivKey())
 
 		if err != nil {
 			return errorMakeJoinTx
 		}
-		log.Println("Info[andus] : JoinTx 생성 Success", tx.Hash())
+
+		fmt.Println("Info[andus] : JoinTx 생성 Success", tx.Hash().String())
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
 			log.Println("Error[andus] fc.txPool.AddLocal: ", err)

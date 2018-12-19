@@ -710,6 +710,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				return errResp(ErrDecode, "transaction %d is nil", i)
 			}
 			p.MarkTransaction(tx.Hash())
+
+			fmt.Println("=======트랜젝션 수신됨=========", tx.Hash().String())
 		}
 		pm.txpool.AddRemotes(txs)
 

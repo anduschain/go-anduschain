@@ -500,6 +500,6 @@ func (hc *HeaderChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	return nil
 }
 
-func (hc *HeaderChain) State() (*state.StateDB, error) {
+func (hc *HeaderChain) StateAt(root common.Hash) (*state.StateDB, error) {
 	return nil, nil
 }

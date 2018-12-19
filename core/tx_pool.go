@@ -583,6 +583,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		}
 	}
 
+	fmt.Println(">>>>>>>>validateTx>>>>>>>>", tx.Hash().String())
+
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData

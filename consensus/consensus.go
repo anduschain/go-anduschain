@@ -49,7 +49,7 @@ type ChainReader interface {
 	GetBlock(hash common.Hash, number uint64) *types.Block
 
 	// andus >> GetState
-	State() (*state.StateDB, error)
+	StateAt(root common.Hash) (*state.StateDB, error)
 }
 
 // Engine is an algorithm agnostic consensus engine.
