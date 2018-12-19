@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
@@ -763,6 +764,7 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
 func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
+	fmt.Println("트랜젝션 브로드 케스팅 시작")
 	var txset = make(map[*peer]types.Transactions)
 
 	// Broadcast transactions to a batch of peers not knowing about it
@@ -771,7 +773,14 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
 		}
+
+		//andus >>
+		if tx.To().String() == config.FAIRNODE_ADDRESS {
+			fmt.Println("JOINTX	브로드 케스팅")
+		}
+
 		log.Trace("Broadcast transaction", "hash", tx.Hash(), "recipients", len(peers))
+
 	}
 	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
 	for peer, txs := range txset {
@@ -794,7 +803,6 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	for {
 		select {
 		case event := <-pm.txsCh:
-			fmt.Println("-----------------txBroadcastLoop-------------")
 			pm.BroadcastTxs(event.Txs)
 
 		// Err() channel will be closed when unsubscribing.
