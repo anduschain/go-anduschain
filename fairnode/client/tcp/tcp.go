@@ -221,6 +221,8 @@ Exit:
 				Receipts:     winingBlock.Receipts,
 			}
 			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
+
+			fmt.Println("-------인코드 블록 바이트 코드-----", common.BytesToHash(tsfBlock.EncodedBlock).String())
 			msg.Send(msg.SendBlockForVote, tsfBlock, conn)
 		}
 	}

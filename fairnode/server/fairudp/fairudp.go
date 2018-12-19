@@ -393,8 +393,6 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*ty
 	var fBlock *types.Block
 	var Receipts []*types.Receipt
 
-	fmt.Println("----GetFinalBlock-----", otprnHash, voteBlocks)
-
 	if len(voteBlocks) == 0 {
 		return nil, nil
 	} else if len(voteBlocks) == 1 {

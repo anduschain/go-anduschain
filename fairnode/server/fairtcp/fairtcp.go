@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
@@ -219,6 +220,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					}
 
 					fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
+					fmt.Println("-------인코드 블록 바이트 코드-----", common.BytesToHash(voteBlock.EncodedBlock).String())
 
 					if len(voteBlock.EncodedBlock) != 0 {
 						stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 0)
@@ -231,11 +233,12 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 						otp := ft.manager.GetOtprn()
 						lastNum := ft.manager.GetLastBlockNum()
+						blockOtprnHash := common.BytesToHash(block.Extra())
 
 						fmt.Println("My :", otp.HashOtprn().String())
-						fmt.Println("Receivec : ", voteBlock.OtprnHash.String())
+						fmt.Println("Receivec : ", blockOtprnHash.String())
 
-						if otp.HashOtprn() == voteBlock.OtprnHash && lastNum+1 == block.NumberU64() {
+						if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
 							votePool.InsertCh <- pool.Vote{
 								Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
 								Block:    block,

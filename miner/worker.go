@@ -556,61 +556,63 @@ func (w *worker) resultLoop() {
 				hash     = block.Hash()
 			)
 
-			w.pendingMu.RLock()
-			task, exist := w.pendingTasks[sealhash]
-			w.pendingMu.RUnlock()
-
-			if !exist {
-				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				continue
-			}
-
-			//Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			var (
-				receipts = make([]*types.Receipt, len(task.receipts))
-				logs     []*types.Log
-			)
-			for i, receipt := range task.receipts {
-				receipts[i] = new(types.Receipt)
-				*receipts[i] = *receipt
-				// Update the block hash in all logs since it is now available and not when the
-				// receipt/log of individual transactions were created.
-				for _, log := range receipt.Logs {
-					log.BlockHash = hash
-				}
-				logs = append(logs, receipt.Logs...)
-			}
-
-			//_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-			//if err != nil {
-			//	log.Error("Failed writing block to chain", "err", err)
-			//	continue
-			//}
-
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
-
-			// TODO : andus >> deb consensus 일때만...
 			if debEngine, ok := w.engine.(*deb.Deb); ok {
-				sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
-				if err != nil {
-					log.Error("andus >> ", err)
-				}
-
-				// TODO : andus >> TransferBlock 객체 생성
-				tfd := fairtypes.VoteBlock{
-					Block:      block,
-					HeaderHash: block.Header().Hash(),
-					Sig:        sig,
-					OtprnHash:  w.fairclient.OtprnWithSig.Otprn.HashOtprn(),
-					Voter:      w.coinbase,
-					Receipts:   receipts,
-				}
-
-				fmt.Println("--------투표 블록 생성-------")
 
 				// OTPRN과 블록 생성시 셋팅한 OTPRN이 동일 할때 투표 가능
 				if debEngine.ValidationVoteBlock(w.chain, block) {
+
+					w.pendingMu.RLock()
+					task, exist := w.pendingTasks[sealhash]
+					w.pendingMu.RUnlock()
+
+					if !exist {
+						log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+						continue
+					}
+
+					//Different block could share same sealhash, deep copy here to prevent write-write conflict.
+					var (
+						receipts = make([]*types.Receipt, len(task.receipts))
+						logs     []*types.Log
+					)
+					for i, receipt := range task.receipts {
+						receipts[i] = new(types.Receipt)
+						*receipts[i] = *receipt
+						// Update the block hash in all logs since it is now available and not when the
+						// receipt/log of individual transactions were created.
+						for _, log := range receipt.Logs {
+							log.BlockHash = hash
+						}
+						logs = append(logs, receipt.Logs...)
+					}
+
+					//_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+					//if err != nil {
+					//	log.Error("Failed writing block to chain", "err", err)
+					//	continue
+					//}
+
+					log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+						"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+					// TODO : andus >> deb consensus 일때만...
+
+					sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
+					if err != nil {
+						log.Error("andus >> ", err)
+					}
+
+					// TODO : andus >> TransferBlock 객체 생성
+					tfd := fairtypes.VoteBlock{
+						Block:      block,
+						HeaderHash: block.Header().Hash(),
+						Sig:        sig,
+						OtprnHash:  w.fairclient.OtprnWithSig.Otprn.HashOtprn(),
+						Voter:      w.coinbase,
+						Receipts:   receipts,
+					}
+
+					fmt.Println("--------투표 블록 생성-------")
 
 					// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
 					w.chans.GetLeagueBlockBroadcastCh() <- &tfd
