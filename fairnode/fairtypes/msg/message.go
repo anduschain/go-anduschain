@@ -31,6 +31,7 @@ func ReadMsg(msg []byte) *Msg {
 	var m Msg
 	m.ReceivedAt = time.Now()
 	rlp.DecodeBytes(msg, &m)
+
 	return &m
 }
 

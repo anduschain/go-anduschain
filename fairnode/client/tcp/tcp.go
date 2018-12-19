@@ -151,13 +151,13 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 				case msg.MakeBlock:
 					t.manger.BlockMakeStart() <- struct{}{}
 				case msg.SendFinalBlock:
-					var received *fairtypes.TransferFinalBlock
+					var received fairtypes.TransferFinalBlock
 
 					if err := fromFaionodeMsg.Decode(&received); err != nil {
 						log.Println("Error[andus] : ", err)
 					}
 
-					if received != nil {
+					if len(received.EncodedBlock) != 0 {
 
 						stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
 
@@ -174,6 +174,8 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 							noify <- closeConnection
 						}
 
+					} else {
+						noify <- closeConnection
 					}
 				}
 
@@ -201,6 +203,8 @@ Exit:
 		case <-exit:
 			conn.Close()
 		case winingBlock := <-t.manger.VoteBlock():
+
+			fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
 
 			var b bytes.Buffer
 			err := winingBlock.Block.EncodeRLP(&b)

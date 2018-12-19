@@ -212,13 +212,15 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					var voteBlock *fairtypes.TransferVoteBlock
+					var voteBlock fairtypes.TransferVoteBlock
 
 					if err := fromGethMsg.Decode(&voteBlock); err != nil {
 						fmt.Println("------SendBlockForVote------", err)
 					}
 
-					if voteBlock != nil {
+					fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
+
+					if len(voteBlock.EncodedBlock) != 0 {
 						stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 0)
 
 						block := &types.Block{}
@@ -244,10 +246,11 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 							fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
 						} else {
 							fmt.Println("-----다른 OTPRN으로 투표 또는 숫자가 맞지 않아 거절됨-----", lastNum, otp.HashOtprn() == voteBlock.OtprnHash, block.Coinbase().String(), block.NumberU64())
+							noify <- closeConnection
 						}
+					} else {
+						noify <- closeConnection
 					}
-
-					noify <- closeConnection
 
 				}
 			}
