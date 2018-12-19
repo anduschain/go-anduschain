@@ -151,24 +151,30 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 				case msg.MakeBlock:
 					t.manger.BlockMakeStart() <- struct{}{}
 				case msg.SendFinalBlock:
-					var received fairtypes.TransferFinalBlock
+					var received *fairtypes.TransferFinalBlock
 
 					if err := fromFaionodeMsg.Decode(&received); err != nil {
 						log.Println("Error[andus] : ", err)
 					}
 
-					stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
+					if received != nil {
 
-					block := &gethTypes.Block{}
+						stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
 
-					if err := block.DecodeRLP(stream); err != nil {
-						log.Println("Error[andus] : ", err)
+						block := &gethTypes.Block{}
+
+						if err := block.DecodeRLP(stream); err != nil {
+							log.Println("Error[andus] : ", err)
+						}
+
+						if len(block.FairNodeSig) != 0 {
+							fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+
+							t.manger.FinalBlock() <- fairtypes.FinalBlock{block, received.Receipts}
+							noify <- closeConnection
+						}
+
 					}
-
-					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-
-					t.manger.FinalBlock() <- fairtypes.FinalBlock{block, received.Receipts}
-					noify <- closeConnection
 				}
 
 			}
