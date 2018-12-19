@@ -1,6 +1,7 @@
 package msg
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
 	"net"
@@ -30,8 +31,7 @@ const (
 func ReadMsg(msg []byte) *Msg {
 	var m Msg
 	m.ReceivedAt = time.Now()
-	rlp.DecodeBytes(msg, &m)
-
+	rlp.Decode(bytes.NewReader(msg), &m)
 	return &m
 }
 
