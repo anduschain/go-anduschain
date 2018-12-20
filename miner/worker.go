@@ -19,7 +19,6 @@ package miner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
@@ -556,165 +555,58 @@ func (w *worker) resultLoop() {
 				hash     = block.Hash()
 			)
 
-			if debEngine, ok := w.engine.(*deb.Deb); ok {
+			w.pendingMu.RLock()
+			task, exist := w.pendingTasks[sealhash]
+			w.pendingMu.RUnlock()
 
-				// OTPRN과 블록 생성시 셋팅한 OTPRN이 동일 할때 투표 가능
-				if debEngine.ValidationVoteBlock(w.chain, block) {
-
-					w.pendingMu.RLock()
-					task, exist := w.pendingTasks[sealhash]
-					w.pendingMu.RUnlock()
-
-					if !exist {
-						log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-						continue
-					}
-
-					//Different block could share same sealhash, deep copy here to prevent write-write conflict.
-					var (
-						receipts = make([]*types.Receipt, len(task.receipts))
-						logs     []*types.Log
-					)
-					for i, receipt := range task.receipts {
-						receipts[i] = new(types.Receipt)
-						*receipts[i] = *receipt
-						// Update the block hash in all logs since it is now available and not when the
-						// receipt/log of individual transactions were created.
-						for _, log := range receipt.Logs {
-							log.BlockHash = hash
-						}
-						logs = append(logs, receipt.Logs...)
-					}
-
-					//_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
-					//if err != nil {
-					//	log.Error("Failed writing block to chain", "err", err)
-					//	continue
-					//}
-
-					log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-						"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
-
-					// TODO : andus >> deb consensus 일때만...
-
-					sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
-					if err != nil {
-						log.Error("andus >> ", err)
-					}
-
-					// TODO : andus >> TransferBlock 객체 생성
-					tfd := fairtypes.VoteBlock{
-						Block:      block,
-						HeaderHash: block.Header().Hash(),
-						Sig:        sig,
-						OtprnHash:  w.fairclient.OtprnWithSig.Otprn.HashOtprn(),
-						Voter:      w.coinbase,
-						Receipts:   receipts,
-					}
-
-					fmt.Println("--------투표 블록 생성-------")
-
-					// TODO : andus >> 프로토콜 메니저한테 채널로 보냄
-					w.chans.GetLeagueBlockBroadcastCh() <- &tfd
-
-					go w.sendMiningBlockAndVoting(&tfd)
-
-					// TODO : andus >> 2. 다른 채굴 노드가 생성한 블록을 받아서 비교
-
-					// TODO : andus >> 6. 확정 블록 ( 페어노드의 서명이 포함된 블록 )을 수신 후
-					// TODO : andus >> 8. 실제 블록 처리 프로세스를 태움..
-				} else {
-					fmt.Println("현재 OTPRN과 블록 생성한 OTPRN이 다르다")
-				}
-
+			if !exist {
+				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
 			}
-		case finalBlock := <-w.chans.GetFinalBlockCh():
 
-			var logs []*types.Log
-			block := finalBlock.Block
-			receipts := finalBlock.Receipts
-
-			// TODO : andus >> FairNode 서명이 있을때만 아래 로직을 타도록... FairNode sig check
-			if err, _ := w.engine.(*deb.Deb).FairNodeSigCheck(block, block.FairNodeSig); err == nil {
-
-				hash := block.Hash()
-				for _, receipt := range receipts {
-					for _, log := range receipt.Logs {
-						log.BlockHash = hash
-					}
-					logs = append(logs, receipt.Logs...)
+			//Different block could share same sealhash, deep copy here to prevent write-write conflict.
+			var (
+				receipts = make([]*types.Receipt, len(task.receipts))
+				logs     []*types.Log
+			)
+			for i, receipt := range task.receipts {
+				receipts[i] = new(types.Receipt)
+				*receipts[i] = *receipt
+				// Update the block hash in all logs since it is now available and not when the
+				// receipt/log of individual transactions were created.
+				for _, log := range receipt.Logs {
+					log.BlockHash = hash
 				}
-
-				for i, receipt := range receipts {
-					receipts[i] = new(types.Receipt)
-					*receipts[i] = *receipt
-					// Update the block hash in all logs since it is now available and not when the
-					// receipt/log of individual transactions were created.
-					for _, log := range receipt.Logs {
-						log.BlockHash = hash
-					}
-					logs = append(logs, receipt.Logs...)
-				}
-
-				stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
-				if err != nil {
-					log.Error("Failed writing block to chain", "err", err)
-					continue
-				}
-
-				w.mux.Post(core.NewMinedBlockEvent{Block: block})
-
-				var events []interface{}
-				switch stat {
-				case core.CanonStatTy:
-					events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
-					events = append(events, core.ChainHeadEvent{Block: block})
-				case core.SideStatTy:
-					events = append(events, core.ChainSideEvent{Block: block})
-				}
-
-				w.chain.PostChainEvents(events, logs)
-
-				// Insert the block into the set of pending ones to resultLoop for confirmations
-				w.unconfirmed.Insert(block.NumberU64(), hash)
-			} else {
-				log.Error("페어노드 서명 확인 에러", "andus", err)
+				logs = append(logs, receipt.Logs...)
 			}
+
+			stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
+			if err != nil {
+				log.Error("Failed writing block to chain", "err", err)
+				continue
+			}
+
+			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+			w.mux.Post(core.NewMinedBlockEvent{Block: block})
+
+			var events []interface{}
+			switch stat {
+			case core.CanonStatTy:
+				events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
+				events = append(events, core.ChainHeadEvent{Block: block})
+			case core.SideStatTy:
+				events = append(events, core.ChainSideEvent{Block: block})
+			}
+
+			w.chain.PostChainEvents(events, logs)
+
+			// Insert the block into the set of pending ones to resultLoop for confirmations
+			w.unconfirmed.Insert(block.NumberU64(), hash)
 
 		case <-w.exitCh:
 			return
-		}
-	}
-}
-
-func (w *worker) sendMiningBlockAndVoting(tsfBlock *fairtypes.VoteBlock) {
-	debEngine, _ := w.engine.(*deb.Deb)
-	winningBlock := tsfBlock
-	t := time.NewTicker(10 * time.Second)
-
-Exit:
-	for {
-		select {
-		case recevedBlock := <-w.chans.GetReceiveBlockCh():
-			// TODO : andus >> 블록 검증
-			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-			if err, errType := debEngine.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
-				switch errType {
-				case deb.ErrNonFairNodeSig:
-					// TODO : andus >> 2. RAND 값 서명 검증
-					if debEngine.ValidationVoteBlock(w.chain, recevedBlock.Block) {
-						if OK := debEngine.CheckRANDSigOK(recevedBlock); OK {
-							winningBlock = debEngine.CompareBlock(winningBlock, recevedBlock)
-							fmt.Println("-------CheckRANDSigOK---winningBlock 교체-----")
-						}
-					}
-				}
-			}
-		case <-t.C:
-			// 위닝블록 전송
-			w.chans.GetWinningBlockCh() <- winningBlock
-			fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
-			break Exit
 		}
 	}
 }
@@ -743,7 +635,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		env.ancestors.Add(ancestor.Hash())
 	}
 
-	// Keep track of transactions which return errors so they can be removed
+	// Keep track of transactions which return debErrors so they can be removed
 	env.tcount = 0
 	w.current = env
 	return nil
@@ -1057,19 +949,37 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 // and commits new work if consensus engine is running.
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
-	receipts := make([]*types.Receipt, len(w.current.receipts))
-	for i, l := range w.current.receipts {
-		receipts[i] = new(types.Receipt)
-		*receipts[i] = *l
-	}
+
 	s := w.current.state.Copy()
-
+	var receipts []*types.Receipt
+	var block *types.Block
+	var err error
 	// TODO : andus >> 1. 새로운 블록 생성
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 
-	if err != nil {
-		return err
+	if debEngine, ok := w.engine.(*deb.Deb); ok {
+		// 블록이랑 영수증을 리턴해 주면...
+		block, receipts, err = debEngine.DebFinalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+		if err != nil {
+			return err
+		}
+
+		for i, l := range receipts {
+			receipts[i] = new(types.Receipt)
+			*receipts[i] = *l
+		}
+
+	} else {
+		block, err = w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+		if err != nil {
+			return err
+		}
+
+		for i, l := range w.current.receipts {
+			receipts[i] = new(types.Receipt)
+			*receipts[i] = *l
+		}
 	}
+
 	if w.isRunning() {
 		if interval != nil {
 			interval()

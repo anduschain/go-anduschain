@@ -6,9 +6,7 @@ package deb
 import (
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
@@ -19,10 +17,8 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
 )
 
@@ -43,7 +39,7 @@ var (
 )
 
 // Various error messages to mark blocks invalid. These should be private to
-// prevent engine specific errors from being referenced in the remainder of the
+// prevent engine specific debErrors from being referenced in the remainder of the
 // codebase, inherently breaking if the engine is swapped out. Please put common
 // error types into the consensus package.
 var (
@@ -70,62 +66,9 @@ var (
 	errNotMatchFairAddress = errors.New("패어노드 어드레스와 맞지 않습니다")
 
 	errGetState = errors.New("상태 디비 조회 에러 발생")
+
+	errNotMatchOtprnOrBlockNumber = errors.New("OTPRN 또는 생성할 블록 번호와 맞지 않습니다")
 )
-
-// sigHash returns the hash which is used as input for the proof-of-authority
-// signing. It is the hash of the entire header apart from the 65 byte signature
-// contained at the end of the extra data.
-//
-// Note, the method requires the extra data to be at least 65 bytes, otherwise it
-// panics. This is done to avoid accidentally using both forms (signature present
-// or not), which could be abused to produce different hashes for the same header.
-func sigHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewKeccak256()
-
-	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.MixDigest,
-		header.Nonce,
-	})
-	hasher.Sum(hash[:0])
-	return hash
-}
-
-func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
-	hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("%d%s%s%s", n, otprn, coinbase, pBlockHash)))
-	return hash.Big()
-}
-
-// TODO : andus >> Rand 생성
-func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) int64 {
-
-	rand := big.NewInt(0)
-
-	for i := 0; i <= int(joinNonce); i++ {
-		newRand := csprng(i, otprn, coinbase, pBlockHash)
-		if newRand.Cmp(rand) > 0 {
-			rand = newRand
-		}
-	}
-
-	r := rand.Int64()
-	if r < 0 {
-		return -1 * r
-	}
-
-	return r
-}
 
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
@@ -135,6 +78,7 @@ type Deb struct {
 	privKey   *ecdsa.PrivateKey
 	otprnHash common.Hash
 	coinbase  common.Address
+	chans     fairtypes.Channals
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
@@ -143,14 +87,20 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 
 	log.Info("Deb Call New()", "andus", "--------------------")
 
-	return &Deb{
+	deb := &Deb{
 		config: config,
 		db:     db,
 	}
+
+	return deb
 }
 
 func (c *Deb) SetSignKey(signKey *ecdsa.PrivateKey) {
 	c.privKey = signKey
+}
+
+func (c *Deb) SetChans(chans fairtypes.Channals) {
+	c.chans = chans
 }
 
 // TODO : andus >> 생성된 블록(브로드케스팅용) 서명
@@ -161,114 +111,6 @@ func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
 	}
 
 	return sig, nil
-}
-
-func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
-	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
-	sig := rSig
-
-	if _, ok := recivedBlock.GetFairNodeSig(); ok {
-
-		fpKey, err := crypto.SigToPub(recivedBlock.Header().Hash().Bytes(), sig)
-		if err != nil {
-			return errGetPubKeyError, ErrGetPubKeyError
-		}
-
-		addr := crypto.PubkeyToAddress(*fpKey)
-		if addr.String() == config.FAIRNODE_ADDRESS {
-			return nil, -1
-		} else {
-			return errNotMatchFairAddress, ErrNotMatchFairAddress
-		}
-
-	} else {
-		return errNonFairNodeSig, ErrNonFairNodeSig
-	}
-}
-
-func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Address) bool {
-	fpKey, err := crypto.SigToPub(hash.Bytes(), sig)
-	if err != nil {
-		return false
-	}
-
-	addr := crypto.PubkeyToAddress(*fpKey)
-	if addr == fairAddr {
-		return true
-	}
-
-	return false
-}
-
-func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.Block) bool {
-	if chain.CurrentHeader().Number.Uint64()+1 == voteblock.Number().Uint64() {
-		if c.otprnHash == common.BytesToHash(voteblock.Extra()) {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
-	block := voteBlock.Block
-	header := voteBlock.Block.Header()
-	otprnHash := common.BytesToHash(voteBlock.Block.Header().Extra)
-	rand := MakeRand(header.Nonce.Uint64(), otprnHash, header.Coinbase, header.ParentHash)
-	diff := big.NewInt(rand)
-
-	pubKey, err := crypto.SigToPub(header.Hash().Bytes(), voteBlock.Sig)
-	if err != nil {
-		return false
-	}
-
-	addr := crypto.PubkeyToAddress(*pubKey)
-	if block.Header().Coinbase.String() == addr.String() {
-		if header.Difficulty.Cmp(diff) == 0 {
-			return true
-		} else {
-			return false
-		}
-	} else {
-		return false
-	}
-}
-
-// 다른데서 받은 투표 블록을 비교하여 위닝 블록으로 교체 하는 함수
-func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtypes.VoteBlock {
-
-	pvBlock := myBlock // 가지고 있던 블록
-	voteBlocks := receivedBlock
-
-	if voteBlocks.Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
-		// diffcult 값이 높은 블록
-		return voteBlocks
-	} else if voteBlocks.Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
-		// diffcult 값이 같을때
-		if voteBlocks.Block.Nonce() > pvBlock.Block.Nonce() {
-			// nonce 값이 큰 블록
-			return voteBlocks
-		} else if voteBlocks.Block.Nonce() == pvBlock.Block.Nonce() {
-			// nonce 값이 같을 때
-			if voteBlocks.Block.Number().Uint64()%2 == 0 {
-				// 블록 번호가 짝수 일때
-				if voteBlocks.Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
-					// 주소값이 큰 블록
-					return voteBlocks
-				}
-			} else {
-				// 블록 번호가 홀수 일때
-				if voteBlocks.Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
-					// 주소값이 작은 블록
-					return pvBlock
-				}
-			}
-
-		}
-	} else {
-		return pvBlock
-	}
-
-	return pvBlock
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered
@@ -446,6 +288,46 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, txs, nil, receipts), nil
+}
+
+func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
+	// No block rewards in PoA, so the state remains as is and uncles are dropped
+	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.UncleHash = types.CalcUncleHash(nil)
+	block := types.NewBlock(header, txs, nil, receipts)
+
+	sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
+	if err != nil {
+		log.Error("andus >> ", err)
+	}
+
+	if c.ValidationVoteBlock(chain, block) {
+
+		tfd := fairtypes.VoteBlock{
+			Block:      block,
+			HeaderHash: block.Header().Hash(),
+			Sig:        sig,
+			OtprnHash:  c.otprnHash,
+			Voter:      c.coinbase,
+			Receipts:   receipts,
+		}
+
+		// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+		c.chans.GetLeagueBlockBroadcastCh() <- &tfd
+
+		// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
+		go c.sendMiningBlockAndVoting(chain, &tfd)
+
+		// 3. 파이널 블록 수신
+		fianBlockWithReceipts := <-c.chans.GetFinalBlockCh()
+		block = fianBlockWithReceipts.Block
+		receipts = fianBlockWithReceipts.Receipts
+
+		// Assemble and return the final block for sealing
+		return block, receipts, nil
+	} else {
+		return nil, nil, errNotMatchOtprnOrBlockNumber
+	}
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using

@@ -157,10 +157,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 
 		// TODO : andus >> 위닝블록 전송 채널
-		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 4),
+		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 1),
 		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		WinningBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		FinalBlockCh:           make(chan fairtypes.FinalBlock, 4),
+		WinningBlockCh:         make(chan *fairtypes.VoteBlock, 1),
+		FinalBlockCh:           make(chan fairtypes.FinalBlock, 1),
 	}
 
 	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId)
@@ -195,6 +195,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth); err != nil {
 		return nil, err
+	}
+
+	if debEngine, ok := eth.engine.(*deb.Deb); ok {
+		// 각 서비스들이 통신할 채널을 넘겨준다.
+		debEngine.SetChans(eth)
 	}
 
 	// TODO : andus >> fairnode client start
