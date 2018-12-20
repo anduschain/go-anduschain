@@ -32,7 +32,7 @@ type header struct {
 	Root        string
 	TxHash      string
 	ReceiptHash string
-	Difficulty  uint64
+	Difficulty  string
 	Number      uint64
 	GasLimit    uint64
 	GasUsed     uint64

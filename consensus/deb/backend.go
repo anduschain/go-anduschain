@@ -107,6 +107,10 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 }
 
 func (c *Deb) sendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock) {
+	fmt.Println("sendMiningBlockAndVoting 실행함")
+
+	defer fmt.Println("sendMiningBlockAndVoting 죽음")
+
 	winningBlock := tsfBlock
 	t := time.NewTicker(10 * time.Second)
 

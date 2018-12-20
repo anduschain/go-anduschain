@@ -19,6 +19,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
@@ -315,6 +316,8 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		w.newWorkCh <- &newWorkReq{interrupt: interrupt, noempty: noempty, timestamp: timestamp}
 		timer.Reset(recommit)
 		atomic.StoreInt32(&w.newTxs, 0)
+
+		fmt.Println("-------newWorkLoop.Commit------", noempty)
 	}
 	// recalcRecommit recalculates the resubmitting interval upon feedback.
 	recalcRecommit := func(target float64, inc bool) {
@@ -353,14 +356,19 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case <-w.fairclient.StartCh:
 			w.startCh <- struct{}{}
 		case <-w.startCh:
+			fmt.Println("=====================마이닝 시작=======")
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
+			fmt.Println("=====================채인 해드 체인=======")
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
-			commit(false, commitInterruptNewHead)
+
+			if _, ok := w.engine.(*deb.Deb); !ok {
+				commit(false, commitInterruptNewHead)
+			}
 
 		case <-timer.C:
 			// If mining is running resubmit a new work cycle periodically to pull in
@@ -418,6 +426,7 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
+			fmt.Println("-------commitNewWork 커밋 뉴 워크----------")
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
@@ -444,6 +453,7 @@ func (w *worker) mainLoop() {
 						uncles = append(uncles, uncle.Header())
 						return false
 					})
+					fmt.Println("-------chainSideCh 사이드 체인 체널----------")
 					w.commit(uncles, nil, true, start)
 				}
 			}
@@ -469,9 +479,9 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				if w.config.Clique != nil && w.config.Clique.Period == 0 {
-					w.commitNewWork(nil, false, time.Now().Unix())
-				}
+				//if w.config.Clique != nil && w.config.Clique.Period == 0 {
+				//	w.commitNewWork(nil, false, time.Now().Unix())
+				//}
 			}
 			atomic.AddInt32(&w.newTxs, int32(len(ev.Txs)))
 
@@ -549,22 +559,18 @@ func (w *worker) resultLoop() {
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
 				continue
 			}
-
 			var (
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
 			)
-
 			w.pendingMu.RLock()
 			task, exist := w.pendingTasks[sealhash]
 			w.pendingMu.RUnlock()
-
 			if !exist {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-
-			//Different block could share same sealhash, deep copy here to prevent write-write conflict.
+			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
 			var (
 				receipts = make([]*types.Receipt, len(task.receipts))
 				logs     []*types.Log
@@ -579,31 +585,32 @@ func (w *worker) resultLoop() {
 				}
 				logs = append(logs, receipt.Logs...)
 			}
-
-			stat, err := w.chain.WriteBlockWithState(block, receipts, w.current.state)
+			// Commit block and state to database.
+			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
 			}
-
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
+			// Broadcast the block and announce chain insertion event
 			w.mux.Post(core.NewMinedBlockEvent{Block: block})
 
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
-				events = append(events, core.ChainEvent{Block: block, Hash: hash, Logs: logs})
+				fmt.Println("--CanonStatTy >>>>>>>>>>>>>>---")
+				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 				events = append(events, core.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
+				fmt.Println("--SideStatTy >>>>>>>>>>>>>>---")
 				events = append(events, core.ChainSideEvent{Block: block})
 			}
-
 			w.chain.PostChainEvents(events, logs)
 
 			// Insert the block into the set of pending ones to resultLoop for confirmations
-			w.unconfirmed.Insert(block.NumberU64(), hash)
+			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
 		case <-w.exitCh:
 			return
@@ -906,7 +913,9 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		if !noempty {
 			// Create an empty block based on temporary copied state for sealing in advance without waiting block
 			// execution finished.
+			fmt.Println("=====================노 앰프티=======")
 			w.commit(uncles, nil, false, tstart)
+			return
 		}
 
 		// Fill the block with all available pending transactions.
@@ -940,7 +949,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				return
 			}
 		}
-		w.commit(uncles, w.fullTaskHook, true, tstart)
+
+		fmt.Println("=====================func (w *worker) commit=======")
+		//w.commit(uncles, w.fullTaskHook, true, tstart)
+		w.commit(uncles, nil, true, tstart)
 	}
 
 }
