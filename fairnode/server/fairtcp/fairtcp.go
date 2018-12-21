@@ -218,17 +218,18 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					voteBlock := tsVote.GetVoteBlock()
 					fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
 
-					if voteBlock.Block == nil {
-						noify <- closeConnection
-					}
-
 					block := voteBlock.Block
 					otp := ft.manager.GetOtprn()
 					lastNum := ft.manager.GetLastBlockNum()
 					blockOtprnHash := common.BytesToHash(block.Extra())
 
-					fmt.Println("My :", otp.HashOtprn().String())
-					fmt.Println("Receivec : ", blockOtprnHash.String())
+					fmt.Println("블록 OTPRN : ", blockOtprnHash.String())
+					fmt.Println("My OTPRN : ", blockOtprnHash.String())
+					fmt.Println("받은 객체 OTPRN : ", voteBlock.OtprnHash.String())
+
+					if voteBlock.Block == nil {
+						noify <- closeConnection
+					}
 
 					if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
 						votePool.InsertCh <- pool.Vote{

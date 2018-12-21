@@ -374,7 +374,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
 	acc := fu.fm.GetServerKey()
 
-	var fb *fairtypes.FinalBlock
+	var fb fairtypes.FinalBlock
 
 	if len(voteBlocks) == 0 {
 		return nil
@@ -438,7 +438,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 		SignFairNode(fb.Block, pvBlock, acc.ServerAcc, acc.KeyStore)
 	}
 
-	return fb
+	return &fb
 }
 
 func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {
