@@ -24,7 +24,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -233,10 +232,8 @@ func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
 		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
-			fmt.Println("--------ProtocolManager.leagueBroadCast----------", pm.peers.peers)
 			for _, peer := range pm.peers.peers {
 				peer.SendMakeLeagueBlock(*block)
-				fmt.Println("---ProtocolManager.leagueBroadCast.SendBlock----", block.Block.Hash().String())
 			}
 		}
 	}
@@ -268,9 +265,6 @@ func (pm *ProtocolManager) Stop() {
 }
 
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
-	if strings.Contains(p.RemoteAddr().String(), "121.134.35.45") {
-		fmt.Println("--------------ProtocalManager.newPeer------------", p.RemoteAddr().String())
-	}
 	return newPeer(pv, p, newMeteredMsgWriter(rw))
 }
 

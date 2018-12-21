@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,7 +28,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/rlp"
-	mapset "github.com/deckarep/golang-set"
+	"github.com/deckarep/golang-set"
 )
 
 var (
@@ -432,10 +431,6 @@ func (ps *peerSet) Register(p *peer) error {
 	}
 	if _, ok := ps.peers[p.id]; ok {
 		return errAlreadyRegistered
-	}
-
-	if strings.Contains(p.RemoteAddr().String(), "121.134.35.45") {
-		fmt.Println("--------------peerSet.Register------------", p.RemoteAddr().String())
 	}
 
 	ps.peers[p.id] = p

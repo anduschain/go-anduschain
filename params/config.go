@@ -140,7 +140,7 @@ type ChainConfig struct {
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty"`
 	Clique *CliqueConfig `json:"clique,omitempty"`
-	Deb    *DebConfig    `json:"clique,omitempty"`
+	Deb    *DebConfig    `json:"deb,omitempty"`
 }
 
 // TODO : andus >> consensus 추가
@@ -151,7 +151,9 @@ func (c *DebConfig) String() string {
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
-type EthashConfig struct{}
+type EthashConfig struct {
+	Epoch uint64 `json:"epoch"` // Epoch length to reset votes and checkpoint
+}
 
 // String implements the stringer interface, returning the consensus engine details.
 func (c *EthashConfig) String() string {

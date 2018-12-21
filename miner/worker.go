@@ -354,11 +354,13 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.fairclient.StartCh:
+			fmt.Println("=====================fairclient.StartCh=======")
 			w.startCh <- struct{}{}
 		case <-w.startCh:
 			fmt.Println("=====================마이닝 시작=======")
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
+			fmt.Println("---------------startCh-newWorkLoop.Commit-=>-false------------")
 			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
@@ -367,6 +369,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			timestamp = time.Now().Unix()
 
 			if _, ok := w.engine.(*deb.Deb); !ok {
+				fmt.Println("---------------chainHeadCh-newWorkLoop.Commit-=>-false------------")
 				commit(false, commitInterruptNewHead)
 			}
 
@@ -379,9 +382,9 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 					timer.Reset(recommit)
 					continue
 				}
+				fmt.Println("----------------newWorkLoop.Commit-=>-true------------")
 				commit(true, commitInterruptResubmit)
 			}
-
 		case interval := <-w.resubmitIntervalCh:
 			// Adjust resubmit interval explicitly by user.
 			if interval < minRecommitInterval {
@@ -856,11 +859,15 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			log.Error("Refusing to mine without etherbase")
 			return
 		}
-		header.Coinbase = w.coinbase
-		header.Extra = w.fairclient.OtprnWithSig.Otprn.HashOtprn().Bytes()
 
-		// 엔진에 서명키 셋팅
-		w.engine.(*deb.Deb).SetSignKey(&w.fairclient.CoinBasePrivateKey)
+		header.Coinbase = w.coinbase
+
+		if debEngine, ok := w.engine.(*deb.Deb); ok {
+			// 블록헤더에 otprnhash setting
+			header.Extra = w.fairclient.OtprnWithSig.Otprn.HashOtprn().Bytes()
+			// 엔진에 서명키 셋팅
+			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
+		}
 
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
@@ -910,13 +917,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		if !noempty {
-			// Create an empty block based on temporary copied state for sealing in advance without waiting block
-			// execution finished.
-			fmt.Println("=====================노 앰프티=======")
-			w.commit(uncles, nil, false, tstart)
-			return
-		}
+		//if !noempty {
+		//	// Create an empty block based on temporary copied state for sealing in advance without waiting block
+		//	// execution finished.
+		//	fmt.Println("=====================노 앰프티=======")
+		//	//w.commit(uncles, nil, false, tstart)
+		//	return
+		//}
 
 		// Fill the block with all available pending transactions.
 		pending, err := w.eth.TxPool().Pending()
