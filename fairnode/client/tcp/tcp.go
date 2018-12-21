@@ -1,7 +1,6 @@
 package tcp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -151,32 +150,24 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 				case msg.MakeBlock:
 					t.manger.BlockMakeStart() <- struct{}{}
 				case msg.SendFinalBlock:
-					var received fairtypes.TransferFinalBlock
-
-					if err := fromFaionodeMsg.Decode(&received); err != nil {
+					var tsFb fairtypes.TsFinalBlock
+					if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
 						log.Println("Error[andus] : ", err)
 					}
 
-					if len(received.EncodedBlock) != 0 {
-
-						stream := rlp.NewStream(bytes.NewReader(received.EncodedBlock), 0)
-
-						block := &gethTypes.Block{}
-
-						if err := block.DecodeRLP(stream); err != nil {
-							log.Println("Error[andus] : ", err)
-						}
-
-						if len(block.FairNodeSig) != 0 {
-							fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-
-							t.manger.FinalBlock() <- fairtypes.FinalBlock{block, received.Receipts}
-							noify <- closeConnection
-						}
-
-					} else {
+					fb := tsFb.GetFinalBlock()
+					if fb.Block == nil {
 						noify <- closeConnection
 					}
+
+					block := fb.Block
+
+					if len(block.FairNodeSig) != 0 {
+						fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+						t.manger.FinalBlock() <- *fb
+						noify <- closeConnection
+					}
+
 				}
 
 			}
@@ -205,25 +196,8 @@ Exit:
 		case winingBlock := <-t.manger.VoteBlock():
 
 			fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
-
-			var b bytes.Buffer
-			err := winingBlock.Block.EncodeRLP(&b)
-			if err != nil {
-				fmt.Println("-------인코딩 테스트 에러 ----------", err)
-			}
-
-			tsfBlock := &fairtypes.TransferVoteBlock{
-				EncodedBlock: b.Bytes(),
-				HeaderHash:   winingBlock.HeaderHash,
-				Sig:          winingBlock.Sig,
-				Voter:        winingBlock.Voter,
-				OtprnHash:    winingBlock.OtprnHash,
-				Receipts:     winingBlock.Receipts,
-			}
 			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
-
-			fmt.Println("-------인코드 블록 바이트 코드-----", common.BytesToHash(tsfBlock.EncodedBlock).String())
-			msg.Send(msg.SendBlockForVote, tsfBlock, conn)
+			msg.Send(msg.SendBlockForVote, winingBlock.GetTsVoteBlock(), conn)
 		}
 	}
 

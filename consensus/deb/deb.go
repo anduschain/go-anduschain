@@ -303,38 +303,26 @@ func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, sta
 
 	if c.ValidationVoteBlock(chain, block) {
 
-		var rece []types.Receipt
-
-		for i := range receipts {
-			rece = append(rece, *receipts[i])
-		}
-
-		tfd := fairtypes.VoteBlock{
-			Block:      *block,
+		vb := fairtypes.VoteBlock{
+			Block:      block,
 			HeaderHash: block.Header().Hash(),
 			Sig:        sig,
 			OtprnHash:  c.otprnHash,
 			Voter:      c.coinbase,
-			Receipts:   rece,
+			Receipts:   receipts,
 		}
 
 		// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-		c.chans.GetLeagueBlockBroadcastCh() <- &tfd
+		c.chans.GetLeagueBlockBroadcastCh() <- &vb
 
 		// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-		go c.sendMiningBlockAndVoting(chain, &tfd)
+		go c.sendMiningBlockAndVoting(chain, &vb)
 
 		// 3. 파이널 블록 수신
-		fianBlockWithReceipts := <-c.chans.GetFinalBlockCh()
-		block = fianBlockWithReceipts.Block
+		finalBlock := <-c.chans.GetFinalBlockCh()
 
-		var re []*types.Receipt
-
-		for i := range fianBlockWithReceipts.Receipts {
-			re = append(re, &fianBlockWithReceipts.Receipts[i])
-		}
-
-		receipts = re
+		receipts = finalBlock.Receipts
+		block = finalBlock.Block
 
 		// Assemble and return the final block for sealing
 		return block, receipts, nil

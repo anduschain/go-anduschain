@@ -1,6 +1,8 @@
 package fairtypes
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
@@ -37,33 +39,73 @@ func rlpHash(x interface{}) (h common.Hash) {
 	return h
 }
 
-// TODO : andus >> andus 전송 블록 객체..
-type TransferVoteBlock struct {
-	EncodedBlock []byte
-	HeaderHash   common.Hash
-	Sig          []byte
-	Voter        common.Address // coinbase
-	OtprnHash    common.Hash
-	Receipts     []types.Receipt
-}
+type EncodedReceipt []byte
+type EncodedBlock []byte
 
-type VoteBlock struct {
-	Block      types.Block
+type TsVoteBlock struct {
+	// 네트워트 전송용
+	Block      EncodedBlock
 	HeaderHash common.Hash
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
-	Receipts   []types.Receipt
+	Receipts   []EncodedReceipt
 }
 
-type TransferFinalBlock struct {
-	EncodedBlock []byte
-	Receipts     []types.Receipt
+func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
+	return &VoteBlock{
+		Block:      DecodeBlock(tvb.Block),
+		HeaderHash: tvb.HeaderHash,
+		Sig:        tvb.Sig,
+		Voter:      tvb.Voter,
+		OtprnHash:  tvb.OtprnHash,
+		Receipts:   DecodeReceipts(tvb.Receipts),
+	}
+}
+
+type VoteBlock struct {
+	Block      *types.Block
+	HeaderHash common.Hash
+	Sig        []byte
+	Voter      common.Address // coinbase
+	OtprnHash  common.Hash
+	Receipts   []*types.Receipt
+}
+
+func (vt *VoteBlock) GetTsVoteBlock() *TsVoteBlock {
+	tvb := &TsVoteBlock{
+		Block:     EncodeBlock(vt.Block),
+		Sig:       vt.Sig,
+		Voter:     vt.Voter,
+		OtprnHash: vt.HeaderHash,
+		Receipts:  EncodeReceipts(vt.Receipts),
+	}
+	return tvb
+}
+
+type TsFinalBlock struct {
+	// 네트워트 전송용
+	Block    EncodedBlock
+	Receipts []EncodedReceipt
+}
+
+func (fb *TsFinalBlock) GetFinalBlock() *FinalBlock {
+	return &FinalBlock{
+		Block:    DecodeBlock(fb.Block),
+		Receipts: DecodeReceipts(fb.Receipts),
+	}
 }
 
 type FinalBlock struct {
 	Block    *types.Block
-	Receipts []types.Receipt
+	Receipts []*types.Receipt
+}
+
+func (fb *FinalBlock) GetTsFinalBlock() *TsFinalBlock {
+	return &TsFinalBlock{
+		Block:    EncodeBlock(fb.Block),
+		Receipts: EncodeReceipts(fb.Receipts),
+	}
 }
 
 type Channals interface {
@@ -71,4 +113,52 @@ type Channals interface {
 	GetReceiveBlockCh() chan *VoteBlock
 	GetWinningBlockCh() chan *VoteBlock
 	GetFinalBlockCh() chan FinalBlock
+}
+
+func EncodeBlock(block *types.Block) EncodedBlock {
+	var b bytes.Buffer
+	err := block.EncodeRLP(&b)
+	if err != nil {
+		fmt.Println("-------common.EncodeBlock---------", err)
+	}
+	return b.Bytes()
+}
+
+func DecodeBlock(eb []byte) *types.Block {
+	var block *types.Block
+	stream := rlp.NewStream(bytes.NewReader(eb), 0)
+	if err := block.DecodeRLP(stream); err != nil {
+		fmt.Println("-------common.DecodeBlock---------", err)
+	}
+
+	return block
+}
+
+func EncodeReceipts(Receipts []*types.Receipt) []EncodedReceipt {
+	var re []EncodedReceipt
+	for i := range Receipts {
+		var b bytes.Buffer
+		err := Receipts[i].EncodeRLP(&b)
+		if err != nil {
+			fmt.Println("-------common.EncodeReceipts---------", err)
+		}
+
+		re = append(re, b.Bytes())
+	}
+
+	return re
+}
+
+func DecodeReceipts(enr []EncodedReceipt) []*types.Receipt {
+	var re []*types.Receipt
+	for i := range enr {
+		var res *types.Receipt
+		stream := rlp.NewStream(bytes.NewReader(enr[i]), 0)
+		err := res.DecodeRLP(stream)
+		if err != nil {
+			fmt.Println("-------common.DecodeReceipts---------", err)
+		}
+		re = append(re, res)
+	}
+	return re
 }

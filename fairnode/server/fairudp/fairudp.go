@@ -1,7 +1,6 @@
 package fairudp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
@@ -315,23 +314,18 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 	votePool := fu.fm.GetVotePool()
 	nodes, _, _ := leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
 
-	type noti struct {
-		Block    *types.Block
-		Receipts []types.Receipt
-	}
-
-	notify := make(chan noti)
+	notify := make(chan *fairtypes.FinalBlock)
 
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for {
 			select {
 			case <-t.C:
-				block, Receipts := fu.GetFinalBlock(otprnHash, votePool)
-				if block == nil {
+				fb := fu.GetFinalBlock(otprnHash, votePool)
+				if fb == nil {
 					continue
 				} else {
-					notify <- noti{block, Receipts}
+					notify <- fb
 					return
 				}
 			}
@@ -343,33 +337,22 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 		case <-t.C:
 			n := <-notify
 
-			recei := n.Receipts
-			block := n.Block
-
-			var b bytes.Buffer
-
-			err := block.EncodeRLP(&b)
-			if err != nil {
-				fmt.Println("-------인코딩 테스트 에러 ----------", err)
-			}
-
-			ts := &fairtypes.TransferFinalBlock{b.Bytes(), recei}
-
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					msg.Send(msg.SendFinalBlock, ts, nodes[index].Conn)
+					msg.Send(msg.SendFinalBlock, n.GetTsFinalBlock(), nodes[index].Conn)
 				}
 			}
 
-			fmt.Println("----파이널 블록 전송-----", block.NumberU64(), block.Coinbase().String())
+			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
-			fu.fm.SetLeagueRunning(false)
 			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
 			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
 			// DB에 블록 저장
-			votePool.SnapShot <- block
+			votePool.SnapShot <- n.Block
 			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+
+			fu.fm.SetLeagueRunning(false)
 			return
 		}
 	}
@@ -387,19 +370,19 @@ func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
 	return uint64(count * (persent / 100))
 }
 
-func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*types.Block, []types.Receipt) {
+func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fairtypes.FinalBlock {
 	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
 	acc := fu.fm.GetServerKey()
-	var fBlock *types.Block
-	var Receipts []types.Receipt
+
+	var fb *fairtypes.FinalBlock
 
 	if len(voteBlocks) == 0 {
-		return nil, nil
+		return nil
 	} else if len(voteBlocks) == 1 {
 		fmt.Println("--------------count == 1----------")
-		fBlock = voteBlocks[0].Block
-		Receipts = voteBlocks[0].Receipts
-		SignFairNode(fBlock, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
+		fb.Block = voteBlocks[0].Block
+		fb.Receipts = voteBlocks[0].Receipts
+		SignFairNode(fb.Block, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
 	} else {
 		var cnt uint64 = 0
 		var pvBlock pool.VoteBlock
@@ -409,23 +392,23 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*ty
 			// 3. joinNunce	== nonce 값이 놓은 블록
 			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
 			if cnt < voteBlocks[i].Count {
-				fBlock = voteBlocks[i].Block
-				Receipts = voteBlocks[i].Receipts
+				fb.Block = voteBlocks[i].Block
+				fb.Receipts = voteBlocks[i].Receipts
 				pvBlock = voteBlocks[i]
 				cnt = voteBlocks[i].Count
 			} else if cnt == voteBlocks[i].Count {
 				// 동수인 투표일때
 				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
 					// diffcult 값이 높은 블록
-					fBlock = voteBlocks[i].Block
-					Receipts = voteBlocks[i].Receipts
+					fb.Block = voteBlocks[i].Block
+					fb.Receipts = voteBlocks[i].Receipts
 					pvBlock = voteBlocks[i]
 				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
 					// diffcult 값이 같을때
 					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
 						// nonce 값이 큰 블록
-						fBlock = voteBlocks[i].Block
-						Receipts = voteBlocks[i].Receipts
+						fb.Block = voteBlocks[i].Block
+						fb.Receipts = voteBlocks[i].Receipts
 						pvBlock = voteBlocks[i]
 					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
 						// nonce 값이 같을 때
@@ -433,16 +416,16 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*ty
 							// 블록 번호가 짝수 일때
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
 								// 주소값이 큰 블록
-								fBlock = voteBlocks[i].Block
-								Receipts = voteBlocks[i].Receipts
+								fb.Block = voteBlocks[i].Block
+								fb.Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						} else {
 							// 블록 번호가 홀수 일때
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
 								// 주소값이 작은 블록
-								fBlock = voteBlocks[i].Block
-								Receipts = voteBlocks[i].Receipts
+								fb.Block = voteBlocks[i].Block
+								fb.Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						}
@@ -452,10 +435,10 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*ty
 			}
 		}
 
-		SignFairNode(fBlock, pvBlock, acc.ServerAcc, acc.KeyStore)
+		SignFairNode(fb.Block, pvBlock, acc.ServerAcc, acc.KeyStore)
 	}
 
-	return fBlock, Receipts
+	return fb
 }
 
 func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {

@@ -1,11 +1,9 @@
 package fairtcp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -14,7 +12,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
 	"net"
@@ -213,45 +210,36 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					var voteBlock fairtypes.TransferVoteBlock
-
-					if err := fromGethMsg.Decode(&voteBlock); err != nil {
+					var tsVote fairtypes.TsVoteBlock
+					if err := fromGethMsg.Decode(&tsVote); err != nil {
 						fmt.Println("------SendBlockForVote------", err)
 					}
 
+					voteBlock := tsVote.GetVoteBlock()
 					fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
-					fmt.Println("-------인코드 블록 바이트 코드-----", common.BytesToHash(voteBlock.EncodedBlock).String())
 
-					if len(voteBlock.EncodedBlock) != 0 {
-						stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 0)
+					if voteBlock.Block == nil {
+						noify <- closeConnection
+					}
 
-						block := &types.Block{}
+					block := voteBlock.Block
+					otp := ft.manager.GetOtprn()
+					lastNum := ft.manager.GetLastBlockNum()
+					blockOtprnHash := common.BytesToHash(block.Extra())
 
-						if err := block.DecodeRLP(stream); err != nil {
-							fmt.Println("-------디코딩 테스트 에러 ----------", err)
+					fmt.Println("My :", otp.HashOtprn().String())
+					fmt.Println("Receivec : ", blockOtprnHash.String())
+
+					if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
+						votePool.InsertCh <- pool.Vote{
+							Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
+							Block:    block,
+							Coinbase: voteBlock.Voter,
+							Receipts: voteBlock.Receipts,
 						}
-
-						otp := ft.manager.GetOtprn()
-						lastNum := ft.manager.GetLastBlockNum()
-						blockOtprnHash := common.BytesToHash(block.Extra())
-
-						fmt.Println("My :", otp.HashOtprn().String())
-						fmt.Println("Receivec : ", blockOtprnHash.String())
-
-						if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
-							votePool.InsertCh <- pool.Vote{
-								Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
-								Block:    block,
-								Coinbase: voteBlock.Voter,
-								Receipts: voteBlock.Receipts,
-							}
-
-							fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
-						} else {
-							fmt.Println("-----다른 OTPRN으로 투표 또는 숫자가 맞지 않아 거절됨-----", lastNum, otp.HashOtprn() == voteBlock.OtprnHash, block.Coinbase().String(), block.NumberU64())
-							noify <- closeConnection
-						}
+						fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
 					} else {
+						fmt.Println("-----다른 OTPRN으로 투표 또는 숫자가 맞지 않아 거절됨-----", lastNum, otp.HashOtprn() == voteBlock.OtprnHash, block.Coinbase().String(), block.NumberU64())
 						noify <- closeConnection
 					}
 
