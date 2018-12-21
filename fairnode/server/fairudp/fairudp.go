@@ -345,14 +345,14 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
+			fu.fm.SetLeagueRunning(false)
+
 			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
 			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
 			// DB에 블록 저장
 			votePool.SnapShot <- n.Block
 			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
-
-			fu.fm.SetLeagueRunning(false)
 			return
 		}
 	}

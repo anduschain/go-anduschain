@@ -19,7 +19,6 @@ package miner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
@@ -596,11 +595,9 @@ func (w *worker) resultLoop() {
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
-				fmt.Println("--CanonStatTy >>>>>>>>>>>>>>---")
 				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 				events = append(events, core.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
-				fmt.Println("--SideStatTy >>>>>>>>>>>>>>---")
 				events = append(events, core.ChainSideEvent{Block: block})
 			}
 			w.chain.PostChainEvents(events, logs)
