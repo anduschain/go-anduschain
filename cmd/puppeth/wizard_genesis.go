@@ -103,7 +103,7 @@ func (w *wizard) makeGenesis() {
 	case choice == "" || choice == "3":
 		// In the case of Deb, configure the consensus parameters
 		genesis.Difficulty = big.NewInt(1)
-		genesis.Config.Deb = &params.DebConfig{}
+		genesis.Config.Deb = &params.DebConfig{Epoch: 100}
 
 	default:
 		log.Crit("Invalid consensus engine choice", "choice", choice)
