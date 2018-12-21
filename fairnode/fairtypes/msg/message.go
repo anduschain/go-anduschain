@@ -36,7 +36,14 @@ func ReadMsg(msg []byte) *Msg {
 }
 
 func (m Msg) Decode(val interface{}) error {
-	return rlp.DecodeBytes(m.Payload, val)
+	err := rlp.Decode(bytes.NewReader(m.Payload), val)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+	//return rlp.DecodeBytes(m.Payload, val)
 }
 
 func Send(msgcode uint64, data interface{}, conn net.Conn) error {
@@ -53,13 +60,16 @@ func Send(msgcode uint64, data interface{}, conn net.Conn) error {
 }
 
 func makeMassage(msgcode uint64, data interface{}) ([]byte, error) {
-	bData, err := rlp.EncodeToBytes(data)
+	var b bytes.Buffer
+	err := rlp.Encode(&b, data)
+
+	//bData, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
 		return []byte{}, err
 	}
 
-	msg, err := rlp.EncodeToBytes(Msg{Code: msgcode, Size: uint32(len(bData)), Payload: bData})
+	msg, err := rlp.EncodeToBytes(Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
 		return []byte{}, err
