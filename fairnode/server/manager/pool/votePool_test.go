@@ -5,6 +5,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 	"testing"
@@ -59,13 +60,15 @@ func TestNewVotePool(t *testing.T) {
 
 	fmt.Println("---Block count-------", len(blocks))
 
+	re := &types.Receipt{}
+
 	for i, _ := range blocks {
 		//headers[i] = block.Header()
 		pool.InsertCh <- Vote{
 			test[i].hash,
 			blocks[0],
 			test[i].addr,
-			nil,
+			[]*types.Receipt{re, re, re},
 		}
 
 	}
@@ -92,8 +95,8 @@ func TestNewVotePool(t *testing.T) {
 
 	vblocks := pool.GetVoteBlocks(hash)
 
-	for i := range vblocks[0].Voters {
-		fmt.Println(vblocks[0].Voters[i].String())
+	for i := range vblocks {
+		fmt.Println(len(vblocks[i].Receipts))
 	}
 
 	//vblocks2 := pool.GetVoteBlocks(hash2)

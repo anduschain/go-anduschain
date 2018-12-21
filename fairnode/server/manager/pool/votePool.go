@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -49,7 +50,6 @@ func NewVotePool(db *db.FairNodeDB) *VotePool {
 func (vp *VotePool) GetVoteBlocks(hash OtprnHash) VoteBlocks {
 	vp.mux.Lock()
 	defer vp.mux.Unlock()
-
 	if val, ok := vp.pool[hash]; ok {
 		return val
 	}
@@ -73,9 +73,11 @@ Exit:
 	for {
 		select {
 		case vote := <-vp.InsertCh:
+
+			fmt.Println(vote.Hash, len(vote.Receipts), vote.Coinbase.String())
+
 			if val, ok := vp.pool[vote.Hash]; ok {
 				isDouble := false
-
 			ex:
 				for i := range val {
 					// 중복 삽입 방지

@@ -79,12 +79,16 @@ func TestMsg_Decode(t *testing.T) {
 
 	bs := []*types.Block{blocks[0].WithBody(nil, nil), blocks[0].WithBody([]*types.Transaction{tx0, tx1, tx2, tx3}, nil)}
 
-	encodeBlock := fairtypes.EncodeBlock(bs[0])
+	for i := range bs {
+		fmt.Println(bs[i].Header().Hash().String())
+		encodeBlock := fairtypes.EncodeBlock(bs[i])
 
-	fmt.Println(common.BytesToHash(encodeBlock).String())
+		fmt.Println(common.BytesToHash(encodeBlock).String())
 
-	block := fairtypes.DecodeBlock(encodeBlock)
+		block := fairtypes.DecodeBlock(encodeBlock)
+		fmt.Println(block.Transactions().Len())
 
-	fmt.Println(block.Hash().String())
+		fmt.Println("==========================")
+	}
 
 }

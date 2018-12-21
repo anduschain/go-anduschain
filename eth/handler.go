@@ -710,12 +710,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.txpool.AddRemotes(txs)
 
 	case msg.Code == MakeLeagueBlockMsg:
-		var block fairtypes.VoteBlock
-		if err := msg.Decode(&block); err != nil {
+		var tb fairtypes.TsVoteBlock
+		if err := msg.Decode(&tb); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		pm.chans.GetReceiveBlockCh() <- &block
+		pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)

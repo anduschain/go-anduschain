@@ -273,7 +273,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 					}
 				}
 
-				fmt.Println("-------블록 생성--------")
+				fmt.Println("-------블록 생성--------", otprnHash)
 
 				// peer list 전송후 30초
 				go fu.sendFinalBlock(otprnHash)
