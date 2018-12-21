@@ -107,10 +107,6 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 }
 
 func (c *Deb) sendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock) {
-	fmt.Println("sendMiningBlockAndVoting 실행함")
-
-	defer fmt.Println("sendMiningBlockAndVoting 죽음")
-
 	winningBlock := tsfBlock
 	t := time.NewTicker(10 * time.Second)
 
@@ -120,11 +116,11 @@ Exit:
 		case recevedBlock := <-c.chans.GetReceiveBlockCh():
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-			if err, errType := c.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
+			if err, errType := c.FairNodeSigCheck(&recevedBlock.Block, recevedBlock.Sig); err != nil {
 				switch errType {
 				case ErrNonFairNodeSig:
 					// TODO : andus >> 2. RAND 값 서명 검증
-					if c.ValidationVoteBlock(chain, recevedBlock.Block) {
+					if c.ValidationVoteBlock(chain, &recevedBlock.Block) {
 						if OK := c.CheckRANDSigOK(recevedBlock); OK {
 							winningBlock = c.CompareBlock(winningBlock, recevedBlock)
 							fmt.Println("-------CheckRANDSigOK---winningBlock 교체-----")

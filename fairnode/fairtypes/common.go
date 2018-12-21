@@ -44,26 +44,26 @@ type TransferVoteBlock struct {
 	Sig          []byte
 	Voter        common.Address // coinbase
 	OtprnHash    common.Hash
-	Receipts     []*types.Receipt
+	Receipts     []types.Receipt
 }
 
 type VoteBlock struct {
-	Block      *types.Block
+	Block      types.Block
 	HeaderHash common.Hash
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
-	Receipts   []*types.Receipt
+	Receipts   []types.Receipt
 }
 
 type TransferFinalBlock struct {
 	EncodedBlock []byte
-	Receipts     []*types.Receipt
+	Receipts     []types.Receipt
 }
 
 type FinalBlock struct {
 	Block    *types.Block
-	Receipts []*types.Receipt
+	Receipts []types.Receipt
 }
 
 type Channals interface {

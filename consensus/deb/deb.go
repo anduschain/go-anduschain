@@ -6,7 +6,6 @@ package deb
 import (
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
@@ -293,27 +292,30 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
-
-	fmt.Println("-----DebFinalize 호출 됨------")
-
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 	block := types.NewBlock(header, txs, nil, receipts)
 
 	sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
 	if err != nil {
-		log.Error("andus >> ", err)
+		log.Error("블록 서명 에러", err)
 	}
 
 	if c.ValidationVoteBlock(chain, block) {
 
+		var rece []types.Receipt
+
+		for i := range receipts {
+			rece = append(rece, *receipts[i])
+		}
+
 		tfd := fairtypes.VoteBlock{
-			Block:      block,
+			Block:      *block,
 			HeaderHash: block.Header().Hash(),
 			Sig:        sig,
 			OtprnHash:  c.otprnHash,
 			Voter:      c.coinbase,
-			Receipts:   receipts,
+			Receipts:   rece,
 		}
 
 		// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
@@ -325,7 +327,14 @@ func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, sta
 		// 3. 파이널 블록 수신
 		fianBlockWithReceipts := <-c.chans.GetFinalBlockCh()
 		block = fianBlockWithReceipts.Block
-		receipts = fianBlockWithReceipts.Receipts
+
+		var re []*types.Receipt
+
+		for i := range fianBlockWithReceipts.Receipts {
+			re = append(re, &fianBlockWithReceipts.Receipts[i])
+		}
+
+		receipts = re
 
 		// Assemble and return the final block for sealing
 		return block, receipts, nil

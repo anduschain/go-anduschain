@@ -317,7 +317,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 	type noti struct {
 		Block    *types.Block
-		Receipts []*types.Receipt
+		Receipts []types.Receipt
 	}
 
 	notify := make(chan noti)
@@ -387,11 +387,11 @@ func (fu *FairUdp) JoinTotalNum(persent float64) uint64 {
 	return uint64(count * (persent / 100))
 }
 
-func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*types.Block, []*types.Receipt) {
+func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) (*types.Block, []types.Receipt) {
 	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
 	acc := fu.fm.GetServerKey()
 	var fBlock *types.Block
-	var Receipts []*types.Receipt
+	var Receipts []types.Receipt
 
 	if len(voteBlocks) == 0 {
 		return nil, nil

@@ -11,7 +11,7 @@ type VoteBlock struct {
 	Block    *types.Block
 	Count    uint64
 	Voters   []common.Address
-	Receipts []*types.Receipt
+	Receipts []types.Receipt
 }
 
 type VoteBlocks []VoteBlock
@@ -20,7 +20,7 @@ type Vote struct {
 	Hash     OtprnHash
 	Block    *types.Block
 	Coinbase common.Address
-	Receipts []*types.Receipt
+	Receipts []types.Receipt
 }
 
 type VotePool struct {
