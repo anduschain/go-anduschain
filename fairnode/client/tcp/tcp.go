@@ -164,7 +164,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 
 					if len(block.FairNodeSig) != 0 {
 						fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-						t.manger.FinalBlock() <- *fb
+						t.manger.FinalBlock() <- fb
 						noify <- closeConnection
 					}
 
