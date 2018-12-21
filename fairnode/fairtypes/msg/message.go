@@ -42,8 +42,6 @@ func (m Msg) Decode(val interface{}) error {
 	}
 
 	return nil
-
-	//return rlp.DecodeBytes(m.Payload, val)
 }
 
 func Send(msgcode uint64, data interface{}, conn net.Conn) error {
@@ -62,8 +60,6 @@ func Send(msgcode uint64, data interface{}, conn net.Conn) error {
 func makeMassage(msgcode uint64, data interface{}) ([]byte, error) {
 	var b bytes.Buffer
 	err := rlp.Encode(&b, data)
-
-	//bData, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
 		return []byte{}, err
