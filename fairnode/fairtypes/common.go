@@ -125,13 +125,13 @@ func EncodeBlock(block *types.Block) EncodedBlock {
 }
 
 func DecodeBlock(eb []byte) *types.Block {
-	var block *types.Block
+	var block types.Block
 	stream := rlp.NewStream(bytes.NewReader(eb), 0)
 	if err := block.DecodeRLP(stream); err != nil {
 		fmt.Println("-------common.DecodeBlock---------", err)
 	}
 
-	return block
+	return &block
 }
 
 func EncodeReceipts(Receipts []*types.Receipt) []EncodedReceipt {
@@ -152,13 +152,13 @@ func EncodeReceipts(Receipts []*types.Receipt) []EncodedReceipt {
 func DecodeReceipts(enr []EncodedReceipt) []*types.Receipt {
 	var re []*types.Receipt
 	for i := range enr {
-		var res *types.Receipt
+		var res types.Receipt
 		stream := rlp.NewStream(bytes.NewReader(enr[i]), 0)
 		err := res.DecodeRLP(stream)
 		if err != nil {
 			fmt.Println("-------common.DecodeReceipts---------", err)
 		}
-		re = append(re, res)
+		re = append(re, &res)
 	}
 	return re
 }

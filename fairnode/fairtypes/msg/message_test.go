@@ -1,7 +1,6 @@
 package msg
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -80,58 +79,12 @@ func TestMsg_Decode(t *testing.T) {
 
 	bs := []*types.Block{blocks[0].WithBody(nil, nil), blocks[0].WithBody([]*types.Transaction{tx0, tx1, tx2, tx3}, nil)}
 
-	type encode []byte
+	encodeBlock := fairtypes.EncodeBlock(bs[0])
 
-	var encoded []encode
+	fmt.Println(common.BytesToHash(encodeBlock).String())
 
-	for i := range bs {
-		var b bytes.Buffer
-		if err := bs[i].EncodeRLP(&b); err != nil {
-			fmt.Println("-------인코딩 테스트 에러 ----------", err)
-		}
+	block := fairtypes.DecodeBlock(encodeBlock)
 
-		var voteBlock fairtypes.TransferVoteBlock
-		voteBlock.EncodedBlock = b.Bytes()
-		voteBlock.OtprnHash = common.Hash{}
-		voteBlock.Sig = []byte("signature")
-		voteBlock.Receipts = nil
-		voteBlock.HeaderHash = bs[i].Header().Hash()
-		voteBlock.Voter = common.Address{}
-
-		msg, err := makeMassageforTest(2000, voteBlock)
-		if err != nil {
-			fmt.Println("-----makeMassage err-----", err)
-		}
-
-		encoded = append(encoded, msg)
-	}
-
-	for i := range encoded {
-
-		var voteBlock fairtypes.TransferVoteBlock
-
-		msg := ReadMsg(encoded[i])
-
-		err := msg.Decode(&voteBlock)
-		if err != nil {
-			fmt.Println("-----Decode err-----", err)
-		}
-
-		fmt.Println(string(voteBlock.Sig))
-
-		stream := rlp.NewStream(bytes.NewReader(voteBlock.EncodedBlock), 0)
-
-		block := &types.Block{}
-
-		if err := block.DecodeRLP(stream); err != nil {
-			fmt.Println("-------디코딩 테스트 에러 ----------", err)
-		}
-
-		if block.Hash() == bs[i].Hash() {
-			fmt.Println(true, block.Transactions().Len()) // 0, 2
-		} else {
-			fmt.Println(false)
-		}
-	}
+	fmt.Println(block.Hash().String())
 
 }
