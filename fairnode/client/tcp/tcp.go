@@ -87,6 +87,7 @@ func (t *Tcp) Stop() error {
 func (t *Tcp) tcpLoop(exit chan struct{}) {
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
+		fmt.Println("-------tcp loop 에러", err)
 		return
 	}
 
@@ -160,6 +161,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						tsFb := &fairtypes.TsFinalBlock{}
 						if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
 							log.Println("Error[andus] : ", err)
+							break
 						}
 
 						fb := tsFb.GetFinalBlock()
