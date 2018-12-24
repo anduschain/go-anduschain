@@ -49,7 +49,7 @@ type TsVoteBlock struct {
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
-	Receipts   []EncodedReceipt
+	//Receipts   []EncodedReceipt
 }
 
 func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
@@ -59,7 +59,7 @@ func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
 		Sig:        tvb.Sig,
 		Voter:      tvb.Voter,
 		OtprnHash:  tvb.OtprnHash,
-		Receipts:   DecodeReceipts(tvb.Receipts),
+		//Receipts:   DecodeReceipts(tvb.Receipts),
 	}
 }
 
@@ -69,7 +69,7 @@ type VoteBlock struct {
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
-	Receipts   []*types.Receipt
+	//Receipts   []*types.Receipt
 }
 
 func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
@@ -79,7 +79,7 @@ func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
 		Sig:        vt.Sig,
 		Voter:      vt.Voter,
 		OtprnHash:  vt.OtprnHash,
-		Receipts:   EncodeReceipts(vt.Receipts),
+		//Receipts:   EncodeReceipts(vt.Receipts),
 	}
 	return tvb
 }

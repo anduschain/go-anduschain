@@ -218,7 +218,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 					}
 
 					voteBlock := tsVote.GetVoteBlock()
-					fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
+					//fmt.Println("--------Receipts--------", len(voteBlock.Receipts))
 
 					block := voteBlock.Block
 					otp := ft.manager.GetOtprn()
@@ -238,7 +238,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 							Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
 							Block:    block,
 							Coinbase: voteBlock.Voter,
-							Receipts: voteBlock.Receipts,
+							//Receipts: voteBlock.Receipts,
 						}
 						fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
 					} else {

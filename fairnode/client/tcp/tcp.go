@@ -197,7 +197,7 @@ Exit:
 			conn.Close()
 		case winingBlock := <-t.manger.VoteBlock():
 
-			fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
+			//fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
 			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
 			msg.Send(msg.SendBlockForVote, winingBlock.GetTsVoteBlock(), conn)
 		}

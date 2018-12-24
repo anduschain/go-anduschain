@@ -309,7 +309,7 @@ func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, sta
 			Sig:        sig,
 			OtprnHash:  c.otprnHash,
 			Voter:      c.coinbase,
-			Receipts:   receipts,
+			//Receipts:   receipts,
 		}
 
 		// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
@@ -321,7 +321,7 @@ func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, sta
 		// 3. 파이널 블록 수신
 		finalBlock := <-c.chans.GetFinalBlockCh()
 
-		receipts = finalBlock.Receipts
+		//receipts = finalBlock.Receipts
 		block = finalBlock.Block
 
 		// Assemble and return the final block for sealing
