@@ -180,7 +180,7 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	fmt.Printf("GetCurrentJoinNonce : block number %d, roothash : %s", fc.BlockChain.CurrentHeader().Number.Uint64(), fc.BlockChain.CurrentHeader().Root.String())
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
-		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생")
+		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생", err)
 	}
 
 	return stateDb.GetJoinNonce(fc.Coinbase)
@@ -190,7 +190,7 @@ func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 	fmt.Printf("GetCurrentBalance : block number %d, roothash : %s", fc.BlockChain.CurrentHeader().Number.Uint64(), fc.BlockChain.CurrentHeader().Root.String())
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
-		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생")
+		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생", err)
 	}
 
 	return stateDb.GetBalance(fc.Coinbase)

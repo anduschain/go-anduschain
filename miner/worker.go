@@ -596,7 +596,7 @@ func (w *worker) resultLoop() {
 			switch stat {
 			case core.CanonStatTy:
 				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, core.ChainHeadEvent{Block: block})
+				//events = append(events, core.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				events = append(events, core.ChainSideEvent{Block: block})
 			}

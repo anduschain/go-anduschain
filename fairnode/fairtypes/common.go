@@ -52,7 +52,7 @@ type TsVoteBlock struct {
 	Receipts   []EncodedReceipt
 }
 
-func (tvb TsVoteBlock) GetVoteBlock() *VoteBlock {
+func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
 	return &VoteBlock{
 		Block:      DecodeBlock(tvb.Block),
 		HeaderHash: tvb.HeaderHash,
@@ -72,13 +72,14 @@ type VoteBlock struct {
 	Receipts   []*types.Receipt
 }
 
-func (vt VoteBlock) GetTsVoteBlock() TsVoteBlock {
-	tvb := TsVoteBlock{
-		Block:     EncodeBlock(vt.Block),
-		Sig:       vt.Sig,
-		Voter:     vt.Voter,
-		OtprnHash: vt.OtprnHash,
-		Receipts:  EncodeReceipts(vt.Receipts),
+func (vt *VoteBlock) GetTsVoteBlock() *TsVoteBlock {
+	tvb := &TsVoteBlock{
+		Block:      EncodeBlock(vt.Block),
+		HeaderHash: vt.HeaderHash,
+		Sig:        vt.Sig,
+		Voter:      vt.Voter,
+		OtprnHash:  vt.OtprnHash,
+		Receipts:   EncodeReceipts(vt.Receipts),
 	}
 	return tvb
 }
@@ -89,8 +90,8 @@ type TsFinalBlock struct {
 	Receipts []EncodedReceipt
 }
 
-func (fb TsFinalBlock) GetFinalBlock() FinalBlock {
-	return FinalBlock{
+func (fb *TsFinalBlock) GetFinalBlock() *FinalBlock {
+	return &FinalBlock{
 		Block:    DecodeBlock(fb.Block),
 		Receipts: DecodeReceipts(fb.Receipts),
 	}
@@ -101,8 +102,8 @@ type FinalBlock struct {
 	Receipts []*types.Receipt
 }
 
-func (fb FinalBlock) GetTsFinalBlock() TsFinalBlock {
-	return TsFinalBlock{
+func (fb *FinalBlock) GetTsFinalBlock() *TsFinalBlock {
+	return &TsFinalBlock{
 		Block:    EncodeBlock(fb.Block),
 		Receipts: EncodeReceipts(fb.Receipts),
 	}
