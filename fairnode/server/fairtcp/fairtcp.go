@@ -210,7 +210,7 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 
 					}
 				case msg.SendBlockForVote:
-					tsVote := &fairtypes.TsVoteBlock{}
+					tsVote := fairtypes.TsVoteBlock{}
 					if err := fromGethMsg.Decode(&tsVote); err != nil {
 						fmt.Println("------SendBlockForVote------", err)
 					}

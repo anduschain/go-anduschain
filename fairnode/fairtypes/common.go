@@ -72,8 +72,8 @@ type VoteBlock struct {
 	Receipts   []*types.Receipt
 }
 
-func (vt *VoteBlock) GetTsVoteBlock() *TsVoteBlock {
-	tvb := &TsVoteBlock{
+func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
+	tvb := TsVoteBlock{
 		Block:      EncodeBlock(vt.Block),
 		HeaderHash: vt.HeaderHash,
 		Sig:        vt.Sig,
