@@ -19,12 +19,13 @@ package core
 import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -67,24 +68,25 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		misc.ApplyDAOHardFork(statedb)
 	}
 
-	fairPub, err := crypto.SigToPub(block.Header().Hash().Bytes(), block.FairNodeSig)
-	if err != nil {
-		log.Error("andus >> 페어노드 공개키 가져오는 에러")
-	}
-
-	fairAddr := crypto.PubkeyToAddress(*fairPub)
-
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
-		// TODO : andus >>
 		var receipt *types.Receipt
-		if tx.To() == &fairAddr {
-			// TODO : andus >> JoinTX, JoinNunce 처리 부분
-			receipt, _, err = DebApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, &fairAddr)
-			if err != nil {
-				return nil, nil, 0, err
+		var err error
+
+		if _, ok := p.engine.(*deb.Deb); ok {
+			if tx.To().String() == config.FAIRNODE_ADDRESS {
+				// TODO : andus >> JoinTX, JoinNunce 처리 부분
+				receipt, _, err = DebApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, tx.To())
+				if err != nil {
+					return nil, nil, 0, err
+				}
+			} else {
+				receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+				if err != nil {
+					return nil, nil, 0, err
+				}
 			}
 		} else {
 			receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
