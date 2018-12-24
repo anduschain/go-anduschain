@@ -381,7 +381,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 	} else if len(voteBlocks) == 1 {
 		fmt.Println("--------------count == 1----------")
 		fb.Block = voteBlocks[0].Block
-		fb.Receipts = voteBlocks[0].Receipts
+		//fb.Receipts = voteBlocks[0].Receipts
 		SignFairNode(fb.Block, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
 	} else {
 		var cnt uint64 = 0
@@ -393,7 +393,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
 			if cnt < voteBlocks[i].Count {
 				fb.Block = voteBlocks[i].Block
-				fb.Receipts = voteBlocks[i].Receipts
+				//fb.Receipts = voteBlocks[i].Receipts
 				pvBlock = voteBlocks[i]
 				cnt = voteBlocks[i].Count
 			} else if cnt == voteBlocks[i].Count {
@@ -401,14 +401,14 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
 					// diffcult 값이 높은 블록
 					fb.Block = voteBlocks[i].Block
-					fb.Receipts = voteBlocks[i].Receipts
+					//fb.Receipts = voteBlocks[i].Receipts
 					pvBlock = voteBlocks[i]
 				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
 					// diffcult 값이 같을때
 					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
 						// nonce 값이 큰 블록
 						fb.Block = voteBlocks[i].Block
-						fb.Receipts = voteBlocks[i].Receipts
+						//fb.Receipts = voteBlocks[i].Receipts
 						pvBlock = voteBlocks[i]
 					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
 						// nonce 값이 같을 때
@@ -417,7 +417,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
 								// 주소값이 큰 블록
 								fb.Block = voteBlocks[i].Block
-								fb.Receipts = voteBlocks[i].Receipts
+								//fb.Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						} else {
@@ -425,7 +425,7 @@ func (fu *FairUdp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
 								// 주소값이 작은 블록
 								fb.Block = voteBlocks[i].Block
-								fb.Receipts = voteBlocks[i].Receipts
+								//fb.Receipts = voteBlocks[i].Receipts
 								pvBlock = voteBlocks[i]
 							}
 						}

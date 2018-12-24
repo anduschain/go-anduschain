@@ -11,14 +11,14 @@ import (
 )
 
 type Msg struct {
-	Code       uint64
+	Code       uint32
 	Size       uint32
 	Payload    []byte
 	ReceivedAt time.Time
 }
 
 const (
-	ReqLeagueJoinOK = iota << 1
+	ReqLeagueJoinOK = iota
 	ResLeagueJoinFalse
 	SendEnode
 	SendOTPRN
@@ -37,7 +37,8 @@ func ReadMsg(msg []byte) *Msg {
 	dec := gob.NewDecoder(bytes.NewReader(msg))
 	err := dec.Decode(&m)
 	if err != nil {
-		log.Fatal("decode error 1:", err)
+		log.Println("ReadMsg decode error :", err)
+		return nil
 	}
 
 	//rlp.Decode(bytes.NewReader(msg), &m)
@@ -53,7 +54,7 @@ func (m Msg) Decode(val interface{}) error {
 	return nil
 }
 
-func Send(msgcode uint64, data interface{}, conn net.Conn) error {
+func Send(msgcode uint32, data interface{}, conn net.Conn) error {
 	msg, err := makeMassage(msgcode, data)
 	if err != nil {
 		fmt.Println("message", err)
@@ -68,7 +69,7 @@ func Send(msgcode uint64, data interface{}, conn net.Conn) error {
 	}
 }
 
-func makeMassage(msgcode uint64, data interface{}) ([]byte, error) {
+func makeMassage(msgcode uint32, data interface{}) ([]byte, error) {
 	var b bytes.Buffer
 	var err error
 	err = rlp.Encode(&b, data)

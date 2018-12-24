@@ -6,6 +6,7 @@ package deb
 import (
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
@@ -291,6 +292,9 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 }
 
 func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
+
+	fmt.Println("----DebFinalize 실행함 새로 만들 블록 번호 : ", header.Number.String(), len(txs))
+
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)

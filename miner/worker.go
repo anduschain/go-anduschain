@@ -944,7 +944,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		// Short circuit if there is no available pending transactions
 		if len(pending) == 0 {
 			w.updateSnapshot()
-			return
+			//return
 		}
 		// Split the pending transactions into locals and remotes
 		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending

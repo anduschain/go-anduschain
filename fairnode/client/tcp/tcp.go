@@ -102,6 +102,11 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 	noify := make(chan error)
 
 	go func() {
+		defer func() {
+			fmt.Println("----------Tcp loop kill--------")
+			noify <- closeConnection
+		}()
+
 		data := make([]byte, 4096)
 		for {
 			n, err := conn.Read(data)
@@ -117,61 +122,61 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 
 			if n > 0 {
 				var str string
-				fromFaionodeMsg := msg.ReadMsg(data)
-				switch fromFaionodeMsg.Code {
-				case msg.ResLeagueJoinFalse:
-					// 참여 불가, Dial Close
-					fromFaionodeMsg.Decode(&str)
-					log.Println("Debug[andus] : ", str)
-					noify <- closeConnection
-				case msg.MinerLeageStop:
-					// 종료됨
-					fromFaionodeMsg.Decode(&str)
-					log.Println("Debug[andus] : ", str)
-					noify <- closeConnection
-				case msg.SendLeageNodeList:
-					// Add peer
-					var nodeList []string
-					fromFaionodeMsg.Decode(&nodeList)
-					log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
-					for index := range nodeList {
-						// addPeer 실행
-						node, err := discover.ParseNode(nodeList[index])
-						if err != nil {
-							fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+				if fromFaionodeMsg := msg.ReadMsg(data); fromFaionodeMsg != nil {
+					switch fromFaionodeMsg.Code {
+					case msg.ResLeagueJoinFalse:
+						// 참여 불가, Dial Close
+						fromFaionodeMsg.Decode(&str)
+						log.Println("Debug[andus] : ", str)
+						return
+					case msg.MinerLeageStop:
+						// 종료됨
+						fromFaionodeMsg.Decode(&str)
+						log.Println("Debug[andus] : ", str)
+						return
+					case msg.SendLeageNodeList:
+						// Add peer
+						var nodeList []string
+						fromFaionodeMsg.Decode(&nodeList)
+						log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
+						for index := range nodeList {
+							// addPeer 실행
+							node, err := discover.ParseNode(nodeList[index])
+							if err != nil {
+								fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+							}
+							t.manger.GetP2PServer().AddPeer(node)
 						}
-						t.manger.GetP2PServer().AddPeer(node)
-					}
-				case msg.MakeJoinTx:
-					// JoinTx 생성
-					err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
-					if err != nil {
-						log.Println("Error[andus] : ", err)
-					}
-				case msg.MakeBlock:
-					fmt.Println("-------- 블록 생성 tcp -------")
-					t.manger.BlockMakeStart() <- struct{}{}
-				case msg.SendFinalBlock:
-					var tsFb fairtypes.TsFinalBlock
-					if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
-						log.Println("Error[andus] : ", err)
-					}
+					case msg.MakeJoinTx:
+						// JoinTx 생성
+						err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
+						if err != nil {
+							log.Println("Error[andus] : ", err)
+						}
+					case msg.MakeBlock:
+						fmt.Println("-------- 블록 생성 tcp -------")
+						t.manger.BlockMakeStart() <- struct{}{}
+					case msg.SendFinalBlock:
+						tsFb := &fairtypes.TsFinalBlock{}
+						if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
+							log.Println("Error[andus] : ", err)
+						}
 
-					fb := tsFb.GetFinalBlock()
-					if fb.Block == nil {
-						noify <- closeConnection
+						fb := tsFb.GetFinalBlock()
+						if fb.Block == nil {
+							return
+						}
+
+						block := fb.Block
+
+						if len(block.FairNodeSig) != 0 {
+							fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+							t.manger.FinalBlock() <- *fb
+							noify <- closeConnection
+						}
+
 					}
-
-					block := fb.Block
-
-					if len(block.FairNodeSig) != 0 {
-						fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-						t.manger.FinalBlock() <- *fb
-						noify <- closeConnection
-					}
-
 				}
-
 			}
 		}
 	}()

@@ -86,26 +86,26 @@ func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
 
 type TsFinalBlock struct {
 	// 네트워트 전송용
-	Block    EncodedBlock
-	Receipts []EncodedReceipt
+	Block EncodedBlock
+	//Receipts []EncodedReceipt
 }
 
 func (fb *TsFinalBlock) GetFinalBlock() *FinalBlock {
 	return &FinalBlock{
-		Block:    DecodeBlock(fb.Block),
-		Receipts: DecodeReceipts(fb.Receipts),
+		Block: DecodeBlock(fb.Block),
+		//Receipts: DecodeReceipts(fb.Receipts),
 	}
 }
 
 type FinalBlock struct {
-	Block    *types.Block
-	Receipts []*types.Receipt
+	Block *types.Block
+	//Receipts []*types.Receipt
 }
 
 func (fb *FinalBlock) GetTsFinalBlock() *TsFinalBlock {
 	return &TsFinalBlock{
-		Block:    EncodeBlock(fb.Block),
-		Receipts: EncodeReceipts(fb.Receipts),
+		Block: EncodeBlock(fb.Block),
+		//Receipts: EncodeReceipts(fb.Receipts),
 	}
 }
 
