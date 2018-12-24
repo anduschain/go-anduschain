@@ -2,8 +2,10 @@ package msg
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
+	"log"
 	"net"
 	"time"
 )
@@ -29,10 +31,17 @@ const (
 )
 
 func ReadMsg(msg []byte) *Msg {
-	var m Msg
+	m := &Msg{}
 	m.ReceivedAt = time.Now()
-	rlp.Decode(bytes.NewReader(msg), &m)
-	return &m
+
+	dec := gob.NewDecoder(bytes.NewReader(msg))
+	err := dec.Decode(&m)
+	if err != nil {
+		log.Fatal("decode error 1:", err)
+	}
+
+	//rlp.Decode(bytes.NewReader(msg), &m)
+	return m
 }
 
 func (m Msg) Decode(val interface{}) error {
@@ -68,14 +77,21 @@ func makeMassage(msgcode uint64, data interface{}) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	var bb bytes.Buffer
-	err = rlp.Encode(&bb, Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
+	var network bytes.Buffer
+	enc := gob.NewEncoder(&network)
+
+	//err = rlp.Encode(&bb, Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
+	//if err != nil {
+	//	fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
+	//	return []byte{}, err
+	//}
+
+	err = enc.Encode(Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
-		return []byte{}, err
 	}
 
-	fmt.Printf("make message length : %d", bb.Len())
+	fmt.Println("make message length :", network.Len(), b.Len())
 
-	return bb.Bytes(), nil
+	return network.Bytes(), nil
 }
