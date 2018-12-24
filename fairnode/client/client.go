@@ -177,7 +177,8 @@ func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock       { return f
 func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return fc.chans.GetFinalBlockCh() }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
-	stateDb, err := fc.BlockChain.State()
+	fmt.Printf("GetCurrentJoinNonce : block number %d, roothash : %s", fc.BlockChain.CurrentHeader().Number.Uint64(), fc.BlockChain.CurrentHeader().Root.String())
+	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
 		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생")
 	}
@@ -186,7 +187,8 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 }
 
 func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
-	stateDb, err := fc.BlockChain.State()
+	fmt.Printf("GetCurrentBalance : block number %d, roothash : %s", fc.BlockChain.CurrentHeader().Number.Uint64(), fc.BlockChain.CurrentHeader().Root.String())
+	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
 		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생")
 	}
