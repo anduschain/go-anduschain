@@ -558,36 +558,62 @@ func (w *worker) resultLoop() {
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
 			)
-			w.pendingMu.RLock()
-			task, exist := w.pendingTasks[sealhash]
-			w.pendingMu.RUnlock()
-			if !exist {
-				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				continue
+
+			//w.pendingMu.RLock()
+			//task, exist := w.pendingTasks[sealhash]
+			//w.pendingMu.RUnlock()
+
+			//if !exist {
+			//	log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+			//	continue
+			//}
+			//// Different block could share same sealhash, deep copy here to prevent write-write conflict.
+			//var (
+			//	receipts = make([]*types.Receipt, len(task.receipts))
+			//	logs     []*types.Log
+			//)
+			//for i, receipt := range task.receipts {
+			//	receipts[i] = new(types.Receipt)
+			//	*receipts[i] = *receipt
+			//	// Update the block hash in all logs since it is now available and not when the
+			//	// receipt/log of individual transactions were created.
+			//	for _, log := range receipt.Logs {
+			//		log.BlockHash = hash
+			//	}
+			//	logs = append(logs, receipt.Logs...)
+			//}
+
+			bstart := time.Now()
+
+			//FIXME : ---------->
+
+			var parent *types.Block
+			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+			state, err := w.chain.StateAt(parent.Root())
+			if err != nil {
+				log.Error("Worker result StateNew Error", "err", err)
 			}
-			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			var (
-				receipts = make([]*types.Receipt, len(task.receipts))
-				logs     []*types.Log
-			)
-			for i, receipt := range task.receipts {
-				receipts[i] = new(types.Receipt)
-				*receipts[i] = *receipt
-				// Update the block hash in all logs since it is now available and not when the
-				// receipt/log of individual transactions were created.
-				for _, log := range receipt.Logs {
-					log.BlockHash = hash
-				}
-				logs = append(logs, receipt.Logs...)
+			// Process block using the parent state as reference point.
+			receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
+			if err != nil {
+				log.Error("Worker result Processor Error", "err", err)
 			}
+			// Validate the state using the default validator
+			err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
+			if err != nil {
+				log.Error("Worker result ValidateState Error", "err", err)
+			}
+
+			//FIXME : <----------
+
 			// Commit block and state to database.
-			stat, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
 			}
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+				"elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			// Broadcast the block and announce chain insertion event
 			w.mux.Post(core.NewMinedBlockEvent{Block: block})
@@ -596,7 +622,7 @@ func (w *worker) resultLoop() {
 			switch stat {
 			case core.CanonStatTy:
 				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				//events = append(events, core.ChainHeadEvent{Block: block})
+				events = append(events, core.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				events = append(events, core.ChainSideEvent{Block: block})
 			}

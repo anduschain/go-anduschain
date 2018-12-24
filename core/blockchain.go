@@ -1595,3 +1595,8 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
 }
+
+// andus >> get VM conifg
+func (bc *BlockChain) GetVmConifg() vm.Config {
+	return bc.vmConfig
+}
