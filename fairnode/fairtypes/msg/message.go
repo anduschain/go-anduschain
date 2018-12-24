@@ -47,29 +47,35 @@ func (m Msg) Decode(val interface{}) error {
 func Send(msgcode uint64, data interface{}, conn net.Conn) error {
 	msg, err := makeMassage(msgcode, data)
 	if err != nil {
+		fmt.Println("message", err)
 		return err
 	}
 
-	if _, err := conn.Write(msg); err != nil {
+	if _, err := conn.Write(msg); err == nil {
 		return nil
 	} else {
+		fmt.Println("message send", err)
 		return err
 	}
 }
 
 func makeMassage(msgcode uint64, data interface{}) ([]byte, error) {
 	var b bytes.Buffer
-	err := rlp.Encode(&b, data)
+	var err error
+	err = rlp.Encode(&b, data)
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
 		return []byte{}, err
 	}
 
-	msg, err := rlp.EncodeToBytes(Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
+	var bb bytes.Buffer
+	err = rlp.Encode(&bb, Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
 		return []byte{}, err
 	}
 
-	return msg, nil
+	fmt.Printf("make message length : %d", bb.Len())
+
+	return bb.Bytes(), nil
 }

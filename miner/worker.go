@@ -19,6 +19,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
@@ -351,6 +352,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.fairclient.StartCh:
+			fmt.Println("-------- 블록 생성 w.fairclient.StartCh -------")
 			w.startCh <- struct{}{}
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())

@@ -61,6 +61,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 }
 
 func (t *Tcp) Start() error {
+	fmt.Println("Tcp 접속 시작", t.IsRuning)
 	if !t.IsRuning {
 		for name, serv := range t.services {
 			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
@@ -148,6 +149,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 						log.Println("Error[andus] : ", err)
 					}
 				case msg.MakeBlock:
+					fmt.Println("-------- 블록 생성 tcp -------")
 					t.manger.BlockMakeStart() <- struct{}{}
 				case msg.SendFinalBlock:
 					var tsFb fairtypes.TsFinalBlock
