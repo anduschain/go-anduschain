@@ -213,7 +213,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 			tx.GasPrice().String(),
 			tx.To().String(),
 			tx.Value().String(),
-			string(tx.Data()),
+			tx.Data(),
 		})
 	}
 

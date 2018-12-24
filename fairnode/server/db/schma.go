@@ -47,7 +47,7 @@ type transaction struct {
 	Price        string
 	To           string
 	Amount       string
-	Payload      string
+	Payload      []byte
 }
 
 type storedBlock struct {
