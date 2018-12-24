@@ -85,6 +85,11 @@ func (t *Tcp) Stop() error {
 }
 
 func (t *Tcp) tcpLoop(exit chan struct{}) {
+	defer func() {
+		t.IsRuning = false
+		fmt.Println("tcpLoop kill")
+	}()
+
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
 		fmt.Println("-------tcp loop 에러", err)
@@ -209,11 +214,6 @@ Exit:
 			msg.Send(msg.SendBlockForVote, winingBlock.GetTsVoteBlock(), conn)
 		}
 	}
-
-	defer func() {
-		t.IsRuning = false
-		fmt.Println("tcpLoop kill")
-	}()
 }
 
 func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error {

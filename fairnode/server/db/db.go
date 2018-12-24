@@ -10,7 +10,6 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
-	"strconv"
 	"time"
 )
 
@@ -179,12 +178,7 @@ func (fnb *FairNodeDB) GetCurrentBlock() uint64 {
 		return 0
 	}
 
-	num, err := strconv.ParseUint(sBlock.Header.Number, 10, 64)
-	if err != nil {
-		log.Println("Error[DB] : strconv.ParseUint", err)
-	}
-
-	return num
+	return uint64(sBlock.Header.Number)
 }
 
 func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
@@ -196,13 +190,13 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		block.Header().TxHash.String(),
 		block.Header().ReceiptHash.String(),
 		block.Header().Difficulty.String(),
-		block.Header().Number.String(),
-		string(block.Header().GasLimit),
-		string(block.Header().GasUsed),
+		block.Header().Number.Int64(),
+		int64(block.Header().GasLimit),
+		int64(block.Header().GasUsed),
 		block.Header().Time.String(),
 		block.Header().Extra,
 		block.Header().MixDigest.String(),
-		string(block.Header().Nonce.Uint64()),
+		int64(block.Header().Nonce.Uint64()),
 	}
 
 	var txs []transaction
@@ -210,9 +204,9 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		tx := block.Transactions()[i]
 		txs = append(txs, transaction{
 			string(tx.Nonce()),
-			tx.GasPrice().String(),
+			tx.GasPrice().Int64(),
 			tx.To().String(),
-			tx.Value().String(),
+			tx.Value().Int64(),
 			tx.Data(),
 		})
 	}

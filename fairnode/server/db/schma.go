@@ -33,20 +33,20 @@ type header struct {
 	TxHash      string
 	ReceiptHash string
 	Difficulty  string
-	Number      string
-	GasLimit    string
-	GasUsed     string
+	Number      int64
+	GasLimit    int64
+	GasUsed     int64
 	Time        string
 	Extra       []byte
 	MixDigest   string
-	Nonce       string
+	Nonce       int64
 }
 
 type transaction struct {
 	AccountNonce string
-	Price        string
+	Price        int64
 	To           string
-	Amount       string
+	Amount       int64
 	Payload      []byte
 }
 
