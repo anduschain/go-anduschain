@@ -23,7 +23,10 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
+	clienttype "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -343,6 +346,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		w.pendingMu.Lock()
 		for h, t := range w.pendingTasks {
 			if t.block.NumberU64()+staleThreshold <= number {
+				fmt.Println("pending clear@@@@worker349  : ", w.pendingTasks)
 				delete(w.pendingTasks, h)
 			}
 		}
@@ -720,13 +724,14 @@ func (w *worker) updateSnapshot() {
 
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
-
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
+		fmt.Println("applytransaction err ", err)
 		return nil, err
 	}
 	w.current.txs = append(w.current.txs, tx)
+
 	w.current.receipts = append(w.current.receipts, receipt)
 
 	return receipt.Logs, nil
@@ -767,7 +772,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		}
 		// If we don't have enough gas for any further transactions then we're done
 		if w.current.gasPool.Gas() < params.TxGas {
-			log.Trace("Not enough gas for further transactions", "have", w.current.gasPool, "want", params.TxGas)
+			log.Info("Not enough gas for further transactions", "have", w.current.gasPool, "want", params.TxGas)
 			break
 		}
 		// Retrieve the next transaction and abort if all done
@@ -782,12 +787,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		from, _ := types.Sender(w.current.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
-
-			txs.Pop()
-			continue
-		}
+		//if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
+		//	fmt.Println("worker.go tx.protected 의 값은 : ", tx.Protected())
+		//	fmt.Println("worker.go !w.config.IsEIP155(w.current.header.Number) 의 값은 : ", !w.config.IsEIP155(w.current.header.Number))
+		//	log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
+		//
+		//	txs.Pop()
+		//	continue
+		//}
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 
@@ -795,17 +802,17 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
-			log.Trace("Gas limit exceeded for current block", "sender", from)
+			log.Info("Gas limit exceeded for current block", "sender", from)
 			txs.Pop()
 
 		case core.ErrNonceTooLow:
 			// New head notification data race between the transaction pool and miner, shift
-			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
+			log.Info("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
 
 		case core.ErrNonceTooHigh:
 			// Reorg notification data race between the transaction pool and miner, skip account =
-			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
+			log.Info("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
 		case nil:
@@ -942,9 +949,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 		// Short circuit if there is no available pending transactions
+
 		if len(pending) == 0 {
 			w.updateSnapshot()
-			//return
+			return
 		}
 		// Split the pending transactions into locals and remotes
 		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
@@ -954,8 +962,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
+		fmt.Println("len(localTxs) @@@@@@@@@@ : ", len(localTxs))
 		if len(localTxs) > 0 {
-			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
+			txs := types.NewTransactionsByPriceAndNonce(w.fairclient.Signer, localTxs)
+
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
 				return
 			}
@@ -967,7 +977,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		w.commit(uncles, nil, true, tstart)
+		err = w.commit(uncles, nil, true, tstart)
+		if err != nil {
+			fmt.Println("Error[andus] : ", err)
+		}
 	}
 
 }
@@ -981,10 +994,42 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	var receipts []*types.Receipt
 	var block *types.Block
 	var err error
+	//hastx := false
+	data := clienttype.JoinTxData{}
 	// TODO : andus >> 1. 새로운 블록 생성
 
 	if debEngine, ok := w.engine.(*deb.Deb); ok {
 		// 블록이랑 영수증을 리턴해 주면...
+		for i := range w.current.txs {
+			addr, err := types.Sender(types.NewEIP155Signer(w.config.ChainID), w.current.txs[i])
+			if err != nil {
+				fmt.Println("Error[andus] : sender에서 주소 가져오기 실패  : ", err)
+				return err
+			}
+
+			err = rlp.DecodeBytes(w.current.txs[i].Data(), &data)
+			if err != nil {
+				fmt.Println("Info[andus] : DecodeBytes 실패   : ")
+				break
+			}
+
+			fmt.Println("Info[andus] : data 디코드  : ", data.FairNodeSig, data.NextBlockNum)
+
+			//보내는 주소가 나이여야하고, 받는 주소가 fairnode 인 경우에만 블록을 만들도록한다.
+			if fairutil.CmpAddress(addr.String(), w.fairclient.Coinbase.String()) {
+				//보낸 블록넘버가 지금의 블록 넘버와 같아야한다.
+				fmt.Println("블록넘버 확인", data.NextBlockNum, " 내가 갖고있는것 ", w.chain.CurrentBlock().Number().Uint64()+1)
+				if data.NextBlockNum == w.chain.CurrentBlock().Number().Uint64()+1 {
+					//hastx = true
+				}
+			}
+		}
+		//if !hastx {
+		//	time.Sleep(5 * time.Second)
+		// 	w.startCh <- struct{}{}
+		//	return errors.New("블록에 내가 만든 tx가 없습니다. 블록만들기를 다시시작합니다. ")
+		//}
+
 		block, receipts, err = debEngine.DebFinalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 		if err != nil {
 			return err

@@ -18,10 +18,12 @@ package core
 
 import (
 	"container/heap"
+	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"math"
 	"math/big"
 	"sort"
+	"strings"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -252,6 +254,7 @@ func (l *txList) Overlaps(tx *types.Transaction) bool {
 func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Transaction) {
 
 	// If there's an older better transaction, abort
+	//TODO :  andus 1226 변경
 	old := l.txs.Get(tx.Nonce())
 	if old != nil {
 		threshold := new(big.Int).Div(new(big.Int).Mul(old.GasPrice(), big.NewInt(100+int64(priceBump))), big.NewInt(100))
@@ -260,7 +263,8 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 		// this is accurate for low (Wei-level) gas price replacements
 		if old.GasPrice().Cmp(tx.GasPrice()) >= 0 || threshold.Cmp(tx.GasPrice()) > 0 {
 			// andus >>
-			if tx.To().String() == config.FAIRNODE_ADDRESS {
+			if strings.ToLower(tx.To().String()) == config.FAIRNODE_ADDRESS {
+				fmt.Println("tx_list.go@@@@@@@", old.To().String())
 				return true, old
 			}
 

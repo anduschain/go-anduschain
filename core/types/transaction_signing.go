@@ -20,11 +20,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/params"
+	"math/big"
 )
 
 var (
@@ -70,16 +69,16 @@ func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, err
 // signing method. The cache is invalidated if the cached signer does
 // not match the signer used in the current call.
 func Sender(signer Signer, tx *Transaction) (common.Address, error) {
-	if sc := tx.from.Load(); sc != nil {
-		sigCache := sc.(sigCache)
-		// If the signer used to derive from in a previous
-		// call is not the same as used current, invalidate
-		// the cache.
-		if sigCache.signer.Equal(signer) {
-			return sigCache.from, nil
-		}
-	}
 
+	//if sc := tx.from.Load(); sc != nil {
+	//	sigCache := sc.(sigCache)
+	//	// If the signer used to derive from in a previous
+	//	// call is not the same as used current, invalidate
+	//	// the cache.
+	//	if sigCache.signer.Equal(signer) {
+	//		return sigCache.from, nil
+	//	}
+	//}
 	addr, err := signer.Sender(tx)
 	if err != nil {
 		return common.Address{}, err
@@ -220,9 +219,12 @@ func (fs FrontierSigner) Sender(tx *Transaction) (common.Address, error) {
 }
 
 func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {
+
+	fmt.Println("recoverPlain srv : ", Vb.BitLen())
 	if Vb.BitLen() > 8 {
 		return common.Address{}, ErrInvalidSig
 	}
+
 	V := byte(Vb.Uint64() - 27)
 	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
 		return common.Address{}, ErrInvalidSig
@@ -236,6 +238,7 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 	// recover the public key from the snature
 	pub, err := crypto.Ecrecover(sighash[:], sig)
 	if err != nil {
+
 		return common.Address{}, err
 	}
 	if len(pub) == 0 || pub[0] != 4 {

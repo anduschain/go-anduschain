@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	gethType "github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
@@ -29,4 +30,5 @@ type Client interface {
 	BlockMakeStart() chan struct{}
 	VoteBlock() chan *fairtypes.VoteBlock
 	FinalBlock() chan fairtypes.FinalBlock
+	GetSigner() gethType.Signer
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	mrand "math/rand"
+	"strings"
 )
 
 // OS 영향 받지 않게 rand값을 추출 하기 위해서 "math/rand" 사용
@@ -38,4 +39,12 @@ func makeSeed(rand [20]byte, addr [20]byte) int64 {
 	}
 
 	return seed
+}
+
+func CmpAddress(a string, b string) bool {
+
+	if strings.ToLower(a) == strings.ToLower(b) {
+		return true
+	}
+	return false
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	clinetTcp "github.com/anduschain/go-anduschain/fairnode/client/tcp"
@@ -64,7 +65,8 @@ type FairnodeClient struct {
 
 	StartCh chan struct{} // 블록생성 시작 채널
 
-	chans fairtypes.Channals
+	chans  fairtypes.Channals
+	Signer types.EIP155Signer
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -88,6 +90,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		StartCh: make(chan struct{}),
 
 		Services: make(map[string]_interface.ServiceFunc),
+		Signer:   types.NewEIP155Signer(blockChain.Config().ChainID),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -175,6 +178,7 @@ func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey       { return &
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}              { return fc.StartCh }
 func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock       { return fc.chans.GetWinningBlockCh() }
 func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return fc.chans.GetFinalBlockCh() }
+func (fc *FairnodeClient) GetSigner() types.Signer                    { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	fmt.Printf("GetCurrentJoinNonce : block number %d, roothash : %s", fc.BlockChain.CurrentHeader().Number.Uint64(), fc.BlockChain.CurrentHeader().Root.String())

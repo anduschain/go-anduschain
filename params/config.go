@@ -82,7 +82,7 @@ var (
 	// TODO : andus >> consensus 추가
 	DebChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(100),
-		HomesteadBlock:      big.NewInt(0),
+		HomesteadBlock:      nil,
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
 		EIP150Block:         big.NewInt(0),

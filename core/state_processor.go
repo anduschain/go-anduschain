@@ -17,6 +17,7 @@
 package core
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/deb"
@@ -26,6 +27,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -67,6 +69,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
+	fmt.Println("state _ processor.go Process 실행함 @@@@@@@@@@@@@@@@@@@@@@")
 
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
@@ -75,8 +78,12 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		var receipt *types.Receipt
 		var err error
 
+		fmt.Println("state _ processor.go Transactions 실행함 @@@@@@@@@@@@@@@@@@@@@@")
 		if _, ok := p.engine.(*deb.Deb); ok {
-			if tx.To().String() == config.FAIRNODE_ADDRESS {
+			fmt.Println("state _ processor.go DebApplyTransaction 실행함 @@@@@@@@@@@@@@@@@@@@@@")
+			fmt.Println(fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS))
+			if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
+
 				// TODO : andus >> JoinTX, JoinNunce 처리 부분
 				receipt, _, err = DebApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, tx.To())
 				if err != nil {
@@ -165,6 +172,7 @@ func DebApplyTransaction(config *params.ChainConfig, bc ChainContext, author *co
 
 	// TODO : andus >> Tx의 메시지를 적용하는 부분
 	//_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
+	fmt.Println("DebApplyTransaction @@@@@@@@")
 	_, gas, failed, err := DebApplyMessage(vmenv, msg, gp, header, fairAddr)
 
 	if err != nil {

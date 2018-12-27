@@ -47,13 +47,6 @@ func New(Cminer uint64) *Otprn {
 	}
 }
 
-func (otprn *Otprn) CheckOtprn(aa string) (*Otprn, error) {
-
-	//TODO : andus >> 서명값 검증, otrprn 구조체 검증
-
-	return &Otprn{}, nil
-}
-
 func (otprn *Otprn) SignOtprn(account accounts.Account, hash common.Hash, ks *keystore.KeyStore) ([]byte, error) {
 	sig, err := ks.SignHash(account, hash.Bytes())
 	if err != nil {

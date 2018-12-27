@@ -288,12 +288,15 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	header.UncleHash = types.CalcUncleHash(nil)
 
 	// Assemble and return the final block for sealing
-	return types.NewBlock(header, txs, nil, receipts), nil
+	return block, nil
 }
 
 func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
 
 	fmt.Println("----DebFinalize 실행함 새로 만들 블록 번호 : ", header.Number.String(), len(txs))
+	//for i := range txs{
+	//	types.Sender(,txs[i])
+	//}
 
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))

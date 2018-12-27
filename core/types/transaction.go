@@ -19,6 +19,7 @@ package types
 import (
 	"container/heap"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -224,6 +225,11 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	}
 
 	var err error
+	if _, ok := s.(EIP155Signer); ok {
+		fmt.Println("eip155 맞음 ")
+	} else {
+		fmt.Println("eip155아님")
+	}
 	msg.from, err = Sender(s, tx)
 	return msg, err
 }
@@ -329,6 +335,7 @@ type TransactionsByPriceAndNonce struct {
 // if after providing it to the constructor.
 func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
 	// Initialize a price based heap with the head transactions
+
 	heads := make(TxByPrice, 0, len(txs))
 	for from, accTxs := range txs {
 		heads = append(heads, accTxs[0])
@@ -347,6 +354,16 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 		heads:  heads,
 		signer: signer,
 	}
+}
+
+//지워
+func (ts *TransactionsByPriceAndNonce) Get() Signer {
+	return ts.signer
+}
+
+//지워
+func (ts *TransactionsByPriceAndNonce) Getlen() int {
+	return len(ts.txs)
 }
 
 // Peek returns the next transaction by price.

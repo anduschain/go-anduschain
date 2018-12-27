@@ -25,6 +25,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -545,6 +546,7 @@ func (pool *TxPool) Pending() (map[common.Address]types.Transactions, error) {
 	for addr, list := range pool.pending {
 		pending[addr] = list.Flatten()
 	}
+	fmt.Println("pending @@@@@@@@@ ", pending)
 	return pending, nil
 }
 
@@ -577,14 +579,11 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
 	var joinTxdata *clientType.JoinTxData
-	if tx.To().String() == config.FAIRNODE_ADDRESS {
+	if strings.ToLower(tx.To().String()) == config.FAIRNODE_ADDRESS {
 		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
 			log.Info("validateTx decode 에러", err)
 		}
 	}
-
-	fmt.Println(">>>>>>>>validateTx>>>>>>>>", tx.Hash().String())
-
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
@@ -603,12 +602,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
+	fmt.Println("보낸놈 : ", from.String())
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
-
 	// JOINTX가 아닌 케이스
 	if joinTxdata == nil {
 		// Drop non-local transactions under our own minimal accepted gas price
@@ -689,29 +688,33 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 	}
 	// If the transaction is replacing an already pending one, do directly
 	from, _ := types.Sender(pool.signer, tx) // already validated
-	if list := pool.pending[from]; list != nil && list.Overlaps(tx) {
-		// Nonce already pending, check if required price bump is met
-		inserted, old := list.Add(tx, pool.config.PriceBump)
-		if !inserted {
-			pendingDiscardCounter.Inc(1)
-			return false, ErrReplaceUnderpriced
+	fmt.Println("from address 확인  ", from.String())
+	if pool.chainconfig.Deb == nil {
+		if list := pool.pending[from]; list != nil && list.Overlaps(tx) { // 1225 안들어가지는곳
+			// Nonce already pending, check if required price bump is met
+			inserted, old := list.Add(tx, pool.config.PriceBump)
+			if !inserted {
+				pendingDiscardCounter.Inc(1)
+				return false, ErrReplaceUnderpriced
+			}
+			// New transaction is better, replace old one
+			if old != nil {
+				pool.all.Remove(old.Hash())
+				pool.priced.Removed()
+				fmt.Println("tx_pool 703 @@@@@@@@@@@@@@@ remove!!")
+				pendingReplaceCounter.Inc(1)
+			}
+			pool.all.Add(tx)
+			pool.priced.Put(tx)
+			pool.journalTx(from, tx)
+			fmt.Println("tx_pool 709 @@@@@@@@@@@@@@@ 여기가 add 되는곳인데 ")
+			log.Trace("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
+
+			// We've directly injected a replacement transaction, notify subsystems
+			go pool.txFeed.Send(NewTxsEvent{types.Transactions{tx}})
+
+			return old != nil, nil
 		}
-		// New transaction is better, replace old one
-		if old != nil {
-			pool.all.Remove(old.Hash())
-			pool.priced.Removed()
-			pendingReplaceCounter.Inc(1)
-		}
-		pool.all.Add(tx)
-		pool.priced.Put(tx)
-		pool.journalTx(from, tx)
-
-		log.Trace("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
-
-		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(NewTxsEvent{types.Transactions{tx}})
-
-		return old != nil, nil
 	}
 	// New transaction isn't replacing a pending one, push into queue
 	replace, err := pool.enqueueTx(hash, tx)
@@ -725,8 +728,8 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 			pool.locals.add(from)
 		}
 	}
-	pool.journalTx(from, tx)
 
+	pool.journalTx(from, tx)
 	log.Trace("Pooled new future transaction", "hash", hash, "from", from, "to", tx.To())
 	return replace, nil
 }

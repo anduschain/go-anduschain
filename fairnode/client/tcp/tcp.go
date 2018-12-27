@@ -215,8 +215,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 	if currentBalance.Cmp(config.Price) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		signer := gethTypes.NewEIP155Signer(chanID)
-
+		fmt.Println("chainID : ", chanID.Uint64())
 		data := types.JoinTxData{
 			OtprnHash:    otprn.HashOtprn(),
 			FairNodeSig:  sig,
@@ -232,7 +231,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
 			gethTypes.NewTransaction(currentJoinNonce, common.HexToAddress(config.FAIRNODE_ADDRESS),
-				config.Price, 90000, big.NewInt(1000000000), joinTxData), signer, t.manger.GetCoinbsePrivKey())
+				config.Price, 90000, big.NewInt(1000000000), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 
 		if err != nil {
 			return errorMakeJoinTx
