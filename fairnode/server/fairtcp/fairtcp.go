@@ -247,7 +247,7 @@ Exit:
 				conn.Close()
 				break Exit
 			}
-			log.Println("Error[andus] : ", err)
+			log.Println("Error[andus] : -------------------", err)
 		}
 
 	}

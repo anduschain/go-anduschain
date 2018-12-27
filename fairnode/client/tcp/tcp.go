@@ -188,7 +188,7 @@ Exit:
 			if "close" == err.Error() {
 				conn.Close()
 			}
-			log.Println("Error[andus] : ", err)
+			log.Println("Error[andus] : ------------------- ", err)
 		case <-exit:
 			conn.Close()
 			break Exit

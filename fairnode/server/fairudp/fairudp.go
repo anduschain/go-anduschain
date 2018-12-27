@@ -111,7 +111,6 @@ func (fu *FairUdp) Stop() error {
 func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 	// TODO : andus >> Geth node Heart beat update ( Active node 관리 )
 	// TODO : enode값 수신
-
 	defer log.Printf("Info[andus] : manageActiveNode kill")
 	notify := make(chan error)
 	go func() {
@@ -245,10 +244,23 @@ Exit:
 	}
 }
 
+func Send(code uint32, data interface{}, conn net.Conn) {
+	tsp := transport.New(conn)
+	m, err := transport.MakeTsMsg(code, data)
+	if err != nil {
+		log.Println("Error[andus] : ", err)
+	}
+	err = tsp.WriteMsg(m)
+	if err != nil {
+		log.Println("Error transport.SendTCP", err)
+	}
+}
+
 func (fu *FairUdp) sendLeague(otprnHash string) {
 	t := time.NewTicker(5 * time.Second)
 	leaguePool := fu.fm.GetLeaguePool()
 	var percent float64 = 30
+
 	for {
 		select {
 		case <-t.C:
@@ -257,10 +269,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 			if num >= fu.JoinTotalNum(percent) && num > 0 {
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						err := transport.SendUDP(transport.SendLeageNodeList, enodes, nodes[index].Conn)
-						if err != nil {
-							log.Println("Error transport.SendUDP", err)
-						}
+						Send(transport.SendLeageNodeList, enodes, nodes[index].Conn)
 					}
 				}
 
@@ -270,10 +279,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						err := transport.SendUDP(transport.MakeJoinTx, otprnHash, nodes[index].Conn)
-						if err != nil {
-							log.Println("Error transport.SendUDP", err)
-						}
+						Send(transport.MakeJoinTx, otprnHash, nodes[index].Conn)
 					}
 				}
 
@@ -283,10 +289,7 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						err := transport.SendUDP(transport.MakeBlock, otprnHash, nodes[index].Conn)
-						if err != nil {
-							log.Println("Error transport.SendUDP", err)
-						}
+						Send(transport.MakeBlock, otprnHash, nodes[index].Conn)
 					}
 				}
 
@@ -356,10 +359,7 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					err := transport.SendUDP(transport.SendFinalBlock, n.GetTsFinalBlock(), nodes[index].Conn)
-					if err != nil {
-						log.Println("Error transport.SendUDP", err)
-					}
+					Send(transport.SendFinalBlock, n.GetTsFinalBlock(), nodes[index].Conn)
 				}
 			}
 
