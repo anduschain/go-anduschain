@@ -29,7 +29,10 @@ type Tsp struct {
 
 func New(fd net.Conn) Transport {
 	fd.SetDeadline(time.Now().Add(handshakeTimeout))
-	return &Tsp{fd: fd}
+	return &Tsp{
+		fd: fd,
+		rw: newTspRw(fd),
+	}
 }
 
 func (t *Tsp) ReadMsg() (*TsMsg, error) {
@@ -67,6 +70,12 @@ type MsgReadWriter interface {
 
 type tspRW struct {
 	conn io.ReadWriter
+}
+
+func newTspRw(conn io.ReadWriter) *tspRW {
+	return &tspRW{
+		conn: conn,
+	}
 }
 
 func (tr *tspRW) ReadMsg() (*TsMsg, error) {
