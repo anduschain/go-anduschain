@@ -287,6 +287,16 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 
+	block := types.NewBlock(header, txs, nil, receipts)
+
+	//0. 생성 블록 마이너 노드들에게 브로드 캐스트
+
+	//1. 블록 투표
+
+	//2. 블록 교체
+
+	//3. 파이널 블록 수신
+
 	// Assemble and return the final block for sealing
 	return block, nil
 }
