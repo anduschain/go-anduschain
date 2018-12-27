@@ -9,11 +9,10 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/rlp"
-	"io"
 	"log"
 	"math/big"
 	"net"
@@ -96,12 +95,15 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		return
 	}
 
-	// 전송 받은 otprn을 이용해서 참가 여부 확인
-	if err := msg.Send(msg.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{
-			*t.manger.GetOtprnWithSig().Otprn,
-			t.manger.GetCoinbase(),
-			t.manger.GetP2PServer().NodeInfo().Enode}, conn); err != nil {
+	tsp := transport.New(conn)
+	m, err := transport.MakeTsMsg(transport.ReqLeagueJoinOK,
+		fairtypes.TransferCheck{*t.manger.GetOtprnWithSig().Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
+	if err != nil {
+		log.Println("Error[andus] : ", err)
+	}
+
+	if err := tsp.WriteMsg(m); err != nil {
+		// 전송 받은 otprn을 이용해서 참가 여부 확인
 		log.Println("Error[andus] : ", err)
 	}
 
@@ -113,77 +115,66 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 			noify <- closeConnection
 		}()
 
-		data := make([]byte, 4096)
 		for {
-			n, err := conn.Read(data)
+			fromFaionodeMsg, err := tsp.ReadMsg()
 			if err != nil {
 				noify <- err
-				if err == io.EOF {
-					return
-				}
-				if _, ok := err.(*net.OpError); ok {
-					return
-				}
+				continue
 			}
-
-			if n > 0 {
-				var str string
-				if fromFaionodeMsg := msg.ReadMsg(data); fromFaionodeMsg != nil {
-					switch fromFaionodeMsg.Code {
-					case msg.ResLeagueJoinFalse:
-						// 참여 불가, Dial Close
-						fromFaionodeMsg.Decode(&str)
-						log.Println("Debug[andus] : ", str)
-						return
-					case msg.MinerLeageStop:
-						// 종료됨
-						fromFaionodeMsg.Decode(&str)
-						log.Println("Debug[andus] : ", str)
-						return
-					case msg.SendLeageNodeList:
-						// Add peer
-						var nodeList []string
-						fromFaionodeMsg.Decode(&nodeList)
-						log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
-						for index := range nodeList {
-							// addPeer 실행
-							node, err := discover.ParseNode(nodeList[index])
-							if err != nil {
-								fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
-							}
-							t.manger.GetP2PServer().AddPeer(node)
-						}
-					case msg.MakeJoinTx:
-						// JoinTx 생성
-						err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
-						if err != nil {
-							log.Println("Error[andus] : ", err)
-						}
-					case msg.MakeBlock:
-						fmt.Println("-------- 블록 생성 tcp -------")
-						t.manger.BlockMakeStart() <- struct{}{}
-					case msg.SendFinalBlock:
-						tsFb := &fairtypes.TsFinalBlock{}
-						if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
-							log.Println("Error[andus] : ", err)
-							break
-						}
-
-						fb := tsFb.GetFinalBlock()
-						if fb.Block == nil {
-							return
-						}
-
-						block := fb.Block
-
-						if len(block.FairNodeSig) != 0 {
-							fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-							t.manger.FinalBlock() <- *fb
-							noify <- closeConnection
-						}
-
+			var str string
+			switch fromFaionodeMsg.Code {
+			case transport.ResLeagueJoinFalse:
+				// 참여 불가, Dial Close
+				fromFaionodeMsg.Decode(&str)
+				log.Println("Debug[andus] : ", str)
+				return
+			case transport.MinerLeageStop:
+				// 종료됨
+				fromFaionodeMsg.Decode(&str)
+				log.Println("Debug[andus] : ", str)
+				return
+			case transport.SendLeageNodeList:
+				// Add peer
+				var nodeList []string
+				fromFaionodeMsg.Decode(&nodeList)
+				log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
+				for index := range nodeList {
+					// addPeer 실행
+					node, err := discover.ParseNode(nodeList[index])
+					if err != nil {
+						fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
 					}
+					t.manger.GetP2PServer().AddPeer(node)
 				}
+			case transport.MakeJoinTx:
+				// JoinTx 생성
+				err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
+				if err != nil {
+					log.Println("Error[andus] : ", err)
+				}
+			case transport.MakeBlock:
+				fmt.Println("-------- 블록 생성 tcp -------")
+				t.manger.BlockMakeStart() <- struct{}{}
+			case transport.SendFinalBlock:
+				tsFb := &fairtypes.TsFinalBlock{}
+				if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
+					log.Println("Error[andus] : ", err)
+					break
+				}
+
+				fb := tsFb.GetFinalBlock()
+				if fb.Block == nil {
+					return
+				}
+
+				block := fb.Block
+
+				if len(block.FairNodeSig) != 0 {
+					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+					t.manger.FinalBlock() <- *fb
+					noify <- closeConnection
+				}
+
 			}
 		}
 	}()
@@ -194,24 +185,24 @@ Exit:
 		case <-time.After(time.Second * 1):
 			//fmt.Println("tcp timeout 1, still alive")
 		case err := <-noify:
-			if io.EOF == err {
-				fmt.Println("tcp connection dropped message", err)
+			if "close" == err.Error() {
 				conn.Close()
-				break Exit
-			} else if "close" == err.Error() {
-				conn.Close()
-			} else if _, ok := err.(*net.OpError); ok {
-				fmt.Println("tcp connection dropped message", err)
-				break Exit
 			}
 			log.Println("Error[andus] : ", err)
 		case <-exit:
 			conn.Close()
+			break Exit
 		case winingBlock := <-t.manger.VoteBlock():
 
 			//fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
 			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
-			msg.Send(msg.SendBlockForVote, winingBlock.GetTsVoteBlock(), conn)
+			m, err := transport.MakeTsMsg(transport.SendBlockForVote, winingBlock.GetTsVoteBlock())
+			if err != nil {
+				log.Println("Error[andus] : ", err)
+			}
+			if err := tsp.WriteMsg(m); err != nil {
+				log.Println("Error[andus] : ", err)
+			}
 		}
 	}
 }

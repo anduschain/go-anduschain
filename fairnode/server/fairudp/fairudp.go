@@ -8,12 +8,12 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
+	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
 	"log"
@@ -123,11 +123,14 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				return
 			}
 			if n > 0 {
-				fromGethMsg := msg.ReadMsg(buf)
-				switch fromGethMsg.Code {
-				case msg.SendEnode:
+				m := transport.ReadUDP(buf[:n])
+				if m == nil {
+					return
+				}
+				switch m.Code {
+				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
-					fromGethMsg.Decode(&fromGeth)
+					m.Decode(&fromGeth)
 					fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port)
 				}
 			}
@@ -226,7 +229,12 @@ Exit:
 						if err != nil {
 							log.Println("DialUDP", err)
 						}
-						msg.Send(msg.SendOTPRN, tsOtp, Conn)
+
+						err = transport.SendUDP(transport.SendOTPRN, tsOtp, Conn)
+						if err != nil {
+							log.Println("Error transport.SendUDP", err)
+						}
+
 						Conn.Close()
 					}
 				}
@@ -249,7 +257,10 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 			if num >= fu.JoinTotalNum(percent) && num > 0 {
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						msg.Send(msg.SendLeageNodeList, enodes, nodes[index].Conn)
+						err := transport.SendUDP(transport.SendLeageNodeList, enodes, nodes[index].Conn)
+						if err != nil {
+							log.Println("Error transport.SendUDP", err)
+						}
 					}
 				}
 
@@ -259,7 +270,10 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						msg.Send(msg.MakeJoinTx, otprnHash, nodes[index].Conn)
+						err := transport.SendUDP(transport.MakeJoinTx, otprnHash, nodes[index].Conn)
+						if err != nil {
+							log.Println("Error transport.SendUDP", err)
+						}
 					}
 				}
 
@@ -269,7 +283,10 @@ func (fu *FairUdp) sendLeague(otprnHash string) {
 
 				for index := range nodes {
 					if nodes[index].Conn != nil {
-						msg.Send(msg.MakeBlock, otprnHash, nodes[index].Conn)
+						err := transport.SendUDP(transport.MakeBlock, otprnHash, nodes[index].Conn)
+						if err != nil {
+							log.Println("Error transport.SendUDP", err)
+						}
 					}
 				}
 
@@ -339,7 +356,10 @@ func (fu *FairUdp) sendFinalBlock(otprnHash string) {
 
 			for index := range nodes {
 				if nodes[index].Conn != nil {
-					msg.Send(msg.SendFinalBlock, n.GetTsFinalBlock(), nodes[index].Conn)
+					err := transport.SendUDP(transport.SendFinalBlock, n.GetTsFinalBlock(), nodes[index].Conn)
+					if err != nil {
+						log.Println("Error transport.SendUDP", err)
+					}
 				}
 			}
 

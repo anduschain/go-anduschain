@@ -2,7 +2,7 @@ package msg
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
 	"log"
@@ -33,15 +33,7 @@ const (
 func ReadMsg(msg []byte) *Msg {
 	m := &Msg{}
 	m.ReceivedAt = time.Now()
-
-	dec := gob.NewDecoder(bytes.NewReader(msg))
-	err := dec.Decode(&m)
-	if err != nil {
-		log.Println("ReadMsg decode error :", err)
-		return nil
-	}
-
-	//rlp.Decode(bytes.NewReader(msg), &m)
+	rlp.Decode(bytes.NewReader(msg), &m)
 	return m
 }
 
@@ -61,7 +53,15 @@ func Send(msgcode uint32, data interface{}, conn net.Conn) error {
 		return err
 	}
 
-	if _, err := conn.Write(msg); err == nil {
+	lengthBuf := make([]byte, 8)
+	binary.BigEndian.PutUint32(lengthBuf, uint32(msg.Len()))
+
+	if _, err := conn.Write(lengthBuf); nil != err {
+		log.Printf("failed to send msg length; err: %v", err)
+		return err
+	}
+
+	if _, err := conn.Write(msg.Bytes()); err == nil {
 		return nil
 	} else {
 		fmt.Println("message send", err)
@@ -69,30 +69,24 @@ func Send(msgcode uint32, data interface{}, conn net.Conn) error {
 	}
 }
 
-func makeMassage(msgcode uint32, data interface{}) ([]byte, error) {
+func makeMassage(msgcode uint32, data interface{}) (bytes.Buffer, error) {
 	var b bytes.Buffer
+	var network bytes.Buffer
 	var err error
+
 	err = rlp.Encode(&b, data)
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
-		return []byte{}, err
+		return network, err
 	}
 
-	var network bytes.Buffer
-	enc := gob.NewEncoder(&network)
-
-	//err = rlp.Encode(&bb, Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
-	//if err != nil {
-	//	fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
-	//	return []byte{}, err
-	//}
-
-	err = enc.Encode(Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
+	err = rlp.Encode(&network, Msg{Code: msgcode, Size: uint32(b.Len()), Payload: b.Bytes()})
 	if err != nil {
 		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
+		return network, err
 	}
 
 	fmt.Println("make message length :", network.Len(), b.Len())
 
-	return network.Bytes(), nil
+	return network, nil
 }

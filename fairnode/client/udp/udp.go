@@ -8,8 +8,8 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/client/tcp"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes/msg"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"log"
 	"net"
@@ -97,7 +97,10 @@ func (u *Udp) submitEnode(exit chan struct{}) {
 	}
 
 	// 처음 한번 보내기
-	msg.Send(msg.SendEnode, ts, Conn)
+	err = transport.SendUDP(transport.SendEnode, ts, Conn)
+	if err != nil {
+		log.Println("Error transport.SendUDP", err)
+	}
 
 Exit:
 	for {
@@ -106,7 +109,10 @@ Exit:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
 			fmt.Println("Info[andus] : Enode 전송")
-			msg.Send(msg.SendEnode, ts, Conn)
+			err = transport.SendUDP(transport.SendEnode, ts, Conn)
+			if err != nil {
+				log.Println("Error transport.SendUDP", err)
+			}
 		case <-exit:
 			break Exit
 		}
@@ -160,9 +166,9 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 			if n > 0 {
 				// TODO : andus >> 수신된 otprn디코딩
 
-				fromFairnodeMsg := msg.ReadMsg(tsOtprnByte)
+				fromFairnodeMsg := transport.ReadUDP(tsOtprnByte)
 				switch fromFairnodeMsg.Code {
-				case msg.SendOTPRN:
+				case transport.SendOTPRN:
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
 					log.Println("Debug : OTPRN 수신됨", tsOtprn.Hash.String())

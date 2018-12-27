@@ -11,7 +11,6 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"testing"
 )
@@ -23,40 +22,6 @@ func pricedTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key *ec
 
 func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Transaction {
 	return pricedTransaction(nonce, gaslimit, big.NewInt(1), key)
-}
-
-func makeMassageforTest(msgcode uint64, data interface{}) ([]byte, error) {
-	bData, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
-		return []byte{}, err
-	}
-
-	msg, err := rlp.EncodeToBytes(Msg{Code: msgcode, Size: uint32(len(bData)), Payload: bData})
-	if err != nil {
-		fmt.Println("andus >> msg.Send EncodeToBytes 에러", err)
-		return []byte{}, err
-	}
-
-	return msg, nil
-}
-
-func TestSend(t *testing.T) {
-	type testStruct struct {
-		Name string
-		Age  uint64
-	}
-
-	result, err := makeMassage(SendOTPRN, &testStruct{"hakuna", 19})
-	if err != nil {
-		t.Error(err)
-	}
-
-	var ts testStruct
-	m := ReadMsg(result)
-	m.Decode(&ts)
-
-	fmt.Println(m, ts)
 }
 
 func TestMsg_Decode(t *testing.T) {
