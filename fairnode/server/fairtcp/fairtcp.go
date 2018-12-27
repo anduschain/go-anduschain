@@ -12,6 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -161,8 +162,13 @@ func (ft *FairTcp) handeler(conn net.Conn) {
 		for {
 			fromGethMsg, err := tsp.ReadMsg()
 			if err != nil {
-				noify <- err
-				continue
+				if err == io.EOF {
+					noify <- err
+					return
+				}
+				if _, ok := err.(*net.OpError); ok {
+					return
+				}
 			}
 			switch fromGethMsg.Code {
 			case transport.ReqLeagueJoinOK:
@@ -246,8 +252,12 @@ Exit:
 			if "close" == err.Error() {
 				conn.Close()
 				break Exit
+			} else if io.EOF == err {
+				fmt.Println("tcp connection dropped message", err)
+				conn.Close()
+				break Exit
 			}
-			log.Println("Error[andus] : -------------------", err)
+			log.Println("Error[andus] : ------------------- ", err)
 		}
 
 	}

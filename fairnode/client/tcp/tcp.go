@@ -13,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -118,8 +119,13 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		for {
 			fromFaionodeMsg, err := tsp.ReadMsg()
 			if err != nil {
-				noify <- err
-				continue
+				if err == io.EOF {
+					noify <- err
+					return
+				}
+				if _, ok := err.(*net.OpError); ok {
+					return
+				}
 			}
 			var str string
 			switch fromFaionodeMsg.Code {
@@ -187,6 +193,11 @@ Exit:
 		case err := <-noify:
 			if "close" == err.Error() {
 				conn.Close()
+				break Exit
+			} else if io.EOF == err {
+				fmt.Println("tcp connection dropped message", err)
+				conn.Close()
+				break Exit
 			}
 			log.Println("Error[andus] : ------------------- ", err)
 		case <-exit:
