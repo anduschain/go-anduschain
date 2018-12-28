@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ const (
 
 type Transport interface {
 	MsgReadWriter
+	Close()
 }
 
 type Tsp struct {
@@ -49,7 +51,7 @@ func (t *Tsp) WriteMsg(msg *TsMsg) error {
 	return t.rw.WriteMsg(msg)
 }
 
-func (t *Tsp) close(err error) {
+func (t *Tsp) Close() {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
 	t.fd.Close()
@@ -66,6 +68,17 @@ type MsgWriter interface {
 type MsgReadWriter interface {
 	MsgReader
 	MsgWriter
+}
+
+func Send(w MsgWriter, code uint32, data interface{}) {
+	m, err := MakeTsMsg(code, data)
+	if err != nil {
+		log.Println("Error[andus] : ", err)
+	}
+	err = w.WriteMsg(m)
+	if err != nil {
+		log.Println("Error transport.SendTCP", err)
+	}
 }
 
 type tspRW struct {

@@ -3,15 +3,15 @@ package pool
 import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"log"
-	"net"
 	"sync"
 )
 
 type Node struct {
 	Enode    string
 	Coinbase common.Address
-	Conn     net.Conn
+	Conn     transport.MsgReadWriter
 }
 
 type OtprnHash string

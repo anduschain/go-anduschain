@@ -39,12 +39,12 @@ func New() (*FairManager, error) {
 	fm.leaguePool = pool.New(mongoDB)
 	fm.votePool = pool.NewVotePool(mongoDB)
 
-	fu, err := fairudp.New(mongoDB, fm)
+	ft, err := fairtcp.New(mongoDB, fm)
 	if err != nil {
 		return nil, err
 	}
 
-	ft, err := fairtcp.New(mongoDB, fm)
+	fu, err := fairudp.New(mongoDB, fm, ft)
 	if err != nil {
 		return nil, err
 	}

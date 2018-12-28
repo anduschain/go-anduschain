@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
+	"io/ioutil"
 	"net"
 	"time"
 )
@@ -45,6 +47,11 @@ func (m *TsMsg) EncodeToByte() ([]byte, error) {
 	}
 
 	return network.Bytes(), nil
+}
+
+func (m *TsMsg) Discard() error {
+	_, err := io.Copy(ioutil.Discard, bytes.NewReader(m.Payload))
+	return err
 }
 
 func SendUDP(msgcode uint32, data interface{}, conn net.Conn) error {
