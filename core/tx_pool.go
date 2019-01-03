@@ -577,14 +577,13 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
+	var joinTx bool
 	var joinTxdata *clientType.JoinTxData
 
-	if pool.chainconfig.Deb != nil {
-		joinTxdata = &clientType.JoinTxData{}
-		if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
-			if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-				log.Info("validateTx decode 에러", err)
-			}
+	if fairutil.CmpAddress(tx.To().String(), pool.chainconfig.Deb.FairAddr.String()) {
+		joinTx = true
+		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
+			log.Info("validateTx decode 에러", err)
 		}
 	}
 
@@ -613,7 +612,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrInsufficientFunds
 	}
 	// JOINTX가 아닌 케이스
-	if joinTxdata == nil {
+	if !joinTx {
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
