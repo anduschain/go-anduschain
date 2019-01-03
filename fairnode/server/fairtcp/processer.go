@@ -86,6 +86,8 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 			fu.sendTcpAll(transport.SendFinalBlock, n.GetTsFinalBlock())
 			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
+			fu.StopLeague()
+
 			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
 			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
@@ -93,7 +95,6 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 			votePool.SnapShot <- n.Block
 			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
-			fu.StopLeague()
 			return
 		}
 	}
