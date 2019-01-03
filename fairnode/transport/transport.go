@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
@@ -128,9 +127,6 @@ func (tr *tspRW) WriteMsg(msg *TsMsg) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("make message length :", network.Len())
-
 	lengthBuf := make([]byte, 8)
 	binary.BigEndian.PutUint32(lengthBuf, uint32(network.Len()))
 	if _, err := tr.conn.Write(lengthBuf); nil != err {

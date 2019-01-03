@@ -346,7 +346,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		w.pendingMu.Lock()
 		for h, t := range w.pendingTasks {
 			if t.block.NumberU64()+staleThreshold <= number {
-				fmt.Println("pending clear@@@@worker349  : ", w.pendingTasks)
 				delete(w.pendingTasks, h)
 			}
 		}
@@ -727,7 +726,6 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		fmt.Println("applytransaction err ", err)
 		return nil, err
 	}
 	w.current.txs = append(w.current.txs, tx)
@@ -787,14 +785,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		from, _ := types.Sender(w.current.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		//if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
-		//	fmt.Println("worker.go tx.protected 의 값은 : ", tx.Protected())
-		//	fmt.Println("worker.go !w.config.IsEIP155(w.current.header.Number) 의 값은 : ", !w.config.IsEIP155(w.current.header.Number))
-		//	log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
-		//
-		//	txs.Pop()
-		//	continue
-		//}
+		if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
+			fmt.Println("worker.go tx.protected 의 값은 : ", tx.Protected())
+			fmt.Println("worker.go !w.config.IsEIP155(w.current.header.Number) 의 값은 : ", !w.config.IsEIP155(w.current.header.Number))
+			log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
+
+			txs.Pop()
+			continue
+		}
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 
@@ -802,17 +800,17 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
-			log.Info("Gas limit exceeded for current block", "sender", from)
+			log.Trace("Gas limit exceeded for current block", "sender", from)
 			txs.Pop()
 
 		case core.ErrNonceTooLow:
 			// New head notification data race between the transaction pool and miner, shift
-			log.Info("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
+			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
 
 		case core.ErrNonceTooHigh:
 			// Reorg notification data race between the transaction pool and miner, skip account =
-			log.Info("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
+			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
 		case nil:

@@ -209,10 +209,8 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 func (self *StateDB) GetJoinNonce(addr common.Address) uint64 {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
-		fmt.Println("statedb.go@@@@@@@@ 214 joinNonce 확인 @@@@", stateObject.GetJoinNonce())
 		return stateObject.GetJoinNonce()
 	}
-	fmt.Println("statedb.go@@@@@@@@ 214 joinNonce 확인 @@@@     0 ")
 	return 0
 }
 

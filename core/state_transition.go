@@ -19,6 +19,7 @@ package core
 import (
 	"errors"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"math"
 	"math/big"
 
@@ -282,7 +283,7 @@ func (st *StateTransition) DebTransitionDb(header *types.Header, fnAddr *common.
 	// TODO : andus >> 상태쪽 업데이트
 
 	// TODO : andus >> 받는 대상이 페어노드일 경우에만 joinNonce update process
-	if msg.To() == fnAddr {
+	if fairutil.CmpAddress(msg.To().String(), fnAddr.String()) {
 		if header.Coinbase == st.evm.Coinbase {
 			// TODO : andus >> 1. coinbase가 블록의 코인베이스 이면 JoinNonce = 0
 			st.state.ResetJoinNonce(st.evm.Coinbase)

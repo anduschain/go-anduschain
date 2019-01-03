@@ -86,7 +86,5 @@ func makeMassage(msgcode uint32, data interface{}) (bytes.Buffer, error) {
 		return network, err
 	}
 
-	fmt.Println("make message length :", network.Len(), b.Len())
-
 	return network, nil
 }
