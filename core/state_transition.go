@@ -281,8 +281,6 @@ func (st *StateTransition) DebTransitionDb(header *types.Header, fnAddr *common.
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 
-	// TODO : andus >> 상태쪽 업데이트
-
 	// TODO : andus >> 받는 대상이 페어노드일 경우에만 joinNonce update process
 	if fairutil.CmpAddress(msg.To().String(), fnAddr.String()) {
 		if header.Coinbase == st.evm.Coinbase {

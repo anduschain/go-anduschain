@@ -18,7 +18,6 @@ package core
 
 import (
 	"container/heap"
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
@@ -252,9 +251,6 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 
 	// If there's an older better transaction, abort
 	old := l.txs.Get(tx.Nonce())
-
-	fmt.Println("----------------", tx.Nonce(), ":::", old)
-
 	if old != nil {
 		threshold := new(big.Int).Div(new(big.Int).Mul(old.GasPrice(), big.NewInt(100+int64(priceBump))), big.NewInt(100))
 		// Have to ensure that the new gas price is higher than the old gas
