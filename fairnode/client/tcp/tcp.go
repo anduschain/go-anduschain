@@ -190,7 +190,6 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 	if currentBalance.Cmp(config.Price) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		fmt.Println("chainID : ", chanID.Uint64())
 		data := types.JoinTxData{
 			OtprnHash:    otprn.HashOtprn(),
 			FairNodeSig:  sig,

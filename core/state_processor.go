@@ -17,16 +17,13 @@
 package core
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/params"
 )
@@ -77,26 +74,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		var receipt *types.Receipt
 		var err error
 
-		if _, ok := p.engine.(*deb.Deb); ok {
-			fmt.Println(fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS))
-			if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
-
-				// TODO : andus >> JoinTX, JoinNunce 처리 부분
-				receipt, _, err = DebApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, tx.To())
-				if err != nil {
-					return nil, nil, 0, err
-				}
-			} else {
-				receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
-				if err != nil {
-					return nil, nil, 0, err
-				}
-			}
-		} else {
-			receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
-			if err != nil {
-				return nil, nil, 0, err
-			}
+		receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+		if err != nil {
+			return nil, nil, 0, err
 		}
 
 		receipts = append(receipts, receipt)
@@ -124,56 +104,20 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	vmenv := vm.NewEVM(context, statedb, config, cfg)
 	// Apply the transaction to the current state (included in the env)
 
-	_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
-
-	if err != nil {
-		return nil, 0, err
-	}
-	// Update the state with pending changes
-	var root []byte
-	if config.IsByzantium(header.Number) {
-		statedb.Finalise(true)
+	var gas uint64
+	var failed bool
+	if fairutil.CmpAddress(tx.To().String(), config.Deb.FairAddr.String()) {
+		// JOIN_TX 처리
+		_, gas, failed, err = DebApplyMessage(vmenv, msg, gp, header, &config.Deb.FairAddr)
 	} else {
-		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+		// 일반 TX 처리
+		_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
 	}
-	*usedGas += gas
-
-	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
-	// based on the eip phase, we're passing whether the root touch-delete accounts.
-	receipt := types.NewReceipt(root, failed, *usedGas)
-	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = gas
-	// if the transaction created a contract, store the creation address in the receipt.
-	if msg.To() == nil {
-		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
-	}
-	// Set the receipt logs and create a bloom for filtering
-	receipt.Logs = statedb.GetLogs(tx.Hash())
-	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
-
-	return receipt, gas, err
-}
-
-// TODO : andus >> DebApplyTransaction
-func DebApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config, fairAddr *common.Address) (*types.Receipt, uint64, error) {
-	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
-	if err != nil {
-		return nil, 0, err
-	}
-	// Create a new context to be used in the EVM environment
-	context := NewEVMContext(msg, header, bc, author)
-	// Create a new environment which holds all relevant information
-	// about the transaction and calling mechanisms.
-	vmenv := vm.NewEVM(context, statedb, config, cfg)
-	// Apply the transaction to the current state (included in the env)
-
-	// TODO : andus >> Tx의 메시지를 적용하는 부분
-	//_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
-	_, gas, failed, err := DebApplyMessage(vmenv, msg, gp, header, fairAddr)
 
 	if err != nil {
 		return nil, 0, err
 	}
+
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
