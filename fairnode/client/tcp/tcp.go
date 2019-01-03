@@ -13,7 +13,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/rlp"
-	"io"
 	"log"
 	"math/big"
 	"net"
@@ -24,7 +23,6 @@ var (
 	errorMakeJoinTx = errors.New("JoinTx 서명 에러")
 	errorLeakCoin   = errors.New("잔액 부족으로 마이닝을 할 수 없음")
 	errorAddTxPool  = errors.New("TxPool 추가 에러")
-	closeConnection = errors.New("close")
 )
 
 type Tcp struct {
@@ -92,95 +90,22 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
-		fmt.Println("-------tcp loop 에러", err)
+		log.Println("Error [andus] : DialTCP 에러", err)
 		return
 	}
 
 	tsp := transport.New(conn)
-	m, err := transport.MakeTsMsg(transport.ReqLeagueJoinOK,
+
+	//참가 여부 확인
+	transport.Send(tsp, transport.ReqLeagueJoinOK,
 		fairtypes.TransferCheck{*t.manger.GetOtprnWithSig().Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
-	if err != nil {
-		log.Println("Error[andus] : ", err)
-	}
 
-	if err := tsp.WriteMsg(m); err != nil {
-		// 전송 받은 otprn을 이용해서 참가 여부 확인
-		log.Println("Error[andus] : ", err)
-	}
-
-	noify := make(chan error)
-
+	notify := make(chan error)
 	go func() {
-		defer func() {
-			fmt.Println("----------Tcp loop kill--------")
-			noify <- closeConnection
-		}()
-
 		for {
-			fromFaionodeMsg, err := tsp.ReadMsg()
-			if err != nil {
-				if err == io.EOF {
-					noify <- err
-					return
-				}
-				if _, ok := err.(*net.OpError); ok {
-					return
-				}
-			}
-			var str string
-			switch fromFaionodeMsg.Code {
-			case transport.ResLeagueJoinFalse:
-				// 참여 불가, Dial Close
-				fromFaionodeMsg.Decode(&str)
-				log.Println("Debug[andus] : ", str)
+			if err := t.handleMsg(tsp); err != nil {
+				notify <- err
 				return
-			case transport.MinerLeageStop:
-				// 종료됨
-				fromFaionodeMsg.Decode(&str)
-				log.Println("Debug[andus] : ", str)
-				return
-			case transport.SendLeageNodeList:
-				// Add peer
-				var nodeList []string
-				fromFaionodeMsg.Decode(&nodeList)
-				log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
-				for index := range nodeList {
-					// addPeer 실행
-					node, err := discover.ParseNode(nodeList[index])
-					if err != nil {
-						fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
-					}
-					t.manger.GetP2PServer().AddPeer(node)
-				}
-			case transport.MakeJoinTx:
-				// JoinTx 생성
-				err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
-				if err != nil {
-					log.Println("Error[andus] : ", err)
-				}
-			case transport.MakeBlock:
-				fmt.Println("-------- 블록 생성 tcp -------")
-				t.manger.BlockMakeStart() <- struct{}{}
-			case transport.SendFinalBlock:
-				tsFb := &fairtypes.TsFinalBlock{}
-				if err := fromFaionodeMsg.Decode(&tsFb); err != nil {
-					log.Println("Error[andus] : ", err)
-					break
-				}
-
-				fb := tsFb.GetFinalBlock()
-				if fb.Block == nil {
-					return
-				}
-
-				block := fb.Block
-
-				if len(block.FairNodeSig) != 0 {
-					fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
-					t.manger.FinalBlock() <- *fb
-					noify <- closeConnection
-				}
-
 			}
 		}
 	}()
@@ -188,34 +113,73 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 Exit:
 	for {
 		select {
-		case <-time.After(time.Second * 1):
-			//fmt.Println("tcp timeout 1, still alive")
-		case err := <-noify:
-			if "close" == err.Error() {
-				conn.Close()
-				break Exit
-			} else if io.EOF == err {
-				fmt.Println("tcp connection dropped message", err)
-				conn.Close()
-				break Exit
-			}
-			log.Println("Error[andus] : ------------------- ", err)
+		case err := <-notify:
+			log.Println("Error [andus] : handelMsg 에러", err)
+			tsp.Close()
+			break Exit
 		case <-exit:
-			conn.Close()
+			tsp.Close()
 			break Exit
 		case winingBlock := <-t.manger.VoteBlock():
-
-			//fmt.Println("----tx len----", winingBlock.Block.Transactions().Len(), len(winingBlock.Receipts))
+			transport.Send(tsp, transport.SendBlockForVote, winingBlock.GetTsVoteBlock())
 			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
-			m, err := transport.MakeTsMsg(transport.SendBlockForVote, winingBlock.GetTsVoteBlock())
-			if err != nil {
-				log.Println("Error[andus] : ", err)
-			}
-			if err := tsp.WriteMsg(m); err != nil {
-				log.Println("Error[andus] : ", err)
-			}
 		}
 	}
+}
+
+func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
+	msg, err := rw.ReadMsg()
+	if err != nil {
+		return err
+	}
+	defer msg.Discard()
+
+	var str string
+	switch msg.Code {
+	case transport.ResLeagueJoinFalse:
+		// 참여 불가, Dial Close
+		msg.Decode(&str)
+		log.Println("Debug[andus] : ", str)
+	case transport.MinerLeageStop:
+		// 종료됨
+		msg.Decode(&str)
+		log.Println("Debug[andus] : ", str)
+	case transport.SendLeageNodeList:
+		// Add peer
+		var nodeList []string
+		msg.Decode(&nodeList)
+		log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
+		for index := range nodeList {
+			// addPeer 실행
+			node, err := discover.ParseNode(nodeList[index])
+			if err != nil {
+				fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+			}
+			t.manger.GetP2PServer().AddPeer(node)
+		}
+	case transport.MakeJoinTx:
+		// JoinTx 생성
+		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
+		if err != nil {
+			log.Println("Error[andus] : ", err)
+		}
+	case transport.MakeBlock:
+		fmt.Println("-------- 블록 생성 tcp -------")
+		t.manger.BlockMakeStart() <- struct{}{}
+	case transport.SendFinalBlock:
+		tsFb := &fairtypes.TsFinalBlock{}
+		msg.Decode(&tsFb)
+		fb := tsFb.GetFinalBlock()
+		block := fb.Block
+		fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+		t.manger.FinalBlock() <- *fb
+	case transport.FinishLeague:
+		return errors.New("리그 종료")
+	default:
+		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
+	}
+
+	return nil
 }
 
 func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error {

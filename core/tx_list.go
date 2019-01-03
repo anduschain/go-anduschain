@@ -19,15 +19,14 @@ package core
 import (
 	"container/heap"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/log"
 	"math"
 	"math/big"
 	"sort"
-	"strings"
-
-	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/log"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for
@@ -263,7 +262,7 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 		// this is accurate for low (Wei-level) gas price replacements
 		if old.GasPrice().Cmp(tx.GasPrice()) >= 0 || threshold.Cmp(tx.GasPrice()) > 0 {
 			// andus >>
-			if strings.ToLower(tx.To().String()) == config.FAIRNODE_ADDRESS {
+			if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
 				fmt.Println("tx_list.go@@@@@@@", old.To().String())
 				return true, old
 			}

@@ -28,6 +28,7 @@ const (
 	MinerLeageStop
 	SendBlockForVote
 	SendFinalBlock
+	FinishLeague
 )
 
 func (m *TsMsg) Decode(val interface{}) error {

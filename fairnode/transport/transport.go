@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	handshakeTimeout  = 5 * time.Second
 	frameReadTimeout  = 30 * time.Second
 	frameWriteTimeout = 20 * time.Second
 )
@@ -30,7 +29,6 @@ type Tsp struct {
 }
 
 func New(fd net.Conn) Transport {
-	//fd.SetDeadline(time.Now().Add(handshakeTimeout))
 	return &Tsp{
 		fd: fd,
 		rw: newTspRw(fd),

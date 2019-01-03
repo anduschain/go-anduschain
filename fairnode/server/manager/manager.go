@@ -86,7 +86,7 @@ func (fm *FairManager) Stop() error {
 
 func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 
-	for n, _ := range fm.Services {
+	for n := range fm.Services {
 		if n == name {
 			return
 		}

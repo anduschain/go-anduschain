@@ -149,6 +149,6 @@ func (ft *FairTcp) StartLeague() {
 }
 
 func (ft *FairTcp) StopLeague() {
+	ft.sendTcpAll(transport.FinishLeague, "리그가 종료 되었습니다")
 	ft.manager.SetLeagueRunning(false)
-
 }

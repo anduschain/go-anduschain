@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math"
 	"math/big"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -578,11 +578,16 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
 	var joinTxdata *clientType.JoinTxData
-	if strings.ToLower(tx.To().String()) == config.FAIRNODE_ADDRESS {
-		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-			log.Info("validateTx decode 에러", err)
+
+	if pool.chainconfig.Deb != nil {
+		joinTxdata = &clientType.JoinTxData{}
+		if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
+			if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
+				log.Info("validateTx decode 에러", err)
+			}
 		}
 	}
+
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
