@@ -705,13 +705,11 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 			if old != nil {
 				pool.all.Remove(old.Hash())
 				pool.priced.Removed()
-				fmt.Println("tx_pool 703 @@@@@@@@@@@@@@@ remove!!")
 				pendingReplaceCounter.Inc(1)
 			}
 			pool.all.Add(tx)
 			pool.priced.Put(tx)
 			pool.journalTx(from, tx)
-			fmt.Println("tx_pool 709 @@@@@@@@@@@@@@@ 여기가 add 되는곳인데 ")
 			log.Trace("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
 			// We've directly injected a replacement transaction, notify subsystems

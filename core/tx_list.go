@@ -18,7 +18,6 @@ package core
 
 import (
 	"container/heap"
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
@@ -263,7 +262,6 @@ func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Tran
 		if old.GasPrice().Cmp(tx.GasPrice()) >= 0 || threshold.Cmp(tx.GasPrice()) > 0 {
 			// andus >>
 			if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
-				fmt.Println("tx_list.go@@@@@@@", old.To().String())
 				return true, old
 			}
 

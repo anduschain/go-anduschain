@@ -960,7 +960,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
-		fmt.Println("len(localTxs) @@@@@@@@@@ : ", len(localTxs))
 		if len(localTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.fairclient.Signer, localTxs)
 
@@ -1011,12 +1010,9 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 				break
 			}
 
-			fmt.Println("Info[andus] : data 디코드  : ", data.FairNodeSig, data.NextBlockNum)
-
 			//보내는 주소가 나이여야하고, 받는 주소가 fairnode 인 경우에만 블록을 만들도록한다.
 			if fairutil.CmpAddress(addr.String(), w.fairclient.Coinbase.String()) {
 				//보낸 블록넘버가 지금의 블록 넘버와 같아야한다.
-				fmt.Println("블록넘버 확인", data.NextBlockNum, " 내가 갖고있는것 ", w.chain.CurrentBlock().Number().Uint64()+1)
 				if data.NextBlockNum == w.chain.CurrentBlock().Number().Uint64()+1 {
 					//hastx = true
 				}
