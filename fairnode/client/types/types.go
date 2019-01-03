@@ -17,6 +17,7 @@ type OtprnWithSig struct {
 }
 
 type JoinTxData struct {
+	JoinNonce    uint64
 	OtprnHash    common.Hash
 	FairNodeSig  []byte
 	TimeStamp    time.Time

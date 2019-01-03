@@ -788,8 +788,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
 		if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
-			fmt.Println("worker.go tx.protected 의 값은 : ", tx.Protected())
-			fmt.Println("worker.go !w.config.IsEIP155(w.current.header.Number) 의 값은 : ", !w.config.IsEIP155(w.current.header.Number))
 			log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
 
 			txs.Pop()

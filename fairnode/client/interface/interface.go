@@ -31,4 +31,5 @@ type Client interface {
 	VoteBlock() chan *fairtypes.VoteBlock
 	FinalBlock() chan fairtypes.FinalBlock
 	GetSigner() gethType.Signer
+	GetCurrentNonce(addr common.Address) uint64
 }

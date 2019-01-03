@@ -19,7 +19,6 @@ package types
 import (
 	"container/heap"
 	"errors"
-	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -225,11 +224,6 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	}
 
 	var err error
-	if _, ok := s.(EIP155Signer); ok {
-		fmt.Println("eip155 맞음 ")
-	} else {
-		fmt.Println("eip155아님")
-	}
 	msg.from, err = Sender(s, tx)
 	return msg, err
 }

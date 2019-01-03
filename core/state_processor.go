@@ -17,6 +17,7 @@
 package core
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/misc"
@@ -109,8 +110,10 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	if fairutil.CmpAddress(tx.To().String(), config.Deb.FairAddr.String()) {
 		// JOIN_TX 처리
 		_, gas, failed, err = DebApplyMessage(vmenv, msg, gp, header, &config.Deb.FairAddr)
+		fmt.Println("---------JOIN_TX 처리---------", failed)
 	} else {
 		// 일반 TX 처리
+		fmt.Println("---------일반 TX 처리---------")
 		_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
 	}
 

@@ -18,10 +18,9 @@ package core
 
 import (
 	"container/heap"
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"math"
 	"math/big"
@@ -252,19 +251,16 @@ func (l *txList) Overlaps(tx *types.Transaction) bool {
 func (l *txList) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Transaction) {
 
 	// If there's an older better transaction, abort
-	//TODO :  andus 1226 변경
 	old := l.txs.Get(tx.Nonce())
+
+	fmt.Println("----------------", tx.Nonce(), ":::", old)
+
 	if old != nil {
 		threshold := new(big.Int).Div(new(big.Int).Mul(old.GasPrice(), big.NewInt(100+int64(priceBump))), big.NewInt(100))
 		// Have to ensure that the new gas price is higher than the old gas
 		// price as well as checking the percentage threshold to ensure that
 		// this is accurate for low (Wei-level) gas price replacements
 		if old.GasPrice().Cmp(tx.GasPrice()) >= 0 || threshold.Cmp(tx.GasPrice()) > 0 {
-			// andus >>
-			if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
-				return true, old
-			}
-
 			return false, nil
 		}
 	}
