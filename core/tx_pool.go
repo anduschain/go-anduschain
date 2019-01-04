@@ -583,7 +583,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if fairutil.CmpAddress(tx.To().String(), pool.chainconfig.Deb.FairAddr.String()) {
 		joinTx = true
 		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-			log.Info("validateTx decode 에러", err)
+			return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
 		}
 	}
 
