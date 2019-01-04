@@ -354,7 +354,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.fairclient.StartCh:
-			fmt.Println("-------- 블록 생성 w.fairclient.StartCh -------")
 			w.startCh <- struct{}{}
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
@@ -364,25 +363,20 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
-
-			if _, ok := w.engine.(*deb.Deb); !ok {
-				commit(false, commitInterruptNewHead)
-			}
+			commit(false, commitInterruptNewHead)
 
 		case <-timer.C:
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
-			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0) {
+			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0 || w.config.Deb == nil) {
 				// Short circuit if no new transaction arrives.
 				if atomic.LoadInt32(&w.newTxs) == 0 {
 					timer.Reset(recommit)
 					continue
 				}
-
-				if _, ok := w.engine.(*deb.Deb); !ok {
-					commit(true, commitInterruptResubmit)
-				}
+				commit(true, commitInterruptResubmit)
 			}
+
 		case interval := <-w.resubmitIntervalCh:
 			// Adjust resubmit interval explicitly by user.
 			if interval < minRecommitInterval {
@@ -647,12 +641,7 @@ func (w *worker) resultLoop() {
 			//FIXME : <----------
 
 			//Block Coinbase Reset JoinNonce
-			w.resetJoinNonce(block, state)
-
-			if err := w.makeCurrent(parent, block.Header()); err != nil {
-				log.Error("Failed to create mining context", "err", err)
-				return
-			}
+			//w.resetJoinNonce(block, state)
 
 			//Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
