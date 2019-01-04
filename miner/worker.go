@@ -615,7 +615,12 @@ func (w *worker) resultLoop() {
 			//FIXME : <----------
 
 			// Block Coinbase Reset JoinNonce
-			w.resetJoinNonce(block, state)
+			//w.resetJoinNonce(block, state)
+
+			//if err := w.makeCurrent(parent, block.Header()); err != nil {
+			//	log.Error("Failed to create mining context", "err", err)
+			//	return
+			//}
 
 			// Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
