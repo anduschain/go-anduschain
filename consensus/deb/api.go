@@ -5,6 +5,7 @@ package deb
 
 import (
 	"github.com/anduschain/go-anduschain/consensus"
+	"log"
 )
 
 // API is a user facing RPC API to allow controlling the signer and voting
@@ -14,7 +15,15 @@ type API struct {
 	deb   *Deb
 }
 
-func (api *API) GetState() (bool, error) {
+func (api *API) GetJoinNonce() uint64 {
+	current := api.chain.CurrentHeader()
+	state, err := api.chain.StateAt(current.Hash())
+	if err != nil {
+		log.Println("Error[andus] GetJoinNonce : ", err)
+	}
+	return state.GetJoinNonce(api.chain.CurrentHeader().Coinbase)
+}
 
-	return true, nil
+func (api *API) GetFairnodeAddress() string {
+	return api.deb.config.FairAddr.String()
 }

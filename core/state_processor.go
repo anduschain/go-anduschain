@@ -74,7 +74,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		var receipt *types.Receipt
 		var err error
 
-		receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg, true)
+		receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
 		if err != nil {
 			return nil, nil, 0, err
 		}
@@ -92,7 +92,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
-func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config, final bool) (*types.Receipt, uint64, error) {
+func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
 		return nil, 0, err
@@ -106,7 +106,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 
 	var gas uint64
 	var failed bool
-	if fairutil.CmpAddress(tx.To().String(), config.Deb.FairAddr.String()) && final {
+	if fairutil.CmpAddress(tx.To().String(), config.Deb.FairAddr.String()) {
 		// JOIN_TX 처리
 		_, gas, failed, err = DebApplyMessage(vmenv, msg, gp, header, &config.Deb.FairAddr)
 	} else {

@@ -594,10 +594,19 @@ func (w *worker) resultLoop() {
 
 			var parent *types.Block
 			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+
+			//andus
+			err := w.makeCurrent(parent, block.Header())
+			if err != nil {
+				log.Error("Failed to create mining context", "err", err)
+				return
+			}
+
 			state, err := w.chain.StateAt(parent.Root())
 			if err != nil {
 				log.Error("Worker result StateNew Error", "err", err)
 			}
+
 			// Process block using the parent state as reference point.
 			receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
 			if err != nil {
@@ -724,7 +733,7 @@ func (w *worker) updateSnapshot() {
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
 
-	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{}, false)
+	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
 		return nil, err

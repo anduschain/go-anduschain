@@ -283,14 +283,14 @@ func (st *StateTransition) DebTransitionDb(header *types.Header, fnAddr *common.
 
 	// TODO : andus >> 받는 대상이 페어노드일 경우에만 joinNonce update process
 	if fairutil.CmpAddress(msg.To().String(), fnAddr.String()) {
-		if header.Coinbase == st.evm.Coinbase {
+		if header.Coinbase == msg.From() {
 			// TODO : andus >> 1. coinbase가 블록의 코인베이스 이면 JoinNonce = 0
 			fmt.Println("----ResetJoinNonce-----")
-			st.state.ResetJoinNonce(st.evm.Coinbase)
+			st.state.ResetJoinNonce(msg.From())
 		} else {
 			// TODO : andus >> 2. 아니면 JoinNonce++
 			fmt.Println("----AddJoinNonce-----")
-			st.state.AddJoinNonce(st.evm.Coinbase)
+			st.state.AddJoinNonce(msg.From())
 		}
 	}
 
