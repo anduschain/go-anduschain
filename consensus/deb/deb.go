@@ -6,7 +6,6 @@ package deb
 import (
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
@@ -289,63 +288,8 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	block := types.NewBlock(header, txs, nil, receipts)
 
-	//0. 생성 블록 마이너 노드들에게 브로드 캐스트
-
-	//1. 블록 투표
-
-	//2. 블록 교체
-
-	//3. 파이널 블록 수신
-
 	// Assemble and return the final block for sealing
 	return block, nil
-}
-
-func (c *Deb) DebFinalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
-
-	fmt.Println("----DebFinalize 실행함 새로 만들 블록 번호 : ", header.Number.String(), len(txs))
-	//for i := range txs{
-	//	types.Sender(,txs[i])
-	//}
-
-	// No block rewards in PoA, so the state remains as is and uncles are dropped
-	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = types.CalcUncleHash(nil)
-	block := types.NewBlock(header, txs, nil, receipts)
-
-	sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
-	if err != nil {
-		log.Error("블록 서명 에러", err)
-	}
-
-	if c.ValidationVoteBlock(chain, block) {
-
-		vb := fairtypes.VoteBlock{
-			Block:      block,
-			HeaderHash: block.Header().Hash(),
-			Sig:        sig,
-			OtprnHash:  c.otprnHash,
-			Voter:      c.coinbase,
-			//Receipts:   receipts,
-		}
-
-		// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-		c.chans.GetLeagueBlockBroadcastCh() <- &vb
-
-		// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-		go c.sendMiningBlockAndVoting(chain, &vb)
-
-		// 3. 파이널 블록 수신
-		finalBlock := <-c.chans.GetFinalBlockCh()
-
-		//receipts = finalBlock.Receipts
-		block = finalBlock.Block
-
-		// Assemble and return the final block for sealing
-		return block, receipts, nil
-	} else {
-		return nil, nil, errNotMatchOtprnOrBlockNumber
-	}
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using

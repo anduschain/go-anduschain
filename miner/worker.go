@@ -24,10 +24,8 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	clienttype "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -565,34 +563,68 @@ func (w *worker) resultLoop() {
 				hash     = block.Hash()
 			)
 
-			//w.pendingMu.RLock()
-			//task, exist := w.pendingTasks[sealhash]
-			//w.pendingMu.RUnlock()
+			w.pendingMu.RLock()
+			task, exist := w.pendingTasks[sealhash]
+			w.pendingMu.RUnlock()
 
-			//if !exist {
-			//	log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-			//	continue
-			//}
-			//// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			//var (
-			//	receipts = make([]*types.Receipt, len(task.receipts))
-			//	logs     []*types.Log
-			//)
-			//for i, receipt := range task.receipts {
-			//	receipts[i] = new(types.Receipt)
-			//	*receipts[i] = *receipt
-			//	// Update the block hash in all logs since it is now available and not when the
-			//	// receipt/log of individual transactions were created.
-			//	for _, log := range receipt.Logs {
-			//		log.BlockHash = hash
-			//	}
-			//	logs = append(logs, receipt.Logs...)
-			//}
+			if !exist {
+				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
+			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
+			var (
+				receipts = make([]*types.Receipt, len(task.receipts))
+				logs     []*types.Log
+			)
+			for i, receipt := range task.receipts {
+				receipts[i] = new(types.Receipt)
+				*receipts[i] = *receipt
+				// Update the block hash in all logs since it is now available and not when the
+				// receipt/log of individual transactions were created.
+				for _, log := range receipt.Logs {
+					log.BlockHash = hash
+				}
+				logs = append(logs, receipt.Logs...)
+			}
+
+			// 블록 투표
+
+			if deb, ok := w.engine.(*deb.Deb); ok {
+				sig, err := deb.SignBlockHeader(block.Header().Hash().Bytes())
+				if err != nil {
+					log.Error("블록 서명 에러", err)
+				}
+
+				if deb.ValidationVoteBlock(w.chain, block) {
+
+					vb := fairtypes.VoteBlock{
+						Block:      block,
+						HeaderHash: block.Header().Hash(),
+						Sig:        sig,
+						OtprnHash:  w.fairclient.GetOtprnWithSig().Otprn.HashOtprn(),
+						Voter:      w.coinbase,
+						//Receipts:   receipts,
+					}
+
+					// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+					w.chans.GetLeagueBlockBroadcastCh() <- &vb
+
+					// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
+					go deb.SendMiningBlockAndVoting(w.chain, &vb)
+				}
+			}
+
+		case finalBlock := <-w.chans.GetFinalBlockCh():
+			block := finalBlock.Block
+
+			var (
+				sealhash = w.engine.SealHash(block.Header())
+				hash     = block.Hash()
+			)
 
 			bstart := time.Now()
 
 			//FIXME : ---------->
-
 			var parent *types.Block
 			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
 
@@ -614,15 +646,15 @@ func (w *worker) resultLoop() {
 
 			//FIXME : <----------
 
-			// Block Coinbase Reset JoinNonce
-			//w.resetJoinNonce(block, state)
+			//Block Coinbase Reset JoinNonce
+			w.resetJoinNonce(block, state)
 
-			//if err := w.makeCurrent(parent, block.Header()); err != nil {
-			//	log.Error("Failed to create mining context", "err", err)
-			//	return
-			//}
+			if err := w.makeCurrent(parent, block.Header()); err != nil {
+				log.Error("Failed to create mining context", "err", err)
+				return
+			}
 
-			// Commit block and state to database.
+			//Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
@@ -977,6 +1009,8 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		if len(pending) == 0 {
 			w.updateSnapshot()
+
+			fmt.Println("----len(pending) == 0--")
 			return
 		}
 		// Split the pending transactions into locals and remotes
@@ -1013,66 +1047,16 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 // and commits new work if consensus engine is running.
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
-
-	s := w.current.state.Copy()
-	var receipts []*types.Receipt
-	var block *types.Block
-	var err error
-	//hastx := false
-	data := clienttype.JoinTxData{}
-	// TODO : andus >> 1. 새로운 블록 생성
-
-	if debEngine, ok := w.engine.(*deb.Deb); ok {
-		// 블록이랑 영수증을 리턴해 주면...
-		for i := range w.current.txs {
-			addr, err := types.Sender(types.NewEIP155Signer(w.config.ChainID), w.current.txs[i])
-			if err != nil {
-				fmt.Println("Error[andus] : sender에서 주소 가져오기 실패  : ", err)
-				return err
-			}
-
-			err = rlp.DecodeBytes(w.current.txs[i].Data(), &data)
-			if err != nil {
-				fmt.Println("Info[andus] : DecodeBytes 실패   : ")
-				break
-			}
-
-			//보내는 주소가 나이여야하고, 받는 주소가 fairnode 인 경우에만 블록을 만들도록한다.
-			if fairutil.CmpAddress(addr.String(), w.fairclient.Coinbase.String()) {
-				//보낸 블록넘버가 지금의 블록 넘버와 같아야한다.
-				if data.NextBlockNum == w.chain.CurrentBlock().Number().Uint64()+1 {
-					//hastx = true
-				}
-			}
-		}
-		//if !hastx {
-		//	time.Sleep(5 * time.Second)
-		// 	w.startCh <- struct{}{}
-		//	return errors.New("블록에 내가 만든 tx가 없습니다. 블록만들기를 다시시작합니다. ")
-		//}
-
-		block, receipts, err = debEngine.DebFinalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
-		if err != nil {
-			return err
-		}
-
-		for i, l := range receipts {
-			receipts[i] = new(types.Receipt)
-			*receipts[i] = *l
-		}
-
-	} else {
-		block, err = w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
-		if err != nil {
-			return err
-		}
-
-		for i, l := range w.current.receipts {
-			receipts[i] = new(types.Receipt)
-			*receipts[i] = *l
-		}
+	receipts := make([]*types.Receipt, len(w.current.receipts))
+	for i, l := range w.current.receipts {
+		receipts[i] = new(types.Receipt)
+		*receipts[i] = *l
 	}
-
+	s := w.current.state.Copy()
+	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+	if err != nil {
+		return err
+	}
 	if w.isRunning() {
 		if interval != nil {
 			interval()
