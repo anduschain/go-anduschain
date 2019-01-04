@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	clienttype "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -595,13 +596,6 @@ func (w *worker) resultLoop() {
 			var parent *types.Block
 			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
 
-			//andus
-			err := w.makeCurrent(parent, block.Header())
-			if err != nil {
-				log.Error("Failed to create mining context", "err", err)
-				return
-			}
-
 			state, err := w.chain.StateAt(parent.Root())
 			if err != nil {
 				log.Error("Worker result StateNew Error", "err", err)
@@ -619,6 +613,9 @@ func (w *worker) resultLoop() {
 			}
 
 			//FIXME : <----------
+
+			// Block Coinbase Reset JoinNonce
+			w.resetJoinNonce(block, state)
 
 			// Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
@@ -647,6 +644,22 @@ func (w *worker) resultLoop() {
 
 		case <-w.exitCh:
 			return
+		}
+	}
+}
+
+func (w *worker) resetJoinNonce(block *types.Block, state *state.StateDB) {
+	for _, tx := range block.Transactions() {
+		if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
+			from, err := types.Sender(types.NewEIP155Signer(w.config.ChainID), tx)
+			if err != nil {
+				log.Info("Get Sender Error", "err", err)
+			}
+
+			if block.Header().Coinbase == from {
+				state.ResetJoinNonce(from)
+				fmt.Println("reset jonin nonce ----------->")
+			}
 		}
 	}
 }
@@ -733,7 +746,7 @@ func (w *worker) updateSnapshot() {
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
 
-	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{}, false)
+	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
 		return nil, err

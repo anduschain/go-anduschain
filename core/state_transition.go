@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"math"
 	"math/big"
@@ -231,6 +232,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+
+	if fairutil.CmpAddress(msg.To().String(), config.FAIRNODE_ADDRESS) {
+		fmt.Println("----AddJoinNonce-----")
+		st.state.AddJoinNonce(msg.From())
+	}
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }
