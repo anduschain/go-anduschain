@@ -75,10 +75,6 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 		lastNum := ft.manager.GetLastBlockNum()
 		blockOtprnHash := common.BytesToHash(block.Extra())
 
-		fmt.Println("블록 OTPRN : ", blockOtprnHash.String())
-		fmt.Println("My OTPRN : ", blockOtprnHash.String())
-		fmt.Println("받은 객체 OTPRN : ", voteBlock.OtprnHash.String())
-
 		if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
 			ft.manager.GetVotePool().InsertCh <- pool.Vote{
 				Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),

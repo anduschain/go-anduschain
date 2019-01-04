@@ -155,7 +155,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 			if err != nil {
 				fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
 			}
-			t.manger.GetP2PServer().AddPeer(node)
+			t.manger.GetP2PServer().AddTrustedPeer(node)
 		}
 	case transport.MakeJoinTx:
 		// JoinTx 생성
@@ -164,8 +164,13 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 			log.Println("Error[andus] : ", err)
 		}
 	case transport.MakeBlock:
-		fmt.Println("-------- 블록 생성 tcp -------")
-		t.manger.BlockMakeStart() <- struct{}{}
+		msg.Decode(&str)
+		if t.manger.GetOtprnWithSig().Otprn.HashOtprn().String() == str {
+			fmt.Println("-------- 블록 생성 tcp -------")
+			t.manger.BlockMakeStart() <- struct{}{}
+		} else {
+			return errors.New("OTPRN이 Fairnode와 다름")
+		}
 	case transport.SendFinalBlock:
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
@@ -203,10 +208,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 			log.Println("Error[andus] : EncodeToBytes", err)
 		}
 
-		txNonce := t.manger.GetCurrentNonce(t.manger.GetCoinbase())
-		if txNonce != 0 {
-			txNonce++
-		}
+		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
@@ -217,9 +219,8 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 			return errorMakeJoinTx
 		}
 
-		fmt.Println("Info[andus] : JoinTx 생성 Success", t.manger.GetCurrentNonce(t.manger.GetCoinbase()), tx.Nonce())
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
-		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
+		if err := t.manger.GetTxpool().AddRemote(tx); err != nil {
 			log.Println("Error[andus] fc.txPool.AddLocal: ", err)
 			return errorAddTxPool
 		}

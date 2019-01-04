@@ -27,24 +27,43 @@ func (fu *FairTcp) sendLeague(otprnHash string) {
 
 				fmt.Println("-------리그 전송---------")
 				fu.sendTcpAll(transport.SendLeageNodeList, enodes)
-
-				time.AfterFunc(5*time.Second, func() {
-					fmt.Println("-------조인 tx 생성--------")
-					fu.sendTcpAll(transport.MakeJoinTx, otprnHash)
-
-					time.AfterFunc(5*time.Second, func() {
-						fmt.Println("-------블록 생성--------", otprnHash)
-						fu.sendTcpAll(transport.MakeBlock, otprnHash)
-
-						// peer list 전송후 20초
-						time.AfterFunc(20*time.Second, func() {
-							go fu.sendFinalBlock(otprnHash)
-						})
-					})
-				})
+				time.Sleep(3 * time.Second)
+				fu.makeJoinTxCh <- struct{}{}
 
 				return
 			}
+
+			if percent > 5 {
+				// 최소 5%
+				percent = percent - 5
+			}
+		}
+	}
+}
+
+func (fu *FairTcp) leagueControlle(otprnHash string) {
+	for {
+		select {
+		case <-fu.makeJoinTxCh:
+			fmt.Println("-------조인 tx 생성--------")
+			fu.sendTcpAll(transport.MakeJoinTx, otprnHash)
+			// 브로드케스팅 5초
+			time.AfterFunc(3*time.Second, func() {
+
+				fmt.Println("-------블록 생성--------", otprnHash)
+				fu.sendTcpAll(transport.MakeBlock, otprnHash)
+
+				// peer list 전송후 20초
+				time.AfterFunc(20*time.Second, func() {
+					go fu.sendFinalBlock(otprnHash)
+				})
+
+			})
+		case <-fu.stopLeagueCh:
+			leaguePool := fu.manager.GetLeaguePool()
+			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
+			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+			fu.StopLeague()
 		}
 	}
 }
@@ -60,7 +79,6 @@ func (fu *FairTcp) sendTcpAll(msgCode uint32, data interface{}) {
 }
 
 func (fu *FairTcp) sendFinalBlock(otprnHash string) {
-	leaguePool := fu.manager.GetLeaguePool()
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
 
@@ -86,15 +104,11 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 			fu.sendTcpAll(transport.SendFinalBlock, n.GetTsFinalBlock())
 			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
-			fu.StopLeague()
-
-			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
-			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
-
 			// DB에 블록 저장
 			votePool.SnapShot <- n.Block
 			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
+			fu.makeJoinTxCh <- struct{}{}
 			return
 		}
 	}

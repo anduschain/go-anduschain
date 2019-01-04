@@ -210,7 +210,6 @@ Exit:
 			fu.sendUdpAll(transport.SendOTPRN, totprn)
 			// 리그 시작
 			fu.manager.SetLeagueRunning(true)
-			time.Sleep(5 * time.Second)
 			// 리그 전송 tcp
 			fu.manager.SetOtprn(&totprn.Otp)
 			fu.ftcp.StartLeague()

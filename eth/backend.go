@@ -157,10 +157,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 
 		// TODO : andus >> 위닝블록 전송 채널
-		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 1),
+		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock),
 		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		WinningBlockCh:         make(chan *fairtypes.VoteBlock, 1),
-		FinalBlockCh:           make(chan fairtypes.FinalBlock, 1),
+		WinningBlockCh:         make(chan *fairtypes.VoteBlock),
+		FinalBlockCh:           make(chan fairtypes.FinalBlock),
 	}
 
 	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId)

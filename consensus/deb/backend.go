@@ -108,7 +108,7 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 
 func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock) {
 	winningBlock := tsfBlock
-	t := time.NewTicker(10 * time.Second)
+	t := time.NewTicker(5 * time.Second)
 
 Exit:
 	for {
@@ -123,7 +123,6 @@ Exit:
 					if c.ValidationVoteBlock(chain, recevedBlock.Block) {
 						if OK := c.CheckRANDSigOK(recevedBlock); OK {
 							winningBlock = c.CompareBlock(winningBlock, recevedBlock)
-							fmt.Println("-------CheckRANDSigOK---winningBlock 교체-----")
 						}
 					}
 				}

@@ -558,7 +558,7 @@ func (w *worker) resultLoop() {
 			)
 
 			w.pendingMu.RLock()
-			task, exist := w.pendingTasks[sealhash]
+			_, exist := w.pendingTasks[sealhash]
 			w.pendingMu.RUnlock()
 
 			if !exist {
@@ -566,20 +566,20 @@ func (w *worker) resultLoop() {
 				continue
 			}
 			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			var (
-				receipts = make([]*types.Receipt, len(task.receipts))
-				logs     []*types.Log
-			)
-			for i, receipt := range task.receipts {
-				receipts[i] = new(types.Receipt)
-				*receipts[i] = *receipt
-				// Update the block hash in all logs since it is now available and not when the
-				// receipt/log of individual transactions were created.
-				for _, log := range receipt.Logs {
-					log.BlockHash = hash
-				}
-				logs = append(logs, receipt.Logs...)
-			}
+			//var (
+			//	receipts = make([]*types.Receipt, len(task.receipts))
+			//	logs     []*types.Log
+			//)
+			//for i, receipt := range task.receipts {
+			//	receipts[i] = new(types.Receipt)
+			//	*receipts[i] = *receipt
+			//	// Update the block hash in all logs since it is now available and not when the
+			//	// receipt/log of individual transactions were created.
+			//	for _, log := range receipt.Logs {
+			//		log.BlockHash = hash
+			//	}
+			//	logs = append(logs, receipt.Logs...)
+			//}
 
 			// 블록 투표
 
@@ -998,7 +998,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		if len(pending) == 0 {
 			w.updateSnapshot()
-
 			fmt.Println("----len(pending) == 0--")
 			return
 		}
@@ -1011,8 +1010,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 		if len(localTxs) > 0 {
-			txs := types.NewTransactionsByPriceAndNonce(w.fairclient.Signer, localTxs)
-
+			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
 				return
 			}
@@ -1024,10 +1022,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		err = w.commit(uncles, nil, true, tstart)
-		if err != nil {
-			fmt.Println("Error[andus] : ", err)
-		}
+		w.commit(uncles, w.fullTaskHook, true, tstart)
 	}
 
 }

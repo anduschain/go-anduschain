@@ -28,6 +28,8 @@ type FairTcp struct {
 	services     map[string]backend.Goroutine
 	sendLeagueCh chan struct{}
 	leaguePool   *pool.LeaguePool
+	makeJoinTxCh chan struct{}
+	stopLeagueCh chan struct{}
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
@@ -51,6 +53,8 @@ func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
 		services:     make(map[string]backend.Goroutine),
 		sendLeagueCh: make(chan struct{}),
 		leaguePool:   fm.GetLeaguePool(),
+		makeJoinTxCh: make(chan struct{}),
+		stopLeagueCh: make(chan struct{}),
 	}
 
 	ft.services["accepter"] = backend.Goroutine{ft.accepter, make(chan struct{}, 1)}
@@ -146,6 +150,7 @@ Exit:
 
 func (ft *FairTcp) StartLeague() {
 	go ft.sendLeague(ft.manager.GetOtprn().HashOtprn().String())
+	go ft.leagueControlle(ft.manager.GetOtprn().HashOtprn().String())
 }
 
 func (ft *FairTcp) StopLeague() {
