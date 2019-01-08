@@ -171,8 +171,7 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
-
-		rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
+		rand := MakeRand(header.Nonce.Uint64(), common.BytesToHash(header.Extra), header.Coinbase, header.ParentHash)
 		diff := big.NewInt(rand)
 
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
