@@ -88,7 +88,8 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 		fmt.Println("tcpLoop kill")
 	}()
 
-	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
+	//conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
+	conn, err := net.Dial(t.SAddrTCP.Network(), t.SAddrTCP.String())
 	if err != nil {
 		log.Println("Error [andus] : DialTCP 에러", err)
 		return
@@ -155,7 +156,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 			if err != nil {
 				fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
 			}
-			t.manger.GetP2PServer().AddTrustedPeer(node)
+			t.manger.GetP2PServer().AddPeer(node)
 		}
 	case transport.MakeJoinTx:
 		// JoinTx 생성

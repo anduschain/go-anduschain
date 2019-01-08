@@ -21,8 +21,9 @@ type Config struct {
 	KeyPath string
 	KeyPass string
 
-	Port string // 네트워크 포트
-	NAT  string
+	Port    string // 네트워크 포트
+	NAT     string
+	ChainID int64
 }
 
 var DefaultConfig = Config{
@@ -30,13 +31,12 @@ var DefaultConfig = Config{
 	DBhost:      "localhost",
 	DBport:      "27017",
 	DBuser:      "",
-	DBpass:      "",
 
 	KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
-	KeyPass: "",
 
-	Port: "60002",
-	NAT:  "any",
+	Port:    "60002",
+	NAT:     "any",
+	ChainID: 1,
 }
 
 func init() {
@@ -53,14 +53,14 @@ func init() {
 	}
 }
 
-func SetFairConfig(ctx *cli.Context) {
+func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.DBhost = ctx.GlobalString("dbhost")
 	DefaultConfig.DBport = ctx.GlobalString("dbport")
-	DefaultConfig.DBpass = ctx.GlobalString("dbpass")
-
-	DefaultConfig.KeyPass = ctx.GlobalString("keypass")
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
-
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")
+	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
+
+	DefaultConfig.KeyPass = keypass
+	DefaultConfig.DBpass = dbpass
 }

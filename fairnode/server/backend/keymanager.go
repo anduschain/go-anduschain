@@ -41,7 +41,7 @@ func GetServerKey() (*SeverKey, error) {
 	if err != nil {
 		return nil, fairnodeKeyError
 	}
-	acc, err := ks.Import(blob, DefaultConfig.KeyPass, DefaultConfig.KeyPass)
+	acc, err := ks.Import(blob, keyPass, keyPass)
 	if err != nil {
 		return nil, fairnodeKeyError
 	}
@@ -49,7 +49,7 @@ func GetServerKey() (*SeverKey, error) {
 	sk.ServerAcc = acc
 	sk.KeyStore = ks
 
-	if err := ks.Unlock(acc, DefaultConfig.KeyPass); err == nil {
+	if err := ks.Unlock(acc, keyPass); err == nil {
 
 		if privkey, ok := ks.GetUnlockedPrivKey(acc.Address); ok {
 			sk.SeverPiveKey = privkey

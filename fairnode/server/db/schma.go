@@ -43,9 +43,10 @@ type header struct {
 }
 
 type transaction struct {
-	AccountNonce string
-	Price        int64
+	From         string
 	To           string
+	AccountNonce int64
+	Price        int64
 	Amount       int64
 	Payload      []byte
 }

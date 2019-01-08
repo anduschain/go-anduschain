@@ -36,10 +36,6 @@ func init() {
 			Usage: "default dbport 63018",
 		},
 		cli.StringFlag{
-			Name:  "dbpass",
-			Usage: "MongoDB pass",
-		},
-		cli.StringFlag{
 			Name:  "port",
 			Value: "60002",
 			Usage: "default port 60002",
@@ -50,13 +46,14 @@ func init() {
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
 		cli.StringFlag{
-			Name:  "keypass",
-			Usage: "Unlock Key file pass",
-		},
-		cli.StringFlag{
 			Name:  "nat",
 			Value: "any",
 			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
+		},
+		cli.Int64Flag{
+			Name:  "chainID",
+			Value: 1,
+			Usage: "default chainid is 1",
 		},
 	}
 
@@ -80,10 +77,15 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
-		log.Println("패어노드 시작")
+
+		log.Println("패어노드 서명키 암호를 입력해 주세요")
+		keypass := promptPassphrase(false)
+
+		log.Println("패어노드 데이터베이스 암호를 입력해 주세요")
+		dbpass := promptPassphrase(false)
 
 		// Config Setting
-		backend.SetFairConfig(c)
+		backend.SetFairConfig(c, keypass, dbpass)
 
 		fn, err := server.New()
 		if err != nil {

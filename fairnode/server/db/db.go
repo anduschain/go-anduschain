@@ -22,6 +22,7 @@ type FairNodeDB struct {
 	MinerNode     *mgo.Collection
 	OtprnList     *mgo.Collection
 	BlockChain    *mgo.Collection
+	signer        types.Signer
 }
 
 var (
@@ -29,7 +30,7 @@ var (
 )
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-func New(dbhost string, dbport string, pwd string, user string) (*FairNodeDB, error) {
+func New(dbhost string, dbport string, pwd string, user string, signer types.Signer) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 
 	if user != "" {
@@ -37,6 +38,8 @@ func New(dbhost string, dbport string, pwd string, user string) (*FairNodeDB, er
 	} else {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
 	}
+
+	fnb.signer = signer
 
 	return &fnb, nil
 }
@@ -202,12 +205,14 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	var txs []transaction
 	for i := range block.Transactions() {
 		tx := block.Transactions()[i]
+		from, _ := types.Sender(fnb.signer, tx)
 		txs = append(txs, transaction{
-			string(tx.Nonce()),
-			tx.GasPrice().Int64(),
-			tx.To().String(),
-			tx.Value().Int64(),
-			tx.Data(),
+			From:         from.String(),
+			To:           tx.To().String(),
+			AccountNonce: int64(tx.Nonce()),
+			Price:        tx.GasPrice().Int64(),
+			Amount:       tx.Value().Int64(),
+			Payload:      tx.Data(),
 		})
 	}
 

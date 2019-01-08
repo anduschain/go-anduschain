@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -8,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"log"
+	"math/big"
 )
 
 type ServiceFunc interface {
@@ -24,14 +26,16 @@ type FairManager struct {
 	votePool        *pool.VotePool
 	LastBlockNum    uint64
 	db              *db.FairNodeDB
+	Signer          types.Signer
 }
 
 func New() (*FairManager, error) {
 	fm := &FairManager{
 		Services: make(map[string]ServiceFunc),
+		Signer:   types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
 	}
 
-	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser)
+	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -106,3 +110,4 @@ func (fm *FairManager) GetLastBlockNum() uint64 {
 	fm.LastBlockNum = fm.db.GetCurrentBlock()
 	return fm.LastBlockNum
 }
+func (fm *FairManager) GetSinger() types.Signer { return fm.Signer }
