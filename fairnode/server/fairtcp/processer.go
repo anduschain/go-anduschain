@@ -108,6 +108,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 			votePool.SnapShot <- n.Block
 			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
 
+			time.Sleep(5 * time.Second)
 			fu.makeJoinTxCh <- struct{}{}
 			return
 		}
