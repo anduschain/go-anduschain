@@ -583,38 +583,60 @@ func (w *worker) resultLoop() {
 
 			// 블록 투표
 
-			if deb, ok := w.engine.(*deb.Deb); ok {
-				sig, err := deb.SignBlockHeader(block.Header().Hash().Bytes())
-				if err != nil {
-					log.Error("블록 서명 에러", err)
-				}
-
-				if deb.ValidationVoteBlock(w.chain, block) {
-
-					vb := fairtypes.VoteBlock{
-						Block:      block,
-						HeaderHash: block.Header().Hash(),
-						Sig:        sig,
-						OtprnHash:  w.fairclient.GetOtprnWithSig().Otprn.HashOtprn(),
-						Voter:      w.coinbase,
-						//Receipts:   receipts,
-					}
-
-					// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-					w.chans.GetLeagueBlockBroadcastCh() <- &vb
-
-					// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-					go deb.SendMiningBlockAndVoting(w.chain, &vb)
-				}
+			debEngine, ok := w.engine.(*deb.Deb)
+			if !ok {
+				// Deb engine check
+				continue
 			}
+
+			sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
+			if err != nil {
+				log.Error("Block found but fail signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
+
+			err = debEngine.ValidationVoteBlock(w.chain, block)
+			if err != nil {
+				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
+
+			vb := fairtypes.VoteBlock{
+				Block:      block,
+				HeaderHash: block.Header().Hash(),
+				Sig:        sig,
+				OtprnHash:  w.fairclient.GetOtprnWithSig().Otprn.HashOtprn(),
+				Voter:      w.coinbase,
+				//Receipts:   receipts,
+			}
+
+			// 블록 투표 ( 블록 해시, 블록 번호, otprnhash, sign, address )
+
+			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+			w.chans.GetLeagueBlockBroadcastCh() <- &vb
+
+			// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
+			go debEngine.SendMiningBlockAndVoting(w.chain, &vb)
 
 		case finalBlock := <-w.chans.GetFinalBlockCh():
 			block := finalBlock.Block
+			debEngine, ok := w.engine.(*deb.Deb)
+			if !ok {
+				// Deb engine check
+				continue
+			}
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
 			)
+
+			// AndusChain check fairnode signature
+			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
+			if err != nil {
+				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
 
 			bstart := time.Now()
 

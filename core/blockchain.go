@@ -884,6 +884,14 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
+	// AndusChain, Check Fairnode signature
+	if deb, ok := bc.engine.(*deb.Deb); ok {
+		err, _ := deb.FairNodeSigCheck(block, block.FairNodeSig)
+		if err != nil {
+			return NonStatTy, err
+		}
+	}
+
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {

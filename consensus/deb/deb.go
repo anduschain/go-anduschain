@@ -68,6 +68,8 @@ var (
 	errGetState = errors.New("상태 디비 조회 에러 발생")
 
 	errNotMatchOtprnOrBlockNumber = errors.New("OTPRN 또는 생성할 블록 번호와 맞지 않습니다")
+
+	errNotInJoinTX = errors.New("마이너의 JOIN_TX가 담겨 있지 않음")
 )
 
 // Deb is the proof-of-Deb consensus engine proposed to support the

@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"math/big"
 	"time"
 )
@@ -35,21 +36,53 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 	}
 }
 
-func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.Block) bool {
+func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.Block) error {
 	if chain.CurrentHeader().Number.Uint64()+1 == voteblock.Number().Uint64() {
-		if c.otprnHash == common.BytesToHash(voteblock.Extra()) {
-			return true
-		}
+		return errNotMatchOtprnOrBlockNumber
 	}
-	return false
+	// check otprn
+	if c.otprnHash == common.BytesToHash(voteblock.Extra()) {
+		return errNotMatchOtprnOrBlockNumber
+	}
+
+	//header 검증
+	err := c.verifyHeader(chain, voteblock.Header(), nil)
+	if err != nil {
+		return err
+	}
+
+	// join tx check
+	err = c.ValidationBlockWidthJoinTx(chain.Config().ChainID, voteblock)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
+func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) error {
+	signer := types.NewEIP155Signer(chainid)
+	txs := block.Transactions()
+	for i := range txs {
+		if fairutil.CmpAddress(txs[i].To().String(), config.FAIRNODE_ADDRESS) {
+			from, err := types.Sender(signer, txs[i])
+			if err != nil {
+				continue
+			}
+
+			if from == block.Coinbase() {
+				return nil
+			}
+		}
+	}
+
+	return errNotInJoinTX
+}
+
+// 투표블록 서명 검증하고 난이도 검증
+func (c *Deb) ValidationVoteBlockSign(voteBlock *fairtypes.VoteBlock) bool {
 	block := voteBlock.Block
 	header := voteBlock.Block.Header()
-	otprnHash := common.BytesToHash(voteBlock.Block.Header().Extra)
-	rand := MakeRand(header.Nonce.Uint64(), otprnHash, header.Coinbase, header.ParentHash)
-	diff := big.NewInt(rand)
 
 	pubKey, err := crypto.SigToPub(header.Hash().Bytes(), voteBlock.Sig)
 	if err != nil {
@@ -58,11 +91,7 @@ func (c *Deb) CheckRANDSigOK(voteBlock *fairtypes.VoteBlock) bool {
 
 	addr := crypto.PubkeyToAddress(*pubKey)
 	if block.Header().Coinbase.String() == addr.String() {
-		if header.Difficulty.Cmp(diff) == 0 {
-			return true
-		} else {
-			return false
-		}
+		return true
 	} else {
 		return false
 	}
@@ -120,11 +149,16 @@ Exit:
 				switch errType {
 				case ErrNonFairNodeSig:
 					// TODO : andus >> 2. RAND 값 서명 검증
-					if c.ValidationVoteBlock(chain, recevedBlock.Block) {
-						if OK := c.CheckRANDSigOK(recevedBlock); OK {
-							winningBlock = c.CompareBlock(winningBlock, recevedBlock)
-						}
+					err := c.ValidationVoteBlock(chain, recevedBlock.Block)
+					if err != nil {
+						continue
 					}
+
+					if !c.ValidationVoteBlockSign(recevedBlock) {
+						continue
+					}
+
+					winningBlock = c.CompareBlock(winningBlock, recevedBlock)
 				}
 			}
 		case <-t.C:
