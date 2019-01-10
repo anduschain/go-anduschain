@@ -3,6 +3,7 @@ package transport
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"log"
@@ -51,7 +52,10 @@ func (t *Tsp) WriteMsg(msg *TsMsg) error {
 func (t *Tsp) Close() {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
-	t.fd.Close()
+	err := t.fd.Close()
+	if err != nil {
+		fmt.Println("Close 가 안되었다", err)
+	}
 }
 
 type MsgReader interface {

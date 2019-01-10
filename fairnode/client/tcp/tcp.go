@@ -203,7 +203,6 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 			TimeStamp:    time.Now(),
 			NextBlockNum: t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64() + 1,
 		}
-
 		joinTxData, err := rlp.EncodeToBytes(&data)
 		if err != nil {
 			log.Println("Error[andus] : EncodeToBytes", err)
@@ -214,15 +213,13 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
 			gethTypes.NewTransaction(txNonce, common.HexToAddress(config.FAIRNODE_ADDRESS),
-				config.Price, 90000, big.NewInt(1000000000), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
-
+				config.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
 
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddRemote(tx); err != nil {
-			log.Println("Error[andus] fc.txPool.AddLocal: ", err)
 			return errorAddTxPool
 		}
 	} else {

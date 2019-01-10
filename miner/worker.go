@@ -598,6 +598,10 @@ func (w *worker) resultLoop() {
 			err = debEngine.ValidationVoteBlock(w.chain, block)
 			if err != nil {
 				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				fmt.Println("block.TxHash()", block.TxHash().String())
+				tx := block.Transaction(block.TxHash())
+				w.eth.TxPool().RemoveTX(tx)
+				fmt.Println("error : ", err)
 				continue
 			}
 
@@ -635,6 +639,7 @@ func (w *worker) resultLoop() {
 			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
 			if err != nil {
 				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				fmt.Println("err : ", err)
 				continue
 			}
 

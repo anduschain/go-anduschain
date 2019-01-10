@@ -70,6 +70,12 @@ var (
 	errNotMatchOtprnOrBlockNumber = errors.New("OTPRN 또는 생성할 블록 번호와 맞지 않습니다")
 
 	errNotInJoinTX = errors.New("마이너의 JOIN_TX가 담겨 있지 않음")
+
+	errTxTicketPriceNotAvailable = errors.New("참가비가 포함되어있지 않은 트랜잭션이 포함된 블록이 있다")
+
+	errTxOtprn = errors.New("JoinTx의 Otprn 과 리그의 otprn이 다른게 존재")
+
+	errTxNumNotMatch = errors.New("JoinTx의 Num과 블록 NUM 이 다르다")
 )
 
 // Deb is the proof-of-Deb consensus engine proposed to support the

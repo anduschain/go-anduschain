@@ -103,7 +103,11 @@ func (w *wizard) makeGenesis() {
 	case choice == "" || choice == "3":
 		// In the case of Deb, configure the consensus parameters
 		genesis.Difficulty = big.NewInt(1)
-		genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: common.HexToAddress("0x5922af64E91f4B10AF896De8Fd372075569a1440")}
+		//genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: common.HexToAddress("0x5922af64E91f4B10AF896De8Fd372075569a1440")}
+
+		fmt.Printf("Input your fairnode address ")
+		fairNodeAdd := w.readAddress()
+		genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: *fairNodeAdd}
 		genesis.Config.EIP155Block = big.NewInt(0)
 
 	default:
