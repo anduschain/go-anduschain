@@ -1,13 +1,16 @@
 package deb
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
+	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"time"
 )
@@ -24,7 +27,7 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 		}
 
 		addr := crypto.PubkeyToAddress(*fpKey)
-		if addr.String() == config.FAIRNODE_ADDRESS {
+		if fairutil.CmpAddress(addr.String(), config.FAIRNODE_ADDRESS) {
 			return nil, -1
 		} else {
 			return errNotMatchFairAddress, ErrNotMatchFairAddress
@@ -35,12 +38,18 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 	}
 }
 
+// 투표블록 서명 검증하고 난이도 검증
+func (c *Deb) ValidateJointx(voteBlock *fairtypes.VoteBlock) bool {
+
+	return false
+}
+
 func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.Block) error {
-	if chain.CurrentHeader().Number.Uint64()+1 == voteblock.Number().Uint64() {
+	if chain.CurrentHeader().Number.Uint64()+1 != voteblock.Number().Uint64() {
 		return errNotMatchOtprnOrBlockNumber
 	}
 	// check otprn
-	if c.otprnHash == common.BytesToHash(voteblock.Extra()) {
+	if c.otprnHash != common.BytesToHash(voteblock.Extra()) {
 		return errNotMatchOtprnOrBlockNumber
 	}
 
@@ -62,8 +71,30 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) error {
 	signer := types.NewEIP155Signer(chainid)
 	txs := block.Transactions()
+	var datas types2.JoinTxData
 	for i := range txs {
 		if fairutil.CmpAddress(txs[i].To().String(), config.FAIRNODE_ADDRESS) {
+			err := rlp.DecodeBytes(txs[i].Data(), &datas)
+			if err != nil {
+				continue
+			}
+			if txs[i].Value().Cmp(config.Price) != 0 {
+				fmt.Println("txs[i].Value() : ", txs[i].Value())
+				fmt.Println("config.Price: ", config.Price)
+				return errTxTicketPriceNotAvailable
+			}
+			if c.otprnHash != datas.OtprnHash {
+				fmt.Println("OtprnHash : ", datas.OtprnHash.String())
+				fmt.Println("c.otprnHash : ", c.otprnHash.String())
+				return errTxOtprn
+			}
+			//TODO andus >> pending trasaction 에 있는 tx 없애야함.
+			//if  block.Number().Cmp(big.NewInt(int64(datas.NextBlockNum))) != 0 {
+			//	fmt.Println("NextBlockNum : ", datas.NextBlockNum, block.Number())
+			//	return errTxNumNotMatch
+			//}
+			fmt.Println("NextBlockNum : ", datas.NextBlockNum, block.Number())
+
 			from, err := types.Sender(signer, txs[i])
 			if err != nil {
 				continue
