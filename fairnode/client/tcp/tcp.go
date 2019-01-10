@@ -121,9 +121,9 @@ Exit:
 		case <-exit:
 			tsp.Close()
 			break Exit
-		case winingBlock := <-t.manger.VoteBlock():
-			transport.Send(tsp, transport.SendBlockForVote, winingBlock.GetTsVoteBlock())
-			fmt.Println("----블록 투표 번호 -----", winingBlock.Block.NumberU64(), winingBlock.Block.Coinbase().String())
+		case vote := <-t.manger.VoteBlock():
+			transport.Send(tsp, transport.SendBlockForVote, vote)
+			log.Println(fmt.Printf("Info[andus] block Vote headerHash %s voter %s", vote.HeaderHash.String(), vote.Voter.String()))
 		}
 	}
 }
@@ -181,6 +181,18 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		return errors.New("리그 종료")
+
+	case transport.RequestWinningBlock:
+		var headerHash common.Hash
+		msg.Decode(&headerHash)
+		block := t.manger.GetWinningBlock(headerHash)
+		if block == nil {
+			break
+		}
+
+		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: t.manger.GetOtprnWithSig().Otprn.HashOtprn()}
+
+		transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
 	default:
 		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
 	}

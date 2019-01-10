@@ -2,6 +2,7 @@ package fairutil
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	mrand "math/rand"
 	"strings"
@@ -46,5 +47,19 @@ func CmpAddress(a string, b string) bool {
 	if strings.ToLower(a) == strings.ToLower(b) {
 		return true
 	}
+	return false
+}
+
+func ValidationSign(hash, sig []byte, sAddr common.Address) bool {
+	fpKey, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return false
+	}
+
+	addr := crypto.PubkeyToAddress(*fpKey)
+	if addr == sAddr {
+		return true
+	}
+
 	return false
 }

@@ -3,13 +3,14 @@ package fairtcp
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"log"
+	"math/big"
 )
 
 func poolUpdate(leaguePool *pool.LeaguePool, otprn string, tsf fairtypes.TransferCheck) {
@@ -64,28 +65,41 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 
 		}
 	case transport.SendBlockForVote:
-		tsVote := fairtypes.TsVoteBlock{}
-		if err := msg.Decode(&tsVote); err != nil {
+		vote := fairtypes.Vote{}
+		if err := msg.Decode(&vote); err != nil {
 			return err
 		}
 
-		voteBlock := tsVote.GetVoteBlock()
-		block := voteBlock.Block
-		otp := ft.manager.GetOtprn()
-		lastNum := ft.manager.GetLastBlockNum()
-		blockOtprnHash := common.BytesToHash(block.Extra())
+		currentBlockNum := ft.manager.GetLastBlockNum().Add(ft.manager.GetLastBlockNum(), big.NewInt(1))
 
-		if otp.HashOtprn() == blockOtprnHash && lastNum+1 == block.NumberU64() {
-			ft.manager.GetVotePool().InsertCh <- pool.Vote{
-				Hash:     pool.StringToOtprn(voteBlock.OtprnHash.String()),
-				Block:    block,
-				Coinbase: voteBlock.Voter,
-				//Receipts: voteBlock.Receipts,
-			}
-			fmt.Println("-----블록 투표 됨-----", voteBlock.Voter.String(), block.NumberU64())
-		} else {
-			fmt.Println("-----다른 OTPRN으로 투표 또는 숫자가 맞지 않아 거절됨-----", lastNum, otp.HashOtprn() == voteBlock.OtprnHash, block.Coinbase().String(), block.NumberU64())
+		// block number check
+		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
+			break
 		}
+		// otprnhash check
+		if vote.OtprnHash != ft.manager.GetOtprn().HashOtprn() {
+			break
+		}
+
+		// sign check
+		if !fairutil.ValidationSign(vote.HeaderHash.Bytes(), vote.Sig, vote.Voter) {
+			break
+		}
+
+		ft.manager.GetVotePool().InsertCh <- pool.Vote{
+			pool.StringToOtprn(vote.OtprnHash.String()), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig},
+		}
+
+		fmt.Println("--블록 투표 됨--", vote.BlockNum.String(), "번 블록해시", vote.HeaderHash.String(), "투표자 ", vote.Voter.String())
+
+	case transport.SendWinningBlock:
+		tsblock := fairtypes.TsResWinningBlock{}
+		if err := msg.Decode(&tsblock); err != nil {
+			return err
+		}
+
+		ft.manager.GetVotePool().StoreBlockCh <- tsblock.GetResWinningBlock()
+
 	default:
 		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
 	}

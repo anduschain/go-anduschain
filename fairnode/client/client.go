@@ -23,11 +23,6 @@ import (
 	"sync"
 )
 
-const (
-	TcpStop = iota
-	StopTCPtoFairNode
-)
-
 var (
 	errUnlockCoinbase = errors.New("코인베이스가 언락되지 않았습니다.")
 )
@@ -41,13 +36,8 @@ type FairnodeClient struct {
 	BlockChain         *core.BlockChain
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
-
-	//WinningBlockCh chan *fairtypes.VoteBlock // TODO : andus >> worker의 위닝 블록을 받는 채널... -> Fairnode에게 쏜다
-	//FinalBlockCh   chan *types.Block
-	Running bool
-	wg      sync.WaitGroup
-
-	//FairPubKey         ecdsa.PublicKey
+	Running            bool
+	wg                 sync.WaitGroup
 
 	TcpConnStartCh     chan struct{}
 	submitEnodeExitCh  chan struct{}
@@ -55,18 +45,14 @@ type FairnodeClient struct {
 	readLoopStopCh     chan struct{}
 	writeLoopStopCh    chan struct{}
 
-	//tcptoFairNodeExitCh chan int
-	//tcpConnStopCh       chan int
-
-	//tcpRunning bool
-	//TcpDialer  *net.TCPConn
-
-	//mux sync.Mutex
-
 	StartCh chan struct{} // 블록생성 시작 채널
 
 	chans  fairtypes.Channals
 	Signer types.EIP155Signer
+
+	mux sync.Mutex
+
+	wBlocks map[common.Hash]*types.Block // 위닝 블록 임시 저장
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -91,6 +77,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 
 		Services: make(map[string]_interface.ServiceFunc),
 		Signer:   types.NewEIP155Signer(blockChain.Config().ChainID),
+		wBlocks:  make(map[common.Hash]*types.Block),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -176,7 +163,7 @@ func (fc *FairnodeClient) GetTxpool() *core.TxPool                    { return f
 func (fc *FairnodeClient) GetBlockChain() *core.BlockChain            { return fc.BlockChain }
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey       { return &fc.CoinBasePrivateKey }
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}              { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *fairtypes.VoteBlock       { return fc.chans.GetWinningBlockCh() }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote            { return fc.chans.GetWinningBlockCh() }
 func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return fc.chans.GetFinalBlockCh() }
 func (fc *FairnodeClient) GetSigner() types.Signer                    { return fc.Signer }
 
@@ -205,4 +192,19 @@ func (fc *FairnodeClient) GetCurrentNonce(addr common.Address) uint64 {
 	}
 
 	return stateDb.GetNonce(addr)
+}
+
+func (fc *FairnodeClient) SaveWiningBlock(block *types.Block) {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	fc.wBlocks[block.Hash()] = block
+}
+
+func (fc *FairnodeClient) GetWinningBlock(hash common.Hash) *types.Block {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	if block, ok := fc.wBlocks[hash]; ok {
+		return block
+	}
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
+	"math/big"
 	"time"
 )
 
@@ -168,7 +169,7 @@ func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
 	return uint64(len(minerlist.Nodes))
 }
 
-func (fnb *FairNodeDB) GetCurrentBlock() uint64 {
+func (fnb *FairNodeDB) GetCurrentBlock() *big.Int {
 
 	var sBlock *storedBlock
 
@@ -178,10 +179,10 @@ func (fnb *FairNodeDB) GetCurrentBlock() uint64 {
 	}
 
 	if sBlock == nil {
-		return 0
+		return nil
 	}
 
-	return uint64(sBlock.Header.Number)
+	return big.NewInt(sBlock.Header.Number)
 }
 
 func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
@@ -216,10 +217,9 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		})
 	}
 
-	var voter []string
+	var voter []vote
 	for i := range block.Voter {
-		fmt.Println("----", block.Voter[i].String())
-		voter = append(voter, block.Voter[i].String())
+		voter = append(voter, vote{block.Voter[i].Addr.String(), block.Voter[i].Sig})
 	}
 
 	b := storedBlock{

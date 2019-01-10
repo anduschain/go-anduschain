@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/fairtcp"
 	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
+	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"log"
 	"math/big"
 )
@@ -24,15 +25,17 @@ type FairManager struct {
 	srvKey          *backend.SeverKey
 	leaguePool      *pool.LeaguePool
 	votePool        *pool.VotePool
-	LastBlockNum    uint64
+	LastBlockNum    *big.Int
 	db              *db.FairNodeDB
 	Signer          types.Signer
+	exit            chan struct{}
 }
 
 func New() (*FairManager, error) {
 	fm := &FairManager{
 		Services: make(map[string]ServiceFunc),
 		Signer:   types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
+		exit:     make(chan struct{}),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -74,6 +77,9 @@ func (fm *FairManager) Start(srvKey *backend.SeverKey) error {
 			return err
 		}
 	}
+
+	go fm.RequestWinningBlock(fm.exit)
+
 	return nil
 }
 
@@ -85,6 +91,9 @@ func (fm *FairManager) Stop() error {
 			return err
 		}
 	}
+
+	fm.exit <- struct{}{}
+
 	return nil
 }
 
@@ -106,8 +115,31 @@ func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = s
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
 func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }
-func (fm *FairManager) GetLastBlockNum() uint64 {
+func (fm *FairManager) GetLastBlockNum() *big.Int {
 	fm.LastBlockNum = fm.db.GetCurrentBlock()
 	return fm.LastBlockNum
 }
 func (fm *FairManager) GetSinger() types.Signer { return fm.Signer }
+
+func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
+	for {
+		select {
+		case req := <-fm.votePool.RequestBlockCh:
+			if node := fm.leaguePool.GetNode(fm.Otprn.HashOtprn(), req.Addr); node != nil {
+				msg, err := transport.MakeTsMsg(transport.RequestWinningBlock, req.BlockHash)
+				if err != nil {
+					log.Println("Info[andus] : RequestWinningBlock", err)
+					continue
+				}
+
+				err = node.Conn.WriteMsg(msg)
+				if err != nil {
+					log.Println("Info[andus] : RequestWinningBlock SendMessage", err)
+					continue
+				}
+			}
+		case <-exit:
+			return
+		}
+	}
+}

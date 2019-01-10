@@ -122,6 +122,11 @@ type Body struct {
 	Uncles       []*Header
 }
 
+type Voter struct {
+	Addr common.Address
+	Sig  []byte
+}
+
 // Block represents an entire block in the Ethereum blockchain.
 type Block struct {
 	header       *Header
@@ -137,8 +142,8 @@ type Block struct {
 	td *big.Int
 
 	// TODO : andus >> FairNode 서명
-	FairNodeSig []byte // header Hash + Voter Hash
-	Voter       []common.Address
+	FairNodeSig []byte
+	Voter       []Voter
 	// These fields are used by package eth to track
 	// inter-peer block relay.
 	ReceivedAt   time.Time
@@ -164,7 +169,7 @@ type extblock struct {
 	Txs    []*Transaction
 	//Uncles      []*Header
 	FairNodeSig []byte
-	Voter       []common.Address
+	Voter       []Voter
 }
 
 // [deprecated by eth/63]
@@ -320,10 +325,6 @@ func (b *Block) GetFairNodeSig() ([]byte, bool) {
 	} else {
 		return nil, false
 	}
-}
-
-func (b *Block) GetVoter() []common.Address {
-	return b.Voter
 }
 
 // Size returns the true RLP encoded storage size of the block, either by encoding

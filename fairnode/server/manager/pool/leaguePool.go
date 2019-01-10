@@ -80,6 +80,21 @@ func (l *LeaguePool) GetLeagueList(h OtprnHash) (Nodes, uint64, []string) {
 	return nil, 0, enodes
 }
 
+func (l *LeaguePool) GetNode(h common.Hash, addr common.Address) *Node {
+	l.mux.Lock()
+	defer l.mux.Unlock()
+
+	if val, ok := l.pool[StringToOtprn(h.String())]; ok {
+		for i := range val {
+			if val[i].Coinbase == addr {
+				return &val[i]
+			}
+		}
+	}
+
+	return nil
+}
+
 func (l *LeaguePool) loop() {
 	defer log.Println("Info[andus] LeaguePool Kill")
 
