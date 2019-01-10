@@ -29,6 +29,8 @@ const (
 	SendBlockForVote
 	SendFinalBlock
 	FinishLeague
+	RequestWinningBlock
+	SendWinningBlock
 )
 
 func (m *TsMsg) Decode(val interface{}) error {

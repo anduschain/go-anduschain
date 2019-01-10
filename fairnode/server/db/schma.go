@@ -51,9 +51,14 @@ type transaction struct {
 	Payload      []byte
 }
 
+type vote struct {
+	Addr string
+	Sig  []byte
+}
+
 type storedBlock struct {
 	Header       header
 	Transactions []transaction
 	FairNodeSig  string
-	Voter        []string
+	Voter        []vote
 }

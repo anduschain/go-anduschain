@@ -108,8 +108,8 @@ type Ethereum struct {
 	ReceiveBlockCh         chan *fairtypes.VoteBlock
 
 	// TODO : andus >> 위닝블록 전송 채널
-	WinningBlockCh chan *fairtypes.VoteBlock
-	FinalBlockCh   chan fairtypes.FinalBlock
+	VoteCh       chan *fairtypes.Vote
+	FinalBlockCh chan fairtypes.FinalBlock
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -159,7 +159,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		// TODO : andus >> 위닝블록 전송 채널
 		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock),
 		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		WinningBlockCh:         make(chan *fairtypes.VoteBlock),
+		VoteCh:                 make(chan *fairtypes.Vote),
 		FinalBlockCh:           make(chan fairtypes.FinalBlock),
 	}
 
@@ -198,12 +198,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	if debEngine, ok := eth.engine.(*deb.Deb); ok {
+		// TODO : andus >> fairnode client start
+		eth.FairnodeClient = fairnodeclient.New(eth, eth.blockchain, eth.txPool)
+
 		// 각 서비스들이 통신할 채널을 넘겨준다.
 		debEngine.SetChans(eth)
+		debEngine.SetManager(eth.FairnodeClient)
 	}
-
-	// TODO : andus >> fairnode client start
-	eth.FairnodeClient = fairnodeclient.New(eth, eth.blockchain, eth.txPool)
 
 	// TODO : andus >> miner -> keystore 추가
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, eth)
@@ -223,7 +224,7 @@ func (s *Ethereum) GetLeagueBlockBroadcastCh() chan *fairtypes.VoteBlock {
 	return s.LeagueBlockBroadcastCh
 }
 func (s *Ethereum) GetReceiveBlockCh() chan *fairtypes.VoteBlock { return s.ReceiveBlockCh }
-func (s *Ethereum) GetWinningBlockCh() chan *fairtypes.VoteBlock { return s.WinningBlockCh }
+func (s *Ethereum) GetWinningBlockCh() chan *fairtypes.Vote      { return s.VoteCh }
 func (s *Ethereum) GetFinalBlockCh() chan fairtypes.FinalBlock   { return s.FinalBlockCh }
 
 func makeExtraData(extra []byte) []byte {

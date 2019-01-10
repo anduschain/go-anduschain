@@ -3,6 +3,7 @@ package backend
 import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
+	"math/big"
 )
 
 type Goroutine struct {
@@ -18,5 +19,5 @@ type Manager interface {
 	SetLeagueRunning(status bool)
 	GetLeaguePool() *pool.LeaguePool
 	GetVotePool() *pool.VotePool
-	GetLastBlockNum() uint64
+	GetLastBlockNum() *big.Int
 }

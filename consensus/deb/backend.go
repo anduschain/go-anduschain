@@ -1,7 +1,6 @@
 package deb
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -162,9 +161,18 @@ Exit:
 				}
 			}
 		case <-t.C:
+			wb := winningBlock
 			// 위닝블록 전송
-			c.chans.GetWinningBlockCh() <- winningBlock
-			fmt.Println("-----------------FairNode로 winningBlock 전송-----------------")
+			c.chans.GetWinningBlockCh() <- &fairtypes.Vote{
+				BlockNum:   wb.Block.Header().Number,
+				HeaderHash: wb.Block.Header().Hash(),
+				Sig:        wb.Sig,
+				Voter:      wb.Voter,
+				OtprnHash:  wb.OtprnHash,
+			}
+
+			c.client.SaveWiningBlock(wb.Block)
+
 			break Exit
 		}
 	}

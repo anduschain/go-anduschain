@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
+	"math/big"
 )
 
 type EnodeCoinbase struct {
@@ -109,10 +110,36 @@ func (fb *FinalBlock) GetTsFinalBlock() *TsFinalBlock {
 	}
 }
 
+type Vote struct {
+	BlockNum   *big.Int
+	HeaderHash common.Hash
+	Sig        []byte
+	Voter      common.Address // coinbase
+	OtprnHash  common.Hash
+}
+
+type ResWinningBlock struct {
+	Block     *types.Block
+	OtprnHash common.Hash
+}
+
+func (res *ResWinningBlock) GetTsResWinningBlock() *TsResWinningBlock {
+	return &TsResWinningBlock{EncodeBlock(res.Block), res.OtprnHash}
+}
+
+type TsResWinningBlock struct {
+	Block     EncodedBlock
+	OtprnHash common.Hash
+}
+
+func (tres *TsResWinningBlock) GetResWinningBlock() *ResWinningBlock {
+	return &ResWinningBlock{DecodeBlock(tres.Block), tres.OtprnHash}
+}
+
 type Channals interface {
 	GetLeagueBlockBroadcastCh() chan *VoteBlock
 	GetReceiveBlockCh() chan *VoteBlock
-	GetWinningBlockCh() chan *VoteBlock
+	GetWinningBlockCh() chan *Vote
 	GetFinalBlockCh() chan FinalBlock
 }
 

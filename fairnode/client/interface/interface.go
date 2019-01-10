@@ -28,8 +28,10 @@ type Client interface {
 	GetBlockChain() *core.BlockChain
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
 	BlockMakeStart() chan struct{}
-	VoteBlock() chan *fairtypes.VoteBlock
+	VoteBlock() chan *fairtypes.Vote
 	FinalBlock() chan fairtypes.FinalBlock
 	GetSigner() gethType.Signer
 	GetCurrentNonce(addr common.Address) uint64
+	SaveWiningBlock(block *gethType.Block)
+	GetWinningBlock(hash common.Hash) *gethType.Block
 }

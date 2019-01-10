@@ -128,62 +128,69 @@ func (fu *FairTcp) JoinTotalNum(persent float64) uint64 {
 }
 
 func (fu *FairTcp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fairtypes.FinalBlock {
-	voteBlocks := votePool.GetVoteBlocks(pool.StringToOtprn(otprnHash))
+	otrpnHash := pool.StringToOtprn(otprnHash)
+	votes := votePool.GetVoteBlocks(otrpnHash)
 	acc := fu.manager.GetServerKey()
+	fb := &fairtypes.FinalBlock{}
 
-	var fb fairtypes.FinalBlock
+	type vB struct {
+		Block *types.Block
+		Voter pool.VoteBlock
+	}
+
+	var voteBlocks []vB
+	for i := range votes {
+		voteBlocks = append(voteBlocks, vB{votePool.GetBlock(otrpnHash, votes[i].BlockHash), votes[i]})
+	}
 
 	if len(voteBlocks) == 0 {
 		return nil
 	} else if len(voteBlocks) == 1 {
 		fmt.Println("--------------count == 1----------")
 		fb.Block = voteBlocks[0].Block
-		//fb.Receipts = voteBlocks[0].Receipts
-		SignFairNode(fb.Block, voteBlocks[0], acc.ServerAcc, acc.KeyStore)
+		SignFairNode(fb.Block, voteBlocks[0].Voter, acc.ServerAcc, acc.KeyStore)
 	} else {
 		var cnt uint64 = 0
-		var pvBlock pool.VoteBlock
+		var pv vB
 		for i := range voteBlocks {
+			voter := voteBlocks[i]
+			count := voteBlocks[i].Voter.Count
+			block := voteBlocks[i].Block
 			// 1. count가 높은 블록
 			// 2. Rand == diffcult 값이 높은 블록
 			// 3. joinNunce	== nonce 값이 놓은 블록
 			// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
-			if cnt < voteBlocks[i].Count {
-				fb.Block = voteBlocks[i].Block
-				//fb.Receipts = voteBlocks[i].Receipts
-				pvBlock = voteBlocks[i]
-				cnt = voteBlocks[i].Count
-			} else if cnt == voteBlocks[i].Count {
+			if cnt < count {
+				fb.Block = block
+				pv = voter
+				cnt = count
+			} else if cnt == count {
 				// 동수인 투표일때
-				if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
+				if voteBlocks[i].Block.Difficulty().Cmp(pv.Block.Difficulty()) == 1 {
 					// diffcult 값이 높은 블록
-					fb.Block = voteBlocks[i].Block
-					//fb.Receipts = voteBlocks[i].Receipts
-					pvBlock = voteBlocks[i]
-				} else if voteBlocks[i].Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 0 {
+					fb.Block = block
+					pv = voter
+				} else if voteBlocks[i].Block.Difficulty().Cmp(pv.Block.Difficulty()) == 0 {
 					// diffcult 값이 같을때
-					if voteBlocks[i].Block.Nonce() > pvBlock.Block.Nonce() {
+					if voteBlocks[i].Block.Nonce() > pv.Block.Nonce() {
 						// nonce 값이 큰 블록
-						fb.Block = voteBlocks[i].Block
-						//fb.Receipts = voteBlocks[i].Receipts
-						pvBlock = voteBlocks[i]
-					} else if voteBlocks[i].Block.Nonce() == pvBlock.Block.Nonce() {
+						fb.Block = block
+						pv = voter
+					} else if voteBlocks[i].Block.Nonce() == pv.Block.Nonce() {
 						// nonce 값이 같을 때
 						if voteBlocks[i].Block.Number().Uint64()%2 == 0 {
 							// 블록 번호가 짝수 일때
-							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == 1 {
+							if voteBlocks[i].Block.Coinbase().Big().Cmp(pv.Block.Coinbase().Big()) == 1 {
 								// 주소값이 큰 블록
-								fb.Block = voteBlocks[i].Block
-								//fb.Receipts = voteBlocks[i].Receipts
-								pvBlock = voteBlocks[i]
+								fb.Block = block
+								pv = voter
 							}
 						} else {
 							// 블록 번호가 홀수 일때
-							if voteBlocks[i].Block.Coinbase().Big().Cmp(pvBlock.Block.Coinbase().Big()) == -1 {
+							if voteBlocks[i].Block.Coinbase().Big().Cmp(pv.Block.Coinbase().Big()) == -1 {
 								// 주소값이 작은 블록
-								fb.Block = voteBlocks[i].Block
-								//fb.Receipts = voteBlocks[i].Receipts
-								pvBlock = voteBlocks[i]
+								fb.Block = block
+								pv = voter
 							}
 						}
 
@@ -192,14 +199,14 @@ func (fu *FairTcp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 			}
 		}
 
-		SignFairNode(fb.Block, pvBlock, acc.ServerAcc, acc.KeyStore)
+		SignFairNode(fb.Block, pv.Voter, acc.ServerAcc, acc.KeyStore)
 	}
 
-	return &fb
+	return fb
 }
 
 func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {
-	sig, err := ks.SignHash(account, vBlock.Block.Hash().Bytes())
+	sig, err := ks.SignHash(account, block.Hash().Bytes())
 	if err != nil {
 		log.Println("Error[andus] : SignFairNode 서명에러", err)
 	}

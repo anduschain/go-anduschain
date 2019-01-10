@@ -72,6 +72,11 @@ var (
 	errNotInJoinTX = errors.New("마이너의 JOIN_TX가 담겨 있지 않음")
 )
 
+type client interface {
+	SaveWiningBlock(block *types.Block)
+	GetWinningBlock(hash common.Hash) *types.Block
+}
+
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
 	config    *params.DebConfig // Consensus engine configuration parameters
@@ -81,6 +86,7 @@ type Deb struct {
 	otprnHash common.Hash
 	coinbase  common.Address
 	chans     fairtypes.Channals
+	client    client
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
@@ -103,6 +109,10 @@ func (c *Deb) SetSignKey(signKey *ecdsa.PrivateKey) {
 
 func (c *Deb) SetChans(chans fairtypes.Channals) {
 	c.chans = chans
+}
+
+func (c *Deb) SetManager(manager client) {
+	c.client = manager
 }
 
 // TODO : andus >> 생성된 블록(브로드케스팅용) 서명
