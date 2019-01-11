@@ -1,7 +1,6 @@
 package deb
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -72,38 +71,30 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) e
 	signer := types.NewEIP155Signer(chainid)
 	txs := block.Transactions()
 	var datas types2.JoinTxData
+	var isMyJoinTx bool
 	for i := range txs {
 		if fairutil.CmpAddress(txs[i].To().String(), config.FAIRNODE_ADDRESS) {
 			err := rlp.DecodeBytes(txs[i].Data(), &datas)
 			if err != nil {
 				continue
 			}
+			//참가비확인
 			if txs[i].Value().Cmp(config.Price) != 0 {
-				fmt.Println("txs[i].Value() : ", txs[i].Value())
-				fmt.Println("config.Price: ", config.Price)
 				return errTxTicketPriceNotAvailable
 			}
-			if c.otprnHash != datas.OtprnHash {
-				fmt.Println("OtprnHash : ", datas.OtprnHash.String())
-				fmt.Println("c.otprnHash : ", c.otprnHash.String())
-				return errTxOtprn
-			}
-			//TODO andus >> pending trasaction 에 있는 tx 없애야함.
-			//if  block.Number().Cmp(big.NewInt(int64(datas.NextBlockNum))) != 0 {
-			//	fmt.Println("NextBlockNum : ", datas.NextBlockNum, block.Number())
-			//	return errTxNumNotMatch
-			//}
-			fmt.Println("NextBlockNum : ", datas.NextBlockNum, block.Number())
 
-			from, err := types.Sender(signer, txs[i])
-			if err != nil {
-				continue
-			}
-
-			if from == block.Coinbase() {
-				return nil
+			//내 jointx가 있는지 확인 && otprn
+			if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
+				from, _ := types.Sender(signer, txs[i])
+				if fairutil.CmpAddress(from.String(), c.coinbase.String()) {
+					isMyJoinTx = true
+				}
 			}
 		}
+	}
+
+	if isMyJoinTx {
+		return nil
 	}
 
 	return errNotInJoinTX

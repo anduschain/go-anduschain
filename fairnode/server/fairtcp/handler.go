@@ -69,8 +69,12 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 		if err := msg.Decode(&vote); err != nil {
 			return err
 		}
-
-		currentBlockNum := ft.manager.GetLastBlockNum().Add(ft.manager.GetLastBlockNum(), big.NewInt(1))
+		var currentBlockNum *big.Int
+		if ft.manager.GetLastBlockNum() == nil {
+			currentBlockNum = big.NewInt(1)
+		} else {
+			currentBlockNum = ft.manager.GetLastBlockNum().Add(ft.manager.GetLastBlockNum(), big.NewInt(1))
+		}
 
 		// block number check
 		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
@@ -90,14 +94,13 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 			pool.StringToOtprn(vote.OtprnHash.String()), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig},
 		}
 
-		fmt.Println("--블록 투표 됨--", vote.BlockNum.String(), "번 블록해시", vote.HeaderHash.String(), "투표자 ", vote.Voter.String())
+		fmt.Println("--블록 투표 됨--", vote.BlockNum.String(), vote.Voter.String())
 
 	case transport.SendWinningBlock:
 		tsblock := fairtypes.TsResWinningBlock{}
 		if err := msg.Decode(&tsblock); err != nil {
 			return err
 		}
-
 		ft.manager.GetVotePool().StoreBlockCh <- tsblock.GetResWinningBlock()
 
 	default:

@@ -597,11 +597,7 @@ func (w *worker) resultLoop() {
 
 			err = debEngine.ValidationVoteBlock(w.chain, block)
 			if err != nil {
-				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				fmt.Println("block.TxHash()", block.TxHash().String())
-				tx := block.Transaction(block.TxHash())
-				w.eth.TxPool().RemoveTX(tx)
-				fmt.Println("error : ", err)
+				log.Trace("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
 				continue
 			}
 
@@ -706,7 +702,7 @@ func (w *worker) resetJoinNonce(block *types.Block, state *state.StateDB) {
 		if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
 			from, err := types.Sender(types.NewEIP155Signer(w.config.ChainID), tx)
 			if err != nil {
-				log.Info("Get Sender Error", "err", err)
+				log.Error("Get Sender Error", "err", err)
 			}
 
 			if block.Header().Coinbase == from {

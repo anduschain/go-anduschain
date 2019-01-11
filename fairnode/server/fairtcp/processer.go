@@ -156,6 +156,9 @@ func (fu *FairTcp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fai
 			voter := voteBlocks[i]
 			count := voteBlocks[i].Voter.Count
 			block := voteBlocks[i].Block
+			if block == nil {
+				continue
+			}
 			// 1. count가 높은 블록
 			// 2. Rand == diffcult 값이 높은 블록
 			// 3. joinNunce	== nonce 값이 놓은 블록

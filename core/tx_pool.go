@@ -1142,15 +1142,6 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	}
 }
 
-// 외부로 함수 전달.
-func (t *TxPool) RemoveTX(tx *types.Transaction) {
-	fmt.Println("tx가 뭐냐", tx.To().String())
-	addr, _ := types.Sender(t.signer, tx) // already validated during insertion
-
-	ok, _ := t.pending[addr].Remove(tx)
-	fmt.Println("지워졌나? ", ok)
-}
-
 // demoteUnexecutables removes invalid and processed transactions from the pools
 // executable/pending queue and any subsequent transactions that become unexecutable
 // are moved back into the future queue.
