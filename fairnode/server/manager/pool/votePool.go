@@ -148,8 +148,12 @@ Exit:
 			break Exit
 		case resBlock := <-vp.StoreBlockCh:
 			vp.mux.Lock()
-			vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())] = make(map[BlockHash]*types.Block)
-			vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())][BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
+			if val, ok := vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())]; ok {
+				val[BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
+			} else {
+				vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())] = make(map[BlockHash]*types.Block)
+				vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())][BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
+			}
 			vp.mux.Unlock()
 		}
 	}
