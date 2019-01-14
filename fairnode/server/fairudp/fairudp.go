@@ -197,6 +197,7 @@ Exit:
 					}
 
 					fu.sendOtprnCH <- tsOtp
+					fu.ftcp.StartLeague(tsOtp.Hash, true)
 				}
 			}
 		case <-start:
@@ -211,6 +212,7 @@ Exit:
 					}
 
 					fu.sendOtprnCH <- tsOtp
+					fu.ftcp.StartLeague(tsOtp.Hash, false)
 				}
 			}
 		case <-exit:
@@ -229,8 +231,6 @@ Exit:
 			//fu.manager.SetLeagueRunning(true)
 			// 리그 전송 tcp
 			fu.manager.SetOtprn(&totprn.Otp)
-
-			fu.ftcp.StartLeague(totprn.Hash, false)
 		case <-exit:
 			break Exit
 		}
