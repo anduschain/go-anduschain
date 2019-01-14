@@ -24,6 +24,7 @@ type Config struct {
 	Port    string // 네트워크 포트
 	NAT     string
 	ChainID int64
+	Epoch   int64
 }
 
 var DefaultConfig = Config{
@@ -37,6 +38,7 @@ var DefaultConfig = Config{
 	Port:    "60002",
 	NAT:     "any",
 	ChainID: 1,
+	Epoch:   100,
 }
 
 func init() {
@@ -60,6 +62,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")
 	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
+	DefaultConfig.Epoch = ctx.GlobalInt64("epoch")
 
 	DefaultConfig.KeyPass = keypass
 	DefaultConfig.DBpass = dbpass

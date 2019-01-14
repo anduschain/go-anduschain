@@ -55,6 +55,11 @@ func init() {
 			Value: 1,
 			Usage: "default chainid is 1",
 		},
+		cli.Int64Flag{
+			Name:  "epoch",
+			Value: 100,
+			Usage: "default chainid is 100",
+		},
 	}
 
 	app.Commands = []cli.Command{
