@@ -144,10 +144,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 
 	var str string
 	switch msg.Code {
-	case transport.StartLeague:
-		var otprnHash common.Hash
-		msg.Decode(&otprnHash)
-		t.manger.SetCurrnetOtprnHash(otprnHash)
 	case transport.ResLeagueJoinFalse:
 		// 참여 불가, Dial Close
 		msg.Decode(&str)
@@ -158,6 +154,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		log.Println("Debug[andus] : ", str)
 	case transport.SendLeageNodeList:
 		// Add peer
+		t.manger.SetCurrnetOtprnHash(leagueOtprnHash)
 		var nodeList []string
 		msg.Decode(&nodeList)
 		log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))

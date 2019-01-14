@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	MinActiveNum = 3
+	MinActiveNum = 2
 )
 
 var (
@@ -181,15 +181,14 @@ Exit:
 // OTPRN 발행조건, 활성 노드수가 MinActiveNum 이상일때, 블록 번호가 에폭의 반 이상일때 % == 0
 func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 	defer log.Printf("Info[andus] : manageOtprn kill")
-	t := time.NewTicker(1 * time.Second)
-
+	start := fu.manager.GetManagerOtprnCh()
+	t := time.NewTicker(3 * time.Second)
 Exit:
 	for {
 		select {
 		case <-t.C:
-			actNum := fu.db.GetActiveNodeNum()
-			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
-			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), fu.manager.GetEpoch()).Int64() == 0 {
+			if (fu.manager.GetLeagueOtprnHash() == common.Hash{}) {
+				actNum := fu.db.GetActiveNodeNum()
 				if actNum >= MinActiveNum {
 					// OTPRN 생성
 					tsOtp, err := fu.makeOTPRN(uint64(actNum))
@@ -200,15 +199,20 @@ Exit:
 					fu.sendOtprnCH <- tsOtp
 				}
 			}
-			//if !fu.manager.GetLeagueRunning() && actNum >= MinActiveNum {
-			//	// OTPRN 생성
-			//	tsOtp, err := fu.makeOTPRN(uint64(actNum))
-			//	if err != nil {
-			//		log.Fatal("Error Fatal [OTPRN] : ", err)
-			//	}
-			//
-			//	fu.sendOtprnCH <- tsOtp
-			//}
+		case <-start:
+			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
+			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), fu.manager.GetEpoch()).Int64() == 0 {
+				actNum := fu.db.GetActiveNodeNum()
+				if actNum >= MinActiveNum {
+					// OTPRN 생성
+					tsOtp, err := fu.makeOTPRN(uint64(actNum))
+					if err != nil {
+						log.Fatal("Error Fatal [OTPRN] : ", err)
+					}
+
+					fu.sendOtprnCH <- tsOtp
+				}
+			}
 		case <-exit:
 			break Exit
 		}
@@ -225,6 +229,7 @@ Exit:
 			//fu.manager.SetLeagueRunning(true)
 			// 리그 전송 tcp
 			fu.manager.SetOtprn(&totprn.Otp)
+
 			fu.ftcp.StartLeague(totprn.Hash, false)
 		case <-exit:
 			break Exit

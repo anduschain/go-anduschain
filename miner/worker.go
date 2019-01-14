@@ -948,6 +948,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
+	fmt.Println("w.fairclient.GetCurrnetOtprnHash()/ ", w.fairclient.GetCurrnetOtprnHash())
 	if w.isRunning() && w.fairclient.Running && w.fairclient.GetCurrnetOtprnHash() != (common.Hash{}) {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without etherbase")

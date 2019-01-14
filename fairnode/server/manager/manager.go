@@ -31,15 +31,18 @@ type FairManager struct {
 	Signer          types.Signer
 	exit            chan struct{}
 	Epoch           *big.Int
+
+	ManageOtprnCh chan struct{}
 }
 
 func New() (*FairManager, error) {
 	fm := &FairManager{
-		Epoch:    big.NewInt(backend.DefaultConfig.Epoch),
-		Otprn:    make(map[common.Hash]*otprn.Otprn),
-		Services: make(map[string]ServiceFunc),
-		Signer:   types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
-		exit:     make(chan struct{}),
+		Epoch:         big.NewInt(backend.DefaultConfig.Epoch),
+		Otprn:         make(map[common.Hash]*otprn.Otprn),
+		Services:      make(map[string]ServiceFunc),
+		Signer:        types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
+		exit:          make(chan struct{}),
+		ManageOtprnCh: make(chan struct{}),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -141,6 +144,9 @@ func (fm *FairManager) GetLastBlockNum() *big.Int {
 	return fm.LastBlockNum
 }
 func (fm *FairManager) GetSinger() types.Signer { return fm.Signer }
+
+func (fm *FairManager) SetManagerOtprnCh()               { fm.ManageOtprnCh <- struct{}{} }
+func (fm *FairManager) GetManagerOtprnCh() chan struct{} { return fm.ManageOtprnCh }
 
 func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 	for {

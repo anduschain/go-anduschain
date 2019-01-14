@@ -110,6 +110,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 
 			time.Sleep(5 * time.Second)
 			fu.makeJoinTxCh <- struct{}{}
+			fu.manager.SetManagerOtprnCh()
 			return
 		}
 	}

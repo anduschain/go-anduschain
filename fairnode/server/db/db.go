@@ -179,7 +179,7 @@ func (fnb *FairNodeDB) GetCurrentBlock() *big.Int {
 	}
 
 	if sBlock == nil {
-		return nil
+		return big.NewInt(0)
 	}
 
 	return big.NewInt(sBlock.Header.Number)
