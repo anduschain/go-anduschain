@@ -80,9 +80,9 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
 			break
 		}
+
 		// otprnhash check
-		leageuOtprn := ft.manager.GetOtprn(vote.OtprnHash)
-		if leageuOtprn == nil {
+		if ft.manager.GetLeagueOtprnHash() != vote.OtprnHash {
 			break
 		}
 

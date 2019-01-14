@@ -57,7 +57,7 @@ func (u *Udp) Start() error {
 	if !u.isRuning {
 		for name, serv := range u.services {
 			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
-			go serv.Fn(serv.Exit)
+			go serv.Fn(serv.Exit, nil)
 		}
 
 		u.isRuning = true
@@ -72,14 +72,17 @@ func (u *Udp) Stop() error {
 			srv.Exit <- struct{}{}
 		}
 
-		u.tcpService.Stop()
+		for i := range u.manger.GetSavedOtprnHashs() {
+			u.tcpService.Stop(u.manger.GetSavedOtprnHashs()[i])
+		}
+
 		u.isRuning = false
 	}
 
 	return nil
 }
 
-func (u *Udp) submitEnode(exit chan struct{}) {
+func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
 	Conn, err := net.DialUDP("udp", nil, u.SAddrUDP)
 	if err != nil {
@@ -121,7 +124,7 @@ Exit:
 	defer fmt.Println("submitEnode kill")
 }
 
-func (u *Udp) receiveOtprn(exit chan struct{}) {
+func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 	//TODO : andus >> 1. OTPRN 수신
 
@@ -192,7 +195,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}) {
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 
 								log.Println("Debug[andus] : 참여대상이 맞음")
-								u.tcpService.Start()
+								u.tcpService.Start(tsOtprn.Hash)
 
 							} else {
 								log.Println("Debug[andus] : 참여대상이 아님")

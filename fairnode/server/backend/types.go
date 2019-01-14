@@ -15,10 +15,14 @@ type Goroutine struct {
 type Manager interface {
 	SetOtprn(otp *otprn.Otprn)
 	GetOtprn(otprnHash common.Hash) *otprn.Otprn
-	GetLeagueRunning() bool
+	DelOtprn(otprnHash common.Hash) *otprn.Otprn
+	//GetLeagueRunning() bool
 	GetServerKey() *SeverKey
-	SetLeagueRunning(status bool)
+	//SetLeagueRunning(status bool)
 	GetLeaguePool() *pool.LeaguePool
 	GetVotePool() *pool.VotePool
 	GetLastBlockNum() *big.Int
+	GetEpoch() *big.Int
+	GetLeagueOtprnHash() common.Hash
+	SetLeagueOtprnHash(otprnHash common.Hash)
 }

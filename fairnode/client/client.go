@@ -28,7 +28,8 @@ var (
 )
 
 type FairnodeClient struct {
-	OtprnWithSig       *clinetTypes.OtprnWithSig
+	CurrnetOtprnHash   common.Hash
+	OtprnWithSig       map[common.Hash]*clinetTypes.OtprnWithSig
 	Services           map[string]_interface.ServiceFunc
 	Srv                *p2p.Server
 	CoinBasePrivateKey ecdsa.PrivateKey
@@ -58,9 +59,7 @@ type FairnodeClient struct {
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
-		OtprnWithSig: nil,
-		//WinningBlockCh:     wbCh,
-		//FinalBlockCh:       fbCh,
+		OtprnWithSig:       make(map[common.Hash]*clinetTypes.OtprnWithSig),
 		chans:              chans,
 		Running:            false,
 		BlockChain:         blockChain,
@@ -68,16 +67,10 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		TcpConnStartCh:     make(chan struct{}),
 		submitEnodeExitCh:  make(chan struct{}),
 		receiveOtprnExitCh: make(chan struct{}),
-
-		//tcptoFairNodeExitCh: make(chan int),
-		//tcpConnStopCh:       make(chan int),
-		//tcpRunning:          false,
-		//
-		StartCh: make(chan struct{}),
-
-		Services: make(map[string]_interface.ServiceFunc),
-		Signer:   types.NewEIP155Signer(blockChain.Config().ChainID),
-		wBlocks:  make(map[common.Hash]*types.Block),
+		StartCh:            make(chan struct{}),
+		Services:           make(map[string]_interface.ServiceFunc),
+		Signer:             types.NewEIP155Signer(blockChain.Config().ChainID),
+		wBlocks:            make(map[common.Hash]*types.Block),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -153,19 +146,34 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
+func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
+	var re []common.Hash
+	for key := range fc.OtprnWithSig {
+		re = append(re, key)
+	}
+
+	return re
+}
 func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
 func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
 func (fc *FairnodeClient) SetOtprnWithSig(otprn *otprn.Otprn, sig []byte) {
-	fc.OtprnWithSig = &clinetTypes.OtprnWithSig{otprn, sig}
+	fc.OtprnWithSig[otprn.HashOtprn()] = &clinetTypes.OtprnWithSig{otprn, sig}
 }
-func (fc *FairnodeClient) GetOtprnWithSig() *clinetTypes.OtprnWithSig { return fc.OtprnWithSig }
-func (fc *FairnodeClient) GetTxpool() *core.TxPool                    { return fc.txPool }
-func (fc *FairnodeClient) GetBlockChain() *core.BlockChain            { return fc.BlockChain }
-func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey       { return &fc.CoinBasePrivateKey }
-func (fc *FairnodeClient) BlockMakeStart() chan struct{}              { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote            { return fc.chans.GetWinningBlockCh() }
-func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock      { return fc.chans.GetFinalBlockCh() }
-func (fc *FairnodeClient) GetSigner() types.Signer                    { return fc.Signer }
+func (fc *FairnodeClient) GetOtprnWithSig(otprnHash common.Hash) *clinetTypes.OtprnWithSig {
+	if val, ok := fc.OtprnWithSig[otprnHash]; ok {
+		return val
+	}
+	return nil
+}
+func (fc *FairnodeClient) SetCurrnetOtprnHash(otprnHash common.Hash) { fc.CurrnetOtprnHash = otprnHash }
+func (fc *FairnodeClient) GetCurrnetOtprnHash() common.Hash          { return fc.CurrnetOtprnHash }
+func (fc *FairnodeClient) GetTxpool() *core.TxPool                   { return fc.txPool }
+func (fc *FairnodeClient) GetBlockChain() *core.BlockChain           { return fc.BlockChain }
+func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey      { return &fc.CoinBasePrivateKey }
+func (fc *FairnodeClient) BlockMakeStart() chan struct{}             { return fc.StartCh }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote           { return fc.chans.GetWinningBlockCh() }
+func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock     { return fc.chans.GetFinalBlockCh() }
+func (fc *FairnodeClient) GetSigner() types.Signer                   { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)

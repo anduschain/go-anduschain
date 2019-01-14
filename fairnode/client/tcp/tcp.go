@@ -29,8 +29,8 @@ type Tcp struct {
 	SAddrTCP *net.TCPAddr
 	LaddrTCP *net.TCPAddr
 	manger   _interface.Client
-	services map[string]types.Goroutine
-	IsRuning bool
+	services map[common.Hash]map[string]types.Goroutine
+	IsRuning map[common.Hash]bool
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client) (*Tcp, error) {
@@ -49,42 +49,49 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		SAddrTCP: SAddrTCP,
 		LaddrTCP: LaddrTCP,
 		manger:   manger,
-		services: make(map[string]types.Goroutine),
-		IsRuning: false,
+		services: make(map[common.Hash]map[string]types.Goroutine),
+		IsRuning: make(map[common.Hash]bool),
 	}
-
-	tcp.services["tcpLoop"] = types.Goroutine{tcp.tcpLoop, make(chan struct{})}
 
 	return tcp, nil
 }
 
-func (t *Tcp) Start() error {
+func (t *Tcp) Start(otprnHash common.Hash) error {
 	fmt.Println("Tcp 접속 시작", t.IsRuning)
-	if !t.IsRuning {
-		for name, serv := range t.services {
+
+	t.services[otprnHash] = make(map[string]types.Goroutine)
+	t.services[otprnHash]["tcploop"] = types.Goroutine{t.tcpLoop, make(chan struct{})}
+
+	if !t.IsRuning[otprnHash] {
+		for name, serv := range t.services[otprnHash] {
 			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
-			go serv.Fn(serv.Exit)
+			go serv.Fn(serv.Exit, otprnHash)
 		}
-		t.IsRuning = true
+		t.IsRuning[otprnHash] = true
 	}
 
 	return nil
 }
 
-func (t *Tcp) Stop() error {
-	if t.IsRuning {
-		for _, srv := range t.services {
+func (t *Tcp) Stop(otprnHash common.Hash) error {
+	if t.IsRuning[otprnHash] {
+		for _, srv := range t.services[otprnHash] {
 			srv.Exit <- struct{}{}
 		}
-		t.IsRuning = false
+		t.IsRuning[otprnHash] = false
 	}
 
 	return nil
 }
 
-func (t *Tcp) tcpLoop(exit chan struct{}) {
+func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
+	otprnHash, ok := v.(common.Hash)
+	if !ok {
+		return
+	}
+
 	defer func() {
-		t.IsRuning = false
+		t.IsRuning[otprnHash] = false
 		fmt.Println("tcpLoop kill")
 	}()
 
@@ -99,12 +106,12 @@ func (t *Tcp) tcpLoop(exit chan struct{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*t.manger.GetOtprnWithSig().Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
+		fairtypes.TransferCheck{*t.manger.GetOtprnWithSig(otprnHash).Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
 
 	notify := make(chan error)
 	go func() {
 		for {
-			if err := t.handleMsg(tsp); err != nil {
+			if err := t.handleMsg(tsp, otprnHash); err != nil {
 				notify <- err
 				return
 			}
@@ -128,7 +135,7 @@ Exit:
 	}
 }
 
-func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
+func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash) error {
 	msg, err := rw.ReadMsg()
 	if err != nil {
 		return err
@@ -137,6 +144,10 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 
 	var str string
 	switch msg.Code {
+	case transport.StartLeague:
+		var otprnHash common.Hash
+		msg.Decode(&otprnHash)
+		t.manger.SetCurrnetOtprnHash(otprnHash)
 	case transport.ResLeagueJoinFalse:
 		// 참여 불가, Dial Close
 		msg.Decode(&str)
@@ -160,19 +171,25 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 		}
 	case transport.MakeJoinTx:
 		// JoinTx 생성
-		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
+		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
+		if otprnWithSig == nil {
+			return errors.New("해당하는 otprn이 없습니다")
+		}
+
+		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, otprnWithSig.Otprn, otprnWithSig.Sig)
 		if err != nil {
 			log.Println("Error[andus] : ", err)
 			return err
 		}
 	case transport.MakeBlock:
-		msg.Decode(&str)
-		if t.manger.GetOtprnWithSig().Otprn.HashOtprn().String() == str {
-			fmt.Println("-------- 블록 생성 tcp -------")
-			t.manger.BlockMakeStart() <- struct{}{}
-		} else {
-			return errors.New("OTPRN이 Fairnode와 다름")
+		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
+		if otprnWithSig == nil {
+			return errors.New("해당하는 otprn이 없습니다")
 		}
+
+		fmt.Println("-------- 블록 생성 tcp -------")
+		t.manger.BlockMakeStart() <- struct{}{}
+
 	case transport.SendFinalBlock:
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
@@ -191,7 +208,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 			break
 		}
 
-		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: t.manger.GetOtprnWithSig().Otprn.HashOtprn()}
+		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnHash}
 
 		transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
 	default:

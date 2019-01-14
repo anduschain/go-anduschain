@@ -149,12 +149,18 @@ Exit:
 	}
 }
 
-func (ft *FairTcp) StartLeague(otprnHash common.Hash) {
-	go ft.sendLeague(otprnHash)
-	go ft.leagueControlle(otprnHash)
+func (ft *FairTcp) StartLeague(otprnHash common.Hash, leagueChange bool) {
+	ft.sendTcpAll(otprnHash, transport.StartLeague, otprnHash)
+	if ft.manager.GetLastBlockNum().Uint64() == 0 || leagueChange {
+		ft.manager.SetLeagueOtprnHash(otprnHash)
+		go ft.sendLeague(otprnHash)
+		go ft.leagueControlle(otprnHash)
+	}
 }
 
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
-	ft.sendTcpAll(otprnHash, transport.FinishLeague, "리그가 종료 되었습니다")
-	ft.manager.SetLeagueRunning(false)
+	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
+	// NewLeague Start
+	otprn := ft.manager.DelOtprn(otprnHash)
+	ft.StartLeague(otprn.HashOtprn(), true)
 }

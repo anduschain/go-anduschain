@@ -64,6 +64,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 			leaguePool.SnapShot <- pool.OtprnHash(otprnHash)
 			leaguePool.DeleteCh <- pool.OtprnHash(otprnHash)
 			fu.StopLeague(otprnHash)
+			return
 		}
 	}
 }

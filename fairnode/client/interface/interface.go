@@ -21,7 +21,10 @@ type Client interface {
 	GetP2PServer() *p2p.Server
 	GetCoinbase() common.Address
 	SetOtprnWithSig(otprn *otprn.Otprn, sig []byte)
-	GetOtprnWithSig() *types.OtprnWithSig
+	GetOtprnWithSig(otprnHash common.Hash) *types.OtprnWithSig
+	SetCurrnetOtprnHash(otprnHash common.Hash)
+	GetCurrnetOtprnHash() common.Hash
+	GetSavedOtprnHashs() []common.Hash
 	GetCurrentBalance() *big.Int
 	GetCurrentJoinNonce() uint64
 	GetTxpool() *core.TxPool

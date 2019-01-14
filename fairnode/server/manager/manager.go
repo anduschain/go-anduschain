@@ -20,7 +20,7 @@ type ServiceFunc interface {
 }
 
 type FairManager struct {
-	LeagueRunningOK bool
+	LeagueOtprnHash common.Hash
 	Otprn           map[common.Hash]*otprn.Otprn
 	Services        map[string]ServiceFunc
 	srvKey          *backend.SeverKey
@@ -30,10 +30,12 @@ type FairManager struct {
 	db              *db.FairNodeDB
 	Signer          types.Signer
 	exit            chan struct{}
+	Epoch           *big.Int
 }
 
 func New() (*FairManager, error) {
 	fm := &FairManager{
+		Epoch:    big.NewInt(backend.DefaultConfig.Epoch),
 		Otprn:    make(map[common.Hash]*otprn.Otprn),
 		Services: make(map[string]ServiceFunc),
 		Signer:   types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
@@ -110,15 +112,27 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
-func (fm *FairManager) SetOtprn(otp *otprn.Otprn) { fm.Otprn[otp.HashOtprn()] = otp }
+func (fm *FairManager) GetEpoch() *big.Int                       { return fm.Epoch }
+func (fm *FairManager) GetLeagueOtprnHash() common.Hash          { return fm.LeagueOtprnHash }
+func (fm *FairManager) SetLeagueOtprnHash(otprnHash common.Hash) { fm.LeagueOtprnHash = otprnHash }
+func (fm *FairManager) SetOtprn(otp *otprn.Otprn)                { fm.Otprn[otp.HashOtprn()] = otp }
 func (fm *FairManager) GetOtprn(otprnHash common.Hash) *otprn.Otprn {
 	if otprn, ok := fm.Otprn[otprnHash]; ok {
 		return otprn
 	}
 	return nil
 }
-func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
-func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
+func (fm *FairManager) DelOtprn(otprnHash common.Hash) *otprn.Otprn {
+	delete(fm.Otprn, otprnHash) // 리그종료 otprn 삭제
+	for key := range fm.Otprn {
+		return fm.Otprn[key]
+	}
+
+	return nil
+}
+
+//func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
+//func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
 func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }
