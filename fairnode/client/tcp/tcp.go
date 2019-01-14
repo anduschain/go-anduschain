@@ -163,6 +163,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter) error {
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, t.manger.GetOtprnWithSig().Otprn, t.manger.GetOtprnWithSig().Sig)
 		if err != nil {
 			log.Println("Error[andus] : ", err)
+			return err
 		}
 	case transport.MakeBlock:
 		msg.Decode(&str)
@@ -205,8 +206,10 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 	// TODO : andus >> 잔액 조사 ( 임시 : 100 * 10^18 wei ) : 참가비 ( 수수료가 없는 tx )
 	// TODO : andus >> joinNonce 현재 상태 조회
 	currentBalance := t.manger.GetCurrentBalance()
+	epoch := big.NewInt(int64(t.manger.GetBlockChain().Config().Deb.Epoch))
 
-	if currentBalance.Cmp(config.Price) > 0 {
+	// balance will be more then ticket price multiplex epoch.
+	if currentBalance.Cmp(config.Price.Mul(config.Price, epoch)) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
 		data := types.JoinTxData{
 			JoinNonce:    currentJoinNonce,

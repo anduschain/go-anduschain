@@ -11,6 +11,7 @@ import (
 type ReqBlock struct {
 	Addr      common.Address
 	BlockHash BlockHash
+	OtprnHash OtprnHash
 }
 
 type BlockHash common.Hash
@@ -125,7 +126,7 @@ Exit:
 					vp.mux.Lock()
 					vp.pool[vote.OtprnHash] = append(val, VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1})
 					// 블록을 요청함
-					vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash)}
+					vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 					vp.mux.Unlock()
 				}
 
@@ -133,7 +134,7 @@ Exit:
 				vp.mux.Lock()
 				vp.pool[vote.OtprnHash] = VoteBlocks{VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1}}
 				// 블록을 요청함
-				vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash)}
+				vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 				vp.mux.Unlock()
 			}
 		case block := <-vp.SnapShot:
@@ -148,11 +149,11 @@ Exit:
 			break Exit
 		case resBlock := <-vp.StoreBlockCh:
 			vp.mux.Lock()
-			if val, ok := vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())]; ok {
+			if val, ok := vp.voteBlocks[OtprnHash(resBlock.OtprnHash)]; ok {
 				val[BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
 			} else {
-				vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())] = make(map[BlockHash]*types.Block)
-				vp.voteBlocks[OtprnHash(resBlock.OtprnHash.String())][BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
+				vp.voteBlocks[OtprnHash(resBlock.OtprnHash)] = make(map[BlockHash]*types.Block)
+				vp.voteBlocks[OtprnHash(resBlock.OtprnHash)][BlockHash(resBlock.Block.Header().Hash())] = resBlock.Block
 			}
 			vp.mux.Unlock()
 		}

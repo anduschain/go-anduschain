@@ -3,6 +3,7 @@ package fairudp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
@@ -25,7 +26,7 @@ var (
 )
 
 type tcpInterface interface {
-	StartLeague()
+	StartLeague(otprnHash common.Hash)
 }
 
 type FairUdp struct {
@@ -212,7 +213,7 @@ Exit:
 			fu.manager.SetLeagueRunning(true)
 			// 리그 전송 tcp
 			fu.manager.SetOtprn(&totprn.Otp)
-			fu.ftcp.StartLeague()
+			fu.ftcp.StartLeague(totprn.Hash)
 		case <-exit:
 			break Exit
 		}

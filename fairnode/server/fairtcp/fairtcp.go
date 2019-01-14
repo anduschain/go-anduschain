@@ -3,6 +3,7 @@ package fairtcp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
@@ -148,12 +149,12 @@ Exit:
 	}
 }
 
-func (ft *FairTcp) StartLeague() {
-	go ft.sendLeague(ft.manager.GetOtprn().HashOtprn().String())
-	go ft.leagueControlle(ft.manager.GetOtprn().HashOtprn().String())
+func (ft *FairTcp) StartLeague(otprnHash common.Hash) {
+	go ft.sendLeague(otprnHash)
+	go ft.leagueControlle(otprnHash)
 }
 
-func (ft *FairTcp) StopLeague() {
-	ft.sendTcpAll(transport.FinishLeague, "리그가 종료 되었습니다")
+func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
+	ft.sendTcpAll(otprnHash, transport.FinishLeague, "리그가 종료 되었습니다")
 	ft.manager.SetLeagueRunning(false)
 }

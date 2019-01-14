@@ -14,19 +14,19 @@ import (
 	"time"
 )
 
-func (fu *FairTcp) sendLeague(otprnHash string) {
+func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 	t := time.NewTicker(5 * time.Second)
 	var percent float64 = 30
 
 	for {
 		select {
 		case <-t.C:
-			_, num, enodes := fu.leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
+			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			if num >= fu.JoinTotalNum(percent) && num > 0 {
+			if num >= fu.JoinTotalNum(otprnHash, percent) && num > 0 {
 
 				fmt.Println("-------리그 전송---------")
-				fu.sendTcpAll(transport.SendLeageNodeList, enodes)
+				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
 				time.Sleep(3 * time.Second)
 				fu.makeJoinTxCh <- struct{}{}
 
@@ -41,17 +41,17 @@ func (fu *FairTcp) sendLeague(otprnHash string) {
 	}
 }
 
-func (fu *FairTcp) leagueControlle(otprnHash string) {
+func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 	for {
 		select {
 		case <-fu.makeJoinTxCh:
 			fmt.Println("-------조인 tx 생성--------")
-			fu.sendTcpAll(transport.MakeJoinTx, otprnHash)
+			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, otprnHash)
 			// 브로드케스팅 5초
 			time.AfterFunc(3*time.Second, func() {
 
 				fmt.Println("-------블록 생성--------", otprnHash)
-				fu.sendTcpAll(transport.MakeBlock, otprnHash)
+				fu.sendTcpAll(otprnHash, transport.MakeBlock, otprnHash)
 
 				// peer list 전송후 20초
 				time.AfterFunc(20*time.Second, func() {
@@ -61,16 +61,15 @@ func (fu *FairTcp) leagueControlle(otprnHash string) {
 			})
 		case <-fu.stopLeagueCh:
 			leaguePool := fu.manager.GetLeaguePool()
-			leaguePool.SnapShot <- pool.StringToOtprn(otprnHash)
-			leaguePool.DeleteCh <- pool.StringToOtprn(otprnHash)
-			fu.StopLeague()
+			leaguePool.SnapShot <- pool.OtprnHash(otprnHash)
+			leaguePool.DeleteCh <- pool.OtprnHash(otprnHash)
+			fu.StopLeague(otprnHash)
 		}
 	}
 }
 
-func (fu *FairTcp) sendTcpAll(msgCode uint32, data interface{}) {
-	otprnHash := fu.manager.GetOtprn().HashOtprn().String()
-	nodes, _, _ := fu.leaguePool.GetLeagueList(pool.StringToOtprn(otprnHash))
+func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interface{}) {
+	nodes, _, _ := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 	for index := range nodes {
 		if nodes[index].Conn != nil {
 			transport.Send(nodes[index].Conn, msgCode, data)
@@ -78,7 +77,7 @@ func (fu *FairTcp) sendTcpAll(msgCode uint32, data interface{}) {
 	}
 }
 
-func (fu *FairTcp) sendFinalBlock(otprnHash string) {
+func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
 
@@ -101,12 +100,12 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 	for {
 		select {
 		case n := <-notify:
-			fu.sendTcpAll(transport.SendFinalBlock, n.GetTsFinalBlock())
+			fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
 			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
 			// DB에 블록 저장
 			votePool.SnapShot <- n.Block
-			votePool.DeleteCh <- pool.StringToOtprn(otprnHash)
+			votePool.DeleteCh <- pool.OtprnHash(otprnHash)
 
 			time.Sleep(5 * time.Second)
 			fu.makeJoinTxCh <- struct{}{}
@@ -115,11 +114,11 @@ func (fu *FairTcp) sendFinalBlock(otprnHash string) {
 	}
 }
 
-func (fu *FairTcp) JoinTotalNum(persent float64) uint64 {
+func (fu *FairTcp) JoinTotalNum(otprnHash common.Hash, persent float64) uint64 {
 	aciveNode := fu.Db.GetActiveNodeList()
 	var count float64 = 0
 	for i := range aciveNode {
-		if fairutil.IsJoinOK(fu.manager.GetOtprn(), common.HexToAddress(aciveNode[i].Coinbase)) {
+		if fairutil.IsJoinOK(fu.manager.GetOtprn(otprnHash), common.HexToAddress(aciveNode[i].Coinbase)) {
 			count += 1
 		}
 	}
@@ -127,8 +126,8 @@ func (fu *FairTcp) JoinTotalNum(persent float64) uint64 {
 	return uint64(count * (persent / 100))
 }
 
-func (fu *FairTcp) GetFinalBlock(otprnHash string, votePool *pool.VotePool) *fairtypes.FinalBlock {
-	otrpnHash := pool.StringToOtprn(otprnHash)
+func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool) *fairtypes.FinalBlock {
+	otrpnHash := pool.OtprnHash(otprnHash)
 	votes := votePool.GetVoteBlocks(otrpnHash)
 	acc := fu.manager.GetServerKey()
 	fb := &fairtypes.FinalBlock{}

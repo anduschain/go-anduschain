@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"math/big"
@@ -12,8 +13,8 @@ type Goroutine struct {
 }
 
 type Manager interface {
-	GetOtprn() *otprn.Otprn
-	SetOtprn(otprn *otprn.Otprn)
+	SetOtprn(otp *otprn.Otprn)
+	GetOtprn(otprnHash common.Hash) *otprn.Otprn
 	GetLeagueRunning() bool
 	GetServerKey() *SeverKey
 	SetLeagueRunning(status bool)

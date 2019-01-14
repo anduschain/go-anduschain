@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
@@ -20,7 +21,7 @@ type ServiceFunc interface {
 
 type FairManager struct {
 	LeagueRunningOK bool
-	Otprn           *otprn.Otprn
+	Otprn           map[common.Hash]*otprn.Otprn
 	Services        map[string]ServiceFunc
 	srvKey          *backend.SeverKey
 	leaguePool      *pool.LeaguePool
@@ -33,6 +34,7 @@ type FairManager struct {
 
 func New() (*FairManager, error) {
 	fm := &FairManager{
+		Otprn:    make(map[common.Hash]*otprn.Otprn),
 		Services: make(map[string]ServiceFunc),
 		Signer:   types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
 		exit:     make(chan struct{}),
@@ -108,8 +110,13 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
-func (fm *FairManager) SetOtprn(otp *otprn.Otprn)       { fm.Otprn = otp }
-func (fm *FairManager) GetOtprn() *otprn.Otprn          { return fm.Otprn }
+func (fm *FairManager) SetOtprn(otp *otprn.Otprn) { fm.Otprn[otp.HashOtprn()] = otp }
+func (fm *FairManager) GetOtprn(otprnHash common.Hash) *otprn.Otprn {
+	if otprn, ok := fm.Otprn[otprnHash]; ok {
+		return otprn
+	}
+	return nil
+}
 func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
 func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
@@ -125,7 +132,8 @@ func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 	for {
 		select {
 		case req := <-fm.votePool.RequestBlockCh:
-			if node := fm.leaguePool.GetNode(fm.Otprn.HashOtprn(), req.Addr); node != nil {
+			otprnHash := common.Hash(req.OtprnHash)
+			if node := fm.leaguePool.GetNode(otprnHash, req.Addr); node != nil {
 				msg, err := transport.MakeTsMsg(transport.RequestWinningBlock, req.BlockHash)
 				if err != nil {
 					log.Println("Info[andus] : RequestWinningBlock", err)

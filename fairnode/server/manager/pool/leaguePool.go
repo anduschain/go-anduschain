@@ -14,15 +14,7 @@ type Node struct {
 	Conn     transport.MsgReadWriter
 }
 
-type OtprnHash string
-
-func (otp OtprnHash) String() string {
-	return string(otp)
-}
-
-func StringToOtprn(str string) OtprnHash {
-	return OtprnHash(str)
-}
+type OtprnHash common.Hash
 
 type Nodes []Node
 
@@ -84,7 +76,7 @@ func (l *LeaguePool) GetNode(h common.Hash, addr common.Address) *Node {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	if val, ok := l.pool[StringToOtprn(h.String())]; ok {
+	if val, ok := l.pool[OtprnHash(h)]; ok {
 		for i := range val {
 			if val[i].Coinbase == addr {
 				return &val[i]
@@ -141,7 +133,7 @@ Exit:
 		case hash := <-l.SnapShot:
 			if val, ok := l.pool[hash]; ok {
 				for i := range val {
-					l.Db.SaveMinerNode(hash.String(), val[i].Enode)
+					l.Db.SaveMinerNode(common.Hash(hash).String(), val[i].Enode)
 					//fmt.Println(hash.String(), val[i].Enode)
 				}
 			}
