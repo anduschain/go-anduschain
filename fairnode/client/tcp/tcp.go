@@ -222,7 +222,10 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 	epoch := big.NewInt(int64(t.manger.GetBlockChain().Config().Deb.Epoch))
 
 	// balance will be more then ticket price multiplex epoch.
-	if currentBalance.Cmp(config.Price.Mul(config.Price, epoch)) > 0 {
+	price := config.Price
+	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
+
+	if currentBalance.Cmp(totalPrice) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
 		data := types.JoinTxData{
 			JoinNonce:    currentJoinNonce,
