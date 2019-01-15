@@ -1021,7 +1021,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		if len(pending) == 0 {
 			w.updateSnapshot()
-			fmt.Println("----len(pending) == 0--")
 			return
 		}
 		// Split the pending transactions into locals and remotes

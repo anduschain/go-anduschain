@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	MinActiveNum = 2
+	MinActiveNum = 3
 )
 
 var (

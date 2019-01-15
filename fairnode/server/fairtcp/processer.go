@@ -141,13 +141,16 @@ func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool)
 
 	var voteBlocks []vB
 	for i := range votes {
-		voteBlocks = append(voteBlocks, vB{votePool.GetBlock(otrpnHash, votes[i].BlockHash), votes[i]})
+		block := votePool.GetBlock(otrpnHash, votes[i].BlockHash)
+		if block == nil {
+			continue
+		}
+		voteBlocks = append(voteBlocks, vB{block, votes[i]})
 	}
 
 	if len(voteBlocks) == 0 {
 		return nil
 	} else if len(voteBlocks) == 1 {
-		fmt.Println("--------------count == 1----------")
 		fb.Block = voteBlocks[0].Block
 		SignFairNode(fb.Block, voteBlocks[0].Voter, acc.ServerAcc, acc.KeyStore)
 	} else {

@@ -249,6 +249,8 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 			return errorMakeJoinTx
 		}
 
+		fmt.Println("----------Tx value------", tx.Value().Uint64())
+
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddRemote(tx); err != nil {
 			return errorAddTxPool
