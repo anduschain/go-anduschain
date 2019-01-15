@@ -205,7 +205,18 @@ Exit:
 			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
 			// half of epoch
 			epoch := fu.manager.GetEpoch()
-			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch.Div(epoch, big.NewInt(2))).Int64() == 0 {
+			if epoch.Int64() == 0 {
+				continue
+			}
+			fmt.Println("fu.manager.GetLastBlockNum()", fu.manager.GetLastBlockNum().Uint64(), epoch.Uint64())
+			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() == 0 {
+				// 리그 교체
+				fmt.Println("리그교체하라@@@@")
+				fu.manager.GetStopLeagueCh() <- struct{}{}
+			}
+
+			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), big.NewInt(int64(epoch.Int64()/2))).Int64() == 0 &&
+				fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() != 0 {
 				actNum := fu.db.GetActiveNodeNum()
 				if actNum >= MinActiveNum {
 					// OTPRN 생성
@@ -219,10 +230,6 @@ Exit:
 				}
 			}
 
-			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() == 0 {
-				// 리그 교체
-				fu.manager.GetStopLeagueCh() <- struct{}{}
-			}
 		case <-exit:
 			break Exit
 		}

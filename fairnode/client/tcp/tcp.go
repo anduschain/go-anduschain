@@ -57,7 +57,6 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 }
 
 func (t *Tcp) Start(otprnHash common.Hash) error {
-	fmt.Println("Tcp 접속 시작", t.IsRuning)
 
 	t.services[otprnHash] = make(map[string]types.Goroutine)
 	t.services[otprnHash]["tcploop"] = types.Goroutine{t.tcpLoop, make(chan struct{})}

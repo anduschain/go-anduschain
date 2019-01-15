@@ -43,6 +43,7 @@ func New() (*FairManager, error) {
 		Signer:        types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
 		exit:          make(chan struct{}),
 		ManageOtprnCh: make(chan struct{}),
+		StopLeagueCh:  make(chan struct{}),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
