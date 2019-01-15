@@ -25,6 +25,6 @@ type Manager interface {
 	GetEpoch() *big.Int
 	GetLeagueOtprnHash() common.Hash
 	SetLeagueOtprnHash(otprnHash common.Hash)
-	SetManagerOtprnCh()
 	GetManagerOtprnCh() chan struct{}
+	GetStopLeagueCh() chan struct{}
 }

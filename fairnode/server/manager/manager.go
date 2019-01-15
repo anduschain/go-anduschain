@@ -31,8 +31,8 @@ type FairManager struct {
 	Signer          types.Signer
 	exit            chan struct{}
 	Epoch           *big.Int
-
-	ManageOtprnCh chan struct{}
+	ManageOtprnCh   chan struct{}
+	StopLeagueCh    chan struct{}
 }
 
 func New() (*FairManager, error) {
@@ -115,6 +115,7 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
+func (fm *FairManager) GetStopLeagueCh() chan struct{}           { return fm.StopLeagueCh }
 func (fm *FairManager) GetEpoch() *big.Int                       { return fm.Epoch }
 func (fm *FairManager) GetLeagueOtprnHash() common.Hash          { return fm.LeagueOtprnHash }
 func (fm *FairManager) SetLeagueOtprnHash(otprnHash common.Hash) { fm.LeagueOtprnHash = otprnHash }
@@ -145,7 +146,6 @@ func (fm *FairManager) GetLastBlockNum() *big.Int {
 }
 func (fm *FairManager) GetSinger() types.Signer { return fm.Signer }
 
-func (fm *FairManager) SetManagerOtprnCh()               { fm.ManageOtprnCh <- struct{}{} }
 func (fm *FairManager) GetManagerOtprnCh() chan struct{} { return fm.ManageOtprnCh }
 
 func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {

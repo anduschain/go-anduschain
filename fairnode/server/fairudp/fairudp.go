@@ -12,6 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"time"
 )
@@ -202,7 +203,9 @@ Exit:
 			}
 		case <-start:
 			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
-			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), fu.manager.GetEpoch()).Int64() == 0 {
+			// half of epoch
+			epoch := fu.manager.GetEpoch()
+			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch.Div(epoch, big.NewInt(2))).Int64() == 0 {
 				actNum := fu.db.GetActiveNodeNum()
 				if actNum >= MinActiveNum {
 					// OTPRN 생성
@@ -214,6 +217,11 @@ Exit:
 					fu.sendOtprnCH <- tsOtp
 					fu.ftcp.StartLeague(tsOtp.Hash, false)
 				}
+			}
+
+			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() == 0 {
+				// 리그 교체
+				fu.manager.GetStopLeagueCh() <- struct{}{}
 			}
 		case <-exit:
 			break Exit

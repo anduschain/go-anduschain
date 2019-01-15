@@ -59,11 +59,11 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 				})
 
 			})
-		case <-fu.stopLeagueCh:
+		case <-fu.manager.GetStopLeagueCh():
+			fu.StopLeague(otprnHash)
 			leaguePool := fu.manager.GetLeaguePool()
 			leaguePool.SnapShot <- pool.OtprnHash(otprnHash)
 			leaguePool.DeleteCh <- pool.OtprnHash(otprnHash)
-			fu.StopLeague(otprnHash)
 			return
 		}
 	}
@@ -110,7 +110,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 
 			time.Sleep(5 * time.Second)
 			fu.makeJoinTxCh <- struct{}{}
-			fu.manager.SetManagerOtprnCh()
+			fu.manager.GetManagerOtprnCh() <- struct{}{}
 			return
 		}
 	}
