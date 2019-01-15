@@ -118,6 +118,8 @@ func rlpHash(x interface{}) (h common.Hash) {
 // Body is a simple (mutable, non-safe) data container for storing and moving
 // a block's data contents (transactions and uncles) together.
 type Body struct {
+	FairNodeSig  []byte
+	Voter        []Voter
 	Transactions []*Transaction
 	Uncles       []*Header
 }

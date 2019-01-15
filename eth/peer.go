@@ -267,12 +267,16 @@ func (p *peer) SendBlockHeaders(headers []*types.Header) error {
 
 // SendBlockBodies sends a batch of block contents to the remote peer.
 func (p *peer) SendBlockBodies(bodies []*blockBody) error {
+	for i := range bodies {
+		fmt.Println("--SendBlockBodies--", len(bodies[i].FairNodeSig))
+	}
 	return p2p.Send(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
 }
 
 // SendBlockBodiesRLP sends a batch of block contents to the remote peer from
 // an already RLP encoded format.
 func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
+	fmt.Println("--------SendBlockBodiesRLP-----", len(bodies))
 	return p2p.Send(p.rw, BlockBodiesMsg, bodies)
 }
 
