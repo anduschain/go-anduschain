@@ -178,7 +178,7 @@ type newBlockData struct {
 type blockBody struct {
 	//TODO : andus >> 추가
 	FairNodeSig  []byte
-	Voter        []*types.Voter
+	Voter        []types.Voter
 	Transactions []*types.Transaction // Transactions contained within a block
 	Uncles       []*types.Header      // Uncles contained within a block
 }

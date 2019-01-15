@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
@@ -768,11 +767,6 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		peers := pm.peers.PeersWithoutTx(tx.Hash())
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
-		}
-
-		//andus >>
-		if tx.To().String() == config.FAIRNODE_ADDRESS {
-			fmt.Println("JOINTX	브로드 케스팅")
 		}
 
 		log.Trace("Broadcast transaction", "hash", tx.Hash(), "recipients", len(peers))

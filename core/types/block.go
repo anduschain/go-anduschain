@@ -318,7 +318,7 @@ func (b *Block) Extra() []byte            { return b.header.Extra }
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
-func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
+func (b *Block) Body() *Body { return &Body{b.FairNodeSig, b.Voter, b.transactions, b.uncles} }
 
 // TODO : andus >> 페어노드 서명을 조회 하는 부분
 func (b *Block) GetFairNodeSig() ([]byte, bool) {
