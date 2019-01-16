@@ -94,11 +94,23 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 		fmt.Println("tcpLoop kill")
 	}()
 
-	//conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
-	conn, err := net.Dial(t.SAddrTCP.Network(), t.SAddrTCP.String())
-	if err != nil {
-		log.Println("Error [andus] : DialTCP 에러", err)
-		return
+	var conn net.Conn
+	counter := 0
+	for i := 0; i < 5; i++ {
+		var err error
+		conn, err = net.DialTCP("tcp", nil, t.SAddrTCP)
+		//conn, err := net.Dial(t.SAddrTCP.Network(), t.SAddrTCP.String())
+		if err != nil {
+			log.Println("Error [andus] : DialTCP 에러", err)
+			counter++
+			time.Sleep(5 * time.Second)
+			log.Println("Info [andus] : 재 다이얼 중 ", counter)
+			if counter == 4 {
+				return
+			}
+		} else {
+			break
+		}
 	}
 
 	tsp := transport.New(conn)
