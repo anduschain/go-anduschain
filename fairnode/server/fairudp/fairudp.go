@@ -260,10 +260,12 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 		ServerAddr, err := net.ResolveUDPAddr("udp", url)
 		if err != nil {
 			log.Println("ResolveUDPAddr", err)
+			continue
 		}
 		Conn, err := net.DialUDP("udp", nil, ServerAddr)
 		if err != nil {
 			log.Println("DialUDP", err)
+			continue
 		}
 		err = transport.SendUDP(msgcode, data, Conn)
 		if err != nil {
