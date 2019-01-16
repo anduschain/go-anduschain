@@ -123,10 +123,15 @@ type Body struct {
 	Transactions []*Transaction
 	Uncles       []*Header
 }
-
 type Voter struct {
 	Addr common.Address
 	Sig  []byte
+}
+
+func (v *Voter) Size() common.StorageSize {
+	c := writeCounter(0)
+	rlp.Encode(&c, &v)
+	return common.StorageSize(c)
 }
 
 // Block represents an entire block in the Ethereum blockchain.
@@ -365,11 +370,13 @@ func (b *Block) WithSeal(header *Header) *Block {
 }
 
 // WithBody returns a new block with the given transaction and uncle contents.
-func (b *Block) WithBody(transactions []*Transaction, uncles []*Header) *Block {
+func (b *Block) WithBody(transactions []*Transaction, uncles []*Header, fairnodesig []byte, voters []Voter) *Block {
 	block := &Block{
 		header:       CopyHeader(b.header),
 		transactions: make([]*Transaction, len(transactions)),
 		uncles:       make([]*Header, len(uncles)),
+		FairNodeSig:  fairnodesig,
+		Voter:        voters,
 	}
 	copy(block.transactions, transactions)
 	for i := range uncles {

@@ -76,7 +76,7 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) e
 		if fairutil.CmpAddress(txs[i].To().String(), config.FAIRNODE_ADDRESS) {
 			err := rlp.DecodeBytes(txs[i].Data(), &datas)
 			if err != nil {
-				continue
+				return errDecodeTx
 			}
 			//참가비확인
 			if txs[i].Value().Cmp(config.Price) != 0 {

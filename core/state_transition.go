@@ -18,7 +18,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -234,7 +233,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 
 	if fairutil.CmpAddress(msg.To().String(), config.FAIRNODE_ADDRESS) {
-		fmt.Println("----AddJoinNonce-----")
 		st.state.AddJoinNonce(msg.From())
 	}
 
@@ -291,11 +289,9 @@ func (st *StateTransition) DebTransitionDb(header *types.Header, fnAddr *common.
 	if fairutil.CmpAddress(msg.To().String(), fnAddr.String()) {
 		if header.Coinbase == msg.From() {
 			// TODO : andus >> 1. coinbase가 블록의 코인베이스 이면 JoinNonce = 0
-			fmt.Println("----ResetJoinNonce-----")
 			st.state.ResetJoinNonce(msg.From())
 		} else {
 			// TODO : andus >> 2. 아니면 JoinNonce++
-			fmt.Println("----AddJoinNonce-----")
 			st.state.AddJoinNonce(msg.From())
 		}
 	}

@@ -76,6 +76,8 @@ var (
 	errTxOtprn = errors.New("JoinTx의 Otprn 과 리그의 otprn이 다른게 존재")
 
 	errTxNumNotMatch = errors.New("JoinTx의 Num과 블록 NUM 이 다르다")
+
+	errDecodeTx = errors.New("Tx Decode에서 문제 발생")
 )
 
 type client interface {
@@ -98,9 +100,6 @@ type Deb struct {
 // New creates a Clique proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
 func New(config *params.DebConfig, db ethdb.Database) *Deb {
-
-	log.Info("Deb Call New()", "andus", "--------------------")
-
 	deb := &Deb{
 		config: config,
 		db:     db,

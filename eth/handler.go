@@ -520,6 +520,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				bytes += len(data)
 			}
 		}
+
 		return p.SendBlockBodiesRLP(bodies)
 
 	case msg.Code == BlockBodiesMsg:
@@ -532,10 +533,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Deliver them all to the downloader for queuing
 		transactions := make([][]*types.Transaction, len(request))
 		uncles := make([][]*types.Header, len(request))
+		voter := make([][]types.Voter, len(request))
+		fairnodesig := make([][]byte, len(request))
 
 		for i, body := range request {
 			transactions[i] = body.Transactions
 			uncles[i] = body.Uncles
+			voter[i] = body.Voter
+			fairnodesig[i] = body.FairNodeSig
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
 		filter := len(transactions) > 0 || len(uncles) > 0
@@ -543,7 +548,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			transactions, uncles = pm.fetcher.FilterBodies(p.id, transactions, uncles, time.Now())
 		}
 		if len(transactions) > 0 || len(uncles) > 0 || !filter {
-			err := pm.downloader.DeliverBodies(p.id, transactions, uncles)
+
+			err := pm.downloader.DeliverBodies(p.id, transactions, uncles, fairnodesig, voter)
 			if err != nil {
 				log.Debug("Failed to deliver bodies", "err", err)
 			}

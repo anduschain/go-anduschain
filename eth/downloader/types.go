@@ -47,6 +47,8 @@ type bodyPack struct {
 	peerID       string
 	transactions [][]*types.Transaction
 	uncles       [][]*types.Header
+	fairnodesig  [][]byte
+	voter        [][]types.Voter
 }
 
 func (p *bodyPack) PeerId() string { return p.peerID }
