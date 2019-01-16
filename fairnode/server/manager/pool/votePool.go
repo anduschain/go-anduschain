@@ -96,40 +96,32 @@ Exit:
 	for {
 		select {
 		case vote := <-vp.InsertCh:
-
 			if val, ok := vp.pool[vote.OtprnHash]; ok {
-				isDouble := false
+				vp.mux.Lock()
+				isExist := false
 			ex:
 				for i := range val {
-					// 중복 삽입 방지
-					if val[i].BlockHash == BlockHash(vote.HeaderHash) {
-						// 동일한 블록헤더이면, 카운터 +1, 투표자 추가
-
-						for j := range val[i].Voters {
-							if val[i].Voters[j].Addr == vote.Addr {
-								isDouble = true
+					if BlockHash(vote.HeaderHash) == val[i].BlockHash {
+						isExist = true
+						for j := range vp.pool[vote.OtprnHash][i].Voters {
+							if vp.pool[vote.OtprnHash][i].Voters[j].Addr == vote.Addr {
+								// 중복 투표
 								break ex
 							}
 						}
-
-						vp.mux.Lock()
 						vp.pool[vote.OtprnHash][i].Count++
 						vp.pool[vote.OtprnHash][i].Voters = append(vp.pool[vote.OtprnHash][i].Voters, types.Voter{vote.Addr, vote.Sig})
-						vp.mux.Unlock()
-
-						isDouble = true
 						break
 					}
 				}
 
-				if !isDouble {
-					vp.mux.Lock()
-					vp.pool[vote.OtprnHash] = append(val, VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1})
+				if !isExist {
+					vp.pool[vote.OtprnHash] = append(vp.pool[vote.OtprnHash], VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1})
 					// 블록을 요청함
 					vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
-					vp.mux.Unlock()
 				}
 
+				vp.mux.Unlock()
 			} else {
 				vp.mux.Lock()
 				vp.pool[vote.OtprnHash] = VoteBlocks{VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1}}
@@ -137,6 +129,7 @@ Exit:
 				vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 				vp.mux.Unlock()
 			}
+
 		case block := <-vp.SnapShot:
 			vp.db.SaveFianlBlock(block)
 		case h := <-vp.DeleteCh:

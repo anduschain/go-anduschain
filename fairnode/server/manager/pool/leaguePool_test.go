@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 		t.Error(err)
 	}
 
-	otprnhash := StringToOtprn("otprnhash")
+	otprnhash := OtprnHash(common.HexToHash("0x47dffCF319F986E658B61287644b1b6127D2b9c3"))
 
 	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode", common.Address{}, nil}}
 	leaugePool.InsertCh <- PoolIn{otprnhash, Node{"enode2", common.Address{}, nil}}

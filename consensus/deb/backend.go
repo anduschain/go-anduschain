@@ -185,11 +185,16 @@ Exit:
 		case <-t.C:
 			wb := winningBlock
 			// 위닝블록 전송
+			mySig, err := c.SignBlockHeader(wb.Block.Header().Hash().Bytes())
+			if err != nil {
+				continue
+			}
+
 			c.chans.GetWinningBlockCh() <- &fairtypes.Vote{
 				BlockNum:   wb.Block.Header().Number,
 				HeaderHash: wb.Block.Header().Hash(),
-				Sig:        wb.Sig,
-				Voter:      wb.Voter,
+				Sig:        mySig,
+				Voter:      c.coinbase,
 				OtprnHash:  wb.OtprnHash,
 			}
 
