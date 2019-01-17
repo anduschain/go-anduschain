@@ -78,16 +78,19 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 
 		// block number check
 		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
+			fmt.Println("--block number error---")
 			break
 		}
 
 		// otprnhash check
 		if ft.manager.GetLeagueOtprnHash() != vote.OtprnHash {
+			fmt.Println("-otprnhash check error---")
 			break
 		}
 
 		// sign check
 		if !fairutil.ValidationSign(vote.HeaderHash.Bytes(), vote.Sig, vote.Voter) {
+			fmt.Println("--sign check error---")
 			break
 		}
 

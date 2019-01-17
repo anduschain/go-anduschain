@@ -514,6 +514,7 @@ func (ps *peerSet) BestPeer() *peer {
 			bestPeer, bestTd = p, td
 		}
 	}
+
 	return bestPeer
 }
 

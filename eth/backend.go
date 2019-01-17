@@ -220,6 +220,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	return eth, nil
 }
 
+func (s *Ethereum) IsLeagueRunning() bool { return s.FairnodeClient.IsBlockMine }
 func (s *Ethereum) GetLeagueBlockBroadcastCh() chan *fairtypes.VoteBlock {
 	return s.LeagueBlockBroadcastCh
 }

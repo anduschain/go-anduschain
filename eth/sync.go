@@ -17,6 +17,7 @@
 package eth
 
 import (
+	"fmt"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -172,6 +173,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 
 	pHead, pTd := peer.Head()
 	if pTd.Cmp(td) <= 0 {
+		fmt.Println("---synchronise---return----")
 		return
 	}
 	// Otherwise try to sync with the downloader

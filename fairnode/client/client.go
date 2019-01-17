@@ -53,7 +53,8 @@ type FairnodeClient struct {
 
 	mux sync.Mutex
 
-	wBlocks map[common.Hash]*types.Block // 위닝 블록 임시 저장
+	wBlocks     map[common.Hash]*types.Block // 위닝 블록 임시 저장
+	IsBlockMine bool
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -71,6 +72,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		Services:           make(map[string]_interface.ServiceFunc),
 		Signer:             types.NewEIP155Signer(blockChain.Config().ChainID),
 		wBlocks:            make(map[common.Hash]*types.Block),
+		IsBlockMine:        false,
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -146,6 +148,8 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
+func (fc *FairnodeClient) SetBlockMine(status bool) { fc.IsBlockMine = status }
+func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }
 func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 	var re []common.Hash
 	for key := range fc.OtprnWithSig {

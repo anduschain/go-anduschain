@@ -620,6 +620,7 @@ func (w *worker) resultLoop() {
 
 		case finalBlock := <-w.chans.GetFinalBlockCh():
 			block := finalBlock.Block
+
 			debEngine, ok := w.engine.(*deb.Deb)
 			if !ok {
 				// Deb engine check
@@ -630,6 +631,11 @@ func (w *worker) resultLoop() {
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
 			)
+
+			if w.current.header.Number.Cmp(block.Number()) != 0 {
+				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
 
 			// AndusChain check fairnode signature
 			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
@@ -672,6 +678,7 @@ func (w *worker) resultLoop() {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
 			}
+
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"elapsed", common.PrettyDuration(time.Since(bstart)))
 

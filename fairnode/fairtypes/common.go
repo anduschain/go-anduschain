@@ -137,6 +137,7 @@ func (tres *TsResWinningBlock) GetResWinningBlock() *ResWinningBlock {
 }
 
 type Channals interface {
+	IsLeagueRunning() bool
 	GetLeagueBlockBroadcastCh() chan *VoteBlock
 	GetReceiveBlockCh() chan *VoteBlock
 	GetWinningBlockCh() chan *Vote

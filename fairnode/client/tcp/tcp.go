@@ -195,6 +195,8 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 			return errors.New("해당하는 otprn이 없습니다")
 		}
 
+		t.manger.SetBlockMine(true)
+
 		fmt.Println("-------- 블록 생성 tcp -------")
 		t.manger.BlockMakeStart() <- struct{}{}
 
@@ -206,6 +208,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
+		t.manger.SetBlockMine(false)
 		return errors.New("리그 종료")
 
 	case transport.RequestWinningBlock:

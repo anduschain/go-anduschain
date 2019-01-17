@@ -18,6 +18,8 @@ type ServiceFunc interface {
 }
 
 type Client interface {
+	SetBlockMine(status bool)
+	GetBlockMine() bool
 	GetP2PServer() *p2p.Server
 	GetCoinbase() common.Address
 	SetOtprnWithSig(otprn *otprn.Otprn, sig []byte)
