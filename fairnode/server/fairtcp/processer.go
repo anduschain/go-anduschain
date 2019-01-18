@@ -47,12 +47,12 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 		select {
 		case <-fu.makeJoinTxCh:
 			fmt.Println("-------조인 tx 생성--------")
-			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, otprnHash)
+			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 			// 브로드케스팅 5초
 			time.AfterFunc(3*time.Second, func() {
 
 				fmt.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
-				fu.sendTcpAll(otprnHash, transport.MakeBlock, otprnHash)
+				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 
 				// peer list 전송후 20초
 				time.AfterFunc(20*time.Second, func() {

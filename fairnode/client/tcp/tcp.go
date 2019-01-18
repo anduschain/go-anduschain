@@ -179,9 +179,19 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		}
 	case transport.MakeJoinTx:
 		// JoinTx 생성
+		var m fairtypes.BlockMakeMessage
+		msg.Decode(&m)
 		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
 		if otprnWithSig == nil {
 			return errors.New("해당하는 otprn이 없습니다")
+		}
+
+		if m.OtprnHash != otprnWithSig.Otprn.HashOtprn() {
+			return errors.New("otprn이 다릅니다")
+		}
+
+		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
+			return errors.New("동기화가 맞지 않습니다")
 		}
 
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, otprnWithSig.Otprn, otprnWithSig.Sig)
@@ -190,9 +200,19 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 			return err
 		}
 	case transport.MakeBlock:
+		var m fairtypes.BlockMakeMessage
+		msg.Decode(&m)
 		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
 		if otprnWithSig == nil {
 			return errors.New("해당하는 otprn이 없습니다")
+		}
+
+		if m.OtprnHash != otprnWithSig.Otprn.HashOtprn() {
+			return errors.New("otprn이 다릅니다")
+		}
+
+		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
+			return errors.New("동기화가 맞지 않습니다")
 		}
 
 		t.manger.SetBlockMine(true)
@@ -263,9 +283,6 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		if err != nil {
 			return errorMakeJoinTx
 		}
-
-		fmt.Println("----------Tx value------", tx.Value().Uint64())
-
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddRemote(tx); err != nil {
 			return errorAddTxPool

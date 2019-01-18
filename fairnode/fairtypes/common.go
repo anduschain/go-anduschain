@@ -11,6 +11,11 @@ import (
 	"math/big"
 )
 
+type BlockMakeMessage struct {
+	OtprnHash common.Hash
+	Number    uint64
+}
+
 type EnodeCoinbase struct {
 	Enode    string
 	Coinbase common.Address
