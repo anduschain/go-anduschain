@@ -597,7 +597,7 @@ func (w *worker) resultLoop() {
 
 			err = debEngine.ValidationVoteBlock(w.chain, block)
 			if err != nil {
-				log.Trace("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
+				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
 				continue
 			}
 

@@ -22,4 +22,5 @@ type Manager interface {
 	StoreOtprn(otprn *otprn.Otprn)
 	GetStoredOtprn() *otprn.Otprn
 	GetUsingOtprn() *otprn.Otprn
+	DeleteStoreOtprn()
 }

@@ -145,6 +145,9 @@ func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
 
 	return nil
 }
+func (fm *FairManager) DeleteStoreOtprn() {
+	fm.OtprnQueue.Pop()
+}
 func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
 func (fm *FairManager) GetStopLeagueCh() chan struct{}  { return fm.StopLeagueCh }
 func (fm *FairManager) GetEpoch() *big.Int              { return fm.Epoch }

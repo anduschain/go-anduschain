@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
@@ -39,6 +40,9 @@ type FairUdp struct {
 	manager     backend.Manager
 	ftcp        tcpInterface
 	sendOtprnCH chan fairtypes.TransferOtprn
+
+	checkconn   chan otprn.Otprn
+	reSendOtprn chan struct{}
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, error) {
@@ -63,6 +67,8 @@ func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, err
 		manager:     fm,
 		ftcp:        tcp,
 		sendOtprnCH: make(chan fairtypes.TransferOtprn),
+		checkconn:   make(chan otprn.Otprn),
+		reSendOtprn: make(chan struct{}, 1),
 	}
 
 	fu.services["manageActiveNode"] = backend.Goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
@@ -163,6 +169,7 @@ Exit:
 
 }
 
+//UDP로 받은 ActiveNode의 마지막 수신 시간을 확인하여 3분이 지나갔을시 DB에서 삭제
 func (fu *FairUdp) JobActiveNode(exit chan struct{}) {
 	defer log.Printf("Info[andus] : JobActiveNode kill")
 	t := time.NewTicker(3 * time.Minute)
@@ -184,22 +191,27 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 	defer log.Printf("Info[andus] : manageOtprn kill")
 	start := fu.manager.GetManagerOtprnCh()
 	t := time.NewTicker(3 * time.Second)
+
+	sendOtprn := func(leaguechange bool) {
+		actNum := fu.db.GetActiveNodeNum()
+		if actNum >= MinActiveNum {
+			// OTPRN 생성
+			tsOtp, err := fu.makeOTPRN(uint64(actNum))
+			if err != nil {
+				log.Fatal("Error Fatal [OTPRN] : ", err)
+			}
+
+			fu.sendOtprnCH <- tsOtp
+			fu.ftcp.StartLeague(tsOtp.Hash, leaguechange)
+		}
+	}
+
 Exit:
 	for {
 		select {
 		case <-t.C:
 			if fu.manager.GetUsingOtprn() == nil {
-				actNum := fu.db.GetActiveNodeNum()
-				if actNum >= MinActiveNum {
-					// OTPRN 생성
-					tsOtp, err := fu.makeOTPRN(uint64(actNum))
-					if err != nil {
-						log.Fatal("Error Fatal [OTPRN] : ", err)
-					}
-
-					fu.sendOtprnCH <- tsOtp
-					fu.ftcp.StartLeague(tsOtp.Hash, true)
-				}
+				sendOtprn(true)
 			}
 		case <-start:
 			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
@@ -216,25 +228,38 @@ Exit:
 
 			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), big.NewInt(int64(epoch.Int64()/2))).Int64() == 0 &&
 				fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() != 0 {
-				actNum := fu.db.GetActiveNodeNum()
-				if actNum >= MinActiveNum {
-					// OTPRN 생성
-					tsOtp, err := fu.makeOTPRN(uint64(actNum))
-					if err != nil {
-						log.Fatal("Error Fatal [OTPRN] : ", err)
-					}
-
-					fu.sendOtprnCH <- tsOtp
-					fu.ftcp.StartLeague(tsOtp.Hash, false)
-				}
+				sendOtprn(false)
 			}
 
+		case <-fu.reSendOtprn:
+			sendOtprn(false)
+
+		//otprn 에 대한 리그 전송현황 체크
+		case checkconns := <-fu.checkconn:
+			leaguepool := fu.manager.GetLeaguePool()
+			ticker := 0
+			//리그 풀에 담겨있지 않음
+			for {
+				time.After(time.Second)
+				if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(checkconns.HashOtprn())); num == 0 {
+					ticker++
+				} else {
+					break
+				}
+
+				if ticker == 10 {
+					fu.manager.DeleteStoreOtprn()
+					fu.reSendOtprn <- struct{}{}
+					break
+				}
+			}
 		case <-exit:
 			break Exit
 		}
 	}
 }
 
+//모든 활성노드들에게 OTPRN과 서명을 보냄
 func (fu *FairUdp) broadcast(exit chan struct{}) {
 Exit:
 	for {
@@ -245,6 +270,8 @@ Exit:
 			//fu.manager.SetLeagueRunning(true)
 			// 리그 전송 tcp
 			fu.manager.StoreOtprn(&totprn.Otp)
+			//otprn 에 대한 리그 전송현황 체크
+			fu.checkconn <- totprn.Otp
 		case <-exit:
 			break Exit
 		}
