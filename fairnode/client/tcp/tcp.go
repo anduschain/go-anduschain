@@ -89,6 +89,11 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 		return
 	}
 
+	otprnWithSig := t.manger.FindOtprn(otprnHash)
+	if otprnWithSig == nil {
+		return
+	}
+
 	defer func() {
 		t.IsRuning[otprnHash] = false
 		fmt.Println("tcpLoop kill")
@@ -117,7 +122,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*t.manger.GetOtprnWithSig(otprnHash).Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
 
 	notify := make(chan error)
 	go func() {
@@ -165,9 +170,12 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		log.Println("Debug[andus] : ", str)
 	case transport.SendLeageNodeList:
 		// Add peer
-		t.manger.SetCurrnetOtprnHash(leagueOtprnHash)
 		var nodeList []string
 		msg.Decode(&nodeList)
+
+		//otprn 교체
+		t.manger.GetStoreOtprnWidthSig()
+
 		log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
 		for index := range nodeList {
 			// addPeer 실행
@@ -181,12 +189,12 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		// JoinTx 생성
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
-		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
-		if otprnWithSig == nil {
+		otprnWidthSig := t.manger.GetUsingOtprnWithSig()
+		if otprnWidthSig == nil {
 			return errors.New("해당하는 otprn이 없습니다")
 		}
 
-		if m.OtprnHash != otprnWithSig.Otprn.HashOtprn() {
+		if m.OtprnHash != otprnWidthSig.Otprn.HashOtprn() {
 			return errors.New("otprn이 다릅니다")
 		}
 
@@ -194,7 +202,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 			return errors.New("동기화가 맞지 않습니다")
 		}
 
-		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, otprnWithSig.Otprn, otprnWithSig.Sig)
+		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, otprnWidthSig.Otprn, otprnWidthSig.Sig)
 		if err != nil {
 			log.Println("Error[andus] : ", err)
 			return err
@@ -202,7 +210,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 	case transport.MakeBlock:
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
-		otprnWithSig := t.manger.GetOtprnWithSig(leagueOtprnHash)
+		otprnWithSig := t.manger.GetUsingOtprnWithSig()
 		if otprnWithSig == nil {
 			return errors.New("해당하는 otprn이 없습니다")
 		}
@@ -229,6 +237,8 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		t.manger.SetBlockMine(false)
+		//otprn 교체
+		t.manger.GetStoreOtprnWidthSig()
 		return errors.New("리그 종료")
 
 	case transport.RequestWinningBlock:

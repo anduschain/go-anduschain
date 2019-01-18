@@ -43,3 +43,11 @@ func (q *Queue) Pop() Node {
 	q.count--
 	return node
 }
+
+func (q *Queue) All() []Node {
+	return q.nodes
+}
+
+func (q *Queue) Len() int {
+	return len(q.nodes)
+}

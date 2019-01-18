@@ -605,7 +605,7 @@ func (w *worker) resultLoop() {
 				Block:      block,
 				HeaderHash: block.Header().Hash(),
 				Sig:        sig,
-				OtprnHash:  w.fairclient.GetCurrnetOtprnHash(),
+				OtprnHash:  w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn(),
 				Voter:      w.coinbase,
 				//Receipts:   receipts,
 			}
@@ -955,7 +955,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() && w.fairclient.Running && w.fairclient.GetCurrnetOtprnHash() != (common.Hash{}) {
+	if w.isRunning() && w.fairclient.Running && w.fairclient.GetUsingOtprnWithSig() != nil {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without etherbase")
 			return
@@ -965,7 +965,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		if debEngine, ok := w.engine.(*deb.Deb); ok {
 			// 블록헤더에 otprnhash setting
-			header.Extra = w.fairclient.GetCurrnetOtprnHash().Bytes()
+			header.Extra = w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn().Bytes()
 			// 엔진에 서명키 셋팅
 			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
 		}

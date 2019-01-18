@@ -16,6 +16,7 @@ import (
 	clinetTypes "github.com/anduschain/go-anduschain/fairnode/client/types"
 	clinetUdp "github.com/anduschain/go-anduschain/fairnode/client/udp"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"log"
@@ -28,8 +29,6 @@ var (
 )
 
 type FairnodeClient struct {
-	CurrnetOtprnHash   common.Hash
-	OtprnWithSig       map[common.Hash]*clinetTypes.OtprnWithSig
 	Services           map[string]_interface.ServiceFunc
 	Srv                *p2p.Server
 	CoinBasePrivateKey ecdsa.PrivateKey
@@ -55,12 +54,14 @@ type FairnodeClient struct {
 
 	wBlocks     map[common.Hash]*types.Block // 위닝 블록 임시 저장
 	IsBlockMine bool
+
+	UsingOtprn *clinetTypes.OtprnWithSig
+	OtprnQueue *queue.Queue
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
-		OtprnWithSig:       make(map[common.Hash]*clinetTypes.OtprnWithSig),
 		chans:              chans,
 		Running:            false,
 		BlockChain:         blockChain,
@@ -73,6 +74,8 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		Signer:             types.NewEIP155Signer(blockChain.Config().ChainID),
 		wBlocks:            make(map[common.Hash]*types.Block),
 		IsBlockMine:        false,
+		OtprnQueue:         queue.NewQueue(1),
+		UsingOtprn:         nil,
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -148,36 +151,65 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
-func (fc *FairnodeClient) SetBlockMine(status bool) { fc.IsBlockMine = status }
-func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }
-func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
-	var re []common.Hash
-	for key := range fc.OtprnWithSig {
-		re = append(re, key)
+func (fc *FairnodeClient) StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte) {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	fc.OtprnQueue.Push(&clinetTypes.OtprnWithSig{otprn, sig})
+}
+
+func (fc *FairnodeClient) GetStoreOtprnWidthSig() *otprn.Otprn {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+
+	otprnSig := fc.OtprnQueue.Pop().(*clinetTypes.OtprnWithSig)
+	if otprnSig != nil {
+		fc.UsingOtprn = otprnSig
+		return otprnSig.Otprn
 	}
 
-	return re
-}
-func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
-func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
-func (fc *FairnodeClient) SetOtprnWithSig(otprn *otprn.Otprn, sig []byte) {
-	fc.OtprnWithSig[otprn.HashOtprn()] = &clinetTypes.OtprnWithSig{otprn, sig}
-}
-func (fc *FairnodeClient) GetOtprnWithSig(otprnHash common.Hash) *clinetTypes.OtprnWithSig {
-	if val, ok := fc.OtprnWithSig[otprnHash]; ok {
-		return val
-	}
 	return nil
 }
-func (fc *FairnodeClient) SetCurrnetOtprnHash(otprnHash common.Hash) { fc.CurrnetOtprnHash = otprnHash }
-func (fc *FairnodeClient) GetCurrnetOtprnHash() common.Hash          { return fc.CurrnetOtprnHash }
-func (fc *FairnodeClient) GetTxpool() *core.TxPool                   { return fc.txPool }
-func (fc *FairnodeClient) GetBlockChain() *core.BlockChain           { return fc.BlockChain }
-func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey      { return &fc.CoinBasePrivateKey }
-func (fc *FairnodeClient) BlockMakeStart() chan struct{}             { return fc.StartCh }
-func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote           { return fc.chans.GetWinningBlockCh() }
-func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock     { return fc.chans.GetFinalBlockCh() }
-func (fc *FairnodeClient) GetSigner() types.Signer                   { return fc.Signer }
+
+func (fc *FairnodeClient) GetUsingOtprnWithSig() *clinetTypes.OtprnWithSig { return fc.UsingOtprn }
+func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	var hashs []common.Hash
+	if fc.OtprnQueue.Len() > 0 {
+		for i := range fc.OtprnQueue.All() {
+			otprnWithSig := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig)
+			hashs = append(hashs, otprnWithSig.Otprn.HashOtprn())
+		}
+	}
+
+	return hashs
+}
+func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *clinetTypes.OtprnWithSig {
+	if fc.OtprnQueue.Len() > 0 {
+		for i := range fc.OtprnQueue.All() {
+			otprnWithSig := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig)
+			if otprnWithSig.Otprn.HashOtprn() == otprnHash {
+				return otprnWithSig
+			}
+		}
+	}
+
+	return nil
+}
+
+func (fc *FairnodeClient) SetBlockMine(status bool) { fc.IsBlockMine = status }
+func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }
+
+func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
+func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
+
+func (fc *FairnodeClient) GetTxpool() *core.TxPool               { return fc.txPool }
+func (fc *FairnodeClient) GetBlockChain() *core.BlockChain       { return fc.BlockChain }
+func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.CoinBasePrivateKey }
+func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }
+func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote       { return fc.chans.GetWinningBlockCh() }
+func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.chans.GetFinalBlockCh() }
+func (fc *FairnodeClient) GetSigner() types.Signer               { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)

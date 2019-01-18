@@ -22,11 +22,7 @@ type Client interface {
 	GetBlockMine() bool
 	GetP2PServer() *p2p.Server
 	GetCoinbase() common.Address
-	SetOtprnWithSig(otprn *otprn.Otprn, sig []byte)
-	GetOtprnWithSig(otprnHash common.Hash) *types.OtprnWithSig
-	SetCurrnetOtprnHash(otprnHash common.Hash)
-	GetCurrnetOtprnHash() common.Hash
-	GetSavedOtprnHashs() []common.Hash
+
 	GetCurrentBalance() *big.Int
 	GetCurrentJoinNonce() uint64
 	GetTxpool() *core.TxPool
@@ -39,4 +35,10 @@ type Client interface {
 	GetCurrentNonce(addr common.Address) uint64
 	SaveWiningBlock(block *gethType.Block)
 	GetWinningBlock(hash common.Hash) *gethType.Block
+
+	StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte)
+	GetStoreOtprnWidthSig() *otprn.Otprn
+	GetUsingOtprnWithSig() *types.OtprnWithSig
+	GetSavedOtprnHashs() []common.Hash
+	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
 }
