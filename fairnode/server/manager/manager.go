@@ -3,6 +3,7 @@ package manager
 import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -12,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"log"
 	"math/big"
+	"sync"
 )
 
 type ServiceFunc interface {
@@ -20,19 +22,25 @@ type ServiceFunc interface {
 }
 
 type FairManager struct {
+	Services      map[string]ServiceFunc
+	srvKey        *backend.SeverKey
+	leaguePool    *pool.LeaguePool
+	votePool      *pool.VotePool
+	LastBlockNum  *big.Int
+	db            *db.FairNodeDB
+	Signer        types.Signer
+	exit          chan struct{}
+	Epoch         *big.Int
+	ManageOtprnCh chan struct{}
+	StopLeagueCh  chan struct{}
+	mux           sync.Mutex
+
 	LeagueOtprnHash common.Hash
 	Otprn           map[common.Hash]*otprn.Otprn
-	Services        map[string]ServiceFunc
-	srvKey          *backend.SeverKey
-	leaguePool      *pool.LeaguePool
-	votePool        *pool.VotePool
-	LastBlockNum    *big.Int
-	db              *db.FairNodeDB
-	Signer          types.Signer
-	exit            chan struct{}
-	Epoch           *big.Int
-	ManageOtprnCh   chan struct{}
-	StopLeagueCh    chan struct{}
+
+	UsingOtprn *otprn.Otprn // 사용중인 otprn
+	OtprnQueue *queue.Queue // fairnode에서 받은 otprn 저장 queue
+
 }
 
 func New() (*FairManager, error) {
@@ -44,6 +52,8 @@ func New() (*FairManager, error) {
 		exit:          make(chan struct{}),
 		ManageOtprnCh: make(chan struct{}),
 		StopLeagueCh:  make(chan struct{}),
+		UsingOtprn:    nil,
+		OtprnQueue:    queue.NewQueue(1),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -76,6 +86,8 @@ func New() (*FairManager, error) {
 }
 
 func (fm *FairManager) Start(srvKey *backend.SeverKey) error {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
 	fm.srvKey = srvKey
 
 	for name, sev := range fm.Services {
@@ -92,6 +104,8 @@ func (fm *FairManager) Start(srvKey *backend.SeverKey) error {
 }
 
 func (fm *FairManager) Stop() error {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
 	for name, sev := range fm.Services {
 		log.Printf("Info[andus] : %s 서비스 종료됨", name)
 
@@ -116,39 +130,39 @@ func (fm *FairManager) SetService(name string, srv ServiceFunc) {
 	fm.Services[name] = srv
 }
 
-func (fm *FairManager) GetStopLeagueCh() chan struct{}           { return fm.StopLeagueCh }
-func (fm *FairManager) GetEpoch() *big.Int                       { return fm.Epoch }
-func (fm *FairManager) GetLeagueOtprnHash() common.Hash          { return fm.LeagueOtprnHash }
-func (fm *FairManager) SetLeagueOtprnHash(otprnHash common.Hash) { fm.LeagueOtprnHash = otprnHash }
-func (fm *FairManager) SetOtprn(otp *otprn.Otprn)                { fm.Otprn[otp.HashOtprn()] = otp }
-func (fm *FairManager) GetOtprn(otprnHash common.Hash) *otprn.Otprn {
-	if otprn, ok := fm.Otprn[otprnHash]; ok {
+func (fm *FairManager) StoreOtprn(otprn *otprn.Otprn) {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
+	fm.OtprnQueue.Push(otprn)
+}
+
+// 순차적으로 만든 otprn return
+func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
+
+	otprn := fm.OtprnQueue.Pop().(*otprn.Otprn)
+	if otprn != nil {
+		fm.UsingOtprn = otprn
 		return otprn
 	}
-	return nil
-}
-func (fm *FairManager) DelOtprn(otprnHash common.Hash) *otprn.Otprn {
-	delete(fm.Otprn, otprnHash) // 리그종료 otprn 삭제
-	for key := range fm.Otprn {
-		return fm.Otprn[key]
-	}
 
 	return nil
 }
-
-//func (fm *FairManager) GetLeagueRunning() bool          { return fm.LeagueRunningOK }
-//func (fm *FairManager) SetLeagueRunning(status bool)    { fm.LeagueRunningOK = status }
+func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
+func (fm *FairManager) GetStopLeagueCh() chan struct{}  { return fm.StopLeagueCh }
+func (fm *FairManager) GetEpoch() *big.Int              { return fm.Epoch }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
 func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }
 func (fm *FairManager) GetLastBlockNum() *big.Int {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
 	fm.LastBlockNum = fm.db.GetCurrentBlock()
 	return fm.LastBlockNum
 }
-func (fm *FairManager) GetSinger() types.Signer { return fm.Signer }
-
+func (fm *FairManager) GetSinger() types.Signer          { return fm.Signer }
 func (fm *FairManager) GetManagerOtprnCh() chan struct{} { return fm.ManageOtprnCh }
-
 func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 	for {
 		select {

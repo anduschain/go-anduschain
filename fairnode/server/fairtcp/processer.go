@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"log"
@@ -23,7 +24,7 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 		case <-t.C:
 			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			if num >= fu.JoinTotalNum(otprnHash, percent) && num > 0 {
+			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
 
 				fmt.Println("-------리그 전송---------")
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
@@ -50,7 +51,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 			// 브로드케스팅 5초
 			time.AfterFunc(3*time.Second, func() {
 
-				fmt.Println("-------블록 생성--------", otprnHash)
+				fmt.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, otprnHash)
 
 				// peer list 전송후 20초
@@ -73,7 +74,11 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 	nodes, _, _ := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 	for index := range nodes {
 		if nodes[index].Conn != nil {
-			transport.Send(nodes[index].Conn, msgCode, data)
+			err := transport.Send(nodes[index].Conn, msgCode, data)
+			if err != nil {
+				// 데이터 전송 오류 시 해당 연결 삭제
+				nodes[index].Conn = nil
+			}
 		}
 	}
 }
@@ -116,11 +121,11 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	}
 }
 
-func (fu *FairTcp) JoinTotalNum(otprnHash common.Hash, persent float64) uint64 {
+func (fu *FairTcp) JoinTotalNum(otprn *otprn.Otprn, persent float64) uint64 {
 	aciveNode := fu.Db.GetActiveNodeList()
 	var count float64 = 0
 	for i := range aciveNode {
-		if fairutil.IsJoinOK(fu.manager.GetOtprn(otprnHash), common.HexToAddress(aciveNode[i].Coinbase)) {
+		if fairutil.IsJoinOK(otprn, common.HexToAddress(aciveNode[i].Coinbase)) {
 			count += 1
 		}
 	}

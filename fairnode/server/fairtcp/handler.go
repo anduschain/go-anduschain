@@ -83,7 +83,7 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 		}
 
 		// otprnhash check
-		if ft.manager.GetLeagueOtprnHash() != vote.OtprnHash {
+		if ft.manager.GetUsingOtprn().HashOtprn() != vote.OtprnHash {
 			fmt.Println("-otprnhash check error---")
 			break
 		}

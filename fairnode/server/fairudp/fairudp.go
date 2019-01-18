@@ -188,7 +188,7 @@ Exit:
 	for {
 		select {
 		case <-t.C:
-			if (fu.manager.GetLeagueOtprnHash() == common.Hash{}) {
+			if fu.manager.GetUsingOtprn() == nil {
 				actNum := fu.db.GetActiveNodeNum()
 				if actNum >= MinActiveNum {
 					// OTPRN 생성
@@ -208,10 +208,9 @@ Exit:
 			if epoch.Int64() == 0 {
 				continue
 			}
-			fmt.Println("fu.manager.GetLastBlockNum()", fu.manager.GetLastBlockNum().Uint64(), epoch.Uint64())
+
+			// 리그 교체
 			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() == 0 {
-				// 리그 교체
-				fmt.Println("리그교체하라@@@@")
 				fu.manager.GetStopLeagueCh() <- struct{}{}
 			}
 
@@ -245,7 +244,7 @@ Exit:
 			// 리그 시작
 			//fu.manager.SetLeagueRunning(true)
 			// 리그 전송 tcp
-			fu.manager.SetOtprn(&totprn.Otp)
+			fu.manager.StoreOtprn(&totprn.Otp)
 		case <-exit:
 			break Exit
 		}

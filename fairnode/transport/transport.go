@@ -71,7 +71,7 @@ type MsgReadWriter interface {
 	MsgWriter
 }
 
-func Send(w MsgWriter, code uint32, data interface{}) {
+func Send(w MsgWriter, code uint32, data interface{}) error {
 	m, err := MakeTsMsg(code, data)
 	if err != nil {
 		log.Println("Error[andus] : ", err)
@@ -79,7 +79,10 @@ func Send(w MsgWriter, code uint32, data interface{}) {
 	err = w.WriteMsg(m)
 	if err != nil {
 		log.Println("Error transport.SendTCP", err)
+		return err
 	}
+
+	return nil
 }
 
 type tspRW struct {
