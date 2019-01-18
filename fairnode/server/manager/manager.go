@@ -35,9 +35,6 @@ type FairManager struct {
 	StopLeagueCh  chan struct{}
 	mux           sync.Mutex
 
-	LeagueOtprnHash common.Hash
-	Otprn           map[common.Hash]*otprn.Otprn
-
 	UsingOtprn *otprn.Otprn // 사용중인 otprn
 	OtprnQueue *queue.Queue // fairnode에서 받은 otprn 저장 queue
 
@@ -46,7 +43,6 @@ type FairManager struct {
 func New() (*FairManager, error) {
 	fm := &FairManager{
 		Epoch:         big.NewInt(backend.DefaultConfig.Epoch),
-		Otprn:         make(map[common.Hash]*otprn.Otprn),
 		Services:      make(map[string]ServiceFunc),
 		Signer:        types.NewEIP155Signer(big.NewInt(backend.DefaultConfig.ChainID)),
 		exit:          make(chan struct{}),
