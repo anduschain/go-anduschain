@@ -33,8 +33,10 @@ type Client interface {
 	FinalBlock() chan fairtypes.FinalBlock
 	GetSigner() gethType.Signer
 	GetCurrentNonce(addr common.Address) uint64
-	SaveWiningBlock(block *gethType.Block)
-	GetWinningBlock(hash common.Hash) *gethType.Block
+
+	SaveWiningBlock(otprnHash common.Hash, block *gethType.Block)
+	GetWinningBlock(otprnHash common.Hash, hash common.Hash) *gethType.Block
+	DelWinningBlock(otprnHash common.Hash)
 
 	StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte)
 	GetStoreOtprnWidthSig() *otprn.Otprn

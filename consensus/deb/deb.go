@@ -81,8 +81,8 @@ var (
 )
 
 type client interface {
-	SaveWiningBlock(block *types.Block)
-	GetWinningBlock(hash common.Hash) *types.Block
+	SaveWiningBlock(otprnHash common.Hash, block *types.Block)
+	GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block
 }
 
 // Deb is the proof-of-Deb consensus engine proposed to support the

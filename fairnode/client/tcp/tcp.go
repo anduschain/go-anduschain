@@ -237,14 +237,15 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnHash common.Hash)
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		t.manger.SetBlockMine(false)
-		//otprn 교체
+		//otprn 교체 및 저장된 블록 제거
 		t.manger.GetStoreOtprnWidthSig()
+		t.manger.DelWinningBlock(leagueOtprnHash)
 		return errors.New("리그 종료")
 
 	case transport.RequestWinningBlock:
 		var headerHash common.Hash
 		msg.Decode(&headerHash)
-		block := t.manger.GetWinningBlock(headerHash)
+		block := t.manger.GetWinningBlock(leagueOtprnHash, headerHash)
 		if block == nil {
 			break
 		}

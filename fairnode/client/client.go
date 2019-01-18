@@ -52,7 +52,7 @@ type FairnodeClient struct {
 
 	mux sync.Mutex
 
-	wBlocks     map[common.Hash]*types.Block // 위닝 블록 임시 저장
+	wBlocks     map[common.Hash]map[common.Hash]*types.Block // 위닝 블록 임시 저장
 	IsBlockMine bool
 
 	UsingOtprn *clinetTypes.OtprnWithSig
@@ -72,7 +72,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		StartCh:            make(chan struct{}),
 		Services:           make(map[string]_interface.ServiceFunc),
 		Signer:             types.NewEIP155Signer(blockChain.Config().ChainID),
-		wBlocks:            make(map[common.Hash]*types.Block),
+		wBlocks:            make(map[common.Hash]map[common.Hash]*types.Block),
 		IsBlockMine:        false,
 		OtprnQueue:         queue.NewQueue(1),
 		UsingOtprn:         nil,
@@ -238,17 +238,32 @@ func (fc *FairnodeClient) GetCurrentNonce(addr common.Address) uint64 {
 	return stateDb.GetNonce(addr)
 }
 
-func (fc *FairnodeClient) SaveWiningBlock(block *types.Block) {
+func (fc *FairnodeClient) SaveWiningBlock(otprnHash common.Hash, block *types.Block) {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
-	fc.wBlocks[block.Hash()] = block
+	if v, ok := fc.wBlocks[otprnHash]; ok {
+		v[block.Hash()] = block
+	} else {
+		v = make(map[common.Hash]*types.Block)
+		v[block.Hash()] = block
+	}
 }
 
-func (fc *FairnodeClient) GetWinningBlock(hash common.Hash) *types.Block {
+func (fc *FairnodeClient) GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
-	if block, ok := fc.wBlocks[hash]; ok {
-		return block
+	if v, ok := fc.wBlocks[otprnHash]; ok {
+		if block, ex := v[hash]; ex {
+			return block
+		}
 	}
 	return nil
+}
+
+func (fc *FairnodeClient) DelWinningBlock(otprnHash common.Hash) {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	if _, ok := fc.wBlocks[otprnHash]; ok {
+		delete(fc.wBlocks, otprnHash)
+	}
 }

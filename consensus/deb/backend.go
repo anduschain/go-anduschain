@@ -198,7 +198,7 @@ Exit:
 				OtprnHash:  wb.OtprnHash,
 			}
 
-			c.client.SaveWiningBlock(wb.Block)
+			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)
 
 			break Exit
 		}
