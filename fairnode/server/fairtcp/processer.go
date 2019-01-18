@@ -89,11 +89,18 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 
 	go func() {
 		t := time.NewTicker(1 * time.Second)
+		conter := 0
 		for {
 			select {
 			case <-t.C:
 				fb := fu.GetFinalBlock(otprnHash, votePool)
 				if fb == nil {
+					// 5초 이후에 리그 교체
+					if conter == 4 {
+						notify <- nil
+						return
+					}
+					conter++
 					continue
 				} else {
 					notify <- fb
@@ -106,17 +113,22 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	for {
 		select {
 		case n := <-notify:
-			fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
-			fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
+			if n != nil {
+				fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
+				fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
-			// DB에 블록 저장
-			votePool.SnapShot <- n.Block
-			votePool.DeleteCh <- pool.OtprnHash(otprnHash)
+				// DB에 블록 저장
+				votePool.SnapShot <- n.Block
+				votePool.DeleteCh <- pool.OtprnHash(otprnHash)
 
-			time.Sleep(5 * time.Second)
-			fu.makeJoinTxCh <- struct{}{}
-			fu.manager.GetManagerOtprnCh() <- struct{}{}
-			return
+				time.Sleep(5 * time.Second)
+				fu.makeJoinTxCh <- struct{}{}
+				fu.manager.GetManagerOtprnCh() <- struct{}{}
+				return
+			} else {
+				fmt.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
+				fu.manager.GetStopLeagueCh() <- struct{}{}
+			}
 		}
 	}
 }
