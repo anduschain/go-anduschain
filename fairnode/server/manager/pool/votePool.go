@@ -136,6 +136,7 @@ Exit:
 			if _, ok := vp.pool[h]; ok {
 				vp.mux.Lock()
 				delete(vp.pool, h)
+				delete(vp.voteBlocks, h)
 				vp.mux.Unlock()
 			}
 		case <-vp.StopCh:
