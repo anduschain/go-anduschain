@@ -22,12 +22,22 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 	for {
 		select {
 		case <-t.C:
+			if fu.manager.GetUsingOtprn() == nil {
+				return
+			}
+			if otprnHash != fu.manager.GetUsingOtprn().HashOtprn() {
+				return
+			}
 			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
+			if fu.manager.GetUsingOtprn() == nil {
+				continue
+			}
 			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
 
 				fmt.Println("-------리그 전송---------")
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
+				go fu.leagueControlle(otprnHash)
 				time.Sleep(3 * time.Second)
 				fu.makeJoinTxCh <- struct{}{}
 
@@ -55,7 +65,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 
 				// peer list 전송후 20초
-				time.AfterFunc(20*time.Second, func() {
+				time.AfterFunc(10*time.Second, func() {
 					go fu.sendFinalBlock(otprnHash)
 				})
 
@@ -86,7 +96,7 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
-
+	defer fmt.Println("sendFinalBlock 죽음")
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		conter := 0
@@ -95,12 +105,13 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 			case <-t.C:
 				fb := fu.GetFinalBlock(otprnHash, votePool)
 				if fb == nil {
-					// 5초 이후에 리그 교체
+					//5초 이후에 리그 교체
 					if conter == 4 {
 						notify <- nil
 						return
 					}
 					conter++
+					fmt.Println(conter)
 					continue
 				} else {
 					notify <- fb
@@ -128,6 +139,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 			} else {
 				fmt.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
 				fu.manager.GetStopLeagueCh() <- struct{}{}
+				return
 			}
 		}
 	}
@@ -155,7 +167,6 @@ func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool)
 		Block *types.Block
 		Voter pool.VoteBlock
 	}
-
 	var voteBlocks []vB
 	for i := range votes {
 		block := votePool.GetBlock(otrpnHash, votes[i].BlockHash)

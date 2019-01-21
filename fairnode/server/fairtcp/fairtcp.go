@@ -149,14 +149,18 @@ Exit:
 
 func (ft *FairTcp) StartLeague(otprnHash common.Hash, leagueChange bool) {
 	if ft.manager.GetLastBlockNum().Uint64() == 0 || leagueChange {
-		go ft.sendLeague(otprnHash)
-		go ft.leagueControlle(otprnHash)
+		otprn := ft.manager.GetStoredOtprn()
+		if otprn == nil {
+			ft.manager.GetReSendOtprn() <- struct{}{}
+		} else {
+			go ft.sendLeague(otprn.HashOtprn())
+		}
 	}
 }
 
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
 	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
 	// NewLeague Start
-	otprn := ft.manager.GetStoredOtprn()
-	ft.StartLeague(otprn.HashOtprn(), true)
+	//otprn := ft.manager.GetStoredOtprn()
+	ft.StartLeague(otprnHash, true)
 }

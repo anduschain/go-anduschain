@@ -34,6 +34,10 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 			return err
 		}
 		otprnHash := tsf.Otprn.HashOtprn()
+		fmt.Println("geth otprn  / usingotprn ", otprnHash.String(), ft.manager.GetUsingOtprn().HashOtprn().String())
+		//if tsf.Otprn != *ft.manager.GetUsingOtprn(){
+		//	return errors.New("OTPRN이 맞지 않음 ")
+		//}
 		if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 			// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 			// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
@@ -43,6 +47,7 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 				if otprn.Mminer > n {
+					fmt.Println("otprn hash : ", otprnHash.String())
 					log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),

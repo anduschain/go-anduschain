@@ -41,8 +41,7 @@ type FairUdp struct {
 	ftcp        tcpInterface
 	sendOtprnCH chan fairtypes.TransferOtprn
 
-	checkconn   chan otprn.Otprn
-	reSendOtprn chan struct{}
+	checkconn chan otprn.Otprn
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, error) {
@@ -68,7 +67,6 @@ func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, err
 		ftcp:        tcp,
 		sendOtprnCH: make(chan fairtypes.TransferOtprn),
 		checkconn:   make(chan otprn.Otprn),
-		reSendOtprn: make(chan struct{}, 1),
 	}
 
 	fu.services["manageActiveNode"] = backend.Goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
@@ -200,9 +198,13 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 			if err != nil {
 				log.Fatal("Error Fatal [OTPRN] : ", err)
 			}
+			// 리그 전송 tcp
+			fu.manager.StoreOtprn(&tsOtp.Otp)
 
 			fu.sendOtprnCH <- tsOtp
+			fmt.Println("leaguechange@@@@@ : ", leaguechange)
 			fu.ftcp.StartLeague(tsOtp.Hash, leaguechange)
+			fmt.Println("OTRPN 	발행 : ", tsOtp.Otp.HashOtprn().String())
 		}
 	}
 
@@ -211,6 +213,7 @@ Exit:
 		select {
 		case <-t.C:
 			if fu.manager.GetUsingOtprn() == nil {
+				fmt.Println("sendOtprn@@@@")
 				sendOtprn(true)
 			}
 		case <-start:
@@ -231,28 +234,38 @@ Exit:
 				sendOtprn(false)
 			}
 
-		case <-fu.reSendOtprn:
-			sendOtprn(false)
+		case <-fu.manager.GetReSendOtprn():
+			sendOtprn(true)
 
 		//otprn 에 대한 리그 전송현황 체크
-		case checkconns := <-fu.checkconn:
+		case checkOtprn := <-fu.checkconn:
 			leaguepool := fu.manager.GetLeaguePool()
-			ticker := 0
-			//리그 풀에 담겨있지 않음
-			for {
-				time.After(time.Second)
-				if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(checkconns.HashOtprn())); num == 0 {
-					ticker++
-				} else {
-					break
-				}
 
-				if ticker == 10 {
-					fu.manager.DeleteStoreOtprn()
-					fu.reSendOtprn <- struct{}{}
-					break
+			//리그 풀에 담겨있지 않음
+
+			go func() {
+				ticker := 0
+				t := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-t.C:
+
+						if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(checkOtprn.HashOtprn())); num == 0 {
+							ticker++
+							fmt.Println("ticker", ticker)
+						} else {
+							return
+						}
+						if ticker == 10 {
+							fu.manager.DeleteStoreOtprn()
+							fu.manager.GetReSendOtprn() <- struct{}{}
+							fmt.Println("ticker == 10 ")
+							return
+						}
+					}
 				}
-			}
+			}()
+
 		case <-exit:
 			break Exit
 		}
@@ -268,8 +281,7 @@ Exit:
 			fu.sendUdpAll(transport.SendOTPRN, totprn)
 			// 리그 시작
 			//fu.manager.SetLeagueRunning(true)
-			// 리그 전송 tcp
-			fu.manager.StoreOtprn(&totprn.Otp)
+
 			//otprn 에 대한 리그 전송현황 체크
 			fu.checkconn <- totprn.Otp
 		case <-exit:

@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
@@ -38,6 +39,7 @@ type FairManager struct {
 	UsingOtprn *otprn.Otprn // 사용중인 otprn
 	OtprnQueue *queue.Queue // fairnode에서 받은 otprn 저장 queue
 
+	reSendOtprn chan struct{}
 }
 
 func New() (*FairManager, error) {
@@ -50,6 +52,7 @@ func New() (*FairManager, error) {
 		StopLeagueCh:  make(chan struct{}),
 		UsingOtprn:    nil,
 		OtprnQueue:    queue.NewQueue(1),
+		reSendOtprn:   make(chan struct{}),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -137,9 +140,11 @@ func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
 	fm.mux.Lock()
 	defer fm.mux.Unlock()
 
-	otprn := fm.OtprnQueue.Pop().(*otprn.Otprn)
-	if otprn != nil {
+	item := fm.OtprnQueue.Pop()
+	if item != nil {
+		otprn := item.(*otprn.Otprn)
 		fm.UsingOtprn = otprn
+		fmt.Println("GetStoredOtprn ", otprn.HashOtprn().String())
 		return otprn
 	}
 
@@ -147,6 +152,9 @@ func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
 }
 func (fm *FairManager) DeleteStoreOtprn() {
 	fm.OtprnQueue.Pop()
+}
+func (fm *FairManager) GetReSendOtprn() chan struct{} {
+	return fm.reSendOtprn
 }
 func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
 func (fm *FairManager) GetStopLeagueCh() chan struct{}  { return fm.StopLeagueCh }

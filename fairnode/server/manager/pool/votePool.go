@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
@@ -74,9 +75,9 @@ func (vp *VotePool) GetBlock(hash OtprnHash, blockhash BlockHash) *types.Block {
 	defer vp.mux.Unlock()
 
 	if block, ok := vp.voteBlocks[hash][blockhash]; ok {
+		fmt.Println(string(block.FairNodeSig))
 		return block
 	}
-
 	return nil
 }
 
@@ -129,7 +130,6 @@ Exit:
 				vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 				vp.mux.Unlock()
 			}
-
 		case block := <-vp.SnapShot:
 			vp.db.SaveFianlBlock(block)
 		case h := <-vp.DeleteCh:

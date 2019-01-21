@@ -161,12 +161,14 @@ func (fc *FairnodeClient) GetStoreOtprnWidthSig() *otprn.Otprn {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
 
-	otprnSig := fc.OtprnQueue.Pop().(*clinetTypes.OtprnWithSig)
-	if otprnSig != nil {
+	item := fc.OtprnQueue.Pop()
+	if item != nil {
+		otprnSig := item.(*clinetTypes.OtprnWithSig)
 		fc.UsingOtprn = otprnSig
+		fmt.Println("GetStoreOtprnWidthSig / otprnSig", otprnSig)
 		return otprnSig.Otprn
 	}
-
+	fmt.Println("GetStoreOtprnWidthSig")
 	return nil
 }
 
@@ -244,9 +246,10 @@ func (fc *FairnodeClient) SaveWiningBlock(otprnHash common.Hash, block *types.Bl
 	if v, ok := fc.wBlocks[otprnHash]; ok {
 		v[block.Hash()] = block
 	} else {
-		v = make(map[common.Hash]*types.Block)
-		v[block.Hash()] = block
+		fc.wBlocks[otprnHash] = make(map[common.Hash]*types.Block)
+		fc.wBlocks[otprnHash][block.Hash()] = block
 	}
+	fmt.Println("v[block.hash()]", fc.wBlocks[otprnHash][block.Hash()])
 }
 
 func (fc *FairnodeClient) GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block {
@@ -254,6 +257,7 @@ func (fc *FairnodeClient) GetWinningBlock(otprnHash common.Hash, hash common.Has
 	defer fc.mux.Unlock()
 	if v, ok := fc.wBlocks[otprnHash]; ok {
 		if block, ex := v[hash]; ex {
+			fmt.Println("갖고있는 블록 : ", block)
 			return block
 		}
 	}

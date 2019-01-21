@@ -189,12 +189,18 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 							// TODO: andus >> 검증완료, Otprn 저장
 							u.manger.StoreOtprnWidthSig(&tsOtprn.Otp, tsOtprn.Sig)
 
+							if !u.manger.GetBlockMine() {
+								//큐에 있는 이전 otprn을 없애기
+								fmt.Println("SendOTPRN")
+								u.manger.GetStoreOtprnWidthSig()
+							}
 							//TODO : andus >> 3. 참여여부 확인
 							if ok := fairutil.IsJoinOK(&tsOtprn.Otp, u.manger.GetCoinbase()); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
 
 								log.Println("Debug[andus] : 참여대상이 맞음")
+
 								u.tcpService.Start(otprnHash)
 
 							} else {
