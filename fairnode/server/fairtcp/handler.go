@@ -34,7 +34,6 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 			return err
 		}
 		otprnHash := tsf.Otprn.HashOtprn()
-		fmt.Println("geth otprn  / usingotprn ", otprnHash.String(), ft.manager.GetUsingOtprn().HashOtprn().String())
 		//if tsf.Otprn != *ft.manager.GetUsingOtprn(){
 		//	return errors.New("OTPRN이 맞지 않음 ")
 		//}
@@ -47,7 +46,6 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 				if otprn.Mminer > n {
-					fmt.Println("otprn hash : ", otprnHash.String())
 					log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),
@@ -111,7 +109,6 @@ func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
 			return err
 		}
 		ft.manager.GetVotePool().StoreBlockCh <- tsblock.GetResWinningBlock()
-
 	default:
 		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
 	}

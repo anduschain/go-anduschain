@@ -165,10 +165,8 @@ func (fc *FairnodeClient) GetStoreOtprnWidthSig() *otprn.Otprn {
 	if item != nil {
 		otprnSig := item.(*clinetTypes.OtprnWithSig)
 		fc.UsingOtprn = otprnSig
-		fmt.Println("GetStoreOtprnWidthSig / otprnSig", otprnSig)
 		return otprnSig.Otprn
 	}
-	fmt.Println("GetStoreOtprnWidthSig")
 	return nil
 }
 
@@ -249,7 +247,6 @@ func (fc *FairnodeClient) SaveWiningBlock(otprnHash common.Hash, block *types.Bl
 		fc.wBlocks[otprnHash] = make(map[common.Hash]*types.Block)
 		fc.wBlocks[otprnHash][block.Hash()] = block
 	}
-	fmt.Println("v[block.hash()]", fc.wBlocks[otprnHash][block.Hash()])
 }
 
 func (fc *FairnodeClient) GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block {

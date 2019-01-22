@@ -202,9 +202,7 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 			fu.manager.StoreOtprn(&tsOtp.Otp)
 
 			fu.sendOtprnCH <- tsOtp
-			fmt.Println("leaguechange@@@@@ : ", leaguechange)
 			fu.ftcp.StartLeague(tsOtp.Hash, leaguechange)
-			fmt.Println("OTRPN 	발행 : ", tsOtp.Otp.HashOtprn().String())
 		}
 	}
 
@@ -213,7 +211,6 @@ Exit:
 		select {
 		case <-t.C:
 			if fu.manager.GetUsingOtprn() == nil {
-				fmt.Println("sendOtprn@@@@")
 				sendOtprn(true)
 			}
 		case <-start:

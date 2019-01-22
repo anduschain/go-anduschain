@@ -181,7 +181,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		// Add peer
 		var nodeList []string
 		msg.Decode(&nodeList)
-		fmt.Println("SendLeageNodeList @@@@@@")
 		//otprn 교체
 		t.manger.GetStoreOtprnWidthSig()
 		log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
@@ -205,6 +204,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		}
 
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
+			fmt.Println("페어노드가준 Number/ 내가 갖고있는 Number+1 ", m.Number, t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1)
 			return errors.New("동기화가 맞지 않습니다")
 		}
 
@@ -213,7 +213,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			log.Println("Error[andus] : ", err)
 			return err
 		}
-		fmt.Println("페어노드가준 otprn/ 내가 갖고있는 otrprn ", m.OtprnHash.String(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 		fmt.Println("MakeJoinTx exit")
 	case transport.MakeBlock:
 		fmt.Println("MakeBlock")
@@ -230,11 +229,11 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		}
 
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
+			fmt.Println("페어노드가준 Number/ 내가 갖고있는 Number+1 ", m.Number, t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1)
 			return errors.New("동기화가 맞지 않습니다")
 		}
 
 		t.manger.SetBlockMine(true)
-		fmt.Println("페어노드가준 otprn/ 내가 갖고있는 otrprn ", m.OtprnHash.String(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 
 		fmt.Println("-------- 블록 생성 tcp -------")
 		t.manger.BlockMakeStart() <- struct{}{}
@@ -248,12 +247,19 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
-		t.manger.SetBlockMine(false)
-		fmt.Println("FinishLeague@@@@@@")
-		//otprn 교체 및 저장된 블록 제거
-		t.manger.GetStoreOtprnWidthSig()
-		t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
-		return errors.New("리그 종료")
+		var otprnhash common.Hash
+		msg.Decode(&otprnhash)
+
+		if otprnhash == leagueOtprnwithsig.Otprn.HashOtprn() {
+			fmt.Println("FinishLeague@@@@@@ㄴㅐ꺼 / fairnode꺼 otprn", leagueOtprnwithsig.Otprn.HashOtprn().String(), otprnhash.String())
+			//otprn 교체 및 저장된 블록 제거
+			t.manger.SetBlockMine(false)
+			t.manger.GetStoreOtprnWidthSig()
+			t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
+			return errors.New("리그 종료")
+
+		}
+		return nil
 
 	case transport.RequestWinningBlock:
 

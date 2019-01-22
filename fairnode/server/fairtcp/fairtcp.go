@@ -161,6 +161,6 @@ func (ft *FairTcp) StartLeague(otprnHash common.Hash, leagueChange bool) {
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
 	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
 	// NewLeague Start
-	//otprn := ft.manager.GetStoredOtprn()
-	ft.StartLeague(otprnHash, true)
+	//otprn := ft.manager.GetUsingOtprn()
+	//ft.StartLeague(otprn.HashOtprn(), true)
 }

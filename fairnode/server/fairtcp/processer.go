@@ -96,7 +96,6 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
-	defer fmt.Println("sendFinalBlock 죽음")
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		conter := 0
@@ -111,7 +110,6 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 						return
 					}
 					conter++
-					fmt.Println(conter)
 					continue
 				} else {
 					notify <- fb
@@ -139,6 +137,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 			} else {
 				fmt.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
 				fu.manager.GetStopLeagueCh() <- struct{}{}
+				//fu.handlerkillCh <- struct{}{}
 				return
 			}
 		}
