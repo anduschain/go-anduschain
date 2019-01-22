@@ -3,7 +3,6 @@ package fairudp
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
@@ -28,7 +27,12 @@ var (
 )
 
 type tcpInterface interface {
-	StartLeague(otprnHash common.Hash, leagueChange bool)
+	StartLeague(leagueChange bool)
+}
+
+type SendOtprn struct {
+	LeagueChange bool
+	TsOtprn      fairtypes.TransferOtprn
 }
 
 type FairUdp struct {
@@ -39,9 +43,9 @@ type FairUdp struct {
 	db          *db.FairNodeDB
 	manager     backend.Manager
 	ftcp        tcpInterface
-	sendOtprnCH chan fairtypes.TransferOtprn
+	sendOtprnCH chan SendOtprn
 
-	checkconn chan otprn.Otprn
+	checkconn chan SendOtprn
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, error) {
@@ -65,8 +69,8 @@ func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, err
 		db:          db,
 		manager:     fm,
 		ftcp:        tcp,
-		sendOtprnCH: make(chan fairtypes.TransferOtprn),
-		checkconn:   make(chan otprn.Otprn),
+		sendOtprnCH: make(chan SendOtprn),
+		checkconn:   make(chan SendOtprn),
 	}
 
 	fu.services["manageActiveNode"] = backend.Goroutine{fu.manageActiveNode, make(chan struct{}, 1)}
@@ -187,7 +191,6 @@ Exit:
 // OTPRN 발행조건, 활성 노드수가 MinActiveNum 이상일때, 블록 번호가 에폭의 반 이상일때 % == 0
 func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 	defer log.Printf("Info[andus] : manageOtprn kill")
-	start := fu.manager.GetManagerOtprnCh()
 	t := time.NewTicker(3 * time.Second)
 
 	sendOtprn := func(leaguechange bool) {
@@ -199,10 +202,8 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 				log.Fatal("Error Fatal [OTPRN] : ", err)
 			}
 			// 리그 전송 tcp
-			fu.manager.StoreOtprn(&tsOtp.Otp)
-
-			fu.sendOtprnCH <- tsOtp
-			fu.ftcp.StartLeague(tsOtp.Hash, leaguechange)
+			fu.manager.StoreOtprn(&tsOtp.Otp) // otprn push
+			fu.sendOtprnCH <- SendOtprn{leaguechange, tsOtp}
 		}
 	}
 
@@ -213,7 +214,8 @@ Exit:
 			if fu.manager.GetUsingOtprn() == nil {
 				sendOtprn(true)
 			}
-		case <-start:
+		case <-fu.manager.GetManagerOtprnCh():
+			// 파이널 블록을 보낸 후 otprn을 전송 할 것인지 결졍하는 부분
 			// 현재 블록 번호를 에폭으로 나누어서 0인 경우
 			// half of epoch
 			epoch := fu.manager.GetEpoch()
@@ -231,11 +233,11 @@ Exit:
 				sendOtprn(false)
 			}
 
-		case <-fu.manager.GetReSendOtprn():
-			sendOtprn(true)
+		case leagueChange := <-fu.manager.GetReSendOtprn():
+			sendOtprn(leagueChange)
 
 		//otprn 에 대한 리그 전송현황 체크
-		case checkOtprn := <-fu.checkconn:
+		case OtprnStr := <-fu.checkconn:
 			leaguepool := fu.manager.GetLeaguePool()
 
 			//리그 풀에 담겨있지 않음
@@ -247,7 +249,7 @@ Exit:
 					select {
 					case <-t.C:
 
-						if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(checkOtprn.HashOtprn())); num == 0 {
+						if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(OtprnStr.TsOtprn.Otp.HashOtprn())); num == 0 {
 							ticker++
 							fmt.Println("ticker", ticker)
 						} else {
@@ -255,7 +257,7 @@ Exit:
 						}
 						if ticker == 10 {
 							fu.manager.DeleteStoreOtprn()
-							fu.manager.GetReSendOtprn() <- struct{}{}
+							fu.manager.GetReSendOtprn() <- OtprnStr.LeagueChange
 							fmt.Println("ticker == 10 ")
 							return
 						}
@@ -274,13 +276,15 @@ func (fu *FairUdp) broadcast(exit chan struct{}) {
 Exit:
 	for {
 		select {
-		case totprn := <-fu.sendOtprnCH:
-			fu.sendUdpAll(transport.SendOTPRN, totprn)
+		case OtprnStr := <-fu.sendOtprnCH:
+			fu.sendUdpAll(transport.SendOTPRN, OtprnStr.TsOtprn) // UDP OTPRN submit
 			// 리그 시작
 			//fu.manager.SetLeagueRunning(true)
 
+			fu.ftcp.StartLeague(OtprnStr.LeagueChange)
+
 			//otprn 에 대한 리그 전송현황 체크
-			fu.checkconn <- totprn.Otp
+			fu.checkconn <- OtprnStr
 		case <-exit:
 			break Exit
 		}

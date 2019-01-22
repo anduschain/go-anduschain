@@ -127,8 +127,6 @@ Exit:
 		select {
 		case <-exit:
 			break Exit
-		case <-time.After(time.Second * 1):
-			//fmt.Println("TCP timeout, still alive")
 		case err := <-notify:
 			log.Println("Error[andus] : ", err)
 		case conn := <-accept:
@@ -147,20 +145,19 @@ Exit:
 	}
 }
 
-func (ft *FairTcp) StartLeague(otprnHash common.Hash, leagueChange bool) {
+func (ft *FairTcp) StartLeague(leagueChange bool) {
 	if ft.manager.GetLastBlockNum().Uint64() == 0 || leagueChange {
 		otprn := ft.manager.GetStoredOtprn()
 		if otprn == nil {
-			ft.manager.GetReSendOtprn() <- struct{}{}
+			ft.manager.GetReSendOtprn() <- true
 		} else {
 			go ft.sendLeague(otprn.HashOtprn())
+			go ft.leagueControlle(otprn.HashOtprn())
 		}
 	}
 }
 
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
 	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
-	// NewLeague Start
-	//otprn := ft.manager.GetUsingOtprn()
-	//ft.StartLeague(otprn.HashOtprn(), true)
+	ft.StartLeague(true)
 }

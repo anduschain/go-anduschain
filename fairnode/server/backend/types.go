@@ -23,5 +23,5 @@ type Manager interface {
 	GetStoredOtprn() *otprn.Otprn
 	GetUsingOtprn() *otprn.Otprn
 	DeleteStoreOtprn()
-	GetReSendOtprn() chan struct{}
+	GetReSendOtprn() chan bool
 }

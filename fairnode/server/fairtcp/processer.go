@@ -30,17 +30,12 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 			}
 			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
-			if fu.manager.GetUsingOtprn() == nil {
-				continue
-			}
 			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
 
 				fmt.Println("-------리그 전송---------")
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
-				go fu.leagueControlle(otprnHash)
 				time.Sleep(3 * time.Second)
 				fu.makeJoinTxCh <- struct{}{}
-
 				return
 			}
 

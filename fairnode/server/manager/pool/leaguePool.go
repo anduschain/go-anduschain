@@ -11,7 +11,7 @@ import (
 type Node struct {
 	Enode    string
 	Coinbase common.Address
-	Conn     transport.MsgReadWriter
+	Conn     transport.Transport
 }
 
 type OtprnHash common.Hash
@@ -125,8 +125,13 @@ Exit:
 				}
 			}
 		case hash := <-l.DeleteCh:
-			if _, ok := l.pool[hash]; ok {
+			if val, ok := l.pool[hash]; ok {
 				l.mux.Lock()
+				for i := range val {
+					if val[i].Conn != nil {
+						val[i].Conn.Close()
+					}
+				}
 				delete(l.pool, hash)
 				l.mux.Unlock()
 			}

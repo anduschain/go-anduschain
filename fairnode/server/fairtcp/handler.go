@@ -20,7 +20,7 @@ func poolUpdate(leaguePool *pool.LeaguePool, otprnHash pool.OtprnHash, tsf fairt
 	}
 }
 
-func (ft *FairTcp) handelMsg(rw transport.MsgReadWriter) error {
+func (ft *FairTcp) handelMsg(rw transport.Transport) error {
 	msg, err := rw.ReadMsg()
 	if err != nil {
 		return err
