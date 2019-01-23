@@ -35,7 +35,7 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 				fmt.Println("-------리그 전송---------")
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
 				time.Sleep(3 * time.Second)
-				fu.makeJoinTxCh <- struct{}{}
+				fu.manager.GetMakeJoinTxCh() <- struct{}{}
 				return
 			}
 
@@ -57,7 +57,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 
 	for {
 		select {
-		case <-fu.makeJoinTxCh:
+		case <-fu.manager.GetMakeJoinTxCh():
 			fmt.Println("-------조인 tx 생성--------")
 			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 			// 브로드케스팅 5초
@@ -70,7 +70,6 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 				time.AfterFunc(10*time.Second, func() {
 					go fu.sendFinalBlock(otprnHash)
 				})
-
 			})
 		case <-fu.manager.GetStopLeagueCh():
 			fu.StopLeague(otprnHash)
@@ -140,7 +139,6 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 				votePool.DeleteCh <- pool.OtprnHash(otprnHash)
 
 				time.Sleep(5 * time.Second)
-				fu.makeJoinTxCh <- struct{}{}
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
 				return
 			} else {

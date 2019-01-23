@@ -29,7 +29,7 @@ type FairTcp struct {
 	services     map[string]backend.Goroutine
 	sendLeagueCh chan struct{}
 	leaguePool   *pool.LeaguePool
-	makeJoinTxCh chan struct{}
+	//makeJoinTxCh chan struct{}
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
@@ -53,7 +53,7 @@ func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
 		services:     make(map[string]backend.Goroutine),
 		sendLeagueCh: make(chan struct{}),
 		leaguePool:   fm.GetLeaguePool(),
-		makeJoinTxCh: make(chan struct{}),
+		//makeJoinTxCh: make(chan struct{}),
 	}
 
 	ft.services["accepter"] = backend.Goroutine{ft.accepter, make(chan struct{}, 1)}
@@ -154,20 +154,36 @@ func (ft *FairTcp) StartLeague(leagueChange bool) {
 	if ft.manager.GetLastBlockNum().Uint64() == 0 || leagueChange {
 		otprn := ft.manager.GetStoredOtprn()
 		if otprn == nil {
-			ft.manager.GetReSendOtprn() <- true
+			ft.manager.GetReSendOtprn() <- common.Hash{}
+			return
 		}
 
-		//time.Sleep(5 * time.Second) // 5초간 연결 할수 있도록 기다림
-		//
-		//leaguepool := ft.manager.GetLeaguePool()
-		//if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(otprn.HashOtprn())); num == 0 {
-		//	log.Println("Error [andus] 리그에 접속한 노드가 없음")
-		//	ft.StopLeague(otprn.HashOtprn())
-		//	return
-		//}
+		go func() {
+			t := time.NewTicker(1 * time.Second)
+			ticker := 0
+			for {
+				select {
+				case <-t.C:
+					leaguepool := ft.manager.GetLeaguePool()
+					if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(otprn.HashOtprn())); num == 0 {
+						ticker++
+					} else {
+						go ft.sendLeague(otprn.HashOtprn())
+						go ft.leagueControlle(otprn.HashOtprn())
+						return
+					}
 
-		go ft.sendLeague(otprn.HashOtprn())
-		go ft.leagueControlle(otprn.HashOtprn())
+					if ticker >= 10 {
+						fmt.Println("OTPRN 재발행")
+						ft.manager.GetReSendOtprn() <- otprn.HashOtprn()
+						return
+					}
+				}
+			}
+		}()
+
+		//go ft.sendLeague(otprn.HashOtprn())
+		//go ft.leagueControlle(otprn.HashOtprn())
 
 	}
 }

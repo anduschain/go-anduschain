@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"math/big"
@@ -23,5 +24,7 @@ type Manager interface {
 	GetStoredOtprn() *otprn.Otprn
 	GetUsingOtprn() *otprn.Otprn
 	DeleteStoreOtprn()
-	GetReSendOtprn() chan bool
+
+	GetReSendOtprn() chan common.Hash
+	GetMakeJoinTxCh() chan struct{}
 }

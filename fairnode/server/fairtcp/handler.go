@@ -53,16 +53,19 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 					// TODO : 참여 인원수 오버된 케이스
 					log.Println("INFO : 참여 인원수 오버된 케이스", tsf.Enode)
 					poolUpdate(ft.leaguePool, pool.OtprnHash(otprnHash), tsf)
+					return errors.New("참여 인원수 오버된 케이스")
 				}
 			} else {
 				// TODO : andus >> 참여 대상자가 아니다
 				log.Println("INFO : 참여 대상자가 아니다", tsf.Enode)
 				poolUpdate(ft.leaguePool, pool.OtprnHash(otprnHash), tsf)
+				return errors.New("참여 대상자가 아니다")
 			}
 		} else {
 			// TODO : andus >> 리그 참여 정보가 다르다
 			log.Println("INFO : 리그 참여 정보가 다르다", tsf.Enode)
 			poolUpdate(ft.leaguePool, pool.OtprnHash(otprnHash), tsf)
+			return errors.New("리그 참여 정보가 다르다")
 
 		}
 	case transport.SendBlockForVote:
@@ -79,20 +82,17 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 
 		// block number check
 		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
-			fmt.Println("--block number error---")
-			break
+			return errors.New("블록 동기화가 맞질 않는다")
 		}
 
 		// otprnhash check
 		if ft.manager.GetUsingOtprn().HashOtprn() != vote.OtprnHash {
-			fmt.Println("-otprnhash check error---")
-			break
+			return errors.New("OTPRN이 맞질 않는다")
 		}
 
 		// sign check
 		if !fairutil.ValidationSign(vote.HeaderHash.Bytes(), vote.Sig, vote.Voter) {
-			fmt.Println("--sign check error---")
-			break
+			return errors.New("서명이 일치하지 않는다")
 		}
 
 		ft.manager.GetVotePool().InsertCh <- pool.Vote{

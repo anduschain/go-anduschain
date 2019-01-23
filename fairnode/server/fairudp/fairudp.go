@@ -7,6 +7,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
@@ -223,9 +224,12 @@ Exit:
 				continue
 			}
 
-			// 리그 교체
 			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), epoch).Int64() == 0 {
+				// 리그 교체
 				fu.manager.GetStopLeagueCh() <- struct{}{}
+			} else {
+				// joinTx 생성
+				fu.manager.GetMakeJoinTxCh() <- struct{}{}
 			}
 
 			if fu.manager.GetLastBlockNum().Mod(fu.manager.GetLastBlockNum(), big.NewInt(int64(epoch.Int64()/2))).Int64() == 0 &&
@@ -233,8 +237,12 @@ Exit:
 				sendOtprn(false)
 			}
 
-		case leagueChange := <-fu.manager.GetReSendOtprn():
-			sendOtprn(leagueChange)
+		case otprnHash := <-fu.manager.GetReSendOtprn():
+
+			leaguePool := fu.manager.GetLeaguePool()
+			leaguePool.DeleteCh <- pool.OtprnHash(otprnHash)
+
+			sendOtprn(true)
 		case <-exit:
 			break Exit
 		}

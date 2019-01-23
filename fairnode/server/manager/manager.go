@@ -38,7 +38,8 @@ type FairManager struct {
 	UsingOtprn *otprn.Otprn // 사용중인 otprn
 	OtprnQueue *queue.Queue // fairnode에서 받은 otprn 저장 queue
 
-	reSendOtprn chan bool
+	reSendOtprn chan common.Hash
+	makeJoinTx  chan struct{}
 }
 
 func New() (*FairManager, error) {
@@ -51,7 +52,8 @@ func New() (*FairManager, error) {
 		StopLeagueCh:  make(chan struct{}),
 		UsingOtprn:    nil,
 		OtprnQueue:    queue.NewQueue(1),
-		reSendOtprn:   make(chan bool),
+		reSendOtprn:   make(chan common.Hash),
+		makeJoinTx:    make(chan struct{}),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -151,7 +153,7 @@ func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
 func (fm *FairManager) DeleteStoreOtprn() {
 	fm.OtprnQueue.Pop()
 }
-func (fm *FairManager) GetReSendOtprn() chan bool {
+func (fm *FairManager) GetReSendOtprn() chan common.Hash {
 	return fm.reSendOtprn
 }
 func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
@@ -191,3 +193,5 @@ func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 		}
 	}
 }
+
+func (fm *FairManager) GetMakeJoinTxCh() chan struct{} { return fm.makeJoinTx }
