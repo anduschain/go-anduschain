@@ -254,7 +254,6 @@ func (fc *FairnodeClient) GetWinningBlock(otprnHash common.Hash, hash common.Has
 	defer fc.mux.Unlock()
 	if v, ok := fc.wBlocks[otprnHash]; ok {
 		if block, ex := v[hash]; ex {
-			fmt.Println("갖고있는 블록 : ", block)
 			return block
 		}
 	}

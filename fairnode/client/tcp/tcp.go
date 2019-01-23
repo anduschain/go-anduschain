@@ -229,7 +229,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 
 		t.manger.SetBlockMine(true)
 
-		fmt.Println("-------- 블록 생성 tcp -------")
+		fmt.Println("-------- 블록 생성 tcp -------", m.OtprnHash.String())
 		t.manger.BlockMakeStart() <- struct{}{}
 
 		fmt.Println("MakeBlock exit")
@@ -237,15 +237,13 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
 		fb := tsFb.GetFinalBlock()
-		block := fb.Block
-		fmt.Println("----파이널 블록 수신됨----", common.BytesToHash(block.FairNodeSig).String())
+		fmt.Println("----파이널 블록 수신됨----")
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		var otprnhash common.Hash
 		msg.Decode(&otprnhash)
 
 		if otprnhash == leagueOtprnwithsig.Otprn.HashOtprn() {
-			fmt.Println("FinishLeague@@@@@@ㄴㅐ꺼 / fairnode꺼 otprn", leagueOtprnwithsig.Otprn.HashOtprn().String(), otprnhash.String())
 			//otprn 교체 및 저장된 블록 제거
 			t.manger.SetBlockMine(false)
 			t.manger.GetStoreOtprnWidthSig()
@@ -263,7 +261,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		if block == nil {
 			break
 		}
-		fmt.Println("block : ", block.Hash(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
 
 		transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())

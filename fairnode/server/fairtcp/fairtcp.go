@@ -117,7 +117,6 @@ func (ft *FairTcp) accepter(exit chan struct{}) {
 				notify <- err
 				return
 			}
-
 			accept <- conn
 		}
 	}()
