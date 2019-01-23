@@ -7,7 +7,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
-	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"io"
@@ -204,6 +203,7 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 			// 리그 전송 tcp
 			fu.manager.StoreOtprn(&tsOtp.Otp) // otprn push
 			fu.sendOtprnCH <- SendOtprn{leaguechange, tsOtp}
+
 		}
 	}
 
@@ -235,36 +235,6 @@ Exit:
 
 		case leagueChange := <-fu.manager.GetReSendOtprn():
 			sendOtprn(leagueChange)
-
-		//otprn 에 대한 리그 전송현황 체크
-		case OtprnStr := <-fu.checkconn:
-			leaguepool := fu.manager.GetLeaguePool()
-
-			//리그 풀에 담겨있지 않음
-
-			go func() {
-				ticker := 0
-				t := time.NewTicker(time.Second)
-				for {
-					select {
-					case <-t.C:
-
-						if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(OtprnStr.TsOtprn.Otp.HashOtprn())); num == 0 {
-							ticker++
-							fmt.Println("ticker", ticker)
-						} else {
-							return
-						}
-						if ticker == 10 {
-							fu.manager.DeleteStoreOtprn()
-							fu.manager.GetReSendOtprn() <- OtprnStr.LeagueChange
-							fmt.Println("ticker == 10 ")
-							return
-						}
-					}
-				}
-			}()
-
 		case <-exit:
 			break Exit
 		}
@@ -283,8 +253,6 @@ Exit:
 
 			fu.ftcp.StartLeague(OtprnStr.LeagueChange)
 
-			//otprn 에 대한 리그 전송현황 체크
-			fu.checkconn <- OtprnStr
 		case <-exit:
 			break Exit
 		}

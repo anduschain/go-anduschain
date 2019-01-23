@@ -164,7 +164,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	}
 	defer func() {
 		msg.Discard()
-		//t.manger.SetBlockMine(false)
 	}()
 
 	var str string
@@ -218,11 +217,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		fmt.Println("MakeBlock")
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
-		//otprnWithSig := t.manger.GetUsingOtprnWithSig()
-		//if otprnWithSig == nil {
-		//	return errors.New("해당하는 otprn이 없습니다")
-		//}
-
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
 			fmt.Println("페어노드가준 otprn/ 내가 갖고있는 otrprn ", m.OtprnHash.String(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 			return errors.New("otprn이 다릅니다")

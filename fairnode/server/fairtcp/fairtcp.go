@@ -133,8 +133,13 @@ Exit:
 			log.Println("Info[andus] : tcp 접속 함")
 			go func() {
 				rwtsp := transport.New(conn)
+				otprn := ft.manager.GetUsingOtprn()
+				if otprn == nil {
+					return
+				}
+
 				for {
-					if err := ft.handelMsg(rwtsp); err != nil {
+					if err := ft.handelMsg(rwtsp, otprn.HashOtprn()); err != nil {
 						log.Println("Error [andus] : handelMsg 에러", err)
 						rwtsp.Close()
 						return
@@ -150,14 +155,25 @@ func (ft *FairTcp) StartLeague(leagueChange bool) {
 		otprn := ft.manager.GetStoredOtprn()
 		if otprn == nil {
 			ft.manager.GetReSendOtprn() <- true
-		} else {
-			go ft.sendLeague(otprn.HashOtprn())
-			go ft.leagueControlle(otprn.HashOtprn())
 		}
+
+		//time.Sleep(5 * time.Second) // 5초간 연결 할수 있도록 기다림
+		//
+		//leaguepool := ft.manager.GetLeaguePool()
+		//if _, num, _ := leaguepool.GetLeagueList(pool.OtprnHash(otprn.HashOtprn())); num == 0 {
+		//	log.Println("Error [andus] 리그에 접속한 노드가 없음")
+		//	ft.StopLeague(otprn.HashOtprn())
+		//	return
+		//}
+
+		go ft.sendLeague(otprn.HashOtprn())
+		go ft.leagueControlle(otprn.HashOtprn())
+
 	}
 }
 
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
+	fmt.Println("League Stop / 재시작")
 	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
 	ft.StartLeague(true)
 }

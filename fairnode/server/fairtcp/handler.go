@@ -3,6 +3,7 @@ package fairtcp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -20,7 +21,7 @@ func poolUpdate(leaguePool *pool.LeaguePool, otprnHash pool.OtprnHash, tsf fairt
 	}
 }
 
-func (ft *FairTcp) handelMsg(rw transport.Transport) error {
+func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) error {
 	msg, err := rw.ReadMsg()
 	if err != nil {
 		return err
@@ -34,9 +35,6 @@ func (ft *FairTcp) handelMsg(rw transport.Transport) error {
 			return err
 		}
 		otprnHash := tsf.Otprn.HashOtprn()
-		//if tsf.Otprn != *ft.manager.GetUsingOtprn(){
-		//	return errors.New("OTPRN이 맞지 않음 ")
-		//}
 		if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
 			// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 			// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지

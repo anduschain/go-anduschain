@@ -125,13 +125,8 @@ Exit:
 				}
 			}
 		case hash := <-l.DeleteCh:
-			if val, ok := l.pool[hash]; ok {
+			if _, ok := l.pool[hash]; ok {
 				l.mux.Lock()
-				for i := range val {
-					if val[i].Conn != nil {
-						val[i].Conn.Close()
-					}
-				}
 				delete(l.pool, hash)
 				l.mux.Unlock()
 			}
