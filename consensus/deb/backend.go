@@ -1,6 +1,7 @@
 package deb
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -156,14 +157,22 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 	return pvBlock
 }
 
-func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock) {
+func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock, isVoting *bool) {
+	fmt.Println("**************SendMiningBlockAndVoting", tsfBlock.OtprnHash.String())
 	winningBlock := tsfBlock
 	t := time.NewTicker(5 * time.Second)
+
+	defer func() {
+		*isVoting = false
+	}()
 
 Exit:
 	for {
 		select {
 		case recevedBlock := <-c.chans.GetReceiveBlockCh():
+
+			fmt.Println("*******************리그 전파 블록 도착", recevedBlock.Block.Coinbase().String())
+
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if err, errType := c.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {

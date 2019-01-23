@@ -99,7 +99,7 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 			pool.OtprnHash(vote.OtprnHash), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig},
 		}
 
-		fmt.Println("--블록 투표 됨--", vote.BlockNum.String(), vote.Voter.String())
+		fmt.Println("--블록 투표 됨--", vote.BlockNum.String(), vote.Voter.String(), vote.HeaderHash.String())
 
 	case transport.SendWinningBlock:
 		tsblock := fairtypes.TsResWinningBlock{}

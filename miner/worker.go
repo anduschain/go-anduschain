@@ -185,6 +185,7 @@ type worker struct {
 	ks         *keystore.KeyStore
 	fairclient *fairnodeclient.FairnodeClient
 	chans      fairtypes.Channals
+	isVoting   *bool
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, chans fairtypes.Channals) *worker {
@@ -210,8 +211,12 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 
-		chans: chans,
+		chans:    chans,
+		isVoting: new(bool),
 	}
+
+	*worker.isVoting = false
+
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 	// Subscribe events for blockchain
@@ -618,7 +623,10 @@ func (w *worker) resultLoop() {
 			w.chans.GetLeagueBlockBroadcastCh() <- &vb
 
 			// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-			go debEngine.SendMiningBlockAndVoting(w.chain, &vb)
+			if !*w.isVoting {
+				*w.isVoting = true
+				go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
+			}
 
 		case finalBlock := <-w.chans.GetFinalBlockCh():
 			block := finalBlock.Block
