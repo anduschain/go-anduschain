@@ -592,12 +592,14 @@ func (w *worker) resultLoop() {
 			sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
 			if err != nil {
 				log.Error("Block found but fail signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				delete(w.pendingTasks, sealhash)
 				continue
 			}
 
 			err = debEngine.ValidationVoteBlock(w.chain, block)
 			if err != nil {
 				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
+				delete(w.pendingTasks, sealhash)
 				continue
 			}
 
