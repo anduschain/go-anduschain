@@ -36,6 +36,11 @@ func init() {
 			Usage: "default dbport 63018",
 		},
 		cli.StringFlag{
+			Name:  "dbuser",
+			Value: "",
+			Usage: "default user is nil",
+		},
+		cli.StringFlag{
 			Name:  "port",
 			Value: "60002",
 			Usage: "default port 60002",

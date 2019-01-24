@@ -58,6 +58,7 @@ func init() {
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.DBhost = ctx.GlobalString("dbhost")
 	DefaultConfig.DBport = ctx.GlobalString("dbport")
+	DefaultConfig.DBuser = ctx.GlobalString("dbuser")
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")
