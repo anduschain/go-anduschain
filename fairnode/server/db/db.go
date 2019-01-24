@@ -35,12 +35,14 @@ func New(dbhost string, dbport string, pwd string, user string, signer types.Sig
 	var fnb FairNodeDB
 
 	if user != "" {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s", user, pwd, dbhost, dbport)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, dbhost, dbport, DBNAME)
 	} else {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
 	}
 
 	fnb.signer = signer
+
+	fmt.Println("mongodb url : ", fnb.url)
 
 	return &fnb, nil
 }
@@ -49,6 +51,7 @@ func (fnb *FairNodeDB) Start() error {
 
 	session, err := mgo.Dial(fnb.url)
 	if err != nil {
+		fmt.Println(err)
 		return MongDBConnectError
 	}
 
