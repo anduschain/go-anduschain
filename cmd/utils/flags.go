@@ -628,7 +628,7 @@ var (
 	FairserverIP = cli.StringFlag{
 		Name:  "serverIP",
 		Usage: "fairnode connection IP",
-		Value: "121.134.35.45",
+		Value: "121.156.104.254",
 	}
 
 	FairserverPort = cli.StringFlag{
