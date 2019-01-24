@@ -42,8 +42,6 @@ func New(dbhost string, dbport string, pwd string, user string, signer types.Sig
 
 	fnb.signer = signer
 
-	fmt.Println("mongodb url : ", fnb.url)
-
 	return &fnb, nil
 }
 
