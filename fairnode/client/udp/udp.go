@@ -111,7 +111,7 @@ Exit:
 		case <-t.C:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
-			fmt.Println("Info[andus] : Enode 전송")
+			log.Println("Info[andus] : Enode 전송")
 			err = transport.SendUDP(transport.SendEnode, ts, Conn)
 			if err != nil {
 				log.Println("Error transport.SendUDP", err)
@@ -121,7 +121,7 @@ Exit:
 		}
 	}
 
-	defer fmt.Println("submitEnode kill")
+	defer log.Println("submitEnode kill")
 }
 
 func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
@@ -236,5 +236,5 @@ Exit:
 		}
 	}
 
-	defer fmt.Println("receiveOtprn kill")
+	defer log.Println("receiveOtprn kill")
 }

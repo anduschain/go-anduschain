@@ -187,7 +187,8 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			// addPeer 실행
 			node, err := discover.ParseNode(nodeList[index])
 			if err != nil {
-				fmt.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+				log.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+
 			}
 			t.manger.GetP2PServer().AddPeer(node)
 		}
@@ -237,7 +238,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
 		fb := tsFb.GetFinalBlock()
-		fmt.Println("----파이널 블록 수신됨----")
+		log.Println("----파이널 블록 수신됨----")
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		var otprnhash common.Hash
