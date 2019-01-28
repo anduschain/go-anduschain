@@ -116,8 +116,6 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 
 	defer Conn.Close()
 
-	u.realAddr = u.NatStart(Conn)
-
 	fmt.Println("u.realAddr :::: ", u.realAddr.String())
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
@@ -162,6 +160,8 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
+
+	u.realAddr = u.NatStart(localServerConn)
 
 	notify := make(chan error)
 
