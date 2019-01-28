@@ -36,6 +36,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("LAddrUDP.IP.String()", LAddrUDP.IP.String())
 
 	udp := &Udp{
 		SAddrUDP:   SAddrUDP,

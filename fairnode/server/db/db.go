@@ -75,7 +75,9 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, cli
 	if err != nil {
 		fmt.Println("Error[DB] : 노드 url 파싱에러 : ", err)
 	}
-
+	if len(node.IP.String()) <= 10 {
+		return
+	}
 	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport}
 
 	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
