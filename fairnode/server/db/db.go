@@ -6,11 +6,11 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/p2p/discv5"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -69,16 +69,16 @@ func (fnb *FairNodeDB) Stop() error {
 	return nil
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string) {
+func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string) {
 	// addr => 실제 address
-	node, err := discv5.ParseNode(enode)
-	if err != nil {
-		fmt.Println("Error[DB] : 노드 url 파싱에러 : ", err)
-	}
-	if len(node.IP.String()) <= 10 {
-		return
-	}
-	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: node.IP.String(), Time: time.Now(), Port: clientport}
+	//node, err := discv5.ParseNode(enode)
+	//if err != nil {
+	//	fmt.Println("Error[DB] : 노드 url 파싱에러 : ", err)
+	//}
+
+	addr := strings.Split(ip, ":")
+
+	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr[0], Time: time.Now(), Port: clientport}
 
 	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
 		log.Println("Error[DB] : SaveActiveNode ", err)

@@ -23,6 +23,8 @@ type Udp struct {
 	manger     _interface.Client
 	tcpService *tcp.Tcp
 	isRuning   bool
+	nat        nat.Interface
+	realAddr   *net.UDPAddr
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client, tcpService *tcp.Tcp) (*Udp, error) {
@@ -45,6 +47,11 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:     manger,
 		tcpService: tcpService,
 		isRuning:   false,
+	}
+
+	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
+	if err != nil {
+		log.Fatalf("-nat: %v", err)
 	}
 
 	udp.services["submitEnode"] = types.Goroutine{udp.submitEnode, make(chan struct{})}
@@ -83,6 +90,23 @@ func (u *Udp) Stop() error {
 	return nil
 }
 
+func (u *Udp) NatStart(conn net.Conn) *net.UDPAddr {
+	// TODO : andus >> NAT 추가 --- start ---
+	realaddr := conn.LocalAddr().(*net.UDPAddr)
+	if u.nat != nil {
+		if !realaddr.IP.IsLoopback() {
+			go nat.Map(u.nat, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
+		}
+		// TODO: react to external IP changes over time.
+		if ext, err := u.nat.ExternalIP(); err == nil {
+			realaddr = &net.UDPAddr{IP: ext, Port: realaddr.Port}
+		}
+	}
+	// TODO : andus >> NAT 추가 --- end ---
+
+	return realaddr
+}
+
 func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
 	Conn, err := net.DialUDP("udp", nil, u.SAddrUDP)
@@ -91,6 +115,10 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	}
 
 	defer Conn.Close()
+
+	u.realAddr = u.NatStart(Conn)
+
+	fmt.Println("u.realAddr :::: ", u.realAddr.String())
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
@@ -129,30 +157,10 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 	//TODO : andus >> 1. OTPRN 수신
 
-	localServerConn, err := net.ListenUDP("udp", u.LAddrUDP)
+	localServerConn, err := net.ListenUDP("udp", u.realAddr)
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
-
-	// TODO : andus >> NAT 추가 --- start ---
-
-	natm, err := nat.Parse(config.DefaultConfig.NAT)
-	if err != nil {
-		log.Fatalf("-nat: %v", err)
-	}
-
-	realaddr := localServerConn.LocalAddr().(*net.UDPAddr)
-	if natm != nil {
-		if !realaddr.IP.IsLoopback() {
-			go nat.Map(natm, nil, "udp", realaddr.Port, realaddr.Port, "andus fairnode discovery")
-		}
-		// TODO: react to external IP changes over time.
-		if ext, err := natm.ExternalIP(); err == nil {
-			realaddr = &net.UDPAddr{IP: ext, Port: realaddr.Port}
-		}
-	}
-
-	// TODO : andus >> NAT 추가 --- end ---
 
 	notify := make(chan error)
 

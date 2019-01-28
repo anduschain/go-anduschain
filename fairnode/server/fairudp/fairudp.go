@@ -132,7 +132,7 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := fu.udpConn.Read(buf)
+			n, Addr, err := fu.udpConn.ReadFrom(buf)
 			if err != nil {
 				notify <- err
 				return
@@ -146,9 +146,9 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
-					fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port)
+					fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, Addr.String())
 				default:
-					log.Println("Error [manageActiveNode] : 모르는 upd 메시지 코드")
+					log.Println("Error [manageActiveNode] : unKnown udp 메시지 코드")
 				}
 			}
 		}
@@ -162,8 +162,6 @@ Exit:
 				fmt.Println("udp connection dropped message", err)
 				return
 			}
-		case <-time.After(time.Second * 1):
-			//fmt.Println("UDP timeout, still alive")
 		case <-exit:
 			break Exit
 		}
