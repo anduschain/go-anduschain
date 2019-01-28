@@ -173,7 +173,7 @@ func (ft *FairTcp) StartLeague(leagueChange bool) {
 					}
 
 					if ticker >= 10 {
-						fmt.Println("OTPRN 재발행")
+						log.Println("OTPRN 재발행")
 						ft.manager.GetReSendOtprn() <- otprn.HashOtprn()
 						return
 					}

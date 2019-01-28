@@ -46,6 +46,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:     manger,
 		tcpService: tcpService,
 		isRuning:   false,
+		realAddr:   nil,
 	}
 
 	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
@@ -115,27 +116,14 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 
 	defer Conn.Close()
 
-	u.realAddr = u.NatStart(Conn)
-
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
-	t := time.NewTicker(60 * time.Second)
-	ts := fairtypes.EnodeCoinbase{
-		Enode:    u.manger.GetP2PServer().NodeInfo().ID,
-		Coinbase: u.manger.GetCoinbase(),
-		Port:     config.DefaultConfig.ClientPort,
-	}
+	t := time.NewTicker(10 * time.Second)
 
-	if u.manger.GetP2PServer().NoDiscovery {
-		ts.IP = u.realAddr.IP.String()
-	} else {
-		ts.IP = u.manger.GetP2PServer().NodeInfo().IP
-	}
-
-	// 처음 한번 보내기
-	err = transport.SendUDP(transport.SendEnode, ts, Conn)
-	if err != nil {
-		log.Println("Error transport.SendUDP", err)
-	}
+	//// 처음 한번 보내기
+	//err = transport.SendUDP(transport.SendEnode, ts, Conn)
+	//if err != nil {
+	//	log.Println("Error transport.SendUDP", err)
+	//}
 
 Exit:
 	for {
@@ -143,10 +131,26 @@ Exit:
 		case <-t.C:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
-			log.Println("Info[andus] : Enode 전송")
-			err = transport.SendUDP(transport.SendEnode, ts, Conn)
-			if err != nil {
-				log.Println("Error transport.SendUDP", err)
+			if u.realAddr != nil {
+				if !u.realAddr.IP.Equal(u.LAddrUDP.IP) {
+					ts := fairtypes.EnodeCoinbase{
+						Enode:    u.manger.GetP2PServer().NodeInfo().ID,
+						Coinbase: u.manger.GetCoinbase(),
+						Port:     config.DefaultConfig.ClientPort,
+					}
+
+					if u.manger.GetP2PServer().NoDiscovery {
+						ts.IP = u.realAddr.IP.String()
+					} else {
+						ts.IP = u.manger.GetP2PServer().NodeInfo().IP
+					}
+
+					log.Println("Info[andus] : Enode 전송")
+					err = transport.SendUDP(transport.SendEnode, ts, Conn)
+					if err != nil {
+						log.Println("Error transport.SendUDP", err)
+					}
+				}
 			}
 		case <-exit:
 			break Exit
@@ -165,7 +169,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 		log.Println("Udp Server", err)
 	}
 
-	u.NatStart(localServerConn)
+	u.realAddr = u.NatStart(localServerConn)
 
 	notify := make(chan error)
 
