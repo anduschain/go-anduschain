@@ -38,7 +38,6 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("LAddrUDP.IP.String()", LAddrUDP.IP.String())
 
 	udp := &Udp{
 		SAddrUDP:   SAddrUDP,
@@ -116,7 +115,7 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 
 	defer Conn.Close()
 
-	fmt.Println("u.realAddr :::: ", u.realAddr.String())
+	u.realAddr = u.NatStart(Conn)
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
@@ -156,12 +155,12 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 	//TODO : andus >> 1. OTPRN 수신
 
-	localServerConn, err := net.ListenUDP("udp", u.realAddr)
+	localServerConn, err := net.ListenUDP("udp", u.LAddrUDP)
 	if err != nil {
 		log.Println("Udp Server", err)
 	}
 
-	u.realAddr = u.NatStart(localServerConn)
+	u.NatStart(localServerConn)
 
 	notify := make(chan error)
 
