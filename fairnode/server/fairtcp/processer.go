@@ -31,7 +31,7 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
 			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
-				fmt.Println("-------리그 전송---------")
+				log.Println("-------리그 전송---------")
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
 				time.Sleep(3 * time.Second)
 				fu.manager.GetMakeJoinTxCh() <- struct{}{}
@@ -57,12 +57,12 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 	for {
 		select {
 		case <-fu.manager.GetMakeJoinTxCh():
-			fmt.Println("-------조인 tx 생성--------")
+			log.Println("-------조인 tx 생성--------")
 			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 			// 브로드케스팅 5초
 			time.AfterFunc(3*time.Second, func() {
 
-				fmt.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
+				log.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 
 				// peer list 전송후 20초
@@ -94,8 +94,8 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 }
 
 func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
-	fmt.Println("sendFinalBlock Start", otprnHash.String())
-	defer fmt.Println("sendFinalBlock kill ", otprnHash.String())
+	log.Println("sendFinalBlock Start", otprnHash.String())
+	defer log.Println("sendFinalBlock kill ", otprnHash.String())
 
 	if fu.manager.GetUsingOtprn().HashOtprn() != otprnHash {
 		return
@@ -131,7 +131,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 		case n := <-notify:
 			if n != nil {
 				fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
-				fmt.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
+				log.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
 
 				// DB에 블록 저장
 				votePool.SnapShot <- n.Block
@@ -141,7 +141,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
 				return
 			} else {
-				fmt.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
+				log.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
 				fu.manager.GetStopLeagueCh() <- struct{}{}
 				return
 			}
