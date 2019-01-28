@@ -146,7 +146,7 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
-					fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, Addr.String())
+					fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP)
 				default:
 					log.Println("Error [manageActiveNode] : unKnown udp 메시지 코드")
 				}

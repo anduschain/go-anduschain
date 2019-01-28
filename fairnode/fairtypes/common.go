@@ -19,6 +19,7 @@ type BlockMakeMessage struct {
 type EnodeCoinbase struct {
 	Enode    string
 	Coinbase common.Address
+	IP       string
 	Port     string
 }
 

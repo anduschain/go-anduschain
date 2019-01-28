@@ -125,6 +125,7 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	ts := fairtypes.EnodeCoinbase{
 		Enode:    u.manger.GetP2PServer().NodeInfo().Enode,
 		Coinbase: u.manger.GetCoinbase(),
+		IP:       u.realAddr.IP.String(),
 		Port:     config.DefaultConfig.ClientPort,
 	}
 
