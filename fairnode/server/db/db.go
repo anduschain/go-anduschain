@@ -10,7 +10,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"math/big"
-	"strings"
+	"net"
 	"time"
 )
 
@@ -70,17 +70,12 @@ func (fnb *FairNodeDB) Stop() error {
 }
 
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string) {
-	// addr => 실제 address
-	//node, err := discv5.ParseNode(enode)
-	//if err != nil {
-	//	fmt.Println("Error[DB] : 노드 url 파싱에러 : ", err)
-	//}
+	trial := net.ParseIP(ip)
+	if trial.To4() == nil {
+		return
+	}
 
-	addr := strings.Split(ip, ":")
-
-	fmt.Println(ip, addr)
-
-	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: addr[0], Time: time.Now(), Port: clientport}
+	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport}
 
 	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
 		log.Println("Error[DB] : SaveActiveNode ", err)
