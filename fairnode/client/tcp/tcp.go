@@ -128,7 +128,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().ID})
 
 	notify := make(chan error)
 	go func() {
