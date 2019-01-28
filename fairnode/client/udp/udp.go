@@ -120,10 +120,15 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(60 * time.Second)
 	ts := fairtypes.EnodeCoinbase{
-		Enode:    u.manger.GetP2PServer().NodeInfo().Enode,
+		Enode:    u.manger.GetP2PServer().NodeInfo().ID,
 		Coinbase: u.manger.GetCoinbase(),
-		IP:       u.realAddr.IP.String(),
 		Port:     config.DefaultConfig.ClientPort,
+	}
+
+	if u.manger.GetP2PServer().NoDiscovery {
+		ts.IP = u.realAddr.IP.String()
+	} else {
+		ts.IP = u.manger.GetP2PServer().NodeInfo().IP
 	}
 
 	// 처음 한번 보내기
