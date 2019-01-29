@@ -82,7 +82,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts)
+	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts, true)
 
 	return receipts, allLogs, *usedGas, nil
 }
@@ -105,14 +105,6 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 
 	var gas uint64
 	var failed bool
-
-	//if fairutil.CmpAddress(tx.To().String(), config.Deb.FairAddr.String()) {
-	//	// JOIN_TX 처리
-	//	_, gas, failed, err = DebApplyMessage(vmenv, msg, gp, header, &config.Deb.FairAddr)
-	//} else {
-	//	// 일반 TX 처리
-	//	_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
-	//}
 
 	_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
 
