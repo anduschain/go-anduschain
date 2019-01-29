@@ -296,7 +296,6 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		if err != nil {
 			log.Println("Error[andus] : EncodeToBytes", err)
 		}
-
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx

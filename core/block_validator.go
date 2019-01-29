@@ -18,9 +18,6 @@ package core
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -95,13 +92,6 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}
-
-	if _, ok := v.engine.(*deb.Deb); ok {
-		if fairutil.ValidationSign(block.Hash().Bytes(), block.FairNodeSig, block.Coinbase()) {
-			return nil
-		}
-	}
-
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
 	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {
