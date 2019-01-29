@@ -79,7 +79,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		IsBlockMine:        false,
 		OtprnQueue:         queue.NewQueue(1),
 		UsingOtprn:         nil,
-		realAddr:           &net.UDPAddr{},
+		realAddr:           nil,
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]

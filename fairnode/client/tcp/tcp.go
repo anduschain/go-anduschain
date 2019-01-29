@@ -126,13 +126,19 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	tsp := transport.New(conn)
 
+	realAddr := t.manger.GetRealAddr()
+	if realAddr == nil {
+		log.Println("Error [andus] : realAddr 에러")
+		return
+	}
+
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
 		fairtypes.TransferCheck{
 			*otprnWithSig.Otprn,
 			t.manger.GetCoinbase(),
 			t.manger.GetP2PServer().NodeInfo().ID,
-			t.manger.GetRealAddr().IP.String(),
+			realAddr.IP.String(),
 			uint64(t.manger.GetP2PServer().NodeInfo().Ports.Listener),
 		})
 
@@ -194,6 +200,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			node, err := discover.ParseNode(nodeList[index])
 			if err != nil {
 				log.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+				continue
 
 			}
 			t.manger.GetP2PServer().AddPeer(node)
