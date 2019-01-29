@@ -128,7 +128,13 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().ID, t.manger.GetRealAddr().IP.String(), string(t.manger.GetRealAddr().Port)})
+		fairtypes.TransferCheck{
+			*otprnWithSig.Otprn,
+			t.manger.GetCoinbase(),
+			t.manger.GetP2PServer().NodeInfo().ID,
+			t.manger.GetRealAddr().IP.String(),
+			uint64(t.manger.GetP2PServer().NodeInfo().Ports.Listener),
+		})
 
 	notify := make(chan error)
 	go func() {
