@@ -203,6 +203,8 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 			fu.manager.StoreOtprn(&tsOtp.Otp) // otprn push
 			fu.sendOtprnCH <- SendOtprn{leaguechange, tsOtp}
 
+		} else {
+			fu.manager.DeleteStoreOtprn()
 		}
 	}
 

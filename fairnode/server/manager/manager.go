@@ -151,7 +151,10 @@ func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
 	return nil
 }
 func (fm *FairManager) DeleteStoreOtprn() {
+	fm.mux.Lock()
+	defer fm.mux.Unlock()
 	fm.OtprnQueue.Pop()
+	fm.UsingOtprn = nil
 }
 func (fm *FairManager) GetReSendOtprn() chan common.Hash {
 	return fm.reSendOtprn
