@@ -671,6 +671,7 @@ func (w *worker) resultLoop() {
 			if err != nil {
 				log.Error("Worker result Processor Error", "err", err)
 			}
+
 			// Validate the state using the default validator
 			err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
 			if err != nil {
