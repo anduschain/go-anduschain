@@ -274,16 +274,16 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return consensus.ErrUnknownAncestor
 	}
 
-	curState, err := chain.StateAt(parent.Root)
+	current, err := chain.StateAt(header.Root)
 	if err != nil {
 		log.Error("Prepare State Error", err)
 		return errGetState
 	}
 
-	//바로전 블록생성자 조인넌스 리셋
-	curState.ResetJoinNonce(parent.Coinbase)
+	////바로전 블록생성자 조인넌스 리셋
+	//current.ResetJoinNonce(parent.Coinbase)
 
-	c.joinNonce = curState.GetJoinNonce(header.Coinbase)
+	c.joinNonce = current.GetJoinNonce(header.Coinbase)
 	c.otprnHash = common.BytesToHash(header.Extra)
 	c.coinbase = header.Coinbase
 	// TODO : andus >> nonce = joinNonce

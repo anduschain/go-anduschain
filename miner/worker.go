@@ -681,7 +681,12 @@ func (w *worker) resultLoop() {
 			//FIXME : <----------
 
 			//Block Coinbase Reset JoinNonce
-			//w.resetJoinNonce(block, state)
+			finalState, err := w.chain.StateAt(block.Root())
+			if err != nil {
+				log.Error("Worker result finalState Error", "err", err)
+			}
+
+			w.resetJoinNonce(block, finalState)
 
 			//Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
