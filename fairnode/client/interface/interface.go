@@ -10,6 +10,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"math/big"
+	"net"
 )
 
 type ServiceFunc interface {
@@ -43,4 +44,6 @@ type Client interface {
 	GetUsingOtprnWithSig() *types.OtprnWithSig
 	GetSavedOtprnHashs() []common.Hash
 	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
+	SetRealAddr(realAddr *net.UDPAddr)
+	GetRealAddr() *net.UDPAddr
 }

@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -234,6 +235,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 
 	if fairutil.CmpAddress(msg.To().String(), config.FAIRNODE_ADDRESS) {
 		st.state.AddJoinNonce(msg.From())
+		fmt.Println("state_transition.go @@@@@@ msg.From()   :    ", msg.From().String())
 	}
 
 	return ret, st.gasUsed(), vmerr != nil, err

@@ -45,11 +45,14 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 				if otprn.Mminer > n {
 					log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
+					enode := "enode://" + tsf.Enode + "@" + tsf.IP + ":" + tsf.Port
+					fmt.Println("enode handler .go    : ", enode)
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),
-						Node: pool.Node{Enode: tsf.Enode, Coinbase: tsf.Coinbase, Conn: rw},
+						Node: pool.Node{Enode: enode, Coinbase: tsf.Coinbase, Conn: rw},
 					}
 				} else {
+					// TODO : 참여 인원수 오버된 케이스
 					// TODO : 참여 인원수 오버된 케이스
 					log.Println("INFO : 참여 인원수 오버된 케이스", tsf.Enode)
 					poolUpdate(ft.leaguePool, pool.OtprnHash(otprnHash), tsf)

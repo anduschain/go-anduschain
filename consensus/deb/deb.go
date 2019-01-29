@@ -274,7 +274,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return consensus.ErrUnknownAncestor
 	}
 
-	current, err := chain.StateAt(header.Root)
+	current, err := chain.StateAt(parent.Root)
 	if err != nil {
 		log.Error("Prepare State Error", err)
 		return errGetState

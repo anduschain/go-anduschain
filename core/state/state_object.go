@@ -376,6 +376,7 @@ func (self *stateObject) ResetJoinNonce() {
 	})
 
 	self.data.JoinNonce = 0
+	fmt.Println("restjoinNonce : ", self.address.String())
 }
 
 // Never called, but must be present to allow stateObject to be used

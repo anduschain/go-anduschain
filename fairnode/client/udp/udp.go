@@ -24,7 +24,7 @@ type Udp struct {
 	tcpService *tcp.Tcp
 	isRuning   bool
 	nat        nat.Interface
-	realAddr   *net.UDPAddr
+	RealAddr   *net.UDPAddr
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client, tcpService *tcp.Tcp) (*Udp, error) {
@@ -46,7 +46,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:     manger,
 		tcpService: tcpService,
 		isRuning:   false,
-		realAddr:   nil,
+		RealAddr:   nil,
 	}
 
 	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
@@ -131,8 +131,8 @@ Exit:
 		case <-t.C:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
 			// TODO : andus >> enode Sender -- start --
-			if u.realAddr != nil {
-				if !u.realAddr.IP.Equal(u.LAddrUDP.IP) {
+			if u.RealAddr != nil {
+				if !u.RealAddr.IP.Equal(u.LAddrUDP.IP) {
 					ts := fairtypes.EnodeCoinbase{
 						Enode:    u.manger.GetP2PServer().NodeInfo().ID,
 						Coinbase: u.manger.GetCoinbase(),
@@ -140,7 +140,7 @@ Exit:
 					}
 
 					if u.manger.GetP2PServer().NoDiscovery {
-						ts.IP = u.realAddr.IP.String()
+						ts.IP = u.RealAddr.IP.String()
 					} else {
 						ts.IP = u.manger.GetP2PServer().NodeInfo().IP
 					}
@@ -169,7 +169,8 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 		log.Println("Udp Server", err)
 	}
 
-	u.realAddr = u.NatStart(localServerConn)
+	u.RealAddr = u.NatStart(localServerConn)
+	u.manger.SetRealAddr(u.RealAddr)
 
 	notify := make(chan error)
 

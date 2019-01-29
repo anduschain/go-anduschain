@@ -128,7 +128,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().ID})
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().ID, t.manger.GetRealAddr().IP.String(), string(t.manger.GetRealAddr().Port)})
 
 	notify := make(chan error)
 	go func() {
@@ -238,7 +238,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
 		fb := tsFb.GetFinalBlock()
-		log.Println("----파이널 블록 수신됨----")
+		log.Println("----파이널 블록 수신됨----", tsFb.GetFinalBlock().Block.Coinbase().String())
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		var otprnhash common.Hash
@@ -297,6 +297,8 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 			log.Println("Error[andus] : EncodeToBytes", err)
 		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
+
+		fmt.Println("currentjoinnonce  : ", currentJoinNonce, t.manger.GetCoinbase().String())
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(

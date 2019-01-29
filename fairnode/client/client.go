@@ -21,6 +21,7 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"log"
 	"math/big"
+	"net"
 	"sync"
 )
 
@@ -57,6 +58,8 @@ type FairnodeClient struct {
 
 	UsingOtprn *clinetTypes.OtprnWithSig
 	OtprnQueue *queue.Queue
+
+	realAddr *net.UDPAddr
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -76,6 +79,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		IsBlockMine:        false,
 		OtprnQueue:         queue.NewQueue(1),
 		UsingOtprn:         nil,
+		realAddr:           &net.UDPAddr{},
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -90,6 +94,8 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 
 	return fc
 }
+func (fc *FairnodeClient) SetRealAddr(realAddr *net.UDPAddr) { fc.realAddr = realAddr }
+func (fc *FairnodeClient) GetRealAddr() *net.UDPAddr         { return fc.realAddr }
 
 //TODO : andus >> fairNode 관련 함수....
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, srv *p2p.Server) error {
@@ -212,6 +218,7 @@ func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.cha
 func (fc *FairnodeClient) GetSigner() types.Signer               { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
+
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
 		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생", err)
@@ -221,7 +228,9 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 }
 
 func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
+
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
+	fmt.Println("fc.BlockChain.CurrentHeader().Root.String()  : ", fc.BlockChain.CurrentHeader().Root.String())
 	if err != nil {
 		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생", err)
 	}

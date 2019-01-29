@@ -60,7 +60,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 			log.Println("-------조인 tx 생성--------")
 			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 			// 브로드케스팅 5초
-			time.AfterFunc(3*time.Second, func() {
+			time.AfterFunc(time.Second, func() {
 
 				log.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
