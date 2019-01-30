@@ -81,7 +81,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 
 	//TODO : 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
 	if statedb.GetJoinNonce(block.Coinbase()) != 0 {
-		return fmt.Errorf("invalid Joinnonce (remote: %d local: 0)", block.GasUsed())
+		return fmt.Errorf("invalid Joinnonce (remote: %d local: 0)", block.Nonce())
 	}
 	if block.GasUsed() != usedGas {
 		return fmt.Errorf("invalid gas used (remote: %d local: %d)", block.GasUsed(), usedGas)
