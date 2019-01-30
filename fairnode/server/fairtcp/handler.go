@@ -10,6 +10,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	"log"
 	"math/big"
 )
@@ -34,8 +35,18 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 		if err := msg.Decode(&tsf); err != nil {
 			return err
 		}
+
+		enode, err := discover.ParseNode(tsf.Enode)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Enode Parsing Error %s", err.Error()))
+		}
+
+		if enode.IP.To4() == nil {
+			return errors.New("Enode IP is Nil")
+		}
+
 		otprnHash := tsf.Otprn.HashOtprn()
-		if ft.Db.CheckEnodeAndCoinbse(tsf.Enode, tsf.Coinbase.String()) {
+		if ft.Db.CheckEnodeAndCoinbse(enode.ID.String(), tsf.Coinbase.String()) {
 			// TODO : andus >> 1. Enode가 맞는지 확인 ( 조회 되지 않으면 팅김 )
 			// TODO : andus >> 2. 해당하는 Enode가 이전에 보낸 코인베이스와 일치하는지
 			if fairutil.IsJoinOK(&tsf.Otprn, tsf.Coinbase) {
@@ -45,11 +56,10 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 				if otprn.Mminer > n {
 					log.Println("INFO : 참여 가능자 저장됨", tsf.Coinbase.String())
-					enode := fmt.Sprintf("enode://%s@%s:%d", tsf.Enode, tsf.IP, tsf.Port)
 					fmt.Println("enode handler .go    : ", enode)
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),
-						Node: pool.Node{Enode: enode, Coinbase: tsf.Coinbase, Conn: rw},
+						Node: pool.Node{Enode: tsf.Enode, Coinbase: tsf.Coinbase, Conn: rw},
 					}
 				} else {
 					// TODO : 참여 인원수 오버된 케이스

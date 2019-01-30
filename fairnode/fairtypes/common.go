@@ -33,8 +33,6 @@ type TransferCheck struct {
 	Otprn    otprn.Otprn
 	Coinbase common.Address
 	Enode    string
-	IP       string
-	Port     uint64
 }
 
 func (tsf *TransferCheck) Hash() common.Hash {
