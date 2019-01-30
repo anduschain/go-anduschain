@@ -904,6 +904,12 @@
 			"revisionTime": "2016-12-08T18:13:25Z"
 		},
 		{
+			"checksumSHA1": "Oi1wABWHOxoUsoZzSIqUAg9cXso=",
+			"path": "gopkg.in/inconshreveable/log15.v2",
+			"revision": "67afb5ed74ec82fd7ac8f49d27c509ac6f991970",
+			"revisionTime": "2018-08-18T16:46:46Z"
+		},
+		{
 			"checksumSHA1": "bS5Kp6YjeXz4nvvS55CqIBP+HzM=",
 			"path": "gopkg.in/mgo.v2",
 			"revision": "9856a29383ce1c59f308dd1cf0363a79b5bef6b5",

@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager"
+	"github.com/anduschain/go-anduschain/log"
 	"net"
 )
 
@@ -44,6 +45,8 @@ func (f *FairNode) Start() error {
 	if err != nil {
 		return err
 	}
+
+	log.Info("Administering Ethereum network", "name", "================")
 
 	if err := f.Manager.Start(srvKey); err != nil {
 		return err

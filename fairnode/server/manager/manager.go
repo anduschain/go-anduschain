@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
@@ -11,7 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
-	"log"
+	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"sync"
 )
@@ -40,6 +41,7 @@ type FairManager struct {
 
 	reSendOtprn chan common.Hash
 	makeJoinTx  chan struct{}
+	logger      log.Logger
 }
 
 func New() (*FairManager, error) {
@@ -54,6 +56,7 @@ func New() (*FairManager, error) {
 		OtprnQueue:    queue.NewQueue(1),
 		reSendOtprn:   make(chan common.Hash),
 		makeJoinTx:    make(chan struct{}),
+		logger:        log.New("fairnode", "manager"),
 	}
 
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
@@ -91,8 +94,7 @@ func (fm *FairManager) Start(srvKey *backend.SeverKey) error {
 	fm.srvKey = srvKey
 
 	for name, sev := range fm.Services {
-		log.Printf("Info[andus] : %s 서비스 시작됨", name)
-
+		fm.logger.Info(fmt.Sprintf("Info[andus] : %s 서비스 시작됨", name))
 		if err := sev.Start(); err != nil {
 			return err
 		}
@@ -107,7 +109,7 @@ func (fm *FairManager) Stop() error {
 	fm.mux.Lock()
 	defer fm.mux.Unlock()
 	for name, sev := range fm.Services {
-		log.Printf("Info[andus] : %s 서비스 종료됨", name)
+		fm.logger.Info("Info[andus] : %s 서비스 종료됨", name)
 
 		if err := sev.Stop(); err != nil {
 			return err
@@ -181,13 +183,13 @@ func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 			if node := fm.leaguePool.GetNode(otprnHash, req.Addr); node != nil {
 				msg, err := transport.MakeTsMsg(transport.RequestWinningBlock, req.BlockHash)
 				if err != nil {
-					log.Println("Info[andus] : RequestWinningBlock", err)
+					fm.logger.Info("Info[andus] : RequestWinningBlock", err)
 					continue
 				}
 
 				err = node.Conn.WriteMsg(msg)
 				if err != nil {
-					log.Println("Info[andus] : RequestWinningBlock SendMessage", err)
+					fm.logger.Info("Info[andus] : RequestWinningBlock SendMessage", err)
 					continue
 				}
 			}

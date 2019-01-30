@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/server"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -88,10 +88,10 @@ func init() {
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
 
-		log.Println("패어노드 서명키 암호를 입력해 주세요")
+		fmt.Println("패어노드 서명키 암호를 입력해 주세요")
 		keypass := promptPassphrase(false)
 
-		log.Println("패어노드 데이터베이스 암호를 입력해 주세요")
+		fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
 		dbpass := promptPassphrase(false)
 
 		// Config Setting
@@ -99,14 +99,14 @@ func init() {
 
 		fn, err := server.New()
 		if err != nil {
-			log.Println("Fairnode running error : ", err)
+			log.Error("Fairnode running", "error", err)
 			return err
 		}
 
 		if err := fn.Start(); err == nil {
-			log.Println("퍠어노드 정상적으로 시작됨")
+			log.Info("퍠어노드 정상적으로 시작됨")
 		} else {
-			log.Println("퍠어노드 시작 에러 : ", err)
+			log.Error("퍠어노드 시작 에러", "error", err)
 			w.Done()
 			return err
 		}
@@ -120,7 +120,7 @@ func init() {
 			signal.Notify(sigc, syscall.SIGTERM)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Println("Got sigterm, shutting swarm down...")
+			log.Warn("Got sigterm, shutting swarm down...")
 			w.Done()
 		}()
 
@@ -131,7 +131,7 @@ func init() {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	if err := app.Run(os.Args); err != nil {
-		fmt.Println("App Run Error ", os.Stderr, err)
+		log.Warn("App Run", "error", os.Stderr, err)
 		os.Exit(1)
 	}
 }
