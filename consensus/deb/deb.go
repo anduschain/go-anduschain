@@ -6,7 +6,6 @@ package deb
 import (
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
