@@ -131,6 +131,10 @@ type (
 		prev      bool
 		prevDirty bool
 	}
+	joinNonceChange struct {
+		account *common.Address
+		prev    uint64
+	}
 )
 
 func (ch createObjectChange) revert(s *StateDB) {
@@ -231,4 +235,13 @@ func (ch addPreimageChange) revert(s *StateDB) {
 
 func (ch addPreimageChange) dirtied() *common.Address {
 	return nil
+}
+
+// andus >> joinNonce 관련 부분 추가
+func (ch joinNonceChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setJoinNonce(ch.prev)
+}
+
+func (ch joinNonceChange) dirtied() *common.Address {
+	return ch.account
 }

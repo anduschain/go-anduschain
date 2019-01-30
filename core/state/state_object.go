@@ -360,23 +360,26 @@ func (self *stateObject) GetJoinNonce() uint64 {
 
 //TODO : andus >> joinNonce 변경 하는 함수 + 1
 func (self *stateObject) AddJoinNonce() {
-	self.db.journal.append(nonceChange{
+	self.db.journal.append(joinNonceChange{
 		account: &self.address,
 		prev:    self.data.JoinNonce,
 	})
 
-	self.data.JoinNonce++
+	self.setJoinNonce(self.data.JoinNonce + 1)
 }
 
 //TODO : andus >> joinNonce를 0으로 처리
 func (self *stateObject) ResetJoinNonce() {
-	self.db.journal.append(nonceChange{
+	self.db.journal.append(joinNonceChange{
 		account: &self.address,
 		prev:    self.data.JoinNonce,
 	})
 
-	self.data.JoinNonce = 0
-	fmt.Println("restjoinNonce : ", self.address.String())
+	self.setJoinNonce(0)
+}
+
+func (self *stateObject) setJoinNonce(nonce uint64) {
+	self.data.JoinNonce = nonce
 }
 
 // Never called, but must be present to allow stateObject to be used
