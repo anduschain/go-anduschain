@@ -709,13 +709,13 @@ func (w *worker) resultLoop() {
 			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
 			//Block Coinbase Reset JoinNonce
-			finalState, err := w.chain.StateAt(block.Root())
-			if err != nil {
-				log.Error("Worker result finalState Error", "err", err)
-			}
-			fmt.Println("리셋전 finalstats  : ", block.Root().String())
-
-			w.resetJoinNonce(block, finalState)
+			//finalState, err := w.chain.StateAt(block.Root())
+			//if err != nil {
+			//	log.Error("Worker result finalState Error", "err", err)
+			//}
+			//fmt.Println("리셋전 finalstats  : ", block.Root().String())
+			//
+			//w.resetJoinNonce(block, finalState)
 
 		case <-w.exitCh:
 			return

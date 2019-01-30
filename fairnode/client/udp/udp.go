@@ -129,7 +129,7 @@ Exit:
 	for {
 		select {
 		case <-t.C:
-			//TODO : andus >> FairNode에게 enode값 전송 ( 1분단위)
+			//TODO : andus >> FairNode에게 enode값 전송 ( 10초단위)
 			// TODO : andus >> enode Sender -- start --
 			if u.RealAddr != nil {
 				if !u.RealAddr.IP.Equal(u.LAddrUDP.IP) {
