@@ -52,7 +52,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:   manger,
 		services: make(map[common.Hash]map[string]types.Goroutine),
 		IsRuning: make(map[common.Hash]bool),
-		logger:   logger.New("Geth", "ClientTCP"),
+		logger:   logger.New("fairclient", "TCP"),
 	}
 
 	return tcp, nil
@@ -98,12 +98,12 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	defer func() {
 		t.IsRuning[otprnHash] = false
-		t.logger.Info("TcpLoop Killed")
+		t.logger.Debug("TcpLoop Killed")
 	}()
 
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
-		t.logger.Error("DialTCP 에러", "error", err)
+		t.logger.Error("DialTCP ", "error", err)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	realAddr := t.manger.GetRealAddr()
 	if realAddr == nil {
-		t.logger.Error("GetRealAddr 에러", "error", err)
+		t.logger.Error("GetRealAddr", "error", err)
 		return
 	}
 
@@ -133,7 +133,7 @@ Exit:
 	for {
 		select {
 		case err := <-notify:
-			t.logger.Error("handelMsg 에러 에러", "error", err)
+			t.logger.Error("handelMsg", "error", err)
 			tsp.Close()
 			break Exit
 		case <-exit:
@@ -141,7 +141,7 @@ Exit:
 			break Exit
 		case vote := <-t.manger.VoteBlock():
 			transport.Send(tsp, transport.SendBlockForVote, vote)
-			t.logger.Info("Block Vote", "HeaderHash / voter", vote.HeaderHash.String(), vote.Voter.String())
+			t.logger.Info("Block Vote", "HeaderHash", vote.HeaderHash.String(), "Voter", vote.Voter.String())
 		}
 	}
 }

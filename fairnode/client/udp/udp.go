@@ -48,7 +48,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		tcpService: tcpService,
 		isRuning:   false,
 		RealAddr:   nil,
-		logger:     logger.New("Geth", "ClientUDP"),
+		logger:     logger.New("fairclient", "UDP"),
 	}
 
 	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
@@ -158,7 +158,7 @@ Exit:
 		}
 	}
 
-	defer u.logger.Info("submitEnode killed")
+	defer u.logger.Debug("submitEnode killed")
 }
 
 func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
@@ -251,5 +251,5 @@ Exit:
 		}
 	}
 
-	defer u.logger.Info("ReceiveOtprn Killed")
+	defer u.logger.Debug("ReceiveOtprn Killed")
 }
