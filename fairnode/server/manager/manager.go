@@ -44,6 +44,11 @@ type FairManager struct {
 }
 
 func New() (*FairManager, error) {
+	handler := log.MultiHandler(
+		log.Must.FileHandler("/var/log/fairnode.json", log.JsonFormat()),
+	)
+	log.Root().SetHandler(handler)
+
 	fm := &FairManager{
 		Epoch:         big.NewInt(backend.DefaultConfig.Epoch),
 		Services:      make(map[string]ServiceFunc),
