@@ -52,7 +52,7 @@ func (fnb *FairNodeDB) Start() error {
 
 	session, err := mgo.Dial(fnb.url)
 	if err != nil {
-		fmt.Println(err)
+		fnb.logger.Error("Mongo DB Dial", "error", err)
 		return MongDBConnectError
 	}
 

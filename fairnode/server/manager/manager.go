@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
@@ -94,7 +93,7 @@ func (fm *FairManager) Start(srvKey *backend.SeverKey) error {
 	fm.srvKey = srvKey
 
 	for name, sev := range fm.Services {
-		fm.logger.Info(fmt.Sprintf("Info[andus] : %s 서비스 시작됨", name))
+		fm.logger.Info("서비스 시작됨", "service", name)
 		if err := sev.Start(); err != nil {
 			return err
 		}
@@ -109,7 +108,7 @@ func (fm *FairManager) Stop() error {
 	fm.mux.Lock()
 	defer fm.mux.Unlock()
 	for name, sev := range fm.Services {
-		fm.logger.Info("Info[andus] : %s 서비스 종료됨", name)
+		fm.logger.Info("서비스 종료됨", "service", name)
 		if err := sev.Stop(); err != nil {
 			return err
 		}

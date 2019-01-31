@@ -131,7 +131,7 @@ func init() {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	if err := app.Run(os.Args); err != nil {
-		log.Warn("App Run", "error", os.Stderr, err)
+		log.Error("App Run", "error", os.Stderr, "error", err)
 		os.Exit(1)
 	}
 }
