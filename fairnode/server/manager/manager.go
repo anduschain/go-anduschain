@@ -46,7 +46,7 @@ type FairManager struct {
 func New() (*FairManager, error) {
 	if !backend.DefaultConfig.Debug {
 		handler := log.MultiHandler(
-			log.Must.FileHandler("/var/log/fairnode.json", log.JsonFormat()),
+			log.Must.FileHandler("./fairnode.json", log.JsonFormat()),
 		)
 		log.Root().SetHandler(handler)
 	}
