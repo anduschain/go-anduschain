@@ -303,6 +303,9 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
+	//자기것은 joinnonce 를 0으로 만든다.
+	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
+	state.ResetJoinNonce(header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 

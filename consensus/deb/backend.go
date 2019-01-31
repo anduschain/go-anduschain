@@ -1,6 +1,7 @@
 package deb
 
 import (
+	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -60,8 +61,18 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 		return err
 	}
 
+	// Ensure the timestamp has the correct delay
+	parent := chain.GetHeader(voteblock.ParentHash(), voteblock.Number().Uint64()-1)
+	if parent == nil {
+		return consensus.ErrUnknownAncestor
+	}
+
+	current, err := chain.StateAt(parent.Root)
+	if err != nil {
+		return err
+	}
 	// join tx check
-	err = c.ValidationBlockWidthJoinTx(chain.Config().ChainID, voteblock)
+	err = c.ValidationBlockWidthJoinTx(chain.Config().ChainID, voteblock, current.GetJoinNonce(voteblock.Coinbase()))
 	if err != nil {
 		return err
 	}
@@ -69,7 +80,7 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 	return nil
 }
 
-func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) error {
+func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, joinNonce uint64) error {
 	signer := types.NewEIP155Signer(chainid)
 	txs := block.Transactions()
 	var datas types2.JoinTxData
@@ -88,8 +99,12 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block) e
 			//내 jointx가 있는지 확인 && otprn
 			if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
 				from, _ := types.Sender(signer, txs[i])
-				if fairutil.CmpAddress(from.String(), c.coinbase.String()) {
-					isMyJoinTx = true
+				if fairutil.CmpAddress(from.String(), block.Header().Coinbase.String()) {
+					if datas.JoinNonce == joinNonce {
+						isMyJoinTx = true
+					} else {
+						return errors.New("JoinNonce 가 다르다")
+					}
 				}
 			}
 		}
