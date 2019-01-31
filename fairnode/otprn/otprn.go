@@ -7,7 +7,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
-	"log"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func New(Cminer uint64) *Otprn {
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
 	if err != nil {
-		log.Println("andus >> rand값 에러", err)
+		log.Error("rand value", "position", "crand.Read", "error", err)
 	}
 
 	// TODO : andus >> otprn 생성 넘버
@@ -50,17 +50,12 @@ func New(Cminer uint64) *Otprn {
 func (otprn *Otprn) SignOtprn(account accounts.Account, hash common.Hash, ks *keystore.KeyStore) ([]byte, error) {
 	sig, err := ks.SignHash(account, hash.Bytes())
 	if err != nil {
-		log.Println("andus >> 블록에 서명 하는 에러 발생 ")
+		log.Error("블록에 서명 에러 발생", "position", "SignOtprn", "error", err)
 		return nil, err
 	}
 
 	return sig, nil
 }
-
-//func (otprn *Otprn) HashOtprn() ( common.Hash, error) {
-//	hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("%v",otprn)))
-//	return hash, nil
-//}
 
 func (otprn *Otprn) HashOtprn() common.Hash {
 	return rlpHash(otprn)
@@ -72,8 +67,3 @@ func rlpHash(x interface{}) (h common.Hash) {
 	hw.Sum(h[:0])
 	return h
 }
-
-// TODO : andus >> 1. OTPRN 생성
-// TODO : andus >> 2. OTPRN Hash
-// TODO : andus >> 3. Fair Node 개인키로 암호화
-// TODO : andus >> 4. OTPRN 값 + 전자서명값 을 전송

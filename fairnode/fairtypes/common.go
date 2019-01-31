@@ -2,11 +2,11 @@ package fairtypes
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 )
@@ -154,7 +154,7 @@ func EncodeBlock(block *types.Block) EncodedBlock {
 	var b bytes.Buffer
 	err := block.EncodeRLP(&b)
 	if err != nil {
-		fmt.Println("-------common.EncodeBlock---------", err)
+		log.Error("common.EncodeBlock", "position", "fairtypes.EncodeBlock", "error", err)
 	}
 	return b.Bytes()
 }
@@ -163,7 +163,7 @@ func DecodeBlock(eb []byte) *types.Block {
 	block := &types.Block{}
 	stream := rlp.NewStream(bytes.NewReader(eb), 0)
 	if err := block.DecodeRLP(stream); err != nil {
-		fmt.Println("-------common.DecodeBlock---------", err)
+		log.Error("common.DecodeBlock", "position", "fairtypes.DecodeBlock", "error", err)
 	}
 
 	return block
@@ -175,7 +175,7 @@ func EncodeReceipts(Receipts []*types.Receipt) []EncodedReceipt {
 		var b bytes.Buffer
 		err := Receipts[i].EncodeRLP(&b)
 		if err != nil {
-			fmt.Println("-------common.EncodeReceipts---------", err)
+			log.Error("common.EncodeReceipts", "position", "fairtypes.EncodeReceipts", err)
 		}
 
 		re = append(re, b.Bytes())
@@ -191,7 +191,7 @@ func DecodeReceipts(enr []EncodedReceipt) []*types.Receipt {
 		stream := rlp.NewStream(bytes.NewReader(enr[i]), 0)
 		err := res.DecodeRLP(stream)
 		if err != nil {
-			fmt.Println("-------common.DecodeReceipts---------", err)
+			log.Error("common.DecodeReceipts", "position", "fairtypes.DecodeReceipts", err)
 		}
 		re = append(re, res)
 	}
