@@ -18,6 +18,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"log"
 	"math/big"
@@ -60,6 +61,7 @@ type FairnodeClient struct {
 	OtprnQueue *queue.Queue
 
 	realAddr *net.UDPAddr
+	logger   logger.Logger
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -80,6 +82,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 		OtprnQueue:         queue.NewQueue(1),
 		UsingOtprn:         nil,
 		realAddr:           nil,
+		logger:             logger.New("Geth", "FairNode Client"),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -114,7 +117,7 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 
 	// Udp Service running
 	for name, serv := range fc.Services {
-		log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+		fc.logger.Info("Service Start", "Service : ", name)
 		err := serv.Start()
 		if err != nil {
 			return err
@@ -141,7 +144,7 @@ func (fc *FairnodeClient) Stop() {
 	//}
 
 	for name, serv := range fc.Services {
-		log.Println(fmt.Sprintf("Info[andus] : %s Stop", name))
+		fc.logger.Info("Stop Service", "Service : ", name)
 		err := serv.Stop()
 		if err != nil {
 			log.Println("Error[andus] : ", err)
@@ -151,7 +154,7 @@ func (fc *FairnodeClient) Stop() {
 	if fc.Coinbase != (common.Address{}) {
 		// 마이너 종료시 계정 Lock
 		if err := fc.keystore.Lock(fc.Coinbase); err != nil {
-			log.Println("Error[andus] : ", err)
+			fc.logger.Error("KeyStoreLock", "error", err)
 		}
 	}
 
@@ -221,7 +224,7 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
-		log.Println("Error[andus] : GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생", err)
+		fc.logger.Error("GetCurrentJoinNonce 상태DB을 읽어오는데 문제 발생", "error", err)
 	}
 
 	return stateDb.GetJoinNonce(fc.Coinbase)
@@ -230,9 +233,8 @@ func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
-	fmt.Println("fc.BlockChain.CurrentHeader().Root.String()  : ", fc.BlockChain.CurrentHeader().Root.String())
 	if err != nil {
-		log.Println("Error[andus] : GetCurrentBalance 상태DB을 읽어오는데 문제 발생", err)
+		fc.logger.Error("GetCurrentBalance 상태DB을 읽어오는데 문제 발생", "error", err)
 	}
 
 	return stateDb.GetBalance(fc.Coinbase)
@@ -241,7 +243,7 @@ func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 func (fc *FairnodeClient) GetCurrentNonce(addr common.Address) uint64 {
 	stateDb, err := fc.BlockChain.StateAt(fc.BlockChain.CurrentHeader().Root)
 	if err != nil {
-		log.Println("Error[andus] : GetCurrentNonce 상태DB을 읽어오는데 문제 발생", err)
+		fc.logger.Error("GetCurrentNonce 상태DB을 읽어오는데 문제 발생", "error", err)
 	}
 
 	return stateDb.GetNonce(addr)

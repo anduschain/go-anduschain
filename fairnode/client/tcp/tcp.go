@@ -11,9 +11,9 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
+	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/rlp"
-	"log"
 	"math/big"
 	"net"
 	"time"
@@ -31,6 +31,7 @@ type Tcp struct {
 	manger   _interface.Client
 	services map[common.Hash]map[string]types.Goroutine
 	IsRuning map[common.Hash]bool
+	logger   logger.Logger
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client) (*Tcp, error) {
@@ -51,6 +52,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:   manger,
 		services: make(map[common.Hash]map[string]types.Goroutine),
 		IsRuning: make(map[common.Hash]bool),
+		logger:   logger.New("Geth", "ClientTCP"),
 	}
 
 	return tcp, nil
@@ -63,7 +65,7 @@ func (t *Tcp) Start(otprnHash common.Hash) error {
 
 	if !t.IsRuning[otprnHash] {
 		for name, serv := range t.services[otprnHash] {
-			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+			t.logger.Info("Service Start", "Service : ", name)
 			go serv.Fn(serv.Exit, otprnHash)
 		}
 		t.IsRuning[otprnHash] = true
@@ -96,12 +98,12 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	defer func() {
 		t.IsRuning[otprnHash] = false
-		fmt.Println("tcpLoop kill")
+		t.logger.Info("TcpLoop Killed")
 	}()
 
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
-		log.Println("Error [andus] : DialTCP 에러", err)
+		t.logger.Error("DialTCP 에러", "error", err)
 		return
 	}
 
@@ -109,7 +111,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	realAddr := t.manger.GetRealAddr()
 	if realAddr == nil {
-		log.Println("Error [andus] : realAddr 에러")
+		t.logger.Error("GetRealAddr 에러", "error", err)
 		return
 	}
 
@@ -131,7 +133,7 @@ Exit:
 	for {
 		select {
 		case err := <-notify:
-			log.Println("Error [andus] : handelMsg 에러", err)
+			t.logger.Error("handelMsg 에러 에러", "error", err)
 			tsp.Close()
 			break Exit
 		case <-exit:
@@ -139,7 +141,7 @@ Exit:
 			break Exit
 		case vote := <-t.manger.VoteBlock():
 			transport.Send(tsp, transport.SendBlockForVote, vote)
-			log.Println(fmt.Printf("Info[andus] block Vote headerHash %s voter %s", vote.HeaderHash.String(), vote.Voter.String()))
+			t.logger.Info("Block Vote", "HeaderHash / voter", vote.HeaderHash.String(), vote.Voter.String())
 		}
 	}
 }
@@ -158,75 +160,61 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	case transport.ResLeagueJoinFalse:
 		// 참여 불가, Dial Close
 		msg.Decode(&str)
-		log.Println("Debug[andus] : ", str)
+		t.logger.Debug("FairNode Msg", str)
 	case transport.MinerLeageStop:
 		// 종료됨
 		msg.Decode(&str)
-		log.Println("Debug[andus] : ", str)
+		t.logger.Debug("FairNode Msg", str)
 	case transport.SendLeageNodeList:
 		// Add peer
 		var nodeList []string
 		msg.Decode(&nodeList)
 		//otprn 교체
 		t.manger.GetStoreOtprnWidthSig()
-		log.Println("Info[andus] : SendLeageNodeList 수신", len(nodeList))
+		t.logger.Info("SendLeageNodeList 수신", len(nodeList))
 		for index := range nodeList {
 			// addPeer 실행
 			node, err := discover.ParseNode(nodeList[index])
 			if err != nil {
-				log.Println("Error[andus] : 노드 url 파싱에러 : ", err)
+				t.logger.Error("노드 URL 파싱에러", "error ", err)
 				continue
-
 			}
 			t.manger.GetP2PServer().AddPeer(node)
 		}
 	case transport.MakeJoinTx:
-		fmt.Println("MakeJoinTx start@@@")
 		// JoinTx 생성
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
 
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
-			fmt.Println("페어노드가준 otprn/ 내가 갖고있는 otrprn ", m.OtprnHash.String(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 			return errors.New("otprn이 다릅니다")
 		}
-
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
-			fmt.Println("페어노드가준 Number/ 내가 갖고있는 Number+1 ", m.Number, t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1)
 			return errors.New("동기화가 맞지 않습니다")
 		}
-
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
 		if err != nil {
-			log.Println("Error[andus] : ", err)
+			t.logger.Error("MakeJoinTx 에러", "error", err)
 			return err
 		}
-		fmt.Println("MakeJoinTx exit")
 	case transport.MakeBlock:
-		fmt.Println("MakeBlock")
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
-			fmt.Println("페어노드가준 otprn/ 내가 갖고있는 otrprn ", m.OtprnHash.String(), leagueOtprnwithsig.Otprn.HashOtprn().String())
 			return errors.New("otprn이 다릅니다")
 		}
-
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
-			fmt.Println("페어노드가준 Number/ 내가 갖고있는 Number+1 ", m.Number, t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1)
 			return errors.New("동기화가 맞지 않습니다")
 		}
-
 		t.manger.SetBlockMine(true)
-
-		fmt.Println("-------- 블록 생성 tcp -------", m.OtprnHash.String())
+		t.logger.Info("----블록생성 TCP----")
 		t.manger.BlockMakeStart() <- struct{}{}
 
-		fmt.Println("MakeBlock exit")
 	case transport.SendFinalBlock:
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
 		fb := tsFb.GetFinalBlock()
-		log.Println("----파이널 블록 수신됨----", tsFb.GetFinalBlock().Block.Coinbase().String())
+		t.logger.Info("----파이널블록 수신 ----", "Block의 코인베이스", tsFb.GetFinalBlock().Block.Coinbase().String())
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		var otprnhash common.Hash
@@ -282,11 +270,9 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		}
 		joinTxData, err := rlp.EncodeToBytes(&data)
 		if err != nil {
-			log.Println("Error[andus] : EncodeToBytes", err)
+			t.logger.Error("EncodeToBytes Error", "error", err)
 		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
-
-		fmt.Println("currentjoinnonce  : ", currentJoinNonce, t.manger.GetCoinbase().String())
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(

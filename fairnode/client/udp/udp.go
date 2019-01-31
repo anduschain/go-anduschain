@@ -1,7 +1,6 @@
 package udp
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
@@ -10,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
+	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"log"
 	"net"
@@ -25,6 +25,7 @@ type Udp struct {
 	isRuning   bool
 	nat        nat.Interface
 	RealAddr   *net.UDPAddr
+	logger     logger.Logger
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client, tcpService *tcp.Tcp) (*Udp, error) {
@@ -47,6 +48,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		tcpService: tcpService,
 		isRuning:   false,
 		RealAddr:   nil,
+		logger:     logger.New("Geth", "ClientUDP"),
 	}
 
 	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
@@ -64,7 +66,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 func (u *Udp) Start() error {
 	if !u.isRuning {
 		for name, serv := range u.services {
-			log.Println(fmt.Sprintf("Info[andus] : %s Running", name))
+			u.logger.Info("Service Start", "Service : ", name)
 			go serv.Fn(serv.Exit, nil)
 		}
 
@@ -111,7 +113,7 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- start --
 	Conn, err := net.DialUDP("udp", nil, u.SAddrUDP)
 	if err != nil {
-		log.Println("Error[andus] : UDPtoFairNode, DialUDP", err)
+		u.logger.Error("Dial", "error", err)
 	}
 
 	defer Conn.Close()
@@ -144,11 +146,10 @@ Exit:
 					} else {
 						ts.IP = u.manger.GetP2PServer().NodeInfo().IP
 					}
-
-					log.Println("Info[andus] : Enode 전송")
+					u.logger.Info("Enode 전송")
 					err = transport.SendUDP(transport.SendEnode, ts, Conn)
 					if err != nil {
-						log.Println("Error transport.SendUDP", err)
+						u.logger.Error("transport.SendUDP", "error", err)
 					}
 				}
 			}
@@ -157,7 +158,7 @@ Exit:
 		}
 	}
 
-	defer log.Println("submitEnode kill")
+	defer u.logger.Info("submitEnode killed")
 }
 
 func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
@@ -166,7 +167,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 	localServerConn, err := net.ListenUDP("udp", u.LAddrUDP)
 	if err != nil {
-		log.Println("Udp Server", err)
+		u.logger.Error("ListenUDP", "error", err)
 	}
 
 	u.RealAddr = u.NatStart(localServerConn)
@@ -193,12 +194,12 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 				case transport.SendOTPRN:
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
-					log.Println("Debug : OTPRN 수신됨", tsOtprn.Hash.String())
+					u.logger.Info("OTPRN 수신됨", "otprnhash", tsOtprn.Hash.String())
 
 					//TODO : andus >> 2. OTRRN 검증
 					fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)
 					if err != nil {
-						log.Println("andus >> OTPRN 공개키 로드 에러")
+						u.logger.Error("OTPRN 공개키 로드 에러", "error", err)
 					}
 
 					if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Sig[:64]) {
@@ -210,30 +211,25 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 							if !u.manger.GetBlockMine() {
 								//큐에 있는 이전 otprn을 없애기
-								fmt.Println("SendOTPRN")
+								u.logger.Info("SendOTPRN")
 								u.manger.GetStoreOtprnWidthSig()
 							}
 							//TODO : andus >> 3. 참여여부 확인
 							if ok := fairutil.IsJoinOK(&tsOtprn.Otp, u.manger.GetCoinbase()); ok {
 								//TODO : andus >> 참가 가능할 때 처리
 								//TODO : andus >> 6. TCP 연결 채널에 메세지 보내기
-
-								log.Println("Debug[andus] : 참여대상이 맞음")
-
+								u.logger.Debug("참여대상이 맞음")
 								u.tcpService.Start(otprnHash)
-
 							} else {
-								log.Println("Debug[andus] : 참여대상이 아님")
+								u.logger.Debug("참여대상이 아님")
 							}
-
 						} else {
 							// TODO: andus >> 검증실패..
-							log.Println("Debug[andus] : OTPRN 검증 실패")
+							u.logger.Debug("OTPRN 검증 실패")
 
 						}
 					} else {
 						// TODO: andus >> 서명 검증실패..
-						log.Println("Debug[andus] : OTPRN 공개키 검증 실패")
 					}
 				}
 			}
@@ -245,7 +241,7 @@ Exit:
 		select {
 		case err := <-notify:
 			if _, ok := err.(*net.OpError); ok {
-				log.Println("Debug[andus] : udp connection dropped message", err)
+				u.logger.Debug("udp connection dropped message", "error", err)
 				break Exit
 			}
 		case <-time.After(time.Second * 1):
@@ -255,5 +251,5 @@ Exit:
 		}
 	}
 
-	defer log.Println("receiveOtprn kill")
+	defer u.logger.Info("ReceiveOtprn Killed")
 }
