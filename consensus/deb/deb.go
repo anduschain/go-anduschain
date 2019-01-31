@@ -95,6 +95,7 @@ type Deb struct {
 	coinbase  common.Address
 	chans     fairtypes.Channals
 	client    client
+	logger    log.Logger
 }
 
 // New creates a Clique proof-of-deb consensus engine with the initial
@@ -103,6 +104,7 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	deb := &Deb{
 		config: config,
 		db:     db,
+		logger: log.New("consensus", "Deb"),
 	}
 
 	return deb
@@ -233,7 +235,7 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 // uncles as this consensus mechanism doesn't permit uncles.
 func (c *Deb) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
 	if len(block.Uncles()) > 0 {
-		return errors.New("andus >> uncles not allowed")
+		return errors.New("uncles not allowed")
 	}
 	return nil
 }
@@ -276,7 +278,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	current, err := chain.StateAt(parent.Root)
 	if err != nil {
-		log.Error("Prepare State Error", err)
+		c.logger.Error("Prepare State", "error", err)
 		return errGetState
 	}
 
@@ -332,7 +334,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 			return
 		case results <- block.WithSeal(header):
 		default:
-			log.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
+			c.logger.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
 		}
 
 	}()

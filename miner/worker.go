@@ -19,15 +19,10 @@ package miner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -652,8 +647,7 @@ func (w *worker) resultLoop() {
 			// AndusChain check fairnode signature
 			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
 			if err != nil {
-				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				fmt.Println("err : ", err)
+				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
 				continue
 			}
 
@@ -708,39 +702,8 @@ func (w *worker) resultLoop() {
 			// Insert the block into the set of pending ones to resultLoop for confirmations
 			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
-			//Block Coinbase Reset JoinNonce
-			//finalState, err := w.chain.StateAt(block.Root())
-			//if err != nil {
-			//	log.Error("Worker result finalState Error", "err", err)
-			//}
-			//fmt.Println("리셋전 finalstats  : ", block.Root().String())
-			//
-			//w.resetJoinNonce(block, finalState)
-
 		case <-w.exitCh:
 			return
-		}
-	}
-}
-
-func (w *worker) resetJoinNonce(block *types.Block, state *state.StateDB) {
-	for _, tx := range block.Transactions() {
-		if fairutil.CmpAddress(tx.To().String(), config.FAIRNODE_ADDRESS) {
-			var join types2.JoinTxData
-			err := rlp.DecodeBytes(tx.Data(), &join)
-			if err != nil {
-				fmt.Println("err!!!!!", err)
-				continue
-			}
-			from, err := types.Sender(types.NewEIP155Signer(w.config.ChainID), tx)
-			if err != nil {
-				log.Error("Get Sender Error", "err", err)
-			}
-
-			if join.NextBlockNum == block.Number().Uint64() && block.Header().Coinbase == from {
-				state.ResetJoinNonce(from)
-				fmt.Println("reset jonin nonce ----------->", from.String())
-			}
 		}
 	}
 }

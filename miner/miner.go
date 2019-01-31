@@ -116,7 +116,7 @@ func (self *Miner) update() {
 }
 
 func (self *Miner) Start(coinbase common.Address) {
-	fmt.Println("------------------------------Miner.Start-------------")
+	log.Debug("Miner.Start")
 	atomic.StoreInt32(&self.shouldStart, 1)
 	self.SetEtherbase(coinbase)
 
@@ -176,7 +176,6 @@ func (self *Miner) PendingBlock() *types.Block {
 }
 
 func (self *Miner) SetEtherbase(addr common.Address) {
-	fmt.Println("andus >> SetEtherbase 실행함")
 	self.coinbase = addr
 	self.worker.setEtherbase(addr)
 }
