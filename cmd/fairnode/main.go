@@ -52,7 +52,7 @@ func init() {
 		},
 		cli.StringFlag{
 			Name:  "nat",
-			Value: "any",
+			Value: "none",
 			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
 		},
 		cli.Int64Flag{
@@ -64,6 +64,10 @@ func init() {
 			Name:  "epoch",
 			Value: 100,
 			Usage: "default chainid is 100",
+		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "default is false",
 		},
 	}
 

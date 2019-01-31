@@ -25,6 +25,7 @@ type Config struct {
 	NAT     string
 	ChainID int64
 	Epoch   int64
+	Debug   bool
 }
 
 var DefaultConfig = Config{
@@ -36,9 +37,10 @@ var DefaultConfig = Config{
 	KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
 	Port:    "60002",
-	NAT:     "any",
+	NAT:     "none",
 	ChainID: 1,
 	Epoch:   100,
+	Debug:   false,
 }
 
 func init() {
@@ -64,6 +66,8 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.NAT = ctx.GlobalString("nat")
 	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
 	DefaultConfig.Epoch = ctx.GlobalInt64("epoch")
+
+	DefaultConfig.Debug = ctx.GlobalBool("debug")
 
 	DefaultConfig.KeyPass = keypass
 	DefaultConfig.DBpass = dbpass
