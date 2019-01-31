@@ -4,7 +4,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
-	"log"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"sync"
 )
 
@@ -88,7 +88,7 @@ func (l *LeaguePool) GetNode(h common.Hash, addr common.Address) *Node {
 }
 
 func (l *LeaguePool) loop() {
-	defer log.Println("Info[andus] LeaguePool Kill")
+	defer log.Debug("LeaguePool Kill", "leaguePool")
 
 Exit:
 	for {

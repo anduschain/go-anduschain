@@ -3,10 +3,9 @@ package transport
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/anduschain/go-anduschain/rlp"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"io"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -54,7 +53,7 @@ func (t *Tsp) Close() {
 	defer t.wmu.Unlock()
 	err := t.fd.Close()
 	if err != nil {
-		fmt.Println("Close 가 안되었다", err)
+		log.Error("transport.Close", "error", err)
 	}
 }
 
@@ -74,11 +73,11 @@ type MsgReadWriter interface {
 func Send(w MsgWriter, code uint32, data interface{}) error {
 	m, err := MakeTsMsg(code, data)
 	if err != nil {
-		log.Println("Error[andus] : ", err)
+		log.Error("transport.Send > MakeTsMsg", "error", err)
 	}
 	err = w.WriteMsg(m)
 	if err != nil {
-		log.Println("Error transport.SendTCP", err)
+		log.Error("transport.Send > WriteMsg", "error", err)
 		return err
 	}
 

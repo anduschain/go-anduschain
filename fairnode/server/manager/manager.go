@@ -12,7 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/fairudp"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
-	"github.com/anduschain/go-anduschain/log"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"math/big"
 	"sync"
 )
@@ -110,7 +110,6 @@ func (fm *FairManager) Stop() error {
 	defer fm.mux.Unlock()
 	for name, sev := range fm.Services {
 		fm.logger.Info("Info[andus] : %s 서비스 종료됨", name)
-
 		if err := sev.Stop(); err != nil {
 			return err
 		}
@@ -183,13 +182,13 @@ func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 			if node := fm.leaguePool.GetNode(otprnHash, req.Addr); node != nil {
 				msg, err := transport.MakeTsMsg(transport.RequestWinningBlock, req.BlockHash)
 				if err != nil {
-					fm.logger.Info("Info[andus] : RequestWinningBlock", err)
+					fm.logger.Error("RequestWinningBlock", "error", err)
 					continue
 				}
 
 				err = node.Conn.WriteMsg(msg)
 				if err != nil {
-					fm.logger.Info("Info[andus] : RequestWinningBlock SendMessage", err)
+					fm.logger.Error("RequestWinningBlock SendMessage", "error", err)
 					continue
 				}
 			}

@@ -9,7 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"log"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"net"
 	"time"
 )
@@ -29,7 +29,7 @@ type FairTcp struct {
 	services     map[string]backend.Goroutine
 	sendLeagueCh chan struct{}
 	leaguePool   *pool.LeaguePool
-	//makeJoinTxCh chan struct{}
+	logger       log.Logger
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
@@ -53,7 +53,7 @@ func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
 		services:     make(map[string]backend.Goroutine),
 		sendLeagueCh: make(chan struct{}),
 		leaguePool:   fm.GetLeaguePool(),
-		//makeJoinTxCh: make(chan struct{}),
+		logger:       log.New("fairnode", "tcp"),
 	}
 
 	ft.services["accepter"] = backend.Goroutine{ft.accepter, make(chan struct{}, 1)}
@@ -81,7 +81,7 @@ func (ft *FairTcp) Start() error {
 	}
 
 	for name, srv := range ft.services {
-		log.Printf("Info[andus] : TCP 서비스 %s 실행됨", name)
+		ft.logger.Info("TCP 서비스 실행됨", "service", name)
 		go srv.Fn(srv.Exit)
 	}
 
@@ -105,7 +105,7 @@ func (ft *FairTcp) Stop() error {
 }
 
 func (ft *FairTcp) accepter(exit chan struct{}) {
-	defer log.Println("Info[andus] : tcp accepter kill")
+	defer ft.logger.Debug("tcp accepter kill")
 
 	notify := make(chan error)
 	accept := make(chan net.Conn)
@@ -127,9 +127,9 @@ Exit:
 		case <-exit:
 			break Exit
 		case err := <-notify:
-			log.Println("Error[andus] : ", err)
+			ft.logger.Error("accepter", "error", err)
 		case conn := <-accept:
-			log.Println("Info[andus] : tcp 접속 함")
+			ft.logger.Info("tcp 접속 함")
 			go func() {
 				rwtsp := transport.New(conn)
 				otprn := ft.manager.GetUsingOtprn()
@@ -139,7 +139,7 @@ Exit:
 
 				for {
 					if err := ft.handelMsg(rwtsp, otprn.HashOtprn()); err != nil {
-						log.Println("Error [andus] : handelMsg 에러", err)
+						ft.logger.Error("handelMsg", "error", err)
 						rwtsp.Close()
 						return
 					}
@@ -173,22 +173,18 @@ func (ft *FairTcp) StartLeague(leagueChange bool) {
 					}
 
 					if ticker >= 10 {
-						log.Println("OTPRN 재발행")
+						ft.logger.Debug("OTPRN 재발행")
 						ft.manager.GetReSendOtprn() <- otprn.HashOtprn()
 						return
 					}
 				}
 			}
 		}()
-
-		//go ft.sendLeague(otprn.HashOtprn())
-		//go ft.leagueControlle(otprn.HashOtprn())
-
 	}
 }
 
 func (ft *FairTcp) StopLeague(otprnHash common.Hash) {
-	fmt.Println("League Stop / 재시작")
+	ft.logger.Debug("League Stop / 재시작")
 	ft.sendTcpAll(otprnHash, transport.FinishLeague, otprnHash)
 	ft.StartLeague(true)
 }

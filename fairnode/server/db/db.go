@@ -6,9 +6,9 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"log"
 	"math/big"
 	"net"
 	"time"
@@ -24,6 +24,7 @@ type FairNodeDB struct {
 	OtprnList     *mgo.Collection
 	BlockChain    *mgo.Collection
 	signer        types.Signer
+	logger        log.Logger
 }
 
 var (
@@ -33,6 +34,8 @@ var (
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
 func New(dbhost string, dbport string, pwd string, user string, signer types.Signer) (*FairNodeDB, error) {
 	var fnb FairNodeDB
+
+	fnb.logger = log.New("fairnode", "mongodb")
 
 	if user != "" {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, dbhost, dbport, DBNAME)
@@ -78,7 +81,7 @@ func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, cli
 	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport}
 
 	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
-		log.Println("Error[DB] : SaveActiveNode ", err)
+		fnb.logger.Warn("SaveActiveNode ", "error", err)
 	}
 }
 
@@ -86,10 +89,10 @@ func (fnb *FairNodeDB) GetActiveNodeNum() int {
 
 	num, err := fnb.ActiveNodeCol.Find(nil).Count()
 	if err != nil {
-		log.Println("Error[DB] : GetActiveNodeNum err : ", err)
+		fnb.logger.Warn("GetActiveNodeNum", "error", err)
 	}
 	// TODO : andus >> DB에서 Active node 갯수 조회
-	log.Println("Info[DB] :Db.GetActiveNodeNum -> ", num)
+	fnb.logger.Debug("GetActiveNodeNum", "nodeCount", num)
 
 	return num
 }
@@ -109,7 +112,7 @@ func (fnb *FairNodeDB) JobCheckActiveNode() {
 		if now.Sub(activelist[index].Time) >= (3 * time.Minute) {
 			err := fnb.ActiveNodeCol.RemoveId(activelist[index].EnodeId)
 			if err != nil {
-				log.Println("Error[DB] : Remove enode err : ", err)
+				fnb.logger.Warn("Remove enode", "error", err)
 			}
 		}
 	}
@@ -121,7 +124,7 @@ func (fnb *FairNodeDB) CheckEnodeAndCoinbse(enodeId string, coinbase string) boo
 	var actnode activeNode
 	err := fnb.ActiveNodeCol.FindId(enodeId).One(&actnode)
 	if err != nil {
-		log.Println("Error[DB] : CheckEnodeAndCoinbse find one err : ", err)
+		fnb.logger.Warn("CheckEnodeAndCoinbse find one", "error", err)
 	}
 	if actnode.EnodeId == "" {
 		return false
@@ -138,14 +141,14 @@ func (fnb *FairNodeDB) SaveMinerNode(otprnHash string, enode string) {
 	m := minerNode{Otprnhash: otprnHash, Nodes: []string{enode}, Timestamp: time.Now()}
 	_, err := fnb.MinerNode.UpsertId(m.Otprnhash, bson.M{"$push": bson.M{"nodes": enode}, "$set": bson.M{"timestamp": m.Timestamp}})
 	if err != nil {
-		log.Println("Error[DB] : MinerNodeInsert err : ", err)
+		fnb.logger.Warn("MinerNodeInsert", "error", err)
 	}
 }
 
 func (fnb *FairNodeDB) SaveOtprn(tsotprn fairtypes.TransferOtprn) {
 	err := fnb.OtprnList.Insert(&saveotprn{OtprnHash: tsotprn.Hash.String(), TsOtprn: tsotprn})
 	if err != nil {
-		log.Println("Error[DB] : saveotprn err : ", err)
+		fnb.logger.Warn("saveotprn", "error", err)
 	}
 }
 
@@ -153,7 +156,7 @@ func (fnb *FairNodeDB) GetMinerNode(otprnHash string) []string {
 	var minerlist minerNode
 	err := fnb.MinerNode.FindId(otprnHash).One(&minerlist)
 	if err != nil {
-		log.Println("Error[DB] : GetMinerNode", err)
+		fnb.logger.Warn("GetMinerNode", "error", err)
 	}
 
 	return minerlist.Nodes
@@ -163,7 +166,7 @@ func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
 	var minerlist minerNode
 	err := fnb.MinerNode.FindId(otprnHash).One(&minerlist)
 	if err != nil {
-		log.Println("Error[DB] : GetMinerNodeNum", err)
+		fnb.logger.Warn("GetMinerNodeNum", "error", err)
 		return 0
 	}
 	return uint64(len(minerlist.Nodes))
@@ -175,7 +178,7 @@ func (fnb *FairNodeDB) GetCurrentBlock() *big.Int {
 
 	err := fnb.BlockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(&sBlock)
 	if err != nil {
-		log.Println("Error[DB] : GetCurrentBlock", err)
+		fnb.logger.Warn("GetCurrentBlock", "error", err)
 	}
 
 	if sBlock == nil {
@@ -231,7 +234,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 
 	err := fnb.BlockChain.Insert(b)
 	if err != nil {
-		log.Println("Error[DB] : SaveFianlBlock", err)
+		fnb.logger.Warn("SaveFianlBlock", "error", err)
 	}
 
 }

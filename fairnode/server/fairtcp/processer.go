@@ -1,7 +1,6 @@
 package fairtcp
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
@@ -11,7 +10,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
-	"log"
 	"time"
 )
 
@@ -31,7 +29,7 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 			_, num, enodes := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
 			// 가능한 사람의 30%이상일때 접속할 채굴 리그를 전송해줌
 			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
-				log.Println("-------리그 전송---------")
+				fu.logger.Info("리그 전송", "리그 참여자 수", num)
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
 				time.Sleep(3 * time.Second)
 				fu.manager.GetMakeJoinTxCh() <- struct{}{}
@@ -47,8 +45,8 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 }
 
 func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
-	fmt.Println("leagueControlle Start", otprnHash.String())
-	defer fmt.Println("leagueControlle kill ", otprnHash.String())
+	fu.logger.Debug("leagueControlle Start", "otprnhash", otprnHash.String())
+	defer fu.logger.Debug("leagueControlle kill ", "otprnhash", otprnHash.String())
 
 	if fu.manager.GetUsingOtprn().HashOtprn() != otprnHash {
 		return
@@ -57,12 +55,12 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 	for {
 		select {
 		case <-fu.manager.GetMakeJoinTxCh():
-			log.Println("-------조인 tx 생성--------")
+			fu.logger.Debug("조인 tx 생성", "otprnhash", otprnHash.String(), "blockNum", fu.manager.GetLastBlockNum().Uint64()+1)
 			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 			// 브로드케스팅 5초
 			time.AfterFunc(time.Second, func() {
 
-				log.Println("-------블록 생성--------", otprnHash.String(), fu.manager.GetLastBlockNum().Uint64()+1)
+				fu.logger.Debug("블록 생성", "otprnhash", otprnHash.String(), "blockNum", fu.manager.GetLastBlockNum().Uint64()+1)
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 
 				// peer list 전송후 20초
@@ -94,8 +92,8 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 }
 
 func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
-	log.Println("sendFinalBlock Start", otprnHash.String())
-	defer log.Println("sendFinalBlock kill ", otprnHash.String())
+	fu.logger.Debug("sendFinalBlock Start", "otprnhash", otprnHash.String())
+	defer fu.logger.Debug("sendFinalBlock kill ", "otprnhash", otprnHash.String())
 
 	if fu.manager.GetUsingOtprn().HashOtprn() != otprnHash {
 		return
@@ -131,7 +129,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 		case n := <-notify:
 			if n != nil {
 				fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
-				log.Println("----파이널 블록 전송-----", n.Block.NumberU64(), n.Block.Coinbase().String())
+				fu.logger.Debug("파이널 블록 전송", "blockNum", n.Block.NumberU64(), "miner", n.Block.Coinbase().String())
 
 				// DB에 블록 저장
 				votePool.SnapShot <- n.Block
@@ -141,7 +139,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
 				return
 			} else {
-				log.Println("----파이널 블록 전송 시간 초과로 인한 리그 교체--------")
+				fu.logger.Warn("파이널 블록 전송 시간 초과로 인한 리그 교체")
 				fu.manager.GetStopLeagueCh() <- struct{}{}
 				return
 			}
@@ -184,7 +182,10 @@ func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool)
 		return nil
 	} else if len(voteBlocks) == 1 {
 		fb.Block = voteBlocks[0].Block
-		SignFairNode(fb.Block, voteBlocks[0].Voter, acc.ServerAcc, acc.KeyStore)
+		err := SignFairNode(fb.Block, voteBlocks[0].Voter, acc.ServerAcc, acc.KeyStore)
+		if err != nil {
+			fu.logger.Error("SignFairNode 서명에러", "error", err)
+		}
 	} else {
 		var cnt uint64 = 0
 		var pv vB
@@ -238,18 +239,23 @@ func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool)
 			}
 		}
 
-		SignFairNode(fb.Block, pv.Voter, acc.ServerAcc, acc.KeyStore)
+		err := SignFairNode(fb.Block, pv.Voter, acc.ServerAcc, acc.KeyStore)
+		if err != nil {
+			fu.logger.Error("SignFairNode 서명에러", "error", err)
+		}
 	}
 
 	return fb
 }
 
-func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) {
+func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) error {
 	sig, err := ks.SignHash(account, block.Hash().Bytes())
 	if err != nil {
-		log.Println("Error[andus] : SignFairNode 서명에러", err)
+		return err
 	}
 
 	block.Voter = vBlock.Voters
 	block.FairNodeSig = sig
+
+	return nil
 }

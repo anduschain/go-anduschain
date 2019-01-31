@@ -104,7 +104,7 @@ func (fu *FairUdp) Start() error {
 	}
 
 	for name, srv := range fu.services {
-		fu.logger.Info(fmt.Sprintf("Info[andus] : UDP 서비스 %s 실행됨", name))
+		fu.logger.Info(fmt.Sprintf("UDP 서비스 %s 실행됨", name))
 		go srv.Fn(srv.Exit)
 	}
 
@@ -129,7 +129,7 @@ func (fu *FairUdp) Stop() error {
 // Geth node Heart beat update ( Active node 관리 )
 // enode값 수신
 func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
-	defer fu.logger.Warn("manageActiveNode kill", "manageActiveNode")
+	defer fu.logger.Debug("manageActiveNode kill")
 	notify := make(chan error)
 	go func() {
 		buf := make([]byte, 4096)
@@ -169,7 +169,7 @@ Exit:
 		select {
 		case err := <-notify:
 			if io.EOF == err {
-				fmt.Println("udp connection dropped message", err)
+				fu.logger.Error("udp connection dropped message", "manageActiveNode", err)
 				return
 			}
 		case <-exit:
@@ -181,7 +181,7 @@ Exit:
 
 //UDP로 받은 ActiveNode의 마지막 수신 시간을 확인하여 3분이 지나갔을시 DB에서 삭제
 func (fu *FairUdp) JobActiveNode(exit chan struct{}) {
-	defer fu.logger.Info("Info[andus] : JobActiveNode kill")
+	defer fu.logger.Debug("JobActiveNode kill")
 	t := time.NewTicker(3 * time.Minute)
 Exit:
 	for {
@@ -198,7 +198,7 @@ Exit:
 // OTPRN을 발행
 // OTPRN 발행조건, 활성 노드수가 MinActiveNum 이상일때, 블록 번호가 에폭의 반 이상일때 % == 0
 func (fu *FairUdp) manageOtprn(exit chan struct{}) {
-	defer fu.logger.Info("Info[andus] : manageOtprn kill")
+	defer fu.logger.Debug("manageOtprn kill")
 	t := time.NewTicker(3 * time.Second)
 
 	sendOtprn := func(leaguechange bool) {
@@ -207,7 +207,7 @@ func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 			// OTPRN 생성
 			tsOtp, err := fu.makeOTPRN(uint64(actNum))
 			if err != nil {
-				fu.logger.Crit("Error Fatal [OTPRN] : ", err)
+				fu.logger.Error("make otprn", "manageOtprn", err)
 			}
 			// 리그 전송 tcp
 			fu.manager.StoreOtprn(&tsOtp.Otp) // otprn push
@@ -284,17 +284,17 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 		url := activeNodeList[index].Ip + ":" + activeNodeList[index].Port
 		ServerAddr, err := net.ResolveUDPAddr("udp", url)
 		if err != nil {
-			fu.logger.Info("ResolveUDPAddr", err)
+			fu.logger.Error("ResolveUDPAddr", "error", err)
 			continue
 		}
 		Conn, err := net.DialUDP("udp", nil, ServerAddr)
 		if err != nil {
-			fu.logger.Info("DialUDP", err)
+			fu.logger.Error("DialUDP", "error", err)
 			continue
 		}
 		err = transport.SendUDP(msgcode, data, Conn)
 		if err != nil {
-			fu.logger.Info("Error transport.SendUDP", err)
+			fu.logger.Error("transport.SendUDP", "error", err)
 		}
 		Conn.Close()
 	}

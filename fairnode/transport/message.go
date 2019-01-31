@@ -2,7 +2,7 @@ package transport
 
 import (
 	"bytes"
-	"fmt"
+	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"io/ioutil"
@@ -60,19 +60,20 @@ func (m *TsMsg) Discard() error {
 func SendUDP(msgcode uint32, data interface{}, conn net.Conn) error {
 	msg, err := MakeTsMsg(msgcode, data)
 	if err != nil {
-		fmt.Println("message", err)
+		log.Error("transport.SendUDP > MakeTsMsg", "error", err)
 		return err
 	}
 
 	byteMsg, err := msg.EncodeToByte()
 	if err != nil {
+		log.Error("transport.SendUDP > EncodeToByte", "error", err)
 		return err
 	}
 
 	if _, err := conn.Write(byteMsg); err == nil {
 		return nil
 	} else {
-		fmt.Println("message send", err)
+		log.Error("transport.SendUDP > Write", "error", err)
 		return err
 	}
 }
@@ -91,7 +92,7 @@ func MakeTsMsg(msgcode uint32, data interface{}) (*TsMsg, error) {
 	var b bytes.Buffer
 	err := rlp.Encode(&b, data)
 	if err != nil {
-		fmt.Println("EncodeToBytes 에러", err)
+		log.Error("transport.MakeTsMsg > Encode", "error", err)
 		return nil, err
 	}
 
