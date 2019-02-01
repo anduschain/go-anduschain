@@ -134,23 +134,26 @@ Exit:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 10초단위)
 			// TODO : andus >> enode Sender -- start --
 			if u.RealAddr != nil {
-				if !u.RealAddr.IP.Equal(u.LAddrUDP.IP) {
-					ts := fairtypes.EnodeCoinbase{
-						Enode:    u.manger.GetP2PServer().NodeInfo().ID,
-						Coinbase: u.manger.GetCoinbase(),
-						Port:     config.DefaultConfig.ClientPort,
-					}
+				ts := fairtypes.EnodeCoinbase{
+					Enode:    u.manger.GetP2PServer().NodeInfo().ID,
+					Coinbase: u.manger.GetCoinbase(),
+					Port:     config.DefaultConfig.ClientPort,
+				}
 
-					if u.manger.GetP2PServer().NoDiscovery {
+				if u.manger.GetP2PServer().NoDiscovery {
+					if !u.RealAddr.IP.Equal(net.IPv4zero) {
 						ts.IP = u.RealAddr.IP.String()
 					} else {
-						ts.IP = u.manger.GetP2PServer().NodeInfo().IP
+						continue
 					}
-					u.logger.Info("Enode 전송")
-					err = transport.SendUDP(transport.SendEnode, ts, Conn)
-					if err != nil {
-						u.logger.Error("transport.SendUDP", "error", err)
-					}
+				} else {
+					ts.IP = u.manger.GetP2PServer().NodeInfo().IP
+				}
+
+				u.logger.Info("Enode 전송", "enode", u.manger.GetP2PServer().NodeInfo().Enode)
+				err = transport.SendUDP(transport.SendEnode, ts, Conn)
+				if err != nil {
+					u.logger.Error("transport.SendUDP", "error", err)
 				}
 			}
 		case <-exit:
