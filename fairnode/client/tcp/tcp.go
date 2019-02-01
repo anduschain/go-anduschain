@@ -171,7 +171,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		msg.Decode(&nodeList)
 		//otprn 교체
 		t.manger.GetStoreOtprnWidthSig()
-		t.logger.Info("SendLeageNodeList 수신", len(nodeList))
+		t.logger.Info("SendLeageNodeList", "leagueCount", len(nodeList))
 		for index := range nodeList {
 			// addPeer 실행
 			node, err := discover.ParseNode(nodeList[index])
@@ -179,7 +179,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 				t.logger.Error("노드 URL 파싱에러", "error ", err)
 				continue
 			}
-			t.logger.Info("enode : ", nodeList[index])
+			t.logger.Debug("addPeer", "enode", nodeList[index])
 			t.manger.GetP2PServer().AddPeer(node)
 		}
 	case transport.MakeJoinTx:
@@ -195,7 +195,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		}
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
 		if err != nil {
-			t.logger.Error("MakeJoinTx 에러", "error", err)
+			t.logger.Error("MakeJoinTx", "error", err)
 			return err
 		}
 	case transport.MakeBlock:
@@ -208,14 +208,14 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			return errors.New("동기화가 맞지 않습니다")
 		}
 		t.manger.SetBlockMine(true)
-		t.logger.Info("----블록생성 TCP----")
+		t.logger.Info("블록 생성", "blockNum", m.Number, "otprnHash", m.OtprnHash.String())
 		t.manger.BlockMakeStart() <- struct{}{}
 
 	case transport.SendFinalBlock:
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
 		fb := tsFb.GetFinalBlock()
-		t.logger.Info("----파이널블록 수신 ----", "Block의 코인베이스", tsFb.GetFinalBlock().Block.Coinbase().String())
+		t.logger.Info("파이널블록 수신", "blockNum", fb.Block.Number().String(), "miner", fb.Block.Coinbase().String(), "voteCount", len(fb.Block.Voter))
 		t.manger.FinalBlock() <- *fb
 	case transport.FinishLeague:
 		var otprnhash common.Hash
@@ -271,7 +271,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		}
 		joinTxData, err := rlp.EncodeToBytes(&data)
 		if err != nil {
-			t.logger.Error("EncodeToBytes Error", "error", err)
+			t.logger.Error("makeJoinTx EncodeToBytes", "error", err)
 		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
@@ -282,9 +282,16 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		if err != nil {
 			return errorMakeJoinTx
 		}
+		t.logger.Info("joinTx생성", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash().String())
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddRemote(tx); err != nil {
 			return errorAddTxPool
+		}
+
+		t.logger.Debug("Current Peer", "count", t.manger.GetP2PServer().PeerCount())
+		for i := range t.manger.GetP2PServer().Peers() {
+			peer := t.manger.GetP2PServer().Peers()[i]
+			t.logger.Debug("Current Peer", "peer", peer.String())
 		}
 	} else {
 		// 잔액이 부족한 경우
