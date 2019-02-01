@@ -179,6 +179,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 				t.logger.Error("노드 URL 파싱에러", "error ", err)
 				continue
 			}
+			t.logger.Info("enode : ", nodeList[index])
 			t.manger.GetP2PServer().AddPeer(node)
 		}
 	case transport.MakeJoinTx:

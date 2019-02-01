@@ -1281,13 +1281,14 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 			return les.New(ctx, cfg)
 		})
 	} else {
-		fmt.Println("andus >> RegisterEthService")
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 			fullNode, err := eth.New(ctx, cfg)
 			if fullNode != nil && cfg.LightServ > 0 {
 				ls, _ := les.NewLesServer(fullNode, cfg)
 				fullNode.AddLesServer(ls)
 			}
+
+			log.Info("enode ", fullNode.Serv.NodeInfo().Enode)
 			return fullNode, err
 		})
 	}
