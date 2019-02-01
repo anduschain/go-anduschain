@@ -1287,8 +1287,6 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 				ls, _ := les.NewLesServer(fullNode, cfg)
 				fullNode.AddLesServer(ls)
 			}
-
-			log.Info("enode ", fullNode.Serv.NodeInfo().Enode)
 			return fullNode, err
 		})
 	}
