@@ -665,7 +665,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 
-		log.Debug("전파 불록 도착(NewBlockMsg)", "miner", request.Block.Coinbase().String())
+		log.Debug("NewBlockMsg", "blockNum", request.Block.Number().String(), "miner", request.Block.Coinbase().String(), "voterCount", len(request.Block.Voter))
 
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
