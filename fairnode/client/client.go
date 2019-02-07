@@ -102,7 +102,7 @@ func (fc *FairnodeClient) GetRealAddr() *net.UDPAddr         { return fc.realAdd
 
 //TODO : andus >> fairNode 관련 함수....
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, srv *p2p.Server) error {
-	fmt.Println("andus >> fair node client New 패어노드 클라이언트 실행 했다.")
+	fc.logger.Info("FairClient Started")
 	fc.Running = true
 	fc.keystore = ks
 	fc.Coinbase = *coinbase
