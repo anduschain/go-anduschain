@@ -20,8 +20,7 @@ var DefaultConfig = Config{
 }
 
 const (
-	FAIRNODE_ADDRESS = "0x5AeaB10a26Ce20fE8f463682FfC3Cf72D2580c3c"
-	TICKET_PRICE     = 100
+	TICKET_PRICE = 100
 )
 
 var (

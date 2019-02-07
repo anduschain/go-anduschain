@@ -294,7 +294,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	//	return engine
 	//}
 
-	return deb.New(chainConfig.Deb, db)
+	return deb.New(chainConfig.Deb, db, chainConfig.Deb.FairAddr)
 }
 
 // APIs return the collection of RPC services the ethereum package offers.

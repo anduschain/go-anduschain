@@ -580,7 +580,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	var joinTx bool
 	var joinTxdata *clientType.JoinTxData
 
-	if fairutil.CmpAddress(tx.To().String(), pool.chainconfig.Deb.FairAddr.String()) {
+	if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
 		joinTx = true
 		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
 			return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
@@ -647,6 +647,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if tx.Value().Cmp(config.Price) != 0 {
 			return ErrTicketPriceNotMatch
 		}
+
 		// fairnode의 서명이 맞는가?
 		if !deb.ValidationFairSignature(joinTxdata.OtprnHash, joinTxdata.FairNodeSig, *tx.To()) {
 			return ErrFairNodeSigNotMatch

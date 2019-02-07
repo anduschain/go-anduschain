@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"io"
 	"math/big"
 	mrand "math/rand"
@@ -1029,7 +1028,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		if _, ok := bc.engine.(*deb.Deb); ok {
 			// TODO : andus >> 블록의 페어노드 서명이 있는 것만 처리하도록
-			if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig, common.HexToAddress(config.FAIRNODE_ADDRESS)) {
+			if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig, bc.chainConfig.Deb.FairAddr) {
 				log.Error("Non fairnode signature block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
 					"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
 

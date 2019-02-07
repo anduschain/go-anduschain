@@ -42,9 +42,8 @@ func makeSeed(rand [20]byte, addr [20]byte) int64 {
 	return seed
 }
 
-func CmpAddress(a string, b string) bool {
-
-	if strings.ToLower(a) == strings.ToLower(b) {
+func CmpAddress(a common.Address, b common.Address) bool {
+	if strings.ToLower(a.String()) == strings.ToLower(b.String()) {
 		return true
 	}
 	return false

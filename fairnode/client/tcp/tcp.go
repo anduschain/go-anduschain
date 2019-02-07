@@ -277,8 +277,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(txNonce, common.HexToAddress(config.FAIRNODE_ADDRESS),
-				config.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, config.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}

@@ -45,19 +45,19 @@ var (
 var (
 	// errUnknownBlock is returned when the list of signers is requested for a block
 	// that is not part of the local blockchain.
-	errUnknownBlock = errors.New("andus >> unknown block")
+	errUnknownBlock = errors.New("unknown block")
 
 	// errInvalidMixDigest is returned if a block's mix digest is non-zero.
-	errInvalidMixDigest = errors.New("andus >> non-zero mix digest")
+	errInvalidMixDigest = errors.New("non-zero mix digest")
 
 	// errInvalidUncleHash is returned if a block contains an non-empty uncle list.
-	errInvalidUncleHash = errors.New("andus >> non empty uncle hash")
+	errInvalidUncleHash = errors.New("non empty uncle hash")
 
 	// errInvalidDifficulty is returned if the difficulty of a block is not either
 	// of 1 or 2, or if the value does not match the turn of the signer.
-	errInvalidDifficulty = errors.New("andus >> invalid difficulty")
+	errInvalidDifficulty = errors.New("invalid difficulty")
 
-	errFailSignature = errors.New("andus >> 블록헤더 서명 실패")
+	errFailSignature = errors.New("블록헤더 서명 실패")
 
 	errNonFairNodeSig = errors.New("페어노드 서명이 없다")
 
@@ -96,15 +96,17 @@ type Deb struct {
 	chans     fairtypes.Channals
 	client    client
 	logger    log.Logger
+	fairAddr  common.Address
 }
 
-// New creates a Clique proof-of-deb consensus engine with the initial
+// New creates a andusChain proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.DebConfig, db ethdb.Database) *Deb {
+func New(config *params.DebConfig, db ethdb.Database, fairAddr common.Address) *Deb {
 	deb := &Deb{
-		config: config,
-		db:     db,
-		logger: log.New("consensus", "Deb"),
+		config:   config,
+		db:       db,
+		logger:   log.New("consensus", "Deb"),
+		fairAddr: fairAddr,
 	}
 
 	return deb

@@ -27,7 +27,7 @@ func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, E
 		}
 
 		addr := crypto.PubkeyToAddress(*fpKey)
-		if fairutil.CmpAddress(addr.String(), config.FAIRNODE_ADDRESS) {
+		if fairutil.CmpAddress(addr, c.fairAddr) {
 			return nil, -1
 		} else {
 			return errNotMatchFairAddress, ErrNotMatchFairAddress
@@ -84,7 +84,7 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 	var datas types2.JoinTxData
 	var isMyJoinTx bool
 	for i := range txs {
-		if fairutil.CmpAddress(txs[i].To().String(), config.FAIRNODE_ADDRESS) {
+		if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
 			err := rlp.DecodeBytes(txs[i].Data(), &datas)
 			if err != nil {
 				return errDecodeTx
@@ -97,7 +97,7 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 			//내 jointx가 있는지 확인 && otprn
 			if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
 				from, _ := types.Sender(signer, txs[i])
-				if fairutil.CmpAddress(from.String(), block.Header().Coinbase.String()) {
+				if fairutil.CmpAddress(from, block.Header().Coinbase) {
 					if datas.JoinNonce == joinNonce {
 						isMyJoinTx = true
 					} else {
