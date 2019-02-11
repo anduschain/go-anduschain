@@ -20,6 +20,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/nat"
 	"log"
 	"math/big"
 	"net"
@@ -62,6 +63,7 @@ type FairnodeClient struct {
 
 	realAddr *net.UDPAddr
 	logger   logger.Logger
+	nat      nat.Interface
 }
 
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
@@ -107,6 +109,7 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 	fc.keystore = ks
 	fc.Coinbase = *coinbase
 	fc.Srv = srv
+	fc.nat = srv.NAT
 
 	// coinbase unlock check
 	if unlockedKey, ok := fc.keystore.GetUnlockedPrivKey(fc.Coinbase); ok {
@@ -117,7 +120,7 @@ func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore
 
 	// Udp Service running
 	for name, serv := range fc.Services {
-		fc.logger.Info("Service Start", "Service : ", name)
+		fc.logger.Info("Service Start", "Service", name)
 		err := serv.Start()
 		if err != nil {
 			return err
@@ -205,6 +208,8 @@ func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *clinetTypes.OtprnWit
 
 	return nil
 }
+
+func (fc *FairnodeClient) GetNat() nat.Interface { return fc.nat }
 
 func (fc *FairnodeClient) SetBlockMine(status bool) { fc.IsBlockMine = status }
 func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }

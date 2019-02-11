@@ -93,7 +93,9 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 
 		// block number check
 		if vote.BlockNum.Cmp(currentBlockNum) != 0 {
-			return errors.New("블록 동기화가 맞질 않는다")
+			//return errors.New("블록 동기화가 맞질 않는다")
+			ft.logger.Error("블록 동기화가 맞질 않는다", "voteBlock", vote.BlockNum.String(), "currentBlock", currentBlockNum.String())
+			break
 		}
 
 		// otprnhash check

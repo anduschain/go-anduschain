@@ -9,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/nat"
 	"math/big"
 	"net"
 )
@@ -46,4 +47,6 @@ type Client interface {
 	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
 	SetRealAddr(realAddr *net.UDPAddr)
 	GetRealAddr() *net.UDPAddr
+
+	GetNat() nat.Interface
 }

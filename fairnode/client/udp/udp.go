@@ -11,7 +11,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"log"
 	"net"
 	"time"
 )
@@ -23,9 +22,9 @@ type Udp struct {
 	manger     _interface.Client
 	tcpService *tcp.Tcp
 	isRuning   bool
-	nat        nat.Interface
 	RealAddr   *net.UDPAddr
 	logger     logger.Logger
+	nat        nat.Interface
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client, tcpService *tcp.Tcp) (*Udp, error) {
@@ -49,11 +48,6 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		isRuning:   false,
 		RealAddr:   nil,
 		logger:     logger.New("fairclient", "UDP"),
-	}
-
-	udp.nat, err = nat.Parse(config.DefaultConfig.NAT)
-	if err != nil {
-		log.Fatalf("-nat: %v", err)
 	}
 
 	udp.services["submitEnode"] = types.Goroutine{udp.submitEnode, make(chan struct{})}
@@ -94,6 +88,7 @@ func (u *Udp) Stop() error {
 
 func (u *Udp) NatStart(conn net.Conn) *net.UDPAddr {
 	// TODO : andus >> NAT 추가 --- start ---
+	u.nat = u.manger.GetNat()
 	realaddr := conn.LocalAddr().(*net.UDPAddr)
 	if u.nat != nil {
 		if !realaddr.IP.IsLoopback() {
@@ -150,7 +145,7 @@ Exit:
 					ts.IP = u.manger.GetP2PServer().NodeInfo().IP
 				}
 
-				u.logger.Info("Enode 전송", "enode", u.manger.GetP2PServer().NodeInfo().Enode)
+				u.logger.Info("Enode 전송", "enode", u.manger.GetP2PServer().NodeInfo().Enode, "IP", ts.IP)
 				err = transport.SendUDP(transport.SendEnode, ts, Conn)
 				if err != nil {
 					u.logger.Error("transport.SendUDP", "error", err)

@@ -16,7 +16,6 @@ var DefaultConfig = Config{
 	FairServerIp:   "121.156.104.254",
 	FairServerPort: "60002",
 	ClientPort:     "50002",
-	NAT:            "any",
 }
 
 const (
