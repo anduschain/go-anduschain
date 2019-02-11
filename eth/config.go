@@ -52,7 +52,7 @@ var DefaultConfig = Config{
 	TrieTimeout:   60 * time.Minute,
 	// andus : gaslimite 올림
 	MinerGasFloor: 8000000000,
-	MinerGasCeil:  80000000000000000000,
+	MinerGasCeil:  8000000000000000000,
 	MinerGasPrice: big.NewInt(params.GWei),
 	MinerRecommit: 3 * time.Second,
 
