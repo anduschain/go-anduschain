@@ -326,6 +326,7 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 func (b *Block) Body() *Body { return &Body{b.FairNodeSig, b.Voter, b.transactions, b.uncles} }
 
 // TODO : andus >> 페어노드 서명을 조회 하는 부분
+// FIXME : 패어노드 서명을 확인해서 있는지 리턴해줄것, 안쓰면 삭제
 func (b *Block) GetFairNodeSig() ([]byte, bool) {
 	if len(b.FairNodeSig) > 0 {
 		return b.FairNodeSig, true
