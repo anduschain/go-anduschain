@@ -84,24 +84,26 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 	var datas types2.JoinTxData
 	var isMyJoinTx bool
 	for i := range txs {
-		if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
-			err := rlp.DecodeBytes(txs[i].Data(), &datas)
-			if err != nil {
-				return errDecodeTx
-			}
-			//참가비확인
-			if txs[i].Value().Cmp(config.Price) != 0 {
-				return errTxTicketPriceNotAvailable
-			}
+		if txs[i].To() != nil {
+			if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
+				err := rlp.DecodeBytes(txs[i].Data(), &datas)
+				if err != nil {
+					return errDecodeTx
+				}
+				//참가비확인
+				if txs[i].Value().Cmp(config.Price) != 0 {
+					return errTxTicketPriceNotAvailable
+				}
 
-			//내 jointx가 있는지 확인 && otprn
-			if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
-				from, _ := types.Sender(signer, txs[i])
-				if fairutil.CmpAddress(from, block.Header().Coinbase) {
-					if datas.JoinNonce == joinNonce {
-						isMyJoinTx = true
-					} else {
-						return errors.New("JoinNonce 가 다르다")
+				//내 jointx가 있는지 확인 && otprn
+				if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
+					from, _ := types.Sender(signer, txs[i])
+					if fairutil.CmpAddress(from, block.Header().Coinbase) {
+						if datas.JoinNonce == joinNonce {
+							isMyJoinTx = true
+						} else {
+							return errors.New("JoinNonce 가 다르다")
+						}
 					}
 				}
 			}

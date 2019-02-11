@@ -580,10 +580,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	var joinTx bool
 	var joinTxdata *clientType.JoinTxData
 
-	if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
-		joinTx = true
-		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-			return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
+	if tx.To() != nil {
+		if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
+			joinTx = true
+			if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
+				return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
+			}
 		}
 	}
 
