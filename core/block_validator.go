@@ -141,5 +141,5 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 		}
 	}
 
-	return limit
+	return gasCeil
 }
