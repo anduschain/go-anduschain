@@ -210,9 +210,14 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	for i := range block.Transactions() {
 		tx := block.Transactions()[i]
 		from, _ := types.Sender(fnb.signer, tx)
+		to := "contract"
+		if tx.To() != nil {
+			to = tx.To().String()
+		}
+
 		txs = append(txs, transaction{
 			From:         from.String(),
-			To:           tx.To().String(),
+			To:           to,
 			AccountNonce: int64(tx.Nonce()),
 			Price:        tx.GasPrice().Int64(),
 			Amount:       tx.Value().Int64(),
