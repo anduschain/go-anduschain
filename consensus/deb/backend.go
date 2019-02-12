@@ -208,7 +208,11 @@ Exit:
 				}
 			}
 		case <-t.C:
+
 			wb := winningBlock
+			if chain.CurrentHeader().Number.Cmp(wb.Block.Number()) >= 0 {
+				continue
+			}
 			// 위닝블록 전송
 			mySig, err := c.SignBlockHeader(wb.Block.Header().Hash().Bytes())
 			if err != nil {
@@ -224,7 +228,7 @@ Exit:
 			}
 
 			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)
-
+			c.logger.Warn("winningblock send ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
 			break Exit
 		}
 	}

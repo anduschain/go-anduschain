@@ -186,8 +186,10 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 
 			if n > 0 {
 				// TODO : andus >> 수신된 otprn디코딩
-
 				fromFairnodeMsg := transport.ReadUDP(tsOtprnByte)
+				if fromFairnodeMsg == nil {
+					continue
+				}
 				switch fromFairnodeMsg.Code {
 				case transport.SendOTPRN:
 					var tsOtprn fairtypes.TransferOtprn
