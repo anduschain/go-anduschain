@@ -14,7 +14,6 @@ import (
 	"io"
 	"math/big"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -149,13 +148,13 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
-					addr, err := net.ResolveIPAddr("", strings.Split(fromAddr.String(), ":")[0])
+					addr, err := net.ResolveIPAddr("", fromAddr.String())
 					if err != nil {
 						return
 					}
 					fmt.Println("addr@@@", addr.IP.String(), addr.String())
 					if !addr.IP.Equal(net.IPv4zero) {
-						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP)
+						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromAddr.String())
 					}
 
 				default:
