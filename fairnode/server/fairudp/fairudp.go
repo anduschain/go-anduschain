@@ -154,7 +154,7 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 						return
 					}
 					if !addr.IP.Equal(net.IPv4zero) {
-						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromAddr.String())
+						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, addr.IP.String())
 					}
 
 				default:
