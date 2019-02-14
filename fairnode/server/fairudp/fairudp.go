@@ -134,13 +134,13 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := fu.udpConn.Read(buf)
+			n, addr, err := fu.udpConn.ReadFrom(buf)
 			if err != nil {
 				notify <- err
 				return
 			}
 			if n > 0 {
-				fu.logger.Info("수신activenode ip", "ip", fu.udpConn.RemoteAddr().String())
+				fu.logger.Info("수신activenode ip", "ip", addr.String())
 				m := transport.ReadUDP(buf[:n])
 				if m == nil {
 					return
