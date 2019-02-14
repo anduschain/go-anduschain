@@ -149,12 +149,11 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
-					fmt.Println("@@@", strings.Split(fromAddr.String(), ":")[0])
 					addr, err := net.ResolveIPAddr("", strings.Split(fromAddr.String(), ":")[0])
 					if err != nil {
-						fmt.Println("err", err)
 						return
 					}
+					fmt.Println("addr@@@", addr.IP.String(), addr.String())
 					if !addr.IP.Equal(net.IPv4zero) {
 						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP)
 					}
