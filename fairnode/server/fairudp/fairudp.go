@@ -134,13 +134,12 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, addr, err := fu.udpConn.ReadFrom(buf)
+			n, fromAddr, err := fu.udpConn.ReadFrom(buf)
 			if err != nil {
 				notify <- err
 				return
 			}
 			if n > 0 {
-				fu.logger.Info("수신activenode ip", "ip", addr.String())
 				m := transport.ReadUDP(buf[:n])
 				if m == nil {
 					return
@@ -149,11 +148,11 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				case transport.SendEnode:
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
-					addr, err := net.ResolveIPAddr("", fromGeth.IP)
+					addr, err := net.ResolveIPAddr(fromAddr.Network(), fromAddr.String())
 					if err != nil {
 						return
 					}
-
+					fu.logger.Info("addr@@@", addr.IP.String())
 					if !addr.IP.Equal(net.IPv4zero) {
 						fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP)
 					}
