@@ -74,13 +74,15 @@ func (fnb *FairNodeDB) Stop() error {
 
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string) {
 	trial := net.ParseIP(ip)
+
+	fmt.Println("@@@@", enode, coinbase.String(), clientport, ip, trial.String())
 	if trial.To4() == nil {
 		fmt.Println("to4 nil")
 		return
 	}
 
 	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport}
-	fmt.Println("@@@@", enode, coinbase.String(), clientport, ip, trial.String())
+
 	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
 		fnb.logger.Warn("SaveActiveNode ", "error", err)
 	}
