@@ -139,8 +139,8 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 				notify <- err
 				return
 			}
-			fu.logger.Info("수신activenode ip", "ip", fu.udpConn.RemoteAddr().String())
 			if n > 0 {
+				fu.logger.Info("수신activenode ip", "ip", fu.udpConn.RemoteAddr().String())
 				m := transport.ReadUDP(buf[:n])
 				if m == nil {
 					return
