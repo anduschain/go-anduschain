@@ -150,8 +150,9 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 					var fromGeth fairtypes.EnodeCoinbase
 					m.Decode(&fromGeth)
 					fmt.Println("@@@", strings.Split(fromAddr.String(), ":")[0])
-					addr, err := net.ResolveIPAddr(fromAddr.Network(), strings.Split(fromAddr.String(), ":")[0])
+					addr, err := net.ResolveIPAddr("", strings.Split(fromAddr.String(), ":")[0])
 					if err != nil {
+						fmt.Println("err", err)
 						return
 					}
 					if !addr.IP.Equal(net.IPv4zero) {
