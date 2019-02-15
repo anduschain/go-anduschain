@@ -10,6 +10,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	logger "github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"net"
 	"time"
@@ -46,7 +47,6 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		manger:     manger,
 		tcpService: tcpService,
 		isRuning:   false,
-		RealAddr:   nil,
 		logger:     logger.New("fairclient", "UDP"),
 	}
 
@@ -116,40 +116,38 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
 	t := time.NewTicker(10 * time.Second)
 
-	//// 처음 한번 보내기
-	//err = transport.SendUDP(transport.SendEnode, ts, Conn)
-	//if err != nil {
-	//	log.Println("Error transport.SendUDP", err)
-	//}
-
 Exit:
 	for {
 		select {
 		case <-t.C:
 			//TODO : andus >> FairNode에게 enode값 전송 ( 10초단위)
 			// TODO : andus >> enode Sender -- start --
-			if u.RealAddr != nil {
-				ts := fairtypes.EnodeCoinbase{
-					Enode:    u.manger.GetP2PServer().NodeInfo().ID,
-					Coinbase: u.manger.GetCoinbase(),
-					Port:     config.DefaultConfig.ClientPort,
-				}
+			ts := fairtypes.EnodeCoinbase{
+				Enode:    u.manger.GetP2PServer().NodeInfo().ID,
+				Coinbase: u.manger.GetCoinbase(),
+				Port:     config.DefaultConfig.ClientPort,
+			}
 
-				if u.manger.GetP2PServer().NoDiscovery {
-					if !u.RealAddr.IP.Equal(net.IPv4zero) {
-						ts.IP = u.RealAddr.IP.String()
-					} else {
-						continue
-					}
-				} else {
-					ts.IP = u.manger.GetP2PServer().NodeInfo().IP
-				}
+			node, err := discover.ParseNode(u.manger.GetP2PServer().NodeInfo().Enode)
+			if err != nil {
+				return
+			}
 
-				u.logger.Info("Enode 전송", "enode", u.manger.GetP2PServer().NodeInfo().Enode, "IP", ts.IP)
-				err = transport.SendUDP(transport.SendEnode, ts, Conn)
+			if node.IP.To4() == nil {
+				addr, err := net.ResolveUDPAddr("udp", Conn.LocalAddr().String())
 				if err != nil {
-					u.logger.Error("transport.SendUDP", "error", err)
+					return
 				}
+				node.IP = addr.IP
+				ts.IP = addr.IP.String()
+			} else {
+				ts.IP = u.manger.GetP2PServer().NodeInfo().IP
+			}
+
+			u.logger.Info("Enode 전송", "enodeID", u.manger.GetP2PServer().NodeInfo().ID, "IP", ts.IP)
+			err = transport.SendUDP(transport.SendEnode, ts, Conn)
+			if err != nil {
+				u.logger.Error("transport.SendUDP", "error", err)
 			}
 		case <-exit:
 			break Exit
@@ -168,8 +166,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 		u.logger.Error("ListenUDP", "error", err)
 	}
 
-	u.RealAddr = u.NatStart(localServerConn)
-	u.manger.SetRealAddr(u.RealAddr)
+	u.NatStart(localServerConn)
 
 	notify := make(chan error)
 

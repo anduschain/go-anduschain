@@ -109,15 +109,23 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	tsp := transport.New(conn)
 
-	realAddr := t.manger.GetRealAddr()
-	if realAddr == nil {
-		t.logger.Error("GetRealAddr", "error", err)
+	node, err := discover.ParseNode(t.manger.GetP2PServer().NodeInfo().Enode)
+	if err != nil {
 		return
+	}
+
+	if node.IP.To4() == nil {
+		addr, err := net.ResolveTCPAddr("tcp", conn.LocalAddr().String())
+		if err != nil {
+			return
+		}
+
+		node.IP = addr.IP
 	}
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), t.manger.GetP2PServer().NodeInfo().Enode})
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String()})
 
 	notify := make(chan error)
 	go func() {

@@ -99,8 +99,6 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 
 	return fc
 }
-func (fc *FairnodeClient) SetRealAddr(realAddr *net.UDPAddr) { fc.realAddr = realAddr }
-func (fc *FairnodeClient) GetRealAddr() *net.UDPAddr         { return fc.realAddr }
 
 //TODO : andus >> fairNode 관련 함수....
 func (fc *FairnodeClient) StartToFairNode(coinbase *common.Address, ks *keystore.KeyStore, srv *p2p.Server) error {
@@ -147,7 +145,7 @@ func (fc *FairnodeClient) Stop() {
 	//}
 
 	for name, serv := range fc.Services {
-		fc.logger.Info("Stop Service", "Service : ", name)
+		fc.logger.Info("Stop Service", "Service", name)
 		err := serv.Stop()
 		if err != nil {
 			log.Println("Error[andus] : ", err)

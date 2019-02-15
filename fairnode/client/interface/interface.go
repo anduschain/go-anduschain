@@ -11,7 +11,6 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"math/big"
-	"net"
 )
 
 type ServiceFunc interface {
@@ -45,8 +44,6 @@ type Client interface {
 	GetUsingOtprnWithSig() *types.OtprnWithSig
 	GetSavedOtprnHashs() []common.Hash
 	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
-	SetRealAddr(realAddr *net.UDPAddr)
-	GetRealAddr() *net.UDPAddr
 
 	GetNat() nat.Interface
 }
