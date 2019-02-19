@@ -19,13 +19,13 @@ package params
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main Ethereum network.
 var MainnetBootnodes = []string{
-	"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
+	//"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
 }
 
 // TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the
 // Ropsten test network.
 var TestnetBootnodes = []string{
-	"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
+	//"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
 }
 
 // RinkebyBootnodes are the enode URLs of the P2P bootstrap nodes running on the
@@ -35,5 +35,5 @@ var RinkebyBootnodes = []string{}
 // DiscoveryV5Bootnodes are the enode URLs of the P2P bootstrap nodes for the
 // experimental RLPx v5 topic-discovery network.
 var DiscoveryV5Bootnodes = []string{
-	"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
+	//"enode://4ec9bb7dc72afbab998de71e4e349a5c06f9d0c2b76637a010b3f53650916a09fddc24ffe86788a2562a3bd9b58fea12d595c1a46f0f19acb6767f4906c1e74a@121.156.104.254:30301", //andus
 }
