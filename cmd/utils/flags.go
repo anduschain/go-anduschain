@@ -130,7 +130,7 @@ var (
 	}
 	NetworkIdFlag = cli.Uint64Flag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, 1=Frontier, 2=Morden (disused), 3=Ropsten, 4=Rinkeby)",
+		Usage: "Network identifier (integer, 3355=Testnet(andusChain), 1=Frontier, 2=Morden (disused), 3=Ropsten, 4=Rinkeby)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
 	// TODO : andus >> consensus
