@@ -33,7 +33,7 @@ func init() {
 		cli.StringFlag{
 			Name:  "dbport",
 			Value: "27017",
-			Usage: "default dbport 63018",
+			Usage: "default dbport 27017",
 		},
 		cli.StringFlag{
 			Name:  "dbuser",
@@ -63,7 +63,7 @@ func init() {
 		cli.Int64Flag{
 			Name:  "epoch",
 			Value: 100,
-			Usage: "default chainid is 100",
+			Usage: "default epoch is 100",
 		},
 		cli.BoolFlag{
 			Name:  "debug",
