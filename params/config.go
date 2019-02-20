@@ -87,7 +87,7 @@ var (
 		DAOForkSupport:      true,
 		EIP150Block:         nil,
 		EIP150Hash:          common.Hash{},
-		EIP155Block:         nil,
+		EIP155Block:         big.NewInt(0),
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
@@ -111,7 +111,7 @@ var (
 	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
-	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &DebConfig{Epoch: 100, FairAddr: common.Address{}}}
+	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), nil, nil, false, big.NewInt(0), nil, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{Epoch: 100, FairAddr: common.Address{}}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
