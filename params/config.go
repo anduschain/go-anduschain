@@ -81,7 +81,7 @@ var (
 
 	// TODO : andus >> consensus 추가
 	DebChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(100),
+		ChainID:             big.NewInt(3355),
 		HomesteadBlock:      nil,
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -111,7 +111,7 @@ var (
 	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
-	AllDebProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &DebConfig{Epoch: 100, FairAddr: common.Address{}}}
+	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &DebConfig{Epoch: 100, FairAddr: common.Address{}}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.

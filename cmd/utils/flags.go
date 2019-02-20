@@ -20,6 +20,7 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -1375,6 +1376,9 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 		genesis = core.DefaultRinkebyGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		Fatalf("Developer chains are ephemeral")
+	default:
+		// default anduschain testnet
+		genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	}
 	return genesis
 }
@@ -1389,7 +1393,9 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 		Fatalf("%v", err)
 	}
 	var engine consensus.Engine
-	if config.Clique != nil {
+	if config.Deb != nil {
+		engine = deb.New(config.Deb, chainDb)
+	} else if config.Clique != nil {
 		engine = clique.New(config.Clique, chainDb)
 	} else {
 		engine = ethash.NewFaker()

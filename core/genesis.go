@@ -160,7 +160,8 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 	if (stored == common.Hash{}) {
 		if genesis == nil {
 			log.Info("Writing default main-net genesis block")
-			genesis = DefaultGenesisBlock()
+			// andus Testnet
+			genesis = DefaultAndsuChainTestnetGenesisBlock()
 		} else {
 			log.Info("Writing custom genesis block")
 		}
@@ -333,6 +334,21 @@ func DefaultRinkebyGenesisBlock() *Genesis {
 	}
 }
 
+// DefaultAndusChainTestNetGenesisBlock returns the AndusChain Test net genesis block.
+func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
+	config := params.DebChainConfig
+	config.Deb.Epoch = 100
+	config.Deb.FairAddr = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
+
+	return &Genesis{
+		Config:     config,
+		Nonce:      0,
+		GasLimit:   0x47b760,
+		Difficulty: big.NewInt(1),
+		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
+	}
+}
+
 // DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
 // be seeded with the
 func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
@@ -355,7 +371,7 @@ func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
 			common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
 			common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
 			common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
-			faucet: {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+			faucet:                           {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
 		},
 	}
 }

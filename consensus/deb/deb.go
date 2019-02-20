@@ -101,12 +101,12 @@ type Deb struct {
 
 // New creates a andusChain proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.DebConfig, db ethdb.Database, fairAddr common.Address) *Deb {
+func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	deb := &Deb{
 		config:   config,
 		db:       db,
 		logger:   log.New("consensus", "Deb"),
-		fairAddr: fairAddr,
+		fairAddr: config.FairAddr,
 	}
 
 	return deb
