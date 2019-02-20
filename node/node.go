@@ -139,8 +139,6 @@ func (n *Node) Start() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
-	log.Info("andus >> node.Start()")
-
 	// Short circuit if the node's already running
 	if n.server != nil {
 		return ErrNodeRunning
