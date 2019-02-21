@@ -8,6 +8,7 @@
 .PHONY: geth-linux-arm geth-linux-arm-5 geth-linux-arm-6 geth-linux-arm-7 geth-linux-arm64
 .PHONY: geth-darwin geth-darwin-386 geth-darwin-amd64
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
+.PHONY: bootnode-linux-amd64
 
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
@@ -66,6 +67,12 @@ devtools:
 	@type "protoc" 2> /dev/null || echo 'Please install protoc'
 
 # Cross Compilation Targets (xgo)
+
+# bootnode
+bootnode-linux-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/bootnode
+	@echo "Linux amd64 cross compilation done:"
+	@ls -ld $(GOBIN)/bootnode-linux-* | grep amd64
 
 geth-cross: geth-linux geth-darwin geth-windows geth-android geth-ios
 	@echo "Full cross compilation done:"

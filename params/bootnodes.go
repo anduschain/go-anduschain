@@ -16,6 +16,11 @@
 
 package params
 
+//AndusChainTestNode
+var AndusChainBootnodes = []string{
+	"enode://234a9fb78664e6739dc3c052136629af941a4f83faa0770c5818c694d63be7344ab20bb9280d5c6399329d92736be5ebb59b7cc8d24cb15738ce9472b30e7a3f@52.78.82.49:30303",
+}
+
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main Ethereum network.
 var MainnetBootnodes = []string{
