@@ -240,7 +240,9 @@ func (fc *FairnodeClient) GetCurrentBalance() *big.Int {
 		fc.logger.Error("GetCurrentBalance 상태DB을 읽어오는데 문제 발생", "error", err)
 	}
 
-	return stateDb.GetBalance(fc.Coinbase)
+	balance := stateDb.GetBalance(fc.Coinbase)
+	fc.logger.Debug("CurrentBalance", "coinbase", fc.Coinbase.String(), "balance", balance.String())
+	return balance
 }
 
 func (fc *FairnodeClient) GetCurrentNonce(addr common.Address) uint64 {
