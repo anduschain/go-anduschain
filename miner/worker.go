@@ -1060,6 +1060,16 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		if interval != nil {
 			interval()
 		}
+
+		// finalblock joinTx 여부 확인
+		if debEngine, ok := w.engine.(*deb.Deb); ok {
+			err := debEngine.ValidationVoteBlock(w.chain, block)
+			if err != nil {
+				log.Error("Commit new mining work", "number", block.Number(), "mag", err.Error())
+				return err
+			}
+		}
+
 		select {
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
