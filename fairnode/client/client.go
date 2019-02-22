@@ -187,8 +187,9 @@ func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 	var hashs []common.Hash
 	if fc.OtprnQueue.Len() > 0 {
 		for i := range fc.OtprnQueue.All() {
-			otprnWithSig := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig)
-			hashs = append(hashs, otprnWithSig.Otprn.HashOtprn())
+			if otprnWithSig, ok := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig); ok {
+				hashs = append(hashs, otprnWithSig.Otprn.HashOtprn())
+			}
 		}
 	}
 
