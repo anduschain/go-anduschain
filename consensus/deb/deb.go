@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
@@ -309,7 +310,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	//자기것은 joinnonce 를 0으로 만든다.
 	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
-	state.ResetJoinNonce(header.Coinbase)
+	c.ChangeJoinNonce(state, txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 
@@ -317,6 +318,19 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	// Assemble and return the final block for sealing
 	return block, nil
+}
+
+func (c *Deb) ChangeJoinNonce(state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
+	for i := range txs {
+		if txs[i].To() != nil {
+			if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
+				state.AddJoinNonce(*txs[i].To())
+				c.logger.Debug("Add JOIN_NONCE", "addr", txs[i].To().String())
+			}
+		}
+	}
+	state.ResetJoinNonce(coinbase)
+	c.logger.Debug("RESET JOIN_NONCE", "addr", coinbase.String())
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using

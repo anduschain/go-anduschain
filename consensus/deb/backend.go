@@ -102,7 +102,8 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 						if datas.JoinNonce == joinNonce {
 							isMyJoinTx = true
 						} else {
-							return errors.New("JoinNonce 가 다르다")
+							c.logger.Debug("JOIN_NONCE", "joinTx", datas.JoinNonce, "current", joinNonce)
+							return errors.New("JoinNonce가 다르다")
 						}
 					}
 				}

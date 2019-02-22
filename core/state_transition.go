@@ -18,7 +18,6 @@ package core
 
 import (
 	"errors"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"math"
 	"math/big"
 
@@ -214,9 +213,9 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
 
 		// JOIN_NONCE 처리, non contract
-		if fairutil.CmpAddress(*msg.To(), st.evm.ChainConfig().Deb.FairAddr) {
-			st.state.AddJoinNonce(msg.From())
-		}
+		//if fairutil.CmpAddress(*msg.To(), st.evm.ChainConfig().Deb.FairAddr) {
+		//	st.state.AddJoinNonce(msg.From())
+		//}
 
 	}
 	if vmerr != nil {
