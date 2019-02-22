@@ -37,6 +37,7 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
+	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
@@ -98,6 +99,8 @@ type ProtocolManager struct {
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
+
+	logger logger.Logger
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -116,7 +119,8 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
 		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
-		chans: chans,
+		chans:  chans,
+		logger: logger.New("ProtocolManager"),
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -232,6 +236,7 @@ func (pm *ProtocolManager) leagueBroadCast() {
 		select {
 		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
 			for _, peer := range pm.peers.peers {
+				pm.logger.Info("브로드캐스팅", "피어", peer.id, "version", peer.Info().Version)
 				peer.SendMakeLeagueBlock(*block)
 			}
 		}

@@ -100,11 +100,13 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 
 		// otprnhash check
 		if ft.manager.GetUsingOtprn().HashOtprn() != vote.OtprnHash {
+			ft.logger.Error("OTPRNㅇㅣ 맞질 않는다")
 			return errors.New("OTPRN이 맞질 않는다")
 		}
 
 		// sign check
 		if !fairutil.ValidationSign(vote.HeaderHash.Bytes(), vote.Sig, vote.Voter) {
+			ft.logger.Error("서명이 일치하지 않는다")
 			return errors.New("서명이 일치하지 않는다")
 		}
 

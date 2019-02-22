@@ -228,7 +228,7 @@ Exit:
 			}
 
 			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)
-			c.logger.Warn("winningblock send ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
+			c.logger.Debug("블록투표 ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
 			break Exit
 		}
 	}

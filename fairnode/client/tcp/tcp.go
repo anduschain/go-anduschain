@@ -296,11 +296,11 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		}
 
 		t.logger.Debug("Current Peer", "count", t.manger.GetP2PServer().PeerCount())
-		for i := range t.manger.GetP2PServer().Peers() {
-			if peer := t.manger.GetP2PServer().Peers()[i]; peer != nil {
-				t.logger.Debug("Current Peer", "peer", peer.String())
-			}
-		}
+		//for i := range t.manger.GetP2PServer().Peers() {
+		//	if peer := t.manger.GetP2PServer().Peers()[i]; peer != nil {
+		//		t.logger.Debug("Current Peer", "peer", peer.String())
+		//	}
+		//}
 	} else {
 		// 잔액이 부족한 경우
 		// 마이닝을 하지 못함..참여 불가, Dial Close
