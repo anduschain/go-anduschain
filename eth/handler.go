@@ -120,7 +120,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		quitSync:    make(chan struct{}),
 		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
 		chans:  chans,
-		logger: logger.New("ProtocolManager"),
+		logger: logger.New("ProtocolManager", "PM"),
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
