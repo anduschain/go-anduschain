@@ -100,7 +100,7 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 
 		// otprnhash check
 		if ft.manager.GetUsingOtprn().HashOtprn() != vote.OtprnHash {
-			ft.logger.Error("OTPRNㅇㅣ 맞질 않는다")
+			ft.logger.Error("OTPRN이 맞질 않는다")
 			return errors.New("OTPRN이 맞질 않는다")
 		}
 

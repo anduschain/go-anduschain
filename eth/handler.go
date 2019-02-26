@@ -236,8 +236,11 @@ func (pm *ProtocolManager) leagueBroadCast() {
 		select {
 		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
 			for _, peer := range pm.peers.peers {
-				pm.logger.Info("브로드캐스팅", "피어", peer.id, "version", peer.Info().Version)
-				peer.SendMakeLeagueBlock(*block)
+				pm.logger.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
+				err := peer.SendMakeLeagueBlock(*block)
+				if err != nil {
+					pm.logger.Error("sendvoteblock err!!", err)
+				}
 			}
 		}
 	}

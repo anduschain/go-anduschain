@@ -161,7 +161,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	}
 	defer func() {
 		msg.Discard()
-		t.manger.SetBlockMine(false)
 	}()
 
 	var str string
@@ -232,6 +231,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 
 		if otprnhash == leagueOtprnwithsig.Otprn.HashOtprn() {
 			//otprn 교체 및 저장된 블록 제거
+			t.manger.SetBlockMine(false)
 			t.manger.GetStoreOtprnWidthSig()
 			t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
 			return errors.New("리그 종료")
