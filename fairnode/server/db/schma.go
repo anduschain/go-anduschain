@@ -43,6 +43,7 @@ type header struct {
 }
 
 type transaction struct {
+	Txhash       string
 	From         string
 	To           string
 	AccountNonce int64
