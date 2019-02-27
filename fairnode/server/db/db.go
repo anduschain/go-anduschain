@@ -208,6 +208,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	var txs []transaction
 	for i := range block.Transactions() {
 		tx := block.Transactions()[i]
+		txhash := block.Transactions()[i].Hash()
 		from, _ := types.Sender(fnb.signer, tx)
 		to := "contract"
 		if tx.To() != nil {
@@ -215,6 +216,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		}
 
 		txs = append(txs, transaction{
+			Txhash:       txhash.String(),
 			From:         from.String(),
 			To:           to,
 			AccountNonce: int64(tx.Nonce()),
