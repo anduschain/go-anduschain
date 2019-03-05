@@ -132,10 +132,13 @@ Exit:
 			}
 		case hash := <-l.SnapShot:
 			if val, ok := l.pool[hash]; ok {
+				l.mux.Lock()
+				log.Debug("LeaguePool sanpshot", "leaguePoolCount", len(val))
 				for i := range val {
 					l.Db.SaveMinerNode(common.Hash(hash).String(), val[i].Enode)
 					//fmt.Println(hash.String(), val[i].Enode)
 				}
+				l.mux.Unlock()
 			}
 		case <-l.StopCh:
 			break Exit
