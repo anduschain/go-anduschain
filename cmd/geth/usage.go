@@ -65,15 +65,30 @@ type flagGroup struct {
 // AppHelpFlagGroups is the application flags, grouped by functionality.
 var AppHelpFlagGroups = []flagGroup{
 	{
-		Name: "ETHEREUM",
+		Name: "ANDUS CHAIN",
+		Flags: []cli.Flag{
+			utils.DebFlag,
+			utils.TestnetFlag,
+		},
+	},
+	{
+		Name: "FAIR CLIENT",
+		Flags: []cli.Flag{
+			utils.FairclientPort,
+			utils.FairserverIP,
+			utils.FairserverPort,
+		},
+	},
+	{
+		Name: "DAON",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
 			utils.KeyStoreDirFlag,
 			utils.NoUSBFlag,
 			utils.NetworkIdFlag,
-			utils.TestnetFlag,
-			utils.RinkebyFlag,
+			//utils.TestnetFlag,
+			//utils.RinkebyFlag,
 			utils.SyncModeFlag,
 			utils.GCModeFlag,
 			utils.EthStatsURLFlag,
@@ -83,13 +98,13 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.LightKDFFlag,
 		},
 	},
-	{
-		Name: "DEVELOPER CHAIN",
-		Flags: []cli.Flag{
-			utils.DeveloperFlag,
-			utils.DeveloperPeriodFlag,
-		},
-	},
+	//{
+	//	Name: "DEVELOPER CHAIN",
+	//	Flags: []cli.Flag{
+	//		utils.DeveloperFlag,
+	//		utils.DeveloperPeriodFlag,
+	//	},
+	//},
 	{
 		Name: "ETHASH",
 		Flags: []cli.Flag{
