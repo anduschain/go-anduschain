@@ -5657,6 +5657,13 @@ var methods = function () {
         inputFormatter: [formatters.inputAddressFormatter, null, null]
     });
 
+    var unlockCoinbase = new Method({
+      name: 'unlockCoinbase',
+      call: 'personal_unlockCoinbase',
+      params: 3,
+      inputFormatter: [formatters.inputAddressFormatter, null, null]
+    });
+
     var sendTransaction = new Method({
         name: 'sendTransaction',
         call: 'personal_sendTransaction',
@@ -5678,7 +5685,8 @@ var methods = function () {
         ecRecover,
         sign,
         sendTransaction,
-        lockAccount
+        lockAccount,
+        unlockCoinbase
     ];
 };
 
