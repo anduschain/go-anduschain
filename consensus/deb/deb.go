@@ -310,7 +310,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	//자기것은 joinnonce 를 0으로 만든다.
 	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
-	c.ChangeJoinNonce(chain.Config().ChainID, state, txs, header.Coinbase)
+	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 
@@ -320,7 +320,8 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	return block, nil
 }
 
-func (c *Deb) ChangeJoinNonce(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
+// 채굴자 보상 : JOINTX 갯수만큼 100% 지금
+func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
 	signer := types.NewEIP155Signer(chainid)
 	for i := range txs {
 		if txs[i].To() != nil {
@@ -328,6 +329,14 @@ func (c *Deb) ChangeJoinNonce(chainid *big.Int, state *state.StateDB, txs []*typ
 				from, _ := types.Sender(signer, txs[i])
 				state.AddJoinNonce(from)
 				c.logger.Debug("Add JOIN_NONCE", "addr", from.String())
+
+				//채굴자 보상
+				state.AddBalance(coinbase, txs[i].Value())
+				c.logger.Debug("Add Reword", "addr", coinbase.String())
+
+				//패어 노드 차감
+				state.SubBalance(c.fairAddr, txs[i].Value())
+				c.logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
 			}
 		}
 	}
