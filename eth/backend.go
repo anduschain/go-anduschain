@@ -163,7 +163,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		FinalBlockCh:           make(chan fairtypes.FinalBlock),
 	}
 
-	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId)
+	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
 
 	if !config.SkipBcVersionCheck {
 		bcVersion := rawdb.ReadDatabaseVersion(chainDb)
