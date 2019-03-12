@@ -20,6 +20,10 @@ var (
 	closeConnection = errors.New("close")
 )
 
+const (
+	chkTCPConn = 10 // TCP로 연결되어있는 노드가 하나도 없을때 확인하는 횟수
+)
+
 type FairTcp struct {
 	LAddrTCP     *net.TCPAddr
 	natm         nat.Interface
@@ -172,7 +176,7 @@ func (ft *FairTcp) StartLeague(leagueChange bool) {
 						return
 					}
 
-					if ticker >= 10 {
+					if ticker >= chkTCPConn {
 						ft.logger.Debug("OTPRN 재발행")
 						ft.manager.GetReSendOtprn() <- otprn.HashOtprn()
 						return

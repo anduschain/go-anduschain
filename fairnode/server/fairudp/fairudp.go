@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	MinActiveNum = 3
+	MinActiveNum    = 3
+	ActiveNodeRm    = 3 //	active 노드	manage 시간(minute)
+	CheckUsingOTPRN = 3 // OTPRN을 발행하고 사용중인지 확인
 )
 
 var (
@@ -184,7 +186,7 @@ Exit:
 //UDP로 받은 ActiveNode의 마지막 수신 시간을 확인하여 3분이 지나갔을시 DB에서 삭제
 func (fu *FairUdp) JobActiveNode(exit chan struct{}) {
 	defer fu.logger.Debug("JobActiveNode kill")
-	t := time.NewTicker(3 * time.Minute)
+	t := time.NewTicker(ActiveNodeRm * time.Minute)
 Exit:
 	for {
 		select {
@@ -201,7 +203,7 @@ Exit:
 // OTPRN 발행조건, 활성 노드수가 MinActiveNum 이상일때, 블록 번호가 에폭의 반 이상일때 % == 0
 func (fu *FairUdp) manageOtprn(exit chan struct{}) {
 	defer fu.logger.Debug("manageOtprn kill")
-	t := time.NewTicker(3 * time.Second)
+	t := time.NewTicker(CheckUsingOTPRN * time.Second)
 
 	sendOtprn := func(leaguechange bool) {
 		actNum := fu.db.GetActiveNodeNum()

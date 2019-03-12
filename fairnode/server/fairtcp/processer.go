@@ -13,9 +13,21 @@ import (
 	"time"
 )
 
+const (
+	sendLeagueCounter = 5  // 리그 리스트를 보낼시 리그 풀에 노드 갯수가 리그 참여가능한 갯수보다 LeaguePercent 보다 적을때 다시 계산 하는 시간
+	LeaguePercent     = 30 // 초기 sendLeague 가능한 percent
+	reducePercent     = 5  // 한번 다시 계산할때마다 줄어드는 percent
+
+	makeJoinTxSignal = 3 // 리그 리스트 전송 후 joinTx를 만들기까지의 대기시간
+
+	finalBlockSig      = 10 // geth노드에게 블록 생성 메세지를 본낸뒤 geth노드들의 투표를 받고 확정된 블록을 보내주기까지의 시간
+	noVoteBolckLeagChn = 5  // 투표받은 블록이 없어 다음 리그를 시작할 시간(조회 횟수)
+	nextBlockMakeTerm  = 5  // 투표후 다음 블록 생성 신호 전달 term
+)
+
 func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
-	t := time.NewTicker(5 * time.Second)
-	var percent float64 = 30
+	t := time.NewTicker(sendLeagueCounter * time.Second)
+	var percent float64 = LeaguePercent
 
 	for {
 		select {
@@ -31,14 +43,14 @@ func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
 			if num >= fu.JoinTotalNum(fu.manager.GetUsingOtprn(), percent) && num > 0 {
 				fu.logger.Info("리그 전송", "리그 참여자 수", num)
 				fu.sendTcpAll(otprnHash, transport.SendLeageNodeList, enodes)
-				time.Sleep(3 * time.Second)
+				time.Sleep(makeJoinTxSignal * time.Second)
 				fu.manager.GetMakeJoinTxCh() <- struct{}{}
 				return
 			}
 
-			if percent > 5 {
+			if percent > reducePercent {
 				// 최소 5%
-				percent = percent - 5
+				percent = percent - reducePercent
 			}
 		}
 	}
@@ -57,14 +69,14 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 		case <-fu.manager.GetMakeJoinTxCh():
 			fu.logger.Debug("조인 tx 생성", "otprnhash", otprnHash.String(), "blockNum", fu.manager.GetLastBlockNum().Uint64()+1)
 			fu.sendTcpAll(otprnHash, transport.MakeJoinTx, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
-			// 브로드케스팅 5초
+			// 리그전송 4초  / 리그 내 블록 재생성 시작
 			time.AfterFunc(time.Second, func() {
 
 				fu.logger.Debug("블록 생성", "otprnhash", otprnHash.String(), "blockNum", fu.manager.GetLastBlockNum().Uint64()+1)
 				fu.sendTcpAll(otprnHash, transport.MakeBlock, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 
-				// peer list 전송후 20초
-				time.AfterFunc(10*time.Second, func() {
+				// peer list 전송후 14초 / 리그 내 블록 생성 후 10초
+				time.AfterFunc(finalBlockSig*time.Second, func() {
 					go fu.sendFinalBlock(otprnHash)
 				})
 			})
@@ -102,7 +114,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
 	go func() {
-		t := time.NewTicker(1 * time.Second)
+		t := time.NewTicker(time.Second)
 		conter := 0
 		for {
 			select {
@@ -110,7 +122,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 				fb := fu.GetFinalBlock(otprnHash, votePool)
 				if fb == nil {
 					//5초 이후에 리그 교체
-					if conter == 4 {
+					if conter == noVoteBolckLeagChn {
 						notify <- nil
 						return
 					}
@@ -135,7 +147,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 				votePool.SnapShot <- n.Block
 				votePool.DeleteCh <- pool.OtprnHash(otprnHash)
 
-				time.Sleep(5 * time.Second)
+				time.Sleep(nextBlockMakeTerm * time.Second)
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
 				return
 			} else {

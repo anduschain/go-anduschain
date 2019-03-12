@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+const (
+	SendEnodeInfo = 10 // minning을 하기 위해 fairnode에 enode를 보내는 주기(sec)
+)
+
 type Udp struct {
 	SAddrUDP   *net.UDPAddr
 	LAddrUDP   *net.UDPAddr
@@ -114,7 +118,7 @@ func (u *Udp) submitEnode(exit chan struct{}, v interface{}) {
 	defer Conn.Close()
 
 	// TODO : andus >> FairNode IP : localhost UDP Listener 11/06 -- end --
-	t := time.NewTicker(10 * time.Second)
+	t := time.NewTicker(SendEnodeInfo * time.Second)
 
 Exit:
 	for {
