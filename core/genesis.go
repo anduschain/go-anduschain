@@ -152,7 +152,7 @@ func (e *GenesisMismatchError) Error() string {
 // The returned chain configuration is never nil.
 func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig, common.Hash, error) {
 	if genesis != nil && genesis.Config == nil {
-		return params.AllEthashProtocolChanges, common.Hash{}, errGenesisNoConfig
+		return params.AllDebProtocolChanges, common.Hash{}, errGenesisNoConfig
 	}
 
 	// Just commit the new block if there is no stored genesis block.
@@ -215,7 +215,7 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 	case ghash == params.TestnetGenesisHash:
 		return params.TestnetChainConfig
 	default:
-		return params.AllEthashProtocolChanges
+		return params.AllDebProtocolChanges
 	}
 }
 
@@ -276,7 +276,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 
 	config := g.Config
 	if config == nil {
-		config = params.AllEthashProtocolChanges
+		config = params.AllDebProtocolChanges
 	}
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	return block, nil
@@ -330,30 +330,49 @@ func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 
 // DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
 // be seeded with the
-func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
-	// Override the default period to the user requested one
-	config := *params.AllCliqueProtocolChanges
-	config.Clique.Period = period
+func DeveloperGenesisBlock(devaddr, fairaddr common.Address) *Genesis {
+	config := params.TestChainConfig
+	config.Deb.Epoch = 100
+	config.Deb.FairAddr = fairaddr
 
 	// Assemble and return the genesis with the precompiles and faucet pre-funded
 	return &Genesis{
-		Config:     &config,
-		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, 65)...),
-		GasLimit:   6283185,
+		Config:     config,
+		Nonce:      0,
+		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
 		Alloc: map[common.Address]GenesisAccount{
-			common.BytesToAddress([]byte{1}): {Balance: big.NewInt(1)}, // ECRecover
-			common.BytesToAddress([]byte{2}): {Balance: big.NewInt(1)}, // SHA256
-			common.BytesToAddress([]byte{3}): {Balance: big.NewInt(1)}, // RIPEMD
-			common.BytesToAddress([]byte{4}): {Balance: big.NewInt(1)}, // Identity
-			common.BytesToAddress([]byte{5}): {Balance: big.NewInt(1)}, // ModExp
-			common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
-			common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
-			common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
-			faucet:                           {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+			devaddr: {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))}, // 초기 금액 셋팅
 		},
 	}
 }
+
+// DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
+// be seeded with the
+//func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
+//	// Override the default period to the user requested one
+//	config := *params.AllCliqueProtocolChanges
+//	config.Clique.Period = period
+//
+//	// Assemble and return the genesis with the precompiles and faucet pre-funded
+//	return &Genesis{
+//		Config:     &config,
+//		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, 65)...),
+//		GasLimit:   6283185,
+//		Difficulty: big.NewInt(1),
+//		Alloc: map[common.Address]GenesisAccount{
+//			common.BytesToAddress([]byte{1}): {Balance: big.NewInt(1)}, // ECRecover
+//			common.BytesToAddress([]byte{2}): {Balance: big.NewInt(1)}, // SHA256
+//			common.BytesToAddress([]byte{3}): {Balance: big.NewInt(1)}, // RIPEMD
+//			common.BytesToAddress([]byte{4}): {Balance: big.NewInt(1)}, // Identity
+//			common.BytesToAddress([]byte{5}): {Balance: big.NewInt(1)}, // ModExp
+//			common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
+//			common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
+//			common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
+//			faucet:                           {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+//		},
+//	}
+//}
 
 func decodePrealloc(data string) GenesisAlloc {
 	var p []struct{ Addr, Balance *big.Int }

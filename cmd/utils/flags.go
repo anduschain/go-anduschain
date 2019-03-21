@@ -18,9 +18,11 @@
 package utils
 
 import (
+	"bufio"
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -151,10 +153,10 @@ var (
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-deb network with a pre-funded developer account, mining enabled",
 	}
-	DeveloperPeriodFlag = cli.IntFlag{
-		Name:  "dev.period",
-		Usage: "Block period to use in developer mode (0 = mine only if transaction pending)",
-	}
+	//DeveloperPeriodFlag = cli.IntFlag{
+	//	Name:  "dev.period",
+	//	Usage: "Block period to use in developer mode (0 = mine only if transaction pending)",
+	//}
 	IdentityFlag = cli.StringFlag{
 		Name:  "identity",
 		Usage: "Custom node name",
@@ -1213,7 +1215,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		cfg.Genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
-		Fatalf("Run Develop mode Error %s", "not support")
+		//Fatalf("Run Develop mode Error %s", "not support")
 
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 133756
@@ -1236,7 +1238,13 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		log.Info("Using developer account", "address", developer.Address)
 
-		cfg.Genesis = core.DeveloperGenesisBlock(uint64(ctx.GlobalInt(DeveloperPeriodFlag.Name)), developer.Address)
+		fmt.Printf("Input your fairnode address ")
+		fairAddr := readAddress()
+		if fairAddr == nil {
+			Fatalf("Failed to setting dev anduschain : %v", errors.New("fail to read fairnode address"))
+		}
+
+		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address, *fairAddr)
 		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
 			cfg.MinerGasPrice = big.NewInt(1)
 		}
@@ -1244,6 +1252,30 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	// TODO(fjl): move trie cache generations into config
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
+	}
+}
+
+func readAddress() *common.Address {
+	in := bufio.NewReader(os.Stdin)
+
+	for {
+		// Read the address from the user
+		fmt.Printf("> 0x")
+		text, err := in.ReadString('\n')
+		if err != nil {
+			log.Crit("Failed to read user input", "err", err)
+		}
+		if text = strings.TrimSpace(text); text == "" {
+			return nil
+		}
+		// Make sure it looks ok and return it if so
+		if len(text) != 40 {
+			log.Error("Invalid address length, please retry")
+			continue
+		}
+		bigaddr, _ := new(big.Int).SetString(text, 16)
+		address := common.BigToAddress(bigaddr)
+		return &address
 	}
 }
 
@@ -1315,7 +1347,7 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 
 		return ethstats.New(url, ethServ, lesServ)
 	}); err != nil {
-		Fatalf("Failed to register the Ethereum Stats service: %v", err)
+		Fatalf("Failed to register the Anduschain Stats service: %v", err)
 	}
 }
 

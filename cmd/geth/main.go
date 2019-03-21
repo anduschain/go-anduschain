@@ -116,8 +116,8 @@ var (
 		utils.NetrestrictFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
-		//utils.DeveloperFlag,
-		utils.DeveloperPeriodFlag,
+		utils.DeveloperFlag,
+		//utils.DeveloperPeriodFlag,
 		utils.TestnetFlag,
 		//utils.RinkebyFlag,
 		// TODO : andus >> consensus
