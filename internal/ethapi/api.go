@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
@@ -42,6 +41,7 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -328,6 +328,13 @@ func (s *PrivateAccountAPI) UnlockAccount(addr common.Address, password string, 
 		d = time.Duration(*duration) * time.Second
 	}
 	err := fetchKeystore(s.am).TimedUnlock(accounts.Account{Address: addr}, password, d)
+	return err == nil, err
+}
+
+// UnlockCoinbase will unlock the account associated with the given address with
+// the given password for duration seconds. for mining ( duration = 0 / unlimited )
+func (s *PrivateAccountAPI) UnlockCoinbase(addr common.Address, password string) (bool, error) {
+	err := fetchKeystore(s.am).TimedUnlock(accounts.Account{Address: addr}, password, 0)
 	return err == nil, err
 }
 
