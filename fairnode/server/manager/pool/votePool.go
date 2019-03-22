@@ -109,13 +109,13 @@ Exit:
 							}
 						}
 						vp.pool[vote.OtprnHash][i].Count++
-						vp.pool[vote.OtprnHash][i].Voters = append(vp.pool[vote.OtprnHash][i].Voters, types.Voter{vote.Addr, vote.Sig})
+						vp.pool[vote.OtprnHash][i].Voters = append(vp.pool[vote.OtprnHash][i].Voters, types.Voter{vote.Addr, vote.Sig, vote.Difficulty})
 						break
 					}
 				}
 
 				if !isExist {
-					vp.pool[vote.OtprnHash] = append(vp.pool[vote.OtprnHash], VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1})
+					vp.pool[vote.OtprnHash] = append(vp.pool[vote.OtprnHash], VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig, vote.Difficulty}}, 1})
 					// 블록을 요청함
 					vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 				}
@@ -123,7 +123,7 @@ Exit:
 				vp.mux.Unlock()
 			} else {
 				vp.mux.Lock()
-				vp.pool[vote.OtprnHash] = VoteBlocks{VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig}}, 1}}
+				vp.pool[vote.OtprnHash] = VoteBlocks{VoteBlock{BlockHash(vote.HeaderHash), []types.Voter{{vote.Addr, vote.Sig, vote.Difficulty}}, 1}}
 				// 블록을 요청함
 				vp.RequestBlockCh <- ReqBlock{vote.Addr, BlockHash(vote.HeaderHash), vote.OtprnHash}
 				vp.mux.Unlock()

@@ -11,6 +11,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -88,16 +89,17 @@ type client interface {
 
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
-	config    *params.DebConfig // Consensus engine configuration parameters
-	db        ethdb.Database    // Database to store and retrieve snapshot checkpoints
-	joinNonce uint64
-	privKey   *ecdsa.PrivateKey
-	otprnHash common.Hash
-	coinbase  common.Address
-	chans     fairtypes.Channals
-	client    client
-	logger    log.Logger
-	fairAddr  common.Address
+	config     *params.DebConfig // Consensus engine configuration parameters
+	db         ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	joinNonce  uint64
+	privKey    *ecdsa.PrivateKey
+	otprnHash  common.Hash
+	coinbase   common.Address
+	chans      fairtypes.Channals
+	client     client
+	logger     log.Logger
+	fairAddr   common.Address
+	difficulty string
 }
 
 // New creates a andusChain proof-of-deb consensus engine with the initial
@@ -294,8 +296,8 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// TODO : andus >> nonce = joinNonce
 	header.Nonce = types.EncodeNonce(c.joinNonce)
 	// TODO : andus >> difficulty = RAND값
-
 	rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
+	c.difficulty = strconv.FormatInt(rand, 10)
 	diff := big.NewInt(rand)
 
 	header.Difficulty = diff
@@ -374,6 +376,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	rand := MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
+
 	return big.NewInt(rand)
 }
 

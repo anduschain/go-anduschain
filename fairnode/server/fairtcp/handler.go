@@ -111,7 +111,7 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 		}
 
 		ft.manager.GetVotePool().InsertCh <- pool.Vote{
-			pool.OtprnHash(vote.OtprnHash), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig},
+			pool.OtprnHash(vote.OtprnHash), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig, vote.Difficulty},
 		}
 
 		ft.logger.Debug("블록 투표 됨", "blockNum", vote.BlockNum.String(), "blockHash", vote.HeaderHash.String(), "voter", vote.Voter.String())

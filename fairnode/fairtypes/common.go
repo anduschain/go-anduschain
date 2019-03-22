@@ -57,6 +57,7 @@ type TsVoteBlock struct {
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
 	//Receipts   []EncodedReceipt
+	Difficulty string // 투표자의 difficulty 를 저장해놓음
 }
 
 func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
@@ -67,6 +68,7 @@ func (tvb *TsVoteBlock) GetVoteBlock() *VoteBlock {
 		Voter:      tvb.Voter,
 		OtprnHash:  tvb.OtprnHash,
 		//Receipts:   DecodeReceipts(tvb.Receipts),
+		Difficulty: tvb.Difficulty, //difficulty
 	}
 }
 
@@ -77,6 +79,8 @@ type VoteBlock struct {
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
 	//Receipts   []*types.Receipt
+
+	Difficulty string // 투표자의 difficulty 를 저장해놓음
 }
 
 func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
@@ -87,6 +91,7 @@ func (vt *VoteBlock) GetTsVoteBlock() TsVoteBlock {
 		Voter:      vt.Voter,
 		OtprnHash:  vt.OtprnHash,
 		//Receipts:   EncodeReceipts(vt.Receipts),
+		Difficulty: vt.Difficulty,
 	}
 	return tvb
 }
@@ -122,6 +127,7 @@ type Vote struct {
 	Sig        []byte
 	Voter      common.Address // coinbase
 	OtprnHash  common.Hash
+	Difficulty string // difficulty 추가
 }
 
 type ResWinningBlock struct {

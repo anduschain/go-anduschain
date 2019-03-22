@@ -124,8 +124,9 @@ type Body struct {
 	Uncles       []*Header
 }
 type Voter struct {
-	Addr common.Address
-	Sig  []byte
+	Addr       common.Address
+	Sig        []byte
+	Difficulty string
 }
 
 func (v *Voter) Size() common.StorageSize {

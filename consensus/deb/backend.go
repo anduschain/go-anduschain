@@ -226,6 +226,7 @@ Exit:
 				Sig:        mySig,
 				Voter:      c.coinbase,
 				OtprnHash:  wb.OtprnHash,
+				Difficulty: c.difficulty,
 			}
 
 			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)

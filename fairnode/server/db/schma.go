@@ -55,6 +55,7 @@ type transaction struct {
 type vote struct {
 	Addr string
 	Sig  []byte
+	Diff string
 }
 
 type storedBlock struct {

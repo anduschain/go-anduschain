@@ -41,7 +41,18 @@ func sigHash(header *types.Header) (hash common.Hash) {
 }
 
 func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
-	hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("%d%s%s%s", n, otprn, coinbase, pBlockHash)))
+	//hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("%d%s%s%s", n, otprn, coinbase, pBlockHash)))
+
+	//20190321dongha
+	//coinbase 의 크기가 제일 작기때문에 coinbase의 크기만큼만 xor 시킴
+	RandData := [20]byte{}
+	for i := 0; i < 20; i++ {
+		RandData[i] = otprn[i] ^ coinbase[i] ^ pBlockHash[i]
+	}
+
+	bn := []byte(fmt.Sprintf("%d", n))
+	bn = append(bn, RandData[:]...)
+	hash := crypto.Keccak256Hash(bn)
 	return hash.Big()
 }
 
