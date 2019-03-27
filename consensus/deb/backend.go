@@ -205,7 +205,21 @@ Exit:
 						continue
 					}
 
+					// winningblock을 선정하고, 우선순위가 높은 블록을 다시 재배포
 					winningBlock = c.CompareBlock(winningBlock, recevedBlock)
+					block := winningBlock.Block
+					sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
+					if err != nil {
+						c.logger.Error("Boradcasting Block found but fail signature", "number", block.Number(), "hash", block.Hash())
+						continue
+					}
+					c.chans.GetLeagueBlockBroadcastCh() <- &fairtypes.VoteBlock{
+						Block:      block,
+						HeaderHash: block.Header().Hash(),
+						Sig:        sig,
+						OtprnHash:  winningBlock.OtprnHash,
+						Voter:      c.coinbase,
+					}
 				}
 			}
 		case <-t.C:
