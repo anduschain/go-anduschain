@@ -1,14 +1,13 @@
 package deb
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
+	"strconv"
 )
 
 // sigHash returns the hash which is used as input for the proof-of-authority
@@ -43,20 +42,14 @@ func sigHash(header *types.Header) (hash common.Hash) {
 
 func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) *big.Int {
 
-	//20190321dongha
-	//coinbase 의 크기가 제일 작기때문에 coinbase의 크기만큼만 xor 시킴
-	//RandData := [20]byte{}
-	//for i := 0; i < 20; i++ {
-	//	RandData[i] = otprn[i] ^ coinbase[i] ^ pBlockHash[i]
-	//}
-	//bn := []byte(fmt.Sprintf("%d", n))
-	//bn = append(bn, RandData[:]...)
+	var bn []byte
+	bn = append(bn, []byte(strconv.Itoa(n))[:]...)
+	bn = append(bn, otprn[:]...)
+	bn = append(bn, pBlockHash[:]...)
+	bn = append(bn, coinbase.Bytes()[:]...)
 
-	//20190326 sha256으로 변경 DH
-	bn := []byte(fmt.Sprintf("%d%s%s%s", n, otprn, coinbase.Hash(), pBlockHash))
-	rn := sha256.Sum256(bn) // sha256
-	hash := crypto.Keccak256Hash(rn[:])
-	return hash.Big()
+	hash := crypto.Keccak256Hash(bn[:])
+	return big.NewInt(hash.Big().Int64())
 }
 
 // TODO : andus >> Rand 생성
