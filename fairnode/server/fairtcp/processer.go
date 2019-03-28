@@ -21,7 +21,7 @@ const (
 	makeJoinTxSig = 3 // 리그 리스트 전송 후 joinTx를 만들기까지의 대기시간
 
 	finalBlockSig      = 10 // geth노드에게 블록 생성 메세지를 본낸뒤 geth노드들의 투표를 받고 확정된 블록을 보내주기까지의 시간
-	noVoteBolckLeagChn = 15 // 투표받은 블록이 없어 다음 리그를 시작할 시간(조회 횟수)
+	noVoteBolckLeagChn = 20 // 투표받은 블록이 없어 다음 리그를 시작할 시간(조회 횟수)
 	nextBlockMakeTerm  = 5  // 블록생성 후  다음 블록 생성 신호 전달 term
 )
 
@@ -121,7 +121,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 			case <-t.C:
 				fb := fu.GetFinalBlock(otprnHash, votePool)
 				if fb == nil {
-					//5초 이후에 리그 교체
+					//20초 이후에 리그 교체
 					if conter == noVoteBolckLeagChn {
 						notify <- nil
 						return
