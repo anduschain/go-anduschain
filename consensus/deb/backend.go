@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	VotingWaitTime = 15 // 리그에서 블록 생성시 기다리는 시간
+)
+
 func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
 	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
 	sig := rSig
@@ -177,7 +181,7 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock, isVoting *bool) {
 	c.logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String())
 	winningBlock := tsfBlock
-	t := time.NewTicker(5 * time.Second)
+	t := time.NewTicker(VotingWaitTime * time.Second)
 
 	defer func() {
 		*isVoting = false
