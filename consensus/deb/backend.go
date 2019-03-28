@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	VotingWaitTime = 15 // 리그에서 블록 투표시 기다리는 시간
+	VotingWaitTime = 10 // 리그에서 블록 투표시 기다리는 시간
 )
 
 func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
@@ -185,6 +185,7 @@ func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fa
 
 	defer func() {
 		*isVoting = false
+		c.logger.Debug("SendMiningBlockAndVoting Closed", "otprnHash", tsfBlock.OtprnHash.String())
 	}()
 
 Exit:
