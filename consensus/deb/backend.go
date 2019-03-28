@@ -179,13 +179,13 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 }
 
 func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock, isVoting *bool) {
-	c.logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String())
+	c.logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
 	winningBlock := tsfBlock
 	t := time.NewTicker(VotingWaitTime * time.Second)
 
 	defer func() {
 		*isVoting = false
-		c.logger.Debug("SendMiningBlockAndVoting Closed", "otprnHash", tsfBlock.OtprnHash.String())
+		c.logger.Debug("SendMiningBlockAndVoting Closed", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
 	}()
 
 Exit:
