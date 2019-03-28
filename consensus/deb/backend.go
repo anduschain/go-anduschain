@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	VotingWaitTime = 15 // 리그에서 블록 생성시 기다리는 시간
+	VotingWaitTime = 15 // 리그에서 블록 투표시 기다리는 시간
 )
 
 func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
