@@ -48,7 +48,8 @@ type FairnodeClient struct {
 	readLoopStopCh     chan struct{}
 	writeLoopStopCh    chan struct{}
 
-	StartCh chan struct{} // 블록생성 시작 채널
+	StartCh                 chan struct{} // 블록생성 시작 채널
+	WinningBlockVoteStartCh chan struct{} //  투표 시작 채널
 
 	chans  fairtypes.Channals
 	Signer types.EIP155Signer
@@ -69,22 +70,23 @@ type FairnodeClient struct {
 func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
-		chans:              chans,
-		Running:            false,
-		BlockChain:         blockChain,
-		txPool:             tp,
-		TcpConnStartCh:     make(chan struct{}),
-		submitEnodeExitCh:  make(chan struct{}),
-		receiveOtprnExitCh: make(chan struct{}),
-		StartCh:            make(chan struct{}),
-		Services:           make(map[string]_interface.ServiceFunc),
-		Signer:             types.NewEIP155Signer(blockChain.Config().ChainID),
-		wBlocks:            make(map[common.Hash]map[common.Hash]*types.Block),
-		IsBlockMine:        false,
-		OtprnQueue:         queue.NewQueue(1),
-		UsingOtprn:         nil,
-		realAddr:           nil,
-		logger:             logger.New("Geth", "FairNode Client"),
+		chans:                   chans,
+		Running:                 false,
+		BlockChain:              blockChain,
+		txPool:                  tp,
+		TcpConnStartCh:          make(chan struct{}),
+		submitEnodeExitCh:       make(chan struct{}),
+		receiveOtprnExitCh:      make(chan struct{}),
+		StartCh:                 make(chan struct{}),
+		WinningBlockVoteStartCh: make(chan struct{}),
+		Services:                make(map[string]_interface.ServiceFunc),
+		Signer:                  types.NewEIP155Signer(blockChain.Config().ChainID),
+		wBlocks:                 make(map[common.Hash]map[common.Hash]*types.Block),
+		IsBlockMine:             false,
+		OtprnQueue:              queue.NewQueue(1),
+		UsingOtprn:              nil,
+		realAddr:                nil,
+		logger:                  logger.New("Geth", "FairNode Client"),
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
@@ -207,6 +209,8 @@ func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *clinetTypes.OtprnWit
 
 	return nil
 }
+
+func (fc *FairnodeClient) WinningBlockVoteStart() chan struct{} { return fc.WinningBlockVoteStartCh }
 
 func (fc *FairnodeClient) GetNat() nat.Interface { return fc.nat }
 

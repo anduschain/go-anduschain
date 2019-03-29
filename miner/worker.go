@@ -616,6 +616,7 @@ func (w *worker) resultLoop() {
 
 			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
 			w.chans.GetLeagueBlockBroadcastCh() <- &vb
+			log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
 
 			// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
 			if !*w.isVoting {

@@ -12,7 +12,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
-	"time"
 )
 
 const (
@@ -146,6 +145,10 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 	pvBlock := myBlock // 가지고 있던 블록
 	voteBlocks := receivedBlock
 
+	if pvBlock == nil {
+		return voteBlocks
+	}
+
 	if voteBlocks.Block.Difficulty().Cmp(pvBlock.Block.Difficulty()) == 1 {
 		// diffcult 값이 높은 블록
 		return voteBlocks
@@ -180,8 +183,9 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 
 func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock, isVoting *bool) {
 	c.logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
-	winningBlock := tsfBlock
-	t := time.NewTicker(VotingWaitTime * time.Second)
+	var winningBlock *fairtypes.VoteBlock
+	prevHash := tsfBlock.Block.Hash()
+	//t := time.NewTicker(VotingWaitTime * time.Second)
 
 	defer func() {
 		*isVoting = false
@@ -192,9 +196,6 @@ Exit:
 	for {
 		select {
 		case recevedBlock := <-c.chans.GetReceiveBlockCh():
-
-			c.logger.Debug("리그 전파 블록 도착", "voteBlockHash", recevedBlock.Block.Header().Hash().String())
-
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
 			if err, errType := c.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
@@ -210,26 +211,39 @@ Exit:
 						continue
 					}
 
+					c.logger.Debug("리그 전파 블록 도착", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
+
 					// winningblock을 선정하고, 우선순위가 높은 블록을 다시 재배포
 					winningBlock = c.CompareBlock(winningBlock, recevedBlock)
-					block := winningBlock.Block
-					sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
-					if err != nil {
-						c.logger.Error("Boradcasting Block found but fail signature", "number", block.Number(), "hash", block.Hash())
-						continue
-					}
-					c.chans.GetLeagueBlockBroadcastCh() <- &fairtypes.VoteBlock{
-						Block:      block,
-						HeaderHash: block.Header().Hash(),
-						Sig:        sig,
-						OtprnHash:  winningBlock.OtprnHash,
-						Voter:      c.coinbase,
+
+					if prevHash != winningBlock.Block.Hash() {
+						block := winningBlock.Block
+						sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
+						if err != nil {
+							c.logger.Error("Boradcasting Block found but fail signature", "number", block.Number(), "hash", block.Hash())
+							continue
+						}
+
+						c.chans.GetLeagueBlockBroadcastCh() <- &fairtypes.VoteBlock{
+							Block:      block,
+							HeaderHash: block.Header().Hash(),
+							Sig:        sig,
+							OtprnHash:  winningBlock.OtprnHash,
+							Voter:      c.coinbase,
+						}
+
+						prevHash = winningBlock.Block.Hash()
 					}
 				}
 			}
-		case <-t.C:
-
+		case <-c.chans.GetWinningBlockVoteStartCh():
 			wb := winningBlock
+
+			if wb == nil {
+				c.logger.Debug("블록투표 실패", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+				break Exit
+			}
+
 			if chain.CurrentHeader().Number.Cmp(wb.Block.Number()) >= 0 {
 				continue
 			}

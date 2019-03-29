@@ -154,6 +154,7 @@ type Channals interface {
 	GetReceiveBlockCh() chan *VoteBlock
 	GetWinningBlockCh() chan *Vote
 	GetFinalBlockCh() chan FinalBlock
+	GetWinningBlockVoteStartCh() chan struct{}
 }
 
 func EncodeBlock(block *types.Block) EncodedBlock {

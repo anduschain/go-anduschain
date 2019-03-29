@@ -46,4 +46,6 @@ type Client interface {
 	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
 
 	GetNat() nat.Interface
+
+	WinningBlockVoteStart() chan struct{}
 }

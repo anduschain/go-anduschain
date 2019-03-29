@@ -157,10 +157,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 
 		// TODO : andus >> 위닝블록 전송 채널
-		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock),
+		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 4),
 		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		VoteCh:                 make(chan *fairtypes.Vote),
-		FinalBlockCh:           make(chan fairtypes.FinalBlock),
+		VoteCh:                 make(chan *fairtypes.Vote, 1),
+		FinalBlockCh:           make(chan fairtypes.FinalBlock, 1),
 	}
 
 	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
@@ -227,6 +227,9 @@ func (s *Ethereum) GetLeagueBlockBroadcastCh() chan *fairtypes.VoteBlock {
 func (s *Ethereum) GetReceiveBlockCh() chan *fairtypes.VoteBlock { return s.ReceiveBlockCh }
 func (s *Ethereum) GetWinningBlockCh() chan *fairtypes.Vote      { return s.VoteCh }
 func (s *Ethereum) GetFinalBlockCh() chan fairtypes.FinalBlock   { return s.FinalBlockCh }
+func (s *Ethereum) GetWinningBlockVoteStartCh() chan struct{} {
+	return s.FairnodeClient.WinningBlockVoteStartCh
+}
 
 func makeExtraData(extra []byte) []byte {
 	if len(extra) == 0 {
