@@ -198,9 +198,12 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
 			return errors.New("otprn이 다릅니다")
 		}
+
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
-			return errors.New("동기화가 맞지 않습니다")
+			t.logger.Error("동기화가 맞지 않습니다", "makeBlockNum", m.Number, "currentBlockNum", t.manger.GetBlockChain().CurrentBlock().Number().Uint64())
+			break
 		}
+
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
 		if err != nil {
 			t.logger.Error("MakeJoinTx", "error", err)
@@ -214,7 +217,8 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			return errors.New("otprn이 다릅니다")
 		}
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
-			return errors.New("동기화가 맞지 않습니다")
+			t.logger.Error("동기화가 맞지 않습니다", "makeBlockNum", m.Number, "currentBlockNum", t.manger.GetBlockChain().CurrentBlock().Number().Uint64())
+			break
 		}
 		t.manger.SetBlockMine(true)
 		t.logger.Info("블록 생성", "blockNum", m.Number, "otprnHash", m.OtprnHash.String())

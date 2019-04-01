@@ -197,7 +197,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	log.Debug("Removing Ethereum peer", "peer", id)
+	log.Debug("Removing Anduschain peer", "peer", id)
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
@@ -248,7 +248,7 @@ func (pm *ProtocolManager) leagueBroadCast() {
 }
 
 func (pm *ProtocolManager) Stop() {
-	log.Info("Stopping Ethereum protocol")
+	log.Info("Stopping Anduschain protocol")
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
@@ -302,7 +302,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	// Register the peer locally
 	if err := pm.peers.Register(p); err != nil {
-		p.Log().Error("Ethereum peer registration failed", "err", err)
+		p.Log().Error("Anduschain peer registration failed", "err", err)
 		return err
 	}
 	defer pm.removePeer(p.id)

@@ -536,6 +536,12 @@ func (s *Ethereum) Stop() error {
 	s.bloomIndexer.Close()
 	s.blockchain.Stop()
 	s.engine.Close()
+
+	// 종료시 Static Node 삭제
+	for i := range s.Serv.StaticNodes {
+		s.Serv.RemovePeer(s.Serv.StaticNodes[i])
+	}
+
 	s.protocolManager.Stop()
 	if s.lesServer != nil {
 		s.lesServer.Stop()

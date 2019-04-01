@@ -720,7 +720,16 @@ running:
 			// A peer disconnected.
 			d := common.PrettyDuration(mclock.Now() - pd.created)
 			pd.log.Debug("Removing p2p peer", "duration", d, "peers", len(peers)-1, "req", pd.requested, "err", pd.err)
+
+			//static node 제거
+			node, err := discover.ParseNode(pd.ID().String())
+			if err != nil {
+				pd.log.Error("Static Node Parse", "mgs", err)
+			}
+			srv.removestatic <- node
+
 			delete(peers, pd.ID())
+
 			if pd.Inbound() {
 				inboundCount--
 			}
