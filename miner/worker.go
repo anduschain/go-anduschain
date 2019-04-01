@@ -688,14 +688,20 @@ func (w *worker) resultLoop() {
 			// Broadcast the block and announce chain insertion event
 			w.mux.Post(core.NewMinedBlockEvent{Block: block})
 
+			var CanonStatTy, SideStatTy bool
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
+				CanonStatTy = true
 				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 				events = append(events, core.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
+				SideStatTy = true
 				events = append(events, core.ChainSideEvent{Block: block})
 			}
+
+			log.Debug("*********WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
+
 			w.chain.PostChainEvents(events, logs)
 
 			// Insert the block into the set of pending ones to resultLoop for confirmations
