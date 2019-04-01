@@ -235,6 +235,7 @@ func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
 		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
+			pm.logger.Debug("리그 브로드 캐스팅", "연결된 피어 수", len(pm.peers.peers))
 			for _, peer := range pm.peers.peers {
 				pm.logger.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
 				err := peer.SendMakeLeagueBlock(*block)
@@ -268,7 +269,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for all peer handler goroutines and the loops to come down.
 	pm.wg.Wait()
 
-	log.Info("Ethereum protocol stopped")
+	log.Info("Anduschain protocol stopped")
 }
 
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -282,7 +283,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers
 	}
-	p.Log().Debug("Ethereum peer connected", "name", p.Name())
+	p.Log().Debug("Anduschain peer connected", "name", p.Name())
 
 	// Execute the Ethereum handshake
 	var (
@@ -293,7 +294,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		td      = pm.blockchain.GetTd(hash, number)
 	)
 	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
-		p.Log().Debug("Ethereum handshake failed", "err", err)
+		p.Log().Debug("Anduschain handshake failed", "err", err)
 		return err
 	}
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -336,7 +337,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			p.Log().Debug("Ethereum message handling failed", "err", err)
+			p.Log().Debug("Anduschain message handling failed", "err", err)
 			return err
 		}
 	}

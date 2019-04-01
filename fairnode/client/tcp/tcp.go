@@ -194,7 +194,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		// JoinTx 생성
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
-
+		t.logger.Debug("TCP Message arrived", "mgs", "Join Tx 생성 메시지 도착")
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
 			return errors.New("otprn이 다릅니다")
 		}
@@ -209,6 +209,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	case transport.MakeBlock:
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
+		t.logger.Debug("TCP Message arrived", "mgs", "블록 생성 메시지 도착")
 		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
 			return errors.New("otprn이 다릅니다")
 		}
