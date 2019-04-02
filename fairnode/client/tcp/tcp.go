@@ -207,7 +207,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
 		if err != nil {
 			t.logger.Error("MakeJoinTx", "error", err)
-			return err
+			break
 		}
 	case transport.MakeBlock:
 		var m fairtypes.BlockMakeMessage
@@ -223,7 +223,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		t.manger.SetBlockMine(true)
 		t.logger.Info("블록 생성", "blockNum", m.Number, "otprnHash", m.OtprnHash.String())
 		t.manger.BlockMakeStart() <- struct{}{}
-
 	case transport.SendFinalBlock:
 		tsFb := &fairtypes.TsFinalBlock{}
 		msg.Decode(&tsFb)
@@ -241,8 +240,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
 			return errors.New("리그 종료")
 		}
-		return nil
-
 	case transport.RequestWinningBlock:
 
 		var headerHash common.Hash
@@ -252,14 +249,11 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			break
 		}
 		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
-
 		transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
-
 	case transport.WinningBlockVote:
 		// 블록 투표 시작
 		t.logger.Info("블록 투표 시작")
 		t.manger.WinningBlockVoteStart() <- struct{}{}
-		return nil
 	default:
 		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
 	}
