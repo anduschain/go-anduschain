@@ -190,7 +190,6 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			t.manger.GetP2PServer().AddPeer(node)
 			t.logger.Debug("addPeer", "enode", nodeList[index])
 		}
-
 	case transport.MakeJoinTx:
 		// JoinTx 생성
 		var m fairtypes.BlockMakeMessage
@@ -224,16 +223,18 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		t.manger.SetBlockMine(true)
 		t.logger.Info("블록 생성", "blockNum", m.Number, "otprnHash", m.OtprnHash.String())
 		t.manger.BlockMakeStart() <- struct{}{}
+
 	case transport.SendFinalBlock:
-		tsFb := &fairtypes.TsFinalBlock{}
-		msg.Decode(&tsFb)
-		fb := tsFb.GetFinalBlock()
-		t.logger.Info("파이널블록 수신", "blockNum", fb.Block.Number().String(), "miner", fb.Block.Coinbase().String(), "voteCount", len(fb.Block.Voter))
-		t.manger.FinalBlock() <- *fb
+		if t.manger.GetBlockMine() {
+			tsFb := &fairtypes.TsFinalBlock{}
+			msg.Decode(&tsFb)
+			fb := tsFb.GetFinalBlock()
+			t.logger.Info("파이널블록 수신", "blockNum", fb.Block.Number().String(), "miner", fb.Block.Coinbase().String(), "voteCount", len(fb.Block.Voter))
+			t.manger.FinalBlock() <- *fb
+		}
 	case transport.FinishLeague:
 		var otprnhash common.Hash
 		msg.Decode(&otprnhash)
-
 		if otprnhash == leagueOtprnwithsig.Otprn.HashOtprn() {
 			//otprn 교체 및 저장된 블록 제거
 			t.manger.SetBlockMine(false)
@@ -242,19 +243,22 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			return errors.New("리그 종료")
 		}
 	case transport.RequestWinningBlock:
-
-		var headerHash common.Hash
-		msg.Decode(&headerHash)
-		block := t.manger.GetWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn(), headerHash)
-		if block == nil {
-			break
+		if t.manger.GetBlockMine() {
+			var headerHash common.Hash
+			msg.Decode(&headerHash)
+			block := t.manger.GetWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn(), headerHash)
+			if block == nil {
+				break
+			}
+			fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
+			transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
 		}
-		fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
-		transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
 	case transport.WinningBlockVote:
-		// 블록 투표 시작
-		t.logger.Info("블록 투표 시작")
-		t.manger.WinningBlockVoteStart() <- struct{}{}
+		if t.manger.GetBlockMine() {
+			// 블록 투표 시작
+			t.logger.Info("블록 투표 시작")
+			t.manger.WinningBlockVoteStart() <- struct{}{}
+		}
 	default:
 		return errors.New(fmt.Sprintf("알수 없는 메시지 코드 : %d", msg.Code))
 	}
