@@ -37,14 +37,14 @@ func New(fd net.Conn) Transport {
 func (t *Tsp) ReadMsg() (*TsMsg, error) {
 	t.rmu.Lock()
 	defer t.rmu.Unlock()
-	t.fd.SetReadDeadline(time.Now().Add(frameReadTimeout))
+	//t.fd.SetReadDeadline(time.Now().Add(frameReadTimeout))
 	return t.rw.ReadMsg()
 }
 
 func (t *Tsp) WriteMsg(msg *TsMsg) error {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
-	t.fd.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
+	//t.fd.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
 	return t.rw.WriteMsg(msg)
 }
 

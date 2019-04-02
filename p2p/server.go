@@ -573,6 +573,7 @@ type dialer interface {
 	taskDone(task, time.Time)
 	addStatic(*discover.Node)
 	removeStatic(*discover.Node)
+	removeStaticID(n discover.NodeID)
 }
 
 func (srv *Server) run(dialstate dialer) {
@@ -717,19 +718,13 @@ running:
 				break running
 			}
 		case pd := <-srv.delpeer:
+			dialstate.removeStaticID(pd.ID())
+			srv.log.Trace("Removing static node", "node", pd.ID().String())
+
 			// A peer disconnected.
 			d := common.PrettyDuration(mclock.Now() - pd.created)
 			pd.log.Debug("Removing p2p peer", "duration", d, "peers", len(peers)-1, "req", pd.requested, "err", pd.err)
-
-			//static node 제거
-			node, err := discover.ParseNode(pd.ID().String())
-			if err != nil {
-				pd.log.Error("Static Node Parse", "mgs", err)
-			}
-			srv.removestatic <- node
-
 			delete(peers, pd.ID())
-
 			if pd.Inbound() {
 				inboundCount--
 			}

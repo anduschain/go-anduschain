@@ -187,9 +187,10 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 				t.logger.Error("노드 URL 파싱에러", "error ", err)
 				continue
 			}
-			t.logger.Debug("addPeer", "enode", nodeList[index])
 			t.manger.GetP2PServer().AddPeer(node)
+			t.logger.Debug("addPeer", "enode", nodeList[index])
 		}
+
 	case transport.MakeJoinTx:
 		// JoinTx 생성
 		var m fairtypes.BlockMakeMessage

@@ -159,6 +159,14 @@ func (s *dialstate) removeStatic(n *discover.Node) {
 	s.hist.remove(n.ID)
 }
 
+func (s *dialstate) removeStaticID(n discover.NodeID) {
+	// This removes a task so future attempts to connect will not be made.
+	delete(s.static, n)
+	// This removes a previous dial timestamp so that application
+	// can force a server to reconnect with chosen peer immediately.
+	s.hist.remove(n)
+}
+
 func (s *dialstate) newTasks(nRunning int, peers map[discover.NodeID]*Peer, now time.Time) []task {
 	if s.start.IsZero() {
 		s.start = now

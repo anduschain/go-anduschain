@@ -700,7 +700,7 @@ func (w *worker) resultLoop() {
 				events = append(events, core.ChainSideEvent{Block: block})
 			}
 
-			log.Debug("*********WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
+			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
 
 			w.chain.PostChainEvents(events, logs)
 
