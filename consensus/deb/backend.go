@@ -123,7 +123,6 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 
 // 투표블록 서명 검증하고 난이도 검증
 func (c *Deb) ValidationVoteBlockSign(voteBlock *fairtypes.VoteBlock) bool {
-	block := voteBlock.Block
 	header := voteBlock.Block.Header()
 
 	pubKey, err := crypto.SigToPub(header.Hash().Bytes(), voteBlock.Sig)
@@ -132,7 +131,7 @@ func (c *Deb) ValidationVoteBlockSign(voteBlock *fairtypes.VoteBlock) bool {
 	}
 
 	addr := crypto.PubkeyToAddress(*pubKey)
-	if block.Header().Coinbase.String() == addr.String() {
+	if voteBlock.Voter.String() == addr.String() {
 		return true
 	} else {
 		return false
