@@ -718,8 +718,11 @@ running:
 				break running
 			}
 		case pd := <-srv.delpeer:
-			dialstate.removeStaticID(pd.ID())
-			srv.log.Trace("Removing static node", "node", pd.ID().String())
+		    if (pd.err == ErrGenesisBlockMismatch || pd.err == ErrNetworkIdMismatch ||
+		        pd.err == ErrProtocolVersionMismatch || pd.err == ErrExtraStatusMsg) {
+		        dialstate.removeStaticID(pd.ID())
+                srv.log.Debug("Removing static node", "node", pd.ID().String())
+		    }
 
 			// A peer disconnected.
 			d := common.PrettyDuration(mclock.Now() - pd.created)
