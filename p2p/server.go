@@ -21,7 +21,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/eth"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -718,11 +720,14 @@ running:
 				break running
 			}
 		case pd := <-srv.delpeer:
-		    if (pd.err == ErrGenesisBlockMismatch || pd.err == ErrNetworkIdMismatch ||
-		        pd.err == ErrProtocolVersionMismatch || pd.err == ErrExtraStatusMsg) {
-		        dialstate.removeStaticID(pd.ID())
-                srv.log.Debug("Removing static node", "node", pd.ID().String())
-		    }
+
+			if strings.Compare(pd.err.Error(), errorToString[eth.ErrGenesisBlockMismatch]) == 0 ||
+				strings.Compare(pd.err.Error(), errorToString[eth.ErrNetworkIdMismatch]) == 0 ||
+				strings.Compare(pd.err.Error(), errorToString[eth.ErrProtocolVersionMismatch]) == 0 ||
+				strings.Compare(pd.err.Error(), errorToString[eth.ErrExtraStatusMsg]) == 0 {
+				dialstate.removeStaticID(pd.ID())
+				srv.log.Debug("Removing static node", "node", pd.ID().String())
+			}
 
 			// A peer disconnected.
 			d := common.PrettyDuration(mclock.Now() - pd.created)
