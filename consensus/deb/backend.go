@@ -131,7 +131,7 @@ func (c *Deb) ValidationVoteBlockSign(voteBlock *fairtypes.VoteBlock) bool {
 	}
 
 	addr := crypto.PubkeyToAddress(*pubKey)
-	if voteBlock.Voter.String() == addr.String() {
+	if voteBlock.Voter == addr {
 		return true
 	} else {
 		return false
