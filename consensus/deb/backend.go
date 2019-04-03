@@ -198,6 +198,7 @@ Exit:
 		case recevedBlock := <-c.chans.GetReceiveBlockCh():
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
+			c.logger.Debug("전파 블록 수신", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
 			if err, errType := c.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
 				switch errType {
 				case ErrNonFairNodeSig:
