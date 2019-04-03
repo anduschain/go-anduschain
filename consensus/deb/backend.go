@@ -205,10 +205,12 @@ Exit:
 					// TODO : andus >> 2. RAND 값 서명 검증
 					err := c.ValidationVoteBlock(chain, recevedBlock.Block)
 					if err != nil {
+						c.logger.Error("리그 전파 블록 유효성 검증 실패", "msg", err)
 						continue
 					}
 
 					if !c.ValidationVoteBlockSign(recevedBlock) {
+						c.logger.Error("리그 전파 블록 서명이 올바르지 않음", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
 						continue
 					}
 
