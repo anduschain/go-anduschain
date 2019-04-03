@@ -31,6 +31,30 @@ var errorToString = map[int]string{
 	errInvalidMsg:     "invalid message",
 }
 
+const (
+	ErrMsgTooLarge = iota
+	ErrDecode
+	ErrInvalidMsgCode
+	ErrProtocolVersionMismatch
+	ErrNetworkIdMismatch
+	ErrGenesisBlockMismatch
+	ErrNoStatusMsg
+	ErrExtraStatusMsg
+	ErrSuspendedPeer
+)
+
+var errorToStringPeer = map[int]string{
+	ErrMsgTooLarge:             "Message too long",
+	ErrDecode:                  "Invalid message",
+	ErrInvalidMsgCode:          "Invalid message code",
+	ErrProtocolVersionMismatch: "Protocol version mismatch",
+	ErrNetworkIdMismatch:       "NetworkId mismatch",
+	ErrGenesisBlockMismatch:    "Genesis block mismatch",
+	ErrNoStatusMsg:             "No status message",
+	ErrExtraStatusMsg:          "Extra status message",
+	ErrSuspendedPeer:           "Suspended peer",
+}
+
 type peerError struct {
 	code    int
 	message string
