@@ -30,6 +30,7 @@ You can join whenever you want.
 
 ```
 $ geth --testnet console
+> geth version : 0.6.3-anduschain-unstable-0ece0a49
 ```
 
 ## License
