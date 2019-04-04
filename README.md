@@ -2,6 +2,14 @@
 
 Official golang implementation of the andusdeb protocol.
 
+## System requirements
+
+```
+it is recommended to have at least 4 GB of memory available when running anduschain.
+OS : Linux(CentOS, Ubuntu), Mac, Windows
+CPU : least 4 CORE CPU
+```
+
 ## License
 
 The go-anduschain library (i.e. all code outside of the `cmd` directory) is licensed under the
