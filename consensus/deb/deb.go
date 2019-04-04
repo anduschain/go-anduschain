@@ -180,9 +180,17 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 	number := header.Number.Uint64()
 
+	// Future block check
+	// if is not my block, Using term 5sec.
 	// Don't waste time checking blocks from the future
-	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
-		return consensus.ErrFutureBlock
+	if c.coinbase != header.Coinbase {
+		if header.Time.Cmp(big.NewInt(time.Now().Add(5*time.Second).Unix())) > 0 {
+			return consensus.ErrFutureBlock
+		}
+	} else {
+		if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+			return consensus.ErrFutureBlock
+		}
 	}
 
 	// Ensure that the mix digest is zero as we don't have fork protection currently
