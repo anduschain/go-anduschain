@@ -22,12 +22,11 @@ or, to build the full suite of utilities:
 
     make all
     
-### A Full node on the Ethereum test network
+## A Full node on the Anduschain test network
 
-Transitioning towards developers, if you'd like to play around with creating Anduschain contracts, you
-almost certainly would like to do that without any real money involved until you get the hang of the
-entire system. In other words, instead of attaching to the main network, you want to join the **test**
-network with your node, which is fully equivalent to the main network, but with play-Ether only.
+You need to get DAON coin for mining in Anduschain network.
+We're getting ready to deliver the test coin.
+You can join whenever you want.
 
 ```
 $ geth --testnet console
