@@ -8,7 +8,6 @@
     "eip158Block": 3,
     "byzantiumBlock": 4,
     "deb": {
-      "epoch": 100,
       "fairnode_address": "0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c"
     }
   },

@@ -1,6 +1,7 @@
 package fairtcp
 
 import (
+	"container/ring"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
@@ -24,6 +25,7 @@ const (
 	noVoteBolckLeagChn = 10 // 투표받은 블록이 없어 다음 리그를 시작할 시간(조회 횟수)
 	nextBlockMakeTerm  = 7  // 블록생성 후  다음 블록 생성 신호 전달 term
 	blockVote          = 10 // 블록생성 메시지 전송 후 10초
+	LeagueSelectValue  = 5  // 리그전송시 보내는 노드 수
 )
 
 func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
@@ -99,15 +101,66 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 
 func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interface{}) {
 	nodes, _, _ := fu.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
-	for index := range nodes {
-		if nodes[index].Conn != nil {
-			err := transport.Send(nodes[index].Conn, msgCode, data)
-			if err != nil {
-				// 데이터 전송 오류 시 해당 연결 삭제
-				nodes[index].Conn = nil
+
+	// 리그 보내는 메시지 코드 일때..
+	if msgCode == transport.SendLeageNodeList {
+		submitNode := SelectedNode(data)
+		for index := range nodes {
+			if nodes[index].Conn != nil {
+				err := transport.Send(nodes[index].Conn, msgCode, submitNode[index])
+				if err != nil {
+					// 데이터 전송 오류 시 해당 연결 삭제
+					nodes[index].Conn = nil
+				}
+			}
+		}
+	} else {
+		for index := range nodes {
+			if nodes[index].Conn != nil {
+				err := transport.Send(nodes[index].Conn, msgCode, data)
+				if err != nil {
+					// 데이터 전송 오류 시 해당 연결 삭제
+					nodes[index].Conn = nil
+				}
 			}
 		}
 	}
+}
+
+func GetNodeList(r *ring.Ring) []string {
+	var res []string
+	max := LeagueSelectValue
+
+	if r.Len() < LeagueSelectValue {
+		max = r.Len() - 1
+	}
+
+	for i := 0; i < max; i++ {
+		r = r.Next()
+		res = append(res, r.Value.(string))
+	}
+	return res
+}
+
+func SelectedNode(data interface{}) [][]string {
+	var res [][]string
+	sn, ok := data.([]string)
+	if !ok {
+		return nil
+	}
+
+	r := ring.New(len(sn))
+	for i := 0; i < r.Len(); i++ {
+		r.Value = sn[i]
+		r = r.Next()
+	}
+
+	for i := range sn {
+		r = r.Move(i)
+		res = append(res, GetNodeList(r))
+	}
+
+	return res
 }
 
 func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
