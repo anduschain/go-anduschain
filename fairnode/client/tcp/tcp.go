@@ -271,8 +271,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 	// TODO : andus >> 잔액 조사 ( 임시 : 100 * 10^18 wei ) : 참가비 ( 수수료가 없는 tx )
 	// TODO : andus >> joinNonce 현재 상태 조회
 	currentBalance := t.manger.GetCurrentBalance()
-	epoch := big.NewInt(int64(t.manger.GetBlockChain().Config().Deb.Epoch))
-
+	epoch := big.NewInt(int64(otprn.Epoch))
 	// balance will be more then ticket price multiplex epoch.
 	price := config.Price
 	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))

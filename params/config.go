@@ -43,7 +43,7 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{Epoch: 100},
+		Deb:                 &DebConfig{},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
@@ -58,12 +58,12 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{Epoch: 100},
+		Deb:                 &DebConfig{},
 	}
 
 	// TODO : andus >> consensus 추가
 	DebChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3355),
+		ChainID:             big.NewInt(3356),
 		HomesteadBlock:      nil,
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -73,13 +73,13 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{Epoch: 100},
+		Deb:                 &DebConfig{},
 	}
 
-	TestChainConfig = &ChainConfig{big.NewInt(335589), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{Epoch: 100}}
+	TestChainConfig = &ChainConfig{big.NewInt(335589), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{}}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
-	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{Epoch: 100}}
+	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -113,7 +113,7 @@ type ChainConfig struct {
 
 // TODO : andus >> consensus 추가
 type DebConfig struct {
-	Epoch    uint64         `json:"epoch"`
+	//Epoch    uint64         `json:"epoch"`
 	FairAddr common.Address `json:"fairnode_address"`
 }
 

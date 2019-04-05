@@ -7,7 +7,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/discover"
@@ -53,7 +52,7 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 				// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
-				if otprn.Mminer > n {
+				if tsf.Otprn.Mminer > n {
 					ft.logger.Debug("리그 참여 가능자 저장됨", "coinbase", tsf.Coinbase.String())
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),

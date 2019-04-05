@@ -19,6 +19,7 @@ const DBNAME = "AndusChain"
 type FairNodeDB struct {
 	url           string
 	Mongo         *mgo.Session
+	ChainConfig   *mgo.Collection
 	ActiveNodeCol *mgo.Collection
 	MinerNode     *mgo.Collection
 	OtprnList     *mgo.Collection
@@ -59,6 +60,7 @@ func (fnb *FairNodeDB) Start() error {
 	session.SetMode(mgo.Monotonic, true)
 
 	fnb.Mongo = session
+	fnb.ChainConfig = session.DB(DBNAME).C("ChainConfig")
 	fnb.ActiveNodeCol = session.DB(DBNAME).C("ActiveNode")
 	fnb.MinerNode = session.DB(DBNAME).C("MinerNode")
 	fnb.OtprnList = session.DB(DBNAME).C("OtprnList")
@@ -70,6 +72,18 @@ func (fnb *FairNodeDB) Start() error {
 func (fnb *FairNodeDB) Stop() error {
 	fnb.Mongo.Close()
 	return nil
+}
+
+func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
+	cfg := &ChainConfig{}
+	err := fnb.ChainConfig.Find(nil).One(&cfg)
+	if err != nil {
+		fnb.logger.Warn("GetChainConfig ", "error", err)
+		// 디비에 값이 조회되지 않을경우
+		cfg.Miner = 100
+		cfg.Epoch = 100
+	}
+	return cfg
 }
 
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string) {

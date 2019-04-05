@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-const (
-	Mminer uint64 = 10 // TODO : andus >> 최대 채굴 참여 가능인원
-)
+//const (
+//	Mminer uint64 = 100 // TODO : andus >> 최대 채굴 참여 가능인원
+//)
 
 var (
 	OtprnNum = new(uint64)
@@ -24,10 +24,11 @@ type Otprn struct {
 	Rand      [20]byte
 	Cminer    uint64
 	Mminer    uint64
+	Epoch     uint64
 	TimeStamp uint64
 }
 
-func New(Cminer uint64) *Otprn {
+func New(Cminer uint64, Miner uint64, Epoch uint64) *Otprn {
 
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
@@ -40,9 +41,10 @@ func New(Cminer uint64) *Otprn {
 
 	return &Otprn{
 		Num:       *OtprnNum,
-		Mminer:    Mminer,
+		Mminer:    Miner,
 		Cminer:    Cminer,
 		Rand:      rand,
+		Epoch:     Epoch,
 		TimeStamp: uint64(time.Now().UnixNano()),
 	}
 }

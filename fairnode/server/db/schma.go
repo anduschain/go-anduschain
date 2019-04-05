@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type ChainConfig struct {
+	Miner int64
+	Epoch int64
+}
+
 type activeNode struct {
 	EnodeId  string
 	Coinbase string
