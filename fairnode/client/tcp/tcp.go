@@ -26,12 +26,13 @@ var (
 )
 
 type Tcp struct {
-	SAddrTCP *net.TCPAddr
-	LaddrTCP *net.TCPAddr
-	manger   _interface.Client
-	services map[common.Hash]map[string]types.Goroutine
-	IsRuning map[common.Hash]bool
-	logger   logger.Logger
+	SAddrTCP   *net.TCPAddr
+	LaddrTCP   *net.TCPAddr
+	manger     _interface.Client
+	services   map[common.Hash]map[string]types.Goroutine
+	IsRuning   map[common.Hash]bool
+	logger     logger.Logger
+	leagueList []string
 }
 
 func New(faiorServerString string, clientString string, manger _interface.Client) (*Tcp, error) {
@@ -180,6 +181,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		//otprn 교체
 		t.manger.GetStoreOtprnWidthSig()
 		t.logger.Info("SendLeageNodeList", "leagueCount", len(nodeList))
+		t.leagueList = nodeList
 		for index := range nodeList {
 			// addPeer 실행
 			node, err := discover.ParseNode(nodeList[index])
@@ -240,6 +242,19 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			t.manger.SetBlockMine(false)
 			t.manger.GetStoreOtprnWidthSig()
 			t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
+
+			// static node 제거
+			for index := range t.leagueList {
+				// addPeer 실행
+				node, err := discover.ParseNode(t.leagueList[index])
+				if err != nil {
+					t.logger.Error("노드 URL 파싱에러", "error ", err)
+					continue
+				}
+				t.manger.GetP2PServer().RemovePeer(node)
+				t.logger.Debug("DelPeer", "enode", t.leagueList[index])
+			}
+
 			return errors.New("리그 종료")
 		}
 	case transport.RequestWinningBlock:
