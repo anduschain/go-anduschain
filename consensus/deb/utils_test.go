@@ -62,7 +62,7 @@ func init() {
 
 func makeOtprn() {
 	for i := 0; i < len(blockHash); i++ {
-		otp := otprn.New(Mminer)
+		otp := otprn.New(Mminer, 100, 100, 100)
 		otprnHash = append(otprnHash, otp.HashOtprn())
 	}
 }

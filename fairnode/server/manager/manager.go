@@ -169,6 +169,7 @@ func (fm *FairManager) GetReSendOtprn() chan common.Hash {
 func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
 func (fm *FairManager) GetStopLeagueCh() chan struct{}  { return fm.StopLeagueCh }
 func (fm *FairManager) GetEpoch() *big.Int              { return fm.Epoch }
+func (fm *FairManager) SetEpoch(epoch int64)            { fm.Epoch = big.NewInt(epoch) }
 func (fm *FairManager) GetServerKey() *backend.SeverKey { return fm.srvKey }
 func (fm *FairManager) GetLeaguePool() *pool.LeaguePool { return fm.leaguePool }
 func (fm *FairManager) GetVotePool() *pool.VotePool     { return fm.votePool }

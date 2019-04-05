@@ -8,6 +8,7 @@ import (
 type ChainConfig struct {
 	Miner int64
 	Epoch int64
+	Fee   int64
 }
 
 type activeNode struct {

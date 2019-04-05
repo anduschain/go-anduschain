@@ -10,7 +10,7 @@ import (
 func TestIsJoinOK(t *testing.T) {
 	t.Log("OTPRN 생성")
 
-	tOtprn := otprn.New(1, 100, 100)
+	tOtprn := otprn.New(1, 100, 100, 100)
 	//for i:=0; i < 4; i++ {
 	//	tOtprn = append(tOtprn, *otprn.New(11))
 	//}

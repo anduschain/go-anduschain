@@ -94,7 +94,7 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 					return errDecodeTx
 				}
 				//참가비확인
-				if txs[i].Value().Cmp(config.Price) != 0 {
+				if txs[i].Value().Cmp(config.DefaultConfig.Price) != 0 {
 					return errTxTicketPriceNotAvailable
 				}
 

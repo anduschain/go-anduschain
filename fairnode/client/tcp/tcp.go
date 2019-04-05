@@ -273,8 +273,9 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 	currentBalance := t.manger.GetCurrentBalance()
 	epoch := big.NewInt(int64(otprn.Epoch))
 	// balance will be more then ticket price multiplex epoch.
-	price := config.Price
-	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
+	config.DefaultConfig.SetFee(int64(otprn.Fee))
+
+	totalPrice := big.NewInt(int64(epoch.Uint64() * config.DefaultConfig.Price.Uint64()))
 
 	if currentBalance.Cmp(totalPrice) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
@@ -293,7 +294,7 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, config.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, config.DefaultConfig.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}

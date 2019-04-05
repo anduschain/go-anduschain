@@ -18,6 +18,7 @@ type Manager interface {
 	GetVotePool() *pool.VotePool
 	GetLastBlockNum() *big.Int
 	GetEpoch() *big.Int
+	SetEpoch(epoch int64)
 	GetManagerOtprnCh() chan struct{}
 	GetStopLeagueCh() chan struct{}
 	StoreOtprn(otprn *otprn.Otprn)

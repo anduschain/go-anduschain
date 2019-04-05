@@ -25,10 +25,11 @@ type Otprn struct {
 	Cminer    uint64
 	Mminer    uint64
 	Epoch     uint64
+	Fee       uint64
 	TimeStamp uint64
 }
 
-func New(Cminer uint64, Miner uint64, Epoch uint64) *Otprn {
+func New(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
 
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
@@ -45,6 +46,7 @@ func New(Cminer uint64, Miner uint64, Epoch uint64) *Otprn {
 		Cminer:    Cminer,
 		Rand:      rand,
 		Epoch:     Epoch,
+		Fee:       Fee,
 		TimeStamp: uint64(time.Now().UnixNano()),
 	}
 }

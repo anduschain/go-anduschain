@@ -307,7 +307,8 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 // OTPRN을 생성후 서명, DB에 저장
 func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, error) {
 	cfg := fu.db.GetChainConfig()
-	otp := otprn.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch))
+	fu.manager.SetEpoch(cfg.Epoch)
+	otp := otprn.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
 	acc := fu.manager.GetServerKey()
 	sig, err := otp.SignOtprn(acc.ServerAcc, otp.HashOtprn(), acc.KeyStore)
 	if err != nil {

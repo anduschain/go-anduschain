@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math"
@@ -642,14 +641,13 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 			return ErrJoinNonceNotMmatch
 		}
 		// 데이터의 블록의 번호가 이번에 생성할 블록의 넘버인가?
-		if (joinTxdata.NextBlockNum - pool.chain.CurrentBlock().Number().Uint64()) != 1 {
-			return ErrBlockNumberNotMatch
-		}
+		//if (joinTxdata.NextBlockNum - pool.chain.CurrentBlock().Number().Uint64()) != 1 {
+		//	return ErrBlockNumberNotMatch
+		//}
 		// 참가비가 제대로 지정되어 있는가?
-		if tx.Value().Cmp(config.Price) != 0 {
-			return ErrTicketPriceNotMatch
-		}
-
+		//if tx.Value().Cmp(config.DefaultConfig.Price) != 0 {
+		//	return ErrTicketPriceNotMatch
+		//}
 		// fairnode의 서명이 맞는가?
 		if !deb.ValidationFairSignature(joinTxdata.OtprnHash, joinTxdata.FairNodeSig, *tx.To()) {
 			return ErrFairNodeSigNotMatch
