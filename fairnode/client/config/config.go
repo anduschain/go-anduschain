@@ -1,28 +1,38 @@
 package config
 
 import (
-	"github.com/anduschain/go-anduschain/common/math"
+	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 )
 
+const (
+	TicketPrice = 100
+	// FIXME : mainnet 런칭할때 변경
+	MainnetFairHost = "testfair.anduschain.io"
+	TestnetFairHost = "testfair.anduschain.io"
+)
+
 type Config struct {
-	FairServerIp   string
+	FairServerHost string
 	FairServerPort string
 	ClientPort     string
 	NAT            string
 }
 
 var DefaultConfig = Config{
-	FairServerIp:   "121.156.104.254",
+	FairServerHost: "localhost",
 	FairServerPort: "60002",
 	ClientPort:     "50002",
 }
 
-const (
-	TICKET_PRICE = 100
-)
+func (c Config) GetHost(div string) string {
+	if div == "main" {
+		return MainnetFairHost
+	}
+	return TestnetFairHost
+}
 
 var (
-	Coin  = big.NewInt(TICKET_PRICE)
-	Price = Coin.Mul(Coin, math.BigPow(10, 18))
+	Coin  = big.NewInt(TicketPrice)
+	Price = Coin.Mul(Coin, big.NewInt(params.Daon))
 )

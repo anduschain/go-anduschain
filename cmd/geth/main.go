@@ -119,6 +119,7 @@ var (
 		utils.DeveloperFlag,
 		//utils.DeveloperPeriodFlag,
 		utils.TestnetFlag,
+		utils.SoloFlag,
 		//utils.RinkebyFlag,
 		// TODO : andus >> consensus
 		utils.DebFlag,

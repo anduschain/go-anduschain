@@ -90,7 +90,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool)
 	}
 
 	// Default Setting  [ FairServer : 121.134.35.45:60002, GethPort : 50002 ]
-	faiorServerString := fmt.Sprintf("%s:%s", config.DefaultConfig.FairServerIp, config.DefaultConfig.FairServerPort)
+	faiorServerString := fmt.Sprintf("%s:%s", config.DefaultConfig.FairServerHost, config.DefaultConfig.FairServerPort)
 	clientString := fmt.Sprintf(":%s", config.DefaultConfig.ClientPort)
 
 	t, _ := clinetTcp.New(faiorServerString, clientString, fc)

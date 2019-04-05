@@ -153,6 +153,10 @@ var (
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-deb network with a pre-funded developer account, mining enabled",
 	}
+	SoloFlag = cli.BoolFlag{
+		Name:  "solo",
+		Usage: "To make proof-of-deb solo network",
+	}
 	//DeveloperPeriodFlag = cli.IntFlag{
 	//	Name:  "dev.period",
 	//	Usage: "Block period to use in developer mode (0 = mine only if transaction pending)",
@@ -629,9 +633,9 @@ var (
 
 	// FIXME : andus >> 기본값은 페어노드 서버 아이피
 	FairserverIP = cli.StringFlag{
-		Name:  "serverIP",
+		Name:  "serverHost",
 		Usage: "fairnode connection IP",
-		Value: "121.156.104.254",
+		Value: "localhost",
 	}
 
 	FairserverPort = cli.StringFlag{
@@ -703,6 +707,8 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		}
 	case ctx.GlobalBool(TestnetFlag.Name):
 		urls = params.AndusChainBootnodes
+	case ctx.GlobalBool(SoloFlag.Name):
+		return
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
 	}
@@ -730,9 +736,12 @@ func setBootstrapNodesV5(ctx *cli.Context, cfg *p2p.Config) {
 		}
 	case cfg.BootstrapNodesV5 != nil:
 		return // already set, don't apply defaults.
+	case ctx.GlobalBool(SoloFlag.Name):
+		return
 	}
 
 	cfg.BootstrapNodesV5 = make([]*discv5.Node, 0, len(urls))
+
 	for _, url := range urls {
 		node, err := discv5.ParseNode(url)
 		if err != nil {
@@ -887,7 +896,7 @@ func setEtherbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *eth.Config) {
 	if etherbase != "" {
 		account, err := MakeAddress(ks, etherbase)
 		if err != nil {
-			Fatalf("Invalid miner etherbase: %v", err)
+			Fatalf("Invalid miner coinbase: %v", err)
 		}
 		cfg.Etherbase = account.Address
 	}
@@ -1288,7 +1297,17 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 
 // andus >> SetFairNodeConfig 추가
 func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
-	cfg.FairServerIp = ctx.GlobalString("serverIP")
+	if ctx.GlobalBool(TestnetFlag.Name) {
+		// Testnet fairnode Addr
+		// FIXME : mainnet 런칭할때 변경
+		cfg.FairServerHost = cfg.GetHost("test")
+	} else if ctx.GlobalBool(SoloFlag.Name) || ctx.GlobalBool(DebFlag.Name) {
+		cfg.FairServerHost = ctx.GlobalString("serverHost")
+	} else {
+		// Mainnet fairnode Addr
+		cfg.FairServerHost = cfg.GetHost("main")
+	}
+
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
 	cfg.ClientPort = ctx.GlobalString("clientPort")
 	cfg.NAT = ctx.GlobalString("nat")
@@ -1296,7 +1315,7 @@ func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
 	fairconfig.DefaultConfig = *cfg
 }
 
-// RegisterEthService adds an Ethereum client to the stack.
+// RegisterEthService adds an Anduschain client to the stack.
 func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	var err error
 	if cfg.SyncMode == downloader.LightSync {
