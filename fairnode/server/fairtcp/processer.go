@@ -110,6 +110,8 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 				err := transport.Send(nodes[index].Conn, msgCode, submitNode[index])
 				if err != nil {
 					// 데이터 전송 오류 시 해당 연결 삭제
+					fu.logger.Error("sendTcpAll", "msgcode", msgCode, "msg", err)
+					nodes[index].Conn.Close()
 					nodes[index].Conn = nil
 				}
 			}
@@ -120,6 +122,8 @@ func (fu *FairTcp) sendTcpAll(otprnHash common.Hash, msgCode uint32, data interf
 				err := transport.Send(nodes[index].Conn, msgCode, data)
 				if err != nil {
 					// 데이터 전송 오류 시 해당 연결 삭제
+					fu.logger.Error("sendTcpAll", "msgcode", msgCode, "msg", err)
+					nodes[index].Conn.Close()
 					nodes[index].Conn = nil
 				}
 			}
