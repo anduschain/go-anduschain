@@ -227,6 +227,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		t.manger.BlockMakeStart() <- struct{}{}
 
 	case transport.SendFinalBlock:
+		t.logger.Debug("TCP Message arrived", "mgs", "파이널블록 수신 메시지 도착")
 		if t.manger.GetBlockMine() {
 			tsFb := &fairtypes.TsFinalBlock{}
 			msg.Decode(&tsFb)

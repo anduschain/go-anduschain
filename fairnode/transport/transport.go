@@ -37,7 +37,7 @@ func New(fd net.Conn) Transport {
 func (t *Tsp) ReadMsg() (*TsMsg, error) {
 	t.rmu.Lock()
 	defer t.rmu.Unlock()
-	//t.fd.SetReadDeadline(time.Now().Add(frameReadTimeout))
+	t.fd.SetReadDeadline(time.Now().Add(frameReadTimeout))
 	return t.rw.ReadMsg()
 }
 
@@ -99,7 +99,12 @@ func (tr *tspRW) ReadMsg() (*TsMsg, error) {
 	lengthBuf := make([]byte, 8)
 	_, err = tr.conn.Read(lengthBuf)
 	if err != nil {
-		return nil, err
+		// Read timeout 처리
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			// time out
+		} else {
+			return nil, err
+		}
 	}
 
 	msgLength := binary.BigEndian.Uint32(lengthBuf)
