@@ -22,9 +22,15 @@ func poolUpdate(leaguePool *pool.LeaguePool, otprnHash pool.OtprnHash, tsf fairt
 
 func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) error {
 	msg, err := rw.ReadMsg()
+
 	if err != nil {
 		return err
 	}
+
+	if msg == nil {
+		return nil
+	}
+
 	defer msg.Discard()
 
 	switch msg.Code {

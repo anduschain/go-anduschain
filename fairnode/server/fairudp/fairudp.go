@@ -110,6 +110,8 @@ func (fu *FairUdp) Start() error {
 		go srv.Fn(srv.Exit)
 	}
 
+	fu.db.SetChainConfig()
+
 	return nil
 }
 
@@ -323,6 +325,8 @@ func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, err
 
 	// OTPRN DB 저장
 	fu.db.SaveOtprn(tsOtp)
+
+	fu.logger.Debug("OTPRN 전송", "hash", otp.HashOtprn(), "miner", otp.Mminer, "epoch", otp.Epoch, "fee", otp.Fee)
 
 	return tsOtp, nil
 }

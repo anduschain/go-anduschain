@@ -57,13 +57,8 @@ func init() {
 		},
 		cli.Int64Flag{
 			Name:  "chainID",
-			Value: 1,
-			Usage: "default chainid is 1",
-		},
-		cli.Int64Flag{
-			Name:  "epoch",
-			Value: 100,
-			Usage: "default epoch is 100",
+			Value: 3355,
+			Usage: "default chainid is 3355",
 		},
 		cli.BoolFlag{
 			Name:  "debug",

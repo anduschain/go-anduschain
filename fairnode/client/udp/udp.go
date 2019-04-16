@@ -195,7 +195,7 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 				case transport.SendOTPRN:
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
-					u.logger.Info("OTPRN 수신됨", "otprnhash", tsOtprn.Hash.String())
+					u.logger.Info("OTPRN 수신됨", "hash", tsOtprn.Hash, "miner", tsOtprn.Otp.Mminer, "epoch", tsOtprn.Otp.Epoch, "fee", tsOtprn.Otp.Fee)
 
 					//TODO : andus >> 2. OTRRN 검증
 					fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Sig)

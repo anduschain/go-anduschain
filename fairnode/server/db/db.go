@@ -74,6 +74,17 @@ func (fnb *FairNodeDB) Stop() error {
 	return nil
 }
 
+func (fnb *FairNodeDB) SetChainConfig() {
+	cnt, err := fnb.ChainConfig.Find(nil).Count()
+	if err != nil || cnt == 0 {
+		err := fnb.ChainConfig.Insert(&ChainConfig{Miner: 100, Epoch: 100, Fee: 10})
+		if err != nil {
+			fnb.logger.Warn("SetChainConfig ", "error", err)
+		}
+	}
+	fnb.logger.Debug("SetChainConfig", "Miner", 100, "Epoch", 100, "Fee", 10)
+}
+
 func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
 	cfg := &ChainConfig{}
 	err := fnb.ChainConfig.Find(nil).One(&cfg)
@@ -82,7 +93,10 @@ func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
 		// 디비에 값이 조회되지 않을경우
 		cfg.Miner = 100
 		cfg.Epoch = 100
+		cfg.Fee = 10
 	}
+
+	fnb.logger.Debug("GetChainConfig", "Miner", cfg.Miner, "Epoch", cfg.Epoch, "Fee", cfg.Fee)
 	return cfg
 }
 

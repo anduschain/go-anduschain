@@ -72,6 +72,7 @@ func New() (*FairManager, error) {
 
 	fm.leaguePool = pool.New(mongoDB)
 	fm.votePool = pool.NewVotePool(mongoDB)
+	fm.db = mongoDB
 
 	ft, err := fairtcp.New(mongoDB, fm)
 	if err != nil {
@@ -82,8 +83,6 @@ func New() (*FairManager, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fm.db = mongoDB
 
 	fm.Services["mongoDB"] = mongoDB
 	fm.Services["LeaguePool"] = fm.leaguePool

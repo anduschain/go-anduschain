@@ -117,7 +117,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		Shh:       whisper.DefaultConfig,
 		Node:      defaultNodeConfig(),
 		Dashboard: dashboard.DefaultConfig,
-		FairNode:  fairconfig.DefaultConfig,
+		FairNode:  *fairconfig.DefaultConfig,
 	}
 
 	// Load config file.

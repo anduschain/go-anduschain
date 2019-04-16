@@ -160,6 +160,11 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	if err != nil {
 		return err
 	}
+
+	if msg == nil {
+		return nil
+	}
+
 	defer func() {
 		msg.Discard()
 	}()
@@ -289,9 +294,9 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 	currentBalance := t.manger.GetCurrentBalance()
 	epoch := big.NewInt(int64(otprn.Epoch))
 	// balance will be more then ticket price multiplex epoch.
-	config.DefaultConfig.SetFee(int64(otprn.Fee))
+	price := config.DefaultConfig.SetFee(int64(otprn.Fee))
 
-	totalPrice := big.NewInt(int64(epoch.Uint64() * config.DefaultConfig.Price.Uint64()))
+	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
 
 	if currentBalance.Cmp(totalPrice) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
@@ -310,11 +315,11 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, config.DefaultConfig.Price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
-		t.logger.Info("joinTx생성", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash().String())
+		t.logger.Info("Maked JoinTx", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash(), "fee", price)
 		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
 		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
 			return errorAddTxPool

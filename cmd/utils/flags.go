@@ -1312,7 +1312,7 @@ func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
 	cfg.ClientPort = ctx.GlobalString("clientPort")
 	cfg.NAT = ctx.GlobalString("nat")
 
-	fairconfig.DefaultConfig = *cfg
+	fairconfig.DefaultConfig = cfg
 }
 
 // RegisterEthService adds an Anduschain client to the stack.

@@ -6,7 +6,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
@@ -94,9 +93,9 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 					return errDecodeTx
 				}
 				//참가비확인
-				if txs[i].Value().Cmp(config.DefaultConfig.Price) != 0 {
-					return errTxTicketPriceNotAvailable
-				}
+				//if txs[i].Value().Cmp(config.DefaultConfig.Price) != 0 {
+				//	return errTxTicketPriceNotAvailable
+				//}
 
 				//내 jointx가 있는지 확인 && otprn
 				if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {

@@ -38,7 +38,7 @@ var DefaultConfig = Config{
 
 	Port:    "60002",
 	NAT:     "none",
-	ChainID: 1,
+	ChainID: 3355,
 	Epoch:   100,
 	Debug:   false,
 }
@@ -65,7 +65,6 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")
 	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
-	DefaultConfig.Epoch = ctx.GlobalInt64("epoch")
 
 	DefaultConfig.Debug = ctx.GlobalBool("debug")
 

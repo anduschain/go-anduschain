@@ -99,9 +99,8 @@ func (tr *tspRW) ReadMsg() (*TsMsg, error) {
 	lengthBuf := make([]byte, 8)
 	_, err = tr.conn.Read(lengthBuf)
 	if err != nil {
-		// Read timeout 처리
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			// time out
+			return nil, nil
 		} else {
 			return nil, err
 		}
