@@ -300,7 +300,7 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 
 // DefaultGenesisBlock returns the AndusChain main net genesis block.
 func DefaultGenesisBlock() *Genesis {
-	config := params.DebChainConfig
+	config := params.MainnetChainConfig
 	config.Deb.FairAddr = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
 
 	return &Genesis{
@@ -314,7 +314,7 @@ func DefaultGenesisBlock() *Genesis {
 
 // DefaultAndusChainTestNetGenesisBlock returns the AndusChain Test net genesis block.
 func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
-	config := params.DebChainConfig
+	config := params.TestnetChainConfig
 	config.Deb.FairAddr = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
 
 	return &Genesis{
@@ -329,7 +329,7 @@ func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 // DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
 // be seeded with the
 func DeveloperGenesisBlock(devaddr, fairaddr common.Address) *Genesis {
-	config := params.TestChainConfig
+	config := params.DebChainConfig
 	config.Deb.FairAddr = fairaddr
 
 	// Assemble and return the genesis with the precompiles and faucet pre-funded

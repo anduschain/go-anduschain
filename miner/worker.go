@@ -956,13 +956,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		header.Coinbase = w.coinbase
 
 		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			// 블록헤더에 otprnhash setting
-			decodedOtprn, err := w.fairclient.GetUsingOtprnWithSig().Otprn.EncodeOtprn()
-			if err != nil {
-				log.Error("otprn Encode", "msg", err)
-				return
-			}
-			header.Extra = decodedOtprn
+			header.Extra = w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn().Bytes()
 			// 엔진에 서명키 셋팅
 			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
 		}

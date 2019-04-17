@@ -52,6 +52,7 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 	if chain.CurrentHeader().Number.Uint64()+1 != voteblock.Number().Uint64() {
 		return errNotMatchOtprnOrBlockNumber
 	}
+
 	// check otprn
 	if c.otprnHash != common.BytesToHash(voteblock.Extra()) {
 		return errNotMatchOtprnOrBlockNumber
