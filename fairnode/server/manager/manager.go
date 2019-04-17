@@ -65,6 +65,8 @@ func New() (*FairManager, error) {
 		logger:        log.New("fairnode", "manager"),
 	}
 
+	fm.logger.Info("fairnode config", "chainID", backend.DefaultConfig.ChainID, "version", "0.0.1")
+
 	mongoDB, err := db.New(backend.DefaultConfig.DBhost, backend.DefaultConfig.DBport, backend.DefaultConfig.DBpass, backend.DefaultConfig.DBuser, fm.Signer)
 	if err != nil {
 		return nil, err
