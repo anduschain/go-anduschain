@@ -300,15 +300,9 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 	if currentBalance.Cmp(totalPrice) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		rlpOtprn, err := otprn.EncodeOtprn()
-		if err != nil {
-			t.logger.Error("OTPRN ENCODE", "msg", err)
-			return err
-		}
 		data := types.JoinTxData{
 			JoinNonce:    currentJoinNonce,
-			OtprnRlp:     rlpOtprn,
-			OtprnHash:    otprn.HashOtprn(),
+			Otprn:        otprn,
 			FairNodeSig:  sig,
 			TimeStamp:    time.Now(),
 			NextBlockNum: t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64() + 1,

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"time"
 )
@@ -17,9 +16,9 @@ type OtprnWithSig struct {
 }
 
 type JoinTxData struct {
-	JoinNonce    uint64
-	OtprnRlp     []byte
-	OtprnHash    common.Hash
+	JoinNonce uint64
+	Otprn     *otprn.Otprn
+	//OtprnHash    common.Hash
 	FairNodeSig  []byte
 	TimeStamp    time.Time
 	NextBlockNum uint64

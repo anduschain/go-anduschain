@@ -10,7 +10,6 @@ import (
 	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 )
@@ -96,18 +95,13 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 					return errDecodeTx
 				}
 
-				txOtprn, err := otprn.DecodeOtprn(datas.OtprnRlp)
-				if err != nil {
-					return err
-				}
-
 				//참가비확인
-				if txs[i].Value().Cmp(config.CalPirce(int64(txOtprn.Fee))) != 0 {
+				if txs[i].Value().Cmp(config.CalPirce(int64(datas.Otprn.Fee))) != 0 {
 					return errTxTicketPriceNotAvailable
 				}
 
 				//내 jointx가 있는지 확인 && otprn
-				if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
+				if c.otprnHash == datas.Otprn.HashOtprn() && datas.NextBlockNum == block.Number().Uint64() {
 					from, _ := types.Sender(signer, txs[i])
 					if fairutil.CmpAddress(from, block.Header().Coinbase) {
 						if datas.JoinNonce == joinNonce {
@@ -126,8 +120,7 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 		return nil
 	}
 
-	//return errNotInJoinTX
-	return nil
+	return errNotInJoinTX
 }
 
 // 투표블록 서명 검증하고 난이도 검증

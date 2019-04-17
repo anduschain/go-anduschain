@@ -22,7 +22,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math"
 	"math/big"
@@ -644,18 +643,13 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 			return ErrJoinNonceNotMmatch
 		}
 
-		decodeOtprn, err := otprn.DecodeOtprn(joinTxdata.OtprnRlp)
-		if err != nil {
-			return ErrDecodeOtprn
-		}
-
 		// 참가비가 제대로 지정되어 있는가?
-		if tx.Value().Cmp(config.CalPirce(int64(decodeOtprn.Fee))) != 0 {
+		if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
 			return ErrTicketPriceNotMatch
 		}
 
 		// fairnode의 서명이 맞는가?
-		if !deb.ValidationFairSignature(joinTxdata.OtprnHash, joinTxdata.FairNodeSig, *tx.To()) {
+		if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
 			return ErrFairNodeSigNotMatch
 		}
 	}
