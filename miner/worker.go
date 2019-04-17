@@ -652,7 +652,8 @@ func (w *worker) resultLoop() {
 
 			bstart := time.Now()
 
-			//FIXME : ---------->
+			// finalblock 검증 및 commit block
+
 			var parent *types.Block
 			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
 
@@ -672,8 +673,6 @@ func (w *worker) resultLoop() {
 			if err != nil {
 				log.Error("Worker result ValidateState Error", "err", err)
 			}
-
-			//FIXME : <----------
 
 			//Commit block and state to database.
 			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
@@ -958,7 +957,12 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		if debEngine, ok := w.engine.(*deb.Deb); ok {
 			// 블록헤더에 otprnhash setting
-			header.Extra = w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn().Bytes()
+			decodedOtprn, err := w.fairclient.GetUsingOtprnWithSig().Otprn.EncodeOtprn()
+			if err != nil {
+				log.Error("otprn Encode", "msg", err)
+				return
+			}
+			header.Extra = decodedOtprn
 			// 엔진에 서명키 셋팅
 			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
 		}

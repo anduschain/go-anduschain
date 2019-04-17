@@ -31,11 +31,11 @@ func NewConfig() *Config {
 		FairServerHost: "localhost",
 		FairServerPort: "60002",
 		ClientPort:     "50002",
-		Price:          calPirce(100),
+		Price:          CalPirce(100),
 	}
 }
 
-func calPirce(fee int64) *big.Int {
+func CalPirce(fee int64) *big.Int {
 	Coin := big.NewInt(fee)
 	return Coin.Mul(Coin, big.NewInt(params.Daon))
 }
@@ -48,6 +48,6 @@ func (c *Config) GetHost(div string) string {
 }
 
 func (c *Config) SetFee(fee int64) *big.Int {
-	c.Price = calPirce(fee)
+	c.Price = CalPirce(fee)
 	return c.Price
 }

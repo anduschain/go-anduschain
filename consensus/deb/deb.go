@@ -295,20 +295,18 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return errGetState
 	}
 
-	////바로전 블록생성자 조인넌스 리셋
-	//current.ResetJoinNonce(parent.Coinbase)
-
 	c.joinNonce = current.GetJoinNonce(header.Coinbase)
 	c.otprnHash = common.BytesToHash(header.Extra)
 	c.coinbase = header.Coinbase
-	// TODO : andus >> nonce = joinNonce
+	// nonce => joinNonce
 	header.Nonce = types.EncodeNonce(c.joinNonce)
-	// TODO : andus >> difficulty = RAND값
+	// difficulty => RAND값
 	rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
-	c.difficulty = strconv.FormatInt(rand, 10)
-	diff := big.NewInt(rand)
 
-	header.Difficulty = diff
+	//diff 검즘용
+	c.difficulty = strconv.FormatInt(rand, 10)
+
+	header.Difficulty = big.NewInt(rand)
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }

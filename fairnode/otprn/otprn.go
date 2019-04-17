@@ -65,6 +65,21 @@ func (otprn *Otprn) HashOtprn() common.Hash {
 	return rlpHash(otprn)
 }
 
+func (otprn *Otprn) EncodeOtprn() ([]byte, error) {
+	return rlp.EncodeToBytes(otprn)
+}
+
+func DecodeOtprn(otpByte []byte) (*Otprn, error) {
+	otp := &Otprn{}
+	err := rlp.DecodeBytes(otpByte, otp)
+	if err != nil {
+		log.Error("OTPRN DECODE", "msg", err)
+		return nil, err
+	}
+
+	return otp, nil
+}
+
 func rlpHash(x interface{}) (h common.Hash) {
 	hw := sha3.NewKeccak256()
 	rlp.Encode(hw, x)

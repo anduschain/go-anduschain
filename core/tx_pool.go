@@ -20,7 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math"
 	"math/big"
@@ -85,6 +87,7 @@ var (
 	ErrBlockNumberNotMatch = errors.New("JOIN TX의 생성할 블록 넘버와 맞지 않습니다")
 	ErrTicketPriceNotMatch = errors.New("JOIN TX의 참가비가 올바르지 않습니다.")
 	ErrFairNodeSigNotMatch = errors.New("패어 노드의 서명이 올바르지 않습니다")
+	ErrDecodeOtprn         = errors.New("OTPRN DECODING ERROR")
 )
 
 var (
@@ -640,14 +643,17 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
 			return ErrJoinNonceNotMmatch
 		}
-		// 데이터의 블록의 번호가 이번에 생성할 블록의 넘버인가?
-		//if (joinTxdata.NextBlockNum - pool.chain.CurrentBlock().Number().Uint64()) != 1 {
-		//	return ErrBlockNumberNotMatch
-		//}
+
+		decodeOtprn, err := otprn.DecodeOtprn(joinTxdata.OtprnRlp)
+		if err != nil {
+			return ErrDecodeOtprn
+		}
+
 		// 참가비가 제대로 지정되어 있는가?
-		//if tx.Value().Cmp(config.DefaultConfig.Price) != 0 {
-		//	return ErrTicketPriceNotMatch
-		//}
+		if tx.Value().Cmp(config.CalPirce(int64(decodeOtprn.Fee))) != 0 {
+			return ErrTicketPriceNotMatch
+		}
+
 		// fairnode의 서명이 맞는가?
 		if !deb.ValidationFairSignature(joinTxdata.OtprnHash, joinTxdata.FairNodeSig, *tx.To()) {
 			return ErrFairNodeSigNotMatch

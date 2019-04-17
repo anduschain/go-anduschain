@@ -6,9 +6,11 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 )
@@ -92,10 +94,16 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 				if err != nil {
 					return errDecodeTx
 				}
+
+				txOtprn, err := otprn.DecodeOtprn(datas.OtprnRlp)
+				if err != nil {
+					return err
+				}
+
 				//참가비확인
-				//if txs[i].Value().Cmp(config.DefaultConfig.Price) != 0 {
-				//	return errTxTicketPriceNotAvailable
-				//}
+				if txs[i].Value().Cmp(config.CalPirce(int64(txOtprn.Fee))) != 0 {
+					return errTxTicketPriceNotAvailable
+				}
 
 				//내 jointx가 있는지 확인 && otprn
 				if c.otprnHash == datas.OtprnHash && datas.NextBlockNum == block.Number().Uint64() {
@@ -117,7 +125,8 @@ func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, j
 		return nil
 	}
 
-	return errNotInJoinTX
+	//return errNotInJoinTX
+	return nil
 }
 
 // 투표블록 서명 검증하고 난이도 검증

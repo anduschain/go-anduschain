@@ -300,8 +300,14 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 
 	if currentBalance.Cmp(totalPrice) > 0 {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
+		rlpOtprn, err := otprn.EncodeOtprn()
+		if err != nil {
+			t.logger.Error("OTPRN ENCODE", "msg", err)
+			return err
+		}
 		data := types.JoinTxData{
 			JoinNonce:    currentJoinNonce,
+			OtprnRlp:     rlpOtprn,
 			OtprnHash:    otprn.HashOtprn(),
 			FairNodeSig:  sig,
 			TimeStamp:    time.Now(),
@@ -313,24 +319,21 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error 
 		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
-		// TODO : andus >> joinNonce Fairnode에게 보내는 Tx
+		// joinNonce Fairnode에게 보내는 Tx
 		tx, err := gethTypes.SignTx(
 			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
 		t.logger.Info("Maked JoinTx", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash(), "fee", price)
-		// TODO : andus >> txpool에 추가.. 알아서 이더리움 프로세스 타고 날라감....
+
+		//add To txPool
 		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
 			return errorAddTxPool
 		}
 
 		t.logger.Debug("Current Peer", "count", t.manger.GetP2PServer().PeerCount())
-		//for i := range t.manger.GetP2PServer().Peers() {
-		//		//	if peer := t.manger.GetP2PServer().Peers()[i]; peer != nil {
-		//		//		t.logger.Debug("Current Peer", "peer", peer.String())
-		//		//	}
-		//		//}
+
 	} else {
 		// 잔액이 부족한 경우
 		// 마이닝을 하지 못함..참여 불가, Dial Close
