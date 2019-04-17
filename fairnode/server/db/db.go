@@ -248,8 +248,8 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 			From:         from.String(),
 			To:           to,
 			AccountNonce: int64(tx.Nonce()),
-			Price:        tx.GasPrice().Int64(),
-			Amount:       tx.Value().Int64(),
+			Price:        tx.GasPrice().String(),
+			Amount:       tx.Value().String(),
 			Payload:      tx.Data(),
 		})
 	}

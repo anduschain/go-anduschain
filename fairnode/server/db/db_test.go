@@ -2,13 +2,14 @@ package db
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"testing"
 	"time"
 )
 
-var session, _ = New("localhost", "27017", "", "")
+var session, _ = New("localhost", "27017", "", "", nil)
 
 type enodeid2 struct {
 	Enodeid string

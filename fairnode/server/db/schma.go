@@ -53,8 +53,8 @@ type transaction struct {
 	From         string
 	To           string
 	AccountNonce int64
-	Price        int64
-	Amount       int64
+	Price        string
+	Amount       string
 	Payload      []byte
 }
 
