@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -718,11 +719,17 @@ running:
 				break running
 			}
 		case pd := <-srv.delpeer:
-			errMag := pd.err.Error()
-			if errMag == errorToStringPeer[ErrGenesisBlockMismatch] || errMag == errorToStringPeer[ErrNetworkIdMismatch] ||
-				errMag == errorToStringPeer[ErrProtocolVersionMismatch] || errMag == errorToStringPeer[ErrExtraStatusMsg] {
-				dialstate.removeStaticID(pd.ID())
-				srv.log.Debug("Removing static node", "node", pd.ID().String())
+			if pd.err != nil {
+				errMag := pd.err.Error()
+				if strings.Contains(errMag, errorToStringPeer[ErrGenesisBlockMismatch]) ||
+					strings.Contains(errMag, errorToStringPeer[ErrNetworkIdMismatch]) ||
+					strings.Contains(errMag, errorToStringPeer[ErrProtocolVersionMismatch]) ||
+					strings.Contains(errMag, errorToStringPeer[ErrExtraStatusMsg]) {
+					dialstate.removeStaticID(pd.ID())
+					srv.log.Debug("Removing static node", "node", pd.ID().String())
+				} else {
+					srv.log.Error("delpeer", "msg", pd.err.Error())
+				}
 			}
 
 			// A peer disconnected.
