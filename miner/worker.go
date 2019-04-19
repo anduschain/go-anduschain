@@ -281,7 +281,7 @@ func (w *worker) pendingBlock() *types.Block {
 // start sets the running status as 1 and triggers new work submitting.
 func (w *worker) start() {
 	atomic.StoreInt32(&w.running, 1)
-	//w.startCh <- struct{}{}
+	w.startCh <- struct{}{}
 }
 
 // stop sets the running status as 0.
@@ -355,8 +355,8 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 	for {
 		select {
-		case <-w.fairclient.StartCh:
-			w.startCh <- struct{}{}
+		case _, ok := <-w.fairclient.StartCh:
+			log.Debug("블록 생성 시작 채널 호출", "status", ok)
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
