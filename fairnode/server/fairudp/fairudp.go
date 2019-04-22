@@ -6,6 +6,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
@@ -53,14 +54,14 @@ type FairUdp struct {
 
 func New(db *db.FairNodeDB, fm backend.Manager, tcp tcpInterface) (*FairUdp, error) {
 
-	addr := fmt.Sprintf(":%s", backend.DefaultConfig.Port)
+	addr := fmt.Sprintf(":%s", config.DefaultConfig.Port)
 
 	laddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	natm, err := nat.Parse(backend.DefaultConfig.NAT)
+	natm, err := nat.Parse(config.DefaultConfig.NAT)
 	if err != nil {
 		return nil, errNat
 	}
@@ -156,11 +157,12 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 					if err != nil {
 						return
 					}
+
 					if !addr.IP.Equal(net.IPv4zero) {
 						if addr.IP.String() != fromGeth.IP {
-							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, addr.IP.String())
+							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, addr.IP.String(), fromGeth.Version)
 						} else {
-							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP)
+							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP, fromGeth.Version)
 						}
 					}
 				default:
@@ -194,6 +196,7 @@ Exit:
 		select {
 		case <-t.C:
 			// 3분이상 들어오지 않은 enode 정리 (mongodb)
+			fu.db.GetChainConfig()
 			fu.db.JobCheckActiveNode()
 		case <-exit:
 			break Exit

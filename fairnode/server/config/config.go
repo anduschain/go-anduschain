@@ -1,4 +1,4 @@
-package backend
+package config
 
 import (
 	"gopkg.in/urfave/cli.v1"
@@ -26,24 +26,17 @@ type Config struct {
 	ChainID int64
 	Epoch   int64
 	Debug   bool
+	Version string
+
+	GethVersion string
+	Miner       int64
+	Fee         int64
 }
 
-var DefaultConfig = Config{
-	FairNodeDir: "",
-	DBhost:      "localhost",
-	DBport:      "27017",
-	DBuser:      "",
-
-	KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
-
-	Port:    "60002",
-	NAT:     "none",
-	ChainID: 3355,
-	Epoch:   100,
-	Debug:   false,
-}
+var DefaultConfig *Config
 
 func init() {
+	DefaultConfig = NewConfig()
 	home := os.Getenv("HOME")
 	if home == "" {
 		if user, err := user.Current(); err == nil {
@@ -55,6 +48,38 @@ func init() {
 	} else {
 		DefaultConfig.FairNodeDir = filepath.Join(home, ".fairnode")
 	}
+
+}
+
+func NewConfig() *Config {
+	return &Config{
+		FairNodeDir: "",
+		DBhost:      "localhost",
+		DBport:      "27017",
+		DBuser:      "",
+
+		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
+
+		Port:    "60002",
+		NAT:     "none",
+		ChainID: 3355,
+		Debug:   false,
+		Version: "1.0.0", // Fairnode version
+
+		//Mining Config
+		GethVersion: "0.6.6",
+		Miner:       100,
+		Epoch:       100,
+		Fee:         6,
+	}
+}
+
+// Set miner config
+func (c *Config) SetMiningConf(miner, epoch, fee int64, version string) {
+	c.GethVersion = version
+	c.Miner = miner
+	c.Epoch = epoch
+	c.Fee = fee
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/server"
-	"github.com/anduschain/go-anduschain/fairnode/server/backend"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -94,7 +94,7 @@ func init() {
 		dbpass := promptPassphrase(false)
 
 		// Config Setting
-		backend.SetFairConfig(c, keypass, dbpass)
+		config.SetFairConfig(c, keypass, dbpass)
 
 		fn, err := server.New()
 		if err != nil {

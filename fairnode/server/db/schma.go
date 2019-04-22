@@ -6,9 +6,10 @@ import (
 )
 
 type ChainConfig struct {
-	Miner int64
-	Epoch int64
-	Fee   int64
+	Miner   int64
+	Epoch   int64
+	Fee     int64
+	Version string
 }
 
 type activeNode struct {
@@ -17,6 +18,7 @@ type activeNode struct {
 	Ip       string
 	Time     time.Time
 	Port     string
+	Version  string
 }
 
 type minerNode struct {

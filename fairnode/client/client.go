@@ -182,6 +182,14 @@ func (fc *FairnodeClient) GetStoreOtprnWidthSig() *otprn.Otprn {
 	return nil
 }
 
+func (fc *FairnodeClient) DeleteStoreOtprnWidthSig() {
+	fc.mux.Lock()
+	defer fc.mux.Unlock()
+	if fc.OtprnQueue.Len() > 0 {
+		fc.OtprnQueue.Pop()
+	}
+}
+
 func (fc *FairnodeClient) GetUsingOtprnWithSig() *clinetTypes.OtprnWithSig { return fc.UsingOtprn }
 func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 	fc.mux.Lock()

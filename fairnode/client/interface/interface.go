@@ -40,6 +40,7 @@ type Client interface {
 	DelWinningBlock(otprnHash common.Hash)
 
 	StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte)
+	DeleteStoreOtprnWidthSig()
 	GetStoreOtprnWidthSig() *otprn.Otprn
 	GetUsingOtprnWithSig() *types.OtprnWithSig
 	GetSavedOtprnHashs() []common.Hash

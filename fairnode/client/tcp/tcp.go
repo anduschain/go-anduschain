@@ -13,7 +13,9 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
 	"math/big"
 	"net"
 	"time"
@@ -126,7 +128,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String()})
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String(), params.Version})
 
 	notify := make(chan error)
 	go func() {
@@ -143,6 +145,10 @@ Exit:
 		select {
 		case err := <-notify:
 			t.logger.Error("handelMsg", "error", err)
+			if err == io.EOF {
+				t.logger.Debug("OTPRN 초기화", "msg", err)
+				t.manger.DeleteStoreOtprnWidthSig()
+			}
 			tsp.Close()
 			break Exit
 		case <-exit:

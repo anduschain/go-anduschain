@@ -6,11 +6,13 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -26,6 +28,7 @@ type FairNodeDB struct {
 	BlockChain    *mgo.Collection
 	signer        types.Signer
 	logger        log.Logger
+	config        *config.Config
 }
 
 var (
@@ -33,15 +36,16 @@ var (
 )
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-func New(dbhost string, dbport string, pwd string, user string, signer types.Signer) (*FairNodeDB, error) {
+func New(signer types.Signer) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 
 	fnb.logger = log.New("fairnode", "mongodb")
+	fnb.config = config.DefaultConfig
 
-	if user != "" {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, dbhost, dbport, DBNAME)
+	if strings.Compare(fnb.config.DBuser, "") != 0 {
+		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", fnb.config.DBuser, fnb.config.DBpass, fnb.config.DBhost, fnb.config.DBport, DBNAME)
 	} else {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s", dbhost, dbport)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s", fnb.config.DBhost, fnb.config.DBport)
 	}
 
 	fnb.signer = signer
@@ -77,12 +81,12 @@ func (fnb *FairNodeDB) Stop() error {
 func (fnb *FairNodeDB) SetChainConfig() {
 	cnt, err := fnb.ChainConfig.Find(nil).Count()
 	if err != nil || cnt == 0 {
-		err := fnb.ChainConfig.Insert(&ChainConfig{Miner: 100, Epoch: 100, Fee: 10})
+		err := fnb.ChainConfig.Insert(&ChainConfig{Miner: fnb.config.Miner, Epoch: fnb.config.Epoch, Fee: fnb.config.Fee, Version: fnb.config.GethVersion})
 		if err != nil {
 			fnb.logger.Warn("SetChainConfig ", "error", err)
 		}
 	}
-	fnb.logger.Debug("SetChainConfig", "Miner", 100, "Epoch", 100, "Fee", 10)
+	fnb.logger.Debug("SetChainConfig", "Miner", fnb.config.Miner, "Epoch", fnb.config.Epoch, "Fee", fnb.config.Fee, "Version", fnb.config.GethVersion)
 }
 
 func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
@@ -91,24 +95,30 @@ func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
 	if err != nil {
 		fnb.logger.Warn("GetChainConfig ", "error", err)
 		// 디비에 값이 조회되지 않을경우
-		cfg.Miner = 100
-		cfg.Epoch = 100
-		cfg.Fee = 10
+		cfg.Miner = fnb.config.Miner
+		cfg.Epoch = fnb.config.Epoch
+		cfg.Fee = fnb.config.Fee
+		cfg.Version = fnb.config.GethVersion
 	}
-
-	fnb.logger.Debug("GetChainConfig", "Miner", cfg.Miner, "Epoch", cfg.Epoch, "Fee", cfg.Fee)
+	fnb.config.SetMiningConf(cfg.Miner, cfg.Epoch, cfg.Fee, cfg.Version)
+	fnb.logger.Debug("GetChainConfig", "Miner", cfg.Miner, "Epoch", cfg.Epoch, "Fee", cfg.Fee, "Version", cfg.Version)
 	return cfg
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string) {
+func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string, version string) {
 	trial := net.ParseIP(ip)
 	if trial.To4() == nil {
 		fmt.Println("to4 nil")
 		return
 	}
-	tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport}
-	if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
-		fnb.logger.Warn("SaveActiveNode ", "error", err)
+	if strings.Compare(version, fnb.config.GethVersion) == 0 {
+		tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport, Version: version}
+		if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
+			fnb.logger.Warn("SaveActiveNode ", "error", err)
+		}
+	} else {
+		fnb.logger.Error("SaveActiveNode", "msg", "Geth 버전이 다르다", "Geth", version, "DB", fnb.config.GethVersion)
+		return
 	}
 }
 

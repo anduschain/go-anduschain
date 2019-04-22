@@ -7,10 +7,12 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"math/big"
+	"strings"
 )
 
 func poolUpdate(leaguePool *pool.LeaguePool, otprnHash pool.OtprnHash, tsf fairtypes.TransferCheck) {
@@ -47,6 +49,11 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 
 		if enode.IP.To4() == nil {
 			return errors.New("Enode IP is Nil")
+		}
+
+		ft.logger.Debug("노드 버전 확인", "Geth", tsf.Version, "Current", config.DefaultConfig.GethVersion)
+		if strings.Compare(tsf.Version, config.DefaultConfig.GethVersion) != 0 {
+			return errors.New("버전 정보가 다르다")
 		}
 
 		otprnHash := tsf.Otprn.HashOtprn()

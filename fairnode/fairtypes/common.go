@@ -21,6 +21,7 @@ type EnodeCoinbase struct {
 	Coinbase common.Address
 	IP       string
 	Port     string
+	Version  string
 }
 
 type TransferOtprn struct {
@@ -33,6 +34,7 @@ type TransferCheck struct {
 	Otprn    otprn.Otprn
 	Coinbase common.Address
 	Enode    string
+	Version  string
 }
 
 func (tsf *TransferCheck) Hash() common.Hash {

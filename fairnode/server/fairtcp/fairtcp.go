@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
@@ -37,14 +38,14 @@ type FairTcp struct {
 }
 
 func New(db *db.FairNodeDB, fm backend.Manager) (*FairTcp, error) {
-	addr := fmt.Sprintf(":%s", backend.DefaultConfig.Port)
+	addr := fmt.Sprintf(":%s", config.DefaultConfig.Port)
 
 	LAddrTCP, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	natm, err := nat.Parse(backend.DefaultConfig.NAT)
+	natm, err := nat.Parse(config.DefaultConfig.NAT)
 	if err != nil {
 		return nil, errNat
 	}

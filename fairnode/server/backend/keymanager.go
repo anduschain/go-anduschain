@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,9 +23,9 @@ type SeverKey struct {
 }
 
 func GetServerKey() (*SeverKey, error) {
-	keypath := DefaultConfig.KeyPath                  // for UNIX $HOME/.fairnode/key
+	keypath := config.DefaultConfig.KeyPath           // for UNIX $HOME/.fairnode/key
 	keyfile := filepath.Join(keypath, "fairkey.json") // for UNIX $HOME/.fairnode/key/fairkey.json
-	keyPass := DefaultConfig.KeyPass
+	keyPass := config.DefaultConfig.KeyPass
 
 	var sk SeverKey
 
@@ -32,7 +33,7 @@ func GetServerKey() (*SeverKey, error) {
 		return nil, fairnodeKeyError
 	}
 
-	if _, err := os.Stat(DefaultConfig.KeyPath); err != nil {
+	if _, err := os.Stat(config.DefaultConfig.KeyPath); err != nil {
 		return nil, keyFileNotExistError
 	}
 

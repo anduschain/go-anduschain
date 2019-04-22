@@ -12,6 +12,7 @@ import (
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/p2p/nat"
+	"github.com/anduschain/go-anduschain/params"
 	"net"
 	"time"
 )
@@ -130,6 +131,7 @@ Exit:
 				Enode:    u.manger.GetP2PServer().NodeInfo().ID,
 				Coinbase: u.manger.GetCoinbase(),
 				Port:     config.DefaultConfig.ClientPort,
+				Version:  params.Version,
 			}
 
 			node, err := discover.ParseNode(u.manger.GetP2PServer().NodeInfo().Enode)
