@@ -13,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	log "gopkg.in/inconshreveable/log15.v2"
+	"log/syslog"
 	"math/big"
 	"sync"
 )
@@ -50,11 +51,17 @@ type FairManager struct {
 }
 
 func New() (*FairManager, error) {
-	if !config.DefaultConfig.Debug {
+	if config.DefaultConfig.SysLog {
+		logLvel := syslog.LOG_INFO | syslog.LOG_DEBUG | syslog.LOG_NOTICE | syslog.LOG_LOCAL0
 		handler := log.MultiHandler(
-			log.Must.FileHandler("./fairnode.json", log.JsonFormat()),
+			log.StdoutHandler,
+			log.Must.SyslogHandler(logLvel, "fairnode", log.TerminalFormat()), // syslog로 저장
 		)
 		log.Root().SetHandler(handler)
+	}
+
+	if !config.DefaultConfig.Debug {
+		log.Root().SetHandler(log.DiscardHandler())
 	}
 
 	fm := &FairManager{
@@ -69,6 +76,7 @@ func New() (*FairManager, error) {
 		makeJoinTx:    make(chan struct{}),
 		logger:        log.New("fairnode", "manager"),
 	}
+
 	fm.Services = []Service{}
 	fm.logger.Info("SettingInfo", "chainID", config.DefaultConfig.ChainID, "FairVersion", config.DefaultConfig.Version)
 

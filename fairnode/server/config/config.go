@@ -26,6 +26,7 @@ type Config struct {
 	ChainID int64
 	Epoch   int64
 	Debug   bool
+	SysLog  bool
 	Version string
 
 	GethVersion string
@@ -53,10 +54,9 @@ func init() {
 
 func NewConfig() *Config {
 	return &Config{
-		FairNodeDir: "",
-		DBhost:      "localhost",
-		DBport:      "27017",
-		DBuser:      "",
+		DBhost: "localhost",
+		DBport: "27017",
+		DBuser: "",
 
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
@@ -64,6 +64,7 @@ func NewConfig() *Config {
 		NAT:     "none",
 		ChainID: 3355,
 		Debug:   false,
+		SysLog:  false,
 		Version: "1.0.0", // Fairnode version
 
 		//Mining Config
@@ -92,6 +93,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
 
 	DefaultConfig.Debug = ctx.GlobalBool("debug")
+	DefaultConfig.SysLog = ctx.GlobalBool("syslog")
 
 	DefaultConfig.KeyPass = keypass
 	DefaultConfig.DBpass = dbpass

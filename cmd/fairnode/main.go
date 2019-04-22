@@ -24,6 +24,7 @@ func init() {
 	app = cli.NewApp()
 	app.Name = "fairnode"
 	app.Usage = "Fairnode for AndUsChain networks"
+	app.Version = config.DefaultConfig.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "dbhost",
@@ -62,7 +63,11 @@ func init() {
 		},
 		cli.BoolFlag{
 			Name:  "debug",
-			Usage: "default is false",
+			Usage: "default is false, if true, you will see logs in terminal",
+		},
+		cli.BoolFlag{
+			Name:  "syslog",
+			Usage: "default is false, if true, saving to system log",
 		},
 	}
 
@@ -81,8 +86,6 @@ func init() {
 			},
 		},
 	}
-
-	// TODO : andus >> 2018-11-05 init() 이 필요한 설정값들 추가할 것..
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
