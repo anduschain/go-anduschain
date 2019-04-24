@@ -44,7 +44,7 @@ func (t *Tsp) ReadMsg() (*TsMsg, error) {
 func (t *Tsp) WriteMsg(msg *TsMsg) error {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
-	//t.fd.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
+	t.fd.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
 	return t.rw.WriteMsg(msg)
 }
 
@@ -73,11 +73,12 @@ type MsgReadWriter interface {
 func Send(w MsgWriter, code uint32, data interface{}) error {
 	m, err := MakeTsMsg(code, data)
 	if err != nil {
-		log.Error("transport.Send > MakeTsMsg", "error", err)
+		log.Error("MakeTsMsg", "msg", err)
+		return err
 	}
 	err = w.WriteMsg(m)
 	if err != nil {
-		log.Error("transport.Send > WriteMsg", "error", err)
+		log.Error("WriteMsg", "msg", err)
 		return err
 	}
 

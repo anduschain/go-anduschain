@@ -104,6 +104,11 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 		t.logger.Debug("TcpLoop Killed")
 	}()
 
+	if ok, _ := t.checkBalance(otprnWithSig.Otprn); !ok {
+		t.logger.Error("Tcp connect error", "msg", errorLeakCoin.Error())
+		return
+	}
+
 	conn, err := net.DialTCP("tcp", nil, t.SAddrTCP)
 	if err != nil {
 		t.logger.Error("DialTCP ", "error", err)
@@ -127,8 +132,10 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 	}
 
 	//참가 여부 확인
-	transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String(), params.Version})
+	if err := transport.Send(tsp, transport.ReqLeagueJoinOK,
+		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String(), params.Version}); err != nil {
+		return
+	}
 
 	notify := make(chan error)
 	go func() {
@@ -146,7 +153,7 @@ Exit:
 		case err := <-notify:
 			t.logger.Error("handelMsg", "error", err)
 			if err == io.EOF {
-				t.logger.Debug("OTPRN 초기화", "msg", err)
+				t.logger.Debug("OTPRN 삭제", "msg", err)
 				t.manger.DeleteStoreOtprnWidthSig()
 			}
 			tsp.Close()
@@ -155,7 +162,11 @@ Exit:
 			tsp.Close()
 			break Exit
 		case vote := <-t.manger.VoteBlock():
-			transport.Send(tsp, transport.SendBlockForVote, vote)
+			err := transport.Send(tsp, transport.SendBlockForVote, vote)
+			if err != nil {
+				t.logger.Error("Block Vote", "msg", err)
+				continue
+			}
 			t.logger.Info("Block Vote", "HeaderHash", vote.HeaderHash.String(), "Voter", vote.Voter.String())
 		}
 	}
@@ -214,13 +225,13 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
 			t.logger.Error("동기화가 맞지 않습니다", "makeBlockNum", m.Number, "currentBlockNum", t.manger.GetBlockChain().CurrentBlock().Number().Uint64())
-			break
+			return nil
 		}
 
 		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
 		if err != nil {
 			t.logger.Error("MakeJoinTx", "error", err)
-			break
+			return err
 		}
 	case transport.MakeBlock:
 		var m fairtypes.BlockMakeMessage
@@ -231,7 +242,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 		}
 		if m.Number != t.manger.GetBlockChain().CurrentBlock().Number().Uint64()+1 {
 			t.logger.Error("동기화가 맞지 않습니다", "makeBlockNum", m.Number, "currentBlockNum", t.manger.GetBlockChain().CurrentBlock().Number().Uint64())
-			break
+			return nil
 		}
 		t.manger.SetBlockMine(true)
 		t.logger.Info("블록 생성", "blockNum", m.Number, "otprnHash", m.OtprnHash.String())
@@ -275,7 +286,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			msg.Decode(&headerHash)
 			block := t.manger.GetWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn(), headerHash)
 			if block == nil {
-				break
+				return nil
 			}
 			fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
 			transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
@@ -293,18 +304,21 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	return nil
 }
 
-func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error {
-	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
+func (t *Tcp) checkBalance(otprn *otprn.Otprn) (bool, *big.Int) {
 	// TODO : andus >> 잔액 조사 ( 임시 : 100 * 10^18 wei ) : 참가비 ( 수수료가 없는 tx )
 	// TODO : andus >> joinNonce 현재 상태 조회
 	currentBalance := t.manger.GetCurrentBalance()
 	epoch := big.NewInt(int64(otprn.Epoch))
 	// balance will be more then ticket price multiplex epoch.
 	price := config.DefaultConfig.SetFee(int64(otprn.Fee))
-
 	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
 
-	if currentBalance.Cmp(totalPrice) > 0 {
+	return currentBalance.Cmp(totalPrice) > 0, price
+}
+
+func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *otprn.Otprn, sig []byte) error {
+	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
+	if ok, price := t.checkBalance(otprn); ok {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
 		data := types.JoinTxData{
 			JoinNonce:    currentJoinNonce,

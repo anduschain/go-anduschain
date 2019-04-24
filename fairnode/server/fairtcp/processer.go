@@ -204,16 +204,16 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 		select {
 		case n := <-notify:
 			if n != nil {
-				fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
-				fu.logger.Debug("파이널 블록 전송", "blockNum", n.Block.NumberU64(), "miner", n.Block.Coinbase().String())
-
 				// DB에 블록 저장
 				votePool.SnapShot <- n.Block
 				votePool.DeleteCh <- pool.OtprnHash(otprnHash)
 
+				// 파이널 블록 전송
+				fu.sendTcpAll(otprnHash, transport.SendFinalBlock, n.GetTsFinalBlock())
+				fu.logger.Debug("파이널 블록 전송", "blockNum", n.Block.NumberU64(), "miner", n.Block.Coinbase().String())
+
 				time.Sleep(nextBlockMakeTerm * time.Second)
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
-				return
 			} else {
 				fu.logger.Warn("파이널 블록 전송 시간 초과로 인한 리그 교체")
 				fu.manager.GetStopLeagueCh() <- struct{}{}

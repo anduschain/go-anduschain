@@ -724,7 +724,8 @@ running:
 				if strings.Contains(errMag, errorToStringPeer[ErrGenesisBlockMismatch]) ||
 					strings.Contains(errMag, errorToStringPeer[ErrNetworkIdMismatch]) ||
 					strings.Contains(errMag, errorToStringPeer[ErrProtocolVersionMismatch]) ||
-					strings.Contains(errMag, errorToStringPeer[ErrExtraStatusMsg]) {
+					strings.Contains(errMag, errorToStringPeer[ErrExtraStatusMsg]) ||
+					strings.Contains(errMag, errorToStringPeer[ErrClientQuit]) {
 					dialstate.removeStaticID(pd.ID())
 					srv.log.Debug("Removing static node", "node", pd.ID().String())
 				} else {

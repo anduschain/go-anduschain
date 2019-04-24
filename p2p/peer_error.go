@@ -41,6 +41,7 @@ const (
 	ErrNoStatusMsg
 	ErrExtraStatusMsg
 	ErrSuspendedPeer
+	ErrClientQuit
 )
 
 var errorToStringPeer = map[int]string{
@@ -53,6 +54,7 @@ var errorToStringPeer = map[int]string{
 	ErrNoStatusMsg:             "No status message",
 	ErrExtraStatusMsg:          "Extra status message",
 	ErrSuspendedPeer:           "Suspended peer",
+	ErrClientQuit:              "client quitting",
 }
 
 type peerError struct {
