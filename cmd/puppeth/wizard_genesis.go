@@ -60,9 +60,12 @@ func (w *wizard) makeGenesis() {
 		//genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: common.HexToAddress("0x5922af64E91f4B10AF896De8Fd372075569a1440")}
 
 		fmt.Printf("Input your fairnode address ")
-		fairNodeAdd := w.readAddress()
-		genesis.Config.Deb = &params.DebConfig{FairAddr: *fairNodeAdd}
-		genesis.Config.EIP155Block = big.NewInt(0)
+		if fairNodeAdd := w.readAddress(); fairNodeAdd != nil {
+			genesis.Config.Deb = &params.DebConfig{FairAddr: *fairNodeAdd}
+			genesis.Config.EIP155Block = big.NewInt(0)
+		} else {
+			log.Crit("Invalid fairnode address")
+		}
 
 	default:
 		log.Crit("Invalid consensus engine choice", "choice", choice)

@@ -33,10 +33,11 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 )
 
-// DefaultConfig contains default settings for use on the Ethereum main net.
+// DefaultConfig contains default settings for use on the Anduschain test net. -> will change main net
 // TODO : andus >> anduschain main net 컨센서스 선택부분 설정 해야함
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
+
 	// TODO : andus >> 여기서 컨센서스 엔진 부분 교체
 	//Ethash: ethash.Config{
 	//	CacheDir:       "ethash",
@@ -45,11 +46,13 @@ var DefaultConfig = Config{
 	//	DatasetsInMem:  1,
 	//	DatasetsOnDisk: 2,
 	//},
-	NetworkId:     3355,
+
+	NetworkId:     102,
 	LightPeers:    100,
 	DatabaseCache: 768,
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
+
 	// andus : gaslimite 올림
 	MinerGasFloor: 8000000000,
 	MinerGasCeil:  8000000000000000000,
