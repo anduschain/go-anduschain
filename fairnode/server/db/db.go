@@ -108,19 +108,19 @@ func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
 	return cfg
 }
 
-func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string, version string) {
+func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport, ip, version string, chaiID uint64) {
 	trial := net.ParseIP(ip)
 	if trial.To4() == nil {
 		fnb.logger.Warn("to4 nil")
 		return
 	}
-	if strings.Compare(version, fnb.config.GethVersion) == 0 {
+	if strings.Compare(version, fnb.config.GethVersion) == 0 && fnb.config.ChainID == chaiID {
 		tmp := activeNode{EnodeId: enode, Coinbase: coinbase.Hex(), Ip: trial.To4().String(), Time: time.Now(), Port: clientport, Version: version}
 		if _, err := fnb.ActiveNodeCol.UpsertId(tmp.EnodeId, bson.M{"$set": tmp}); err != nil {
 			fnb.logger.Warn("SaveActiveNode ", "error", err)
 		}
 	} else {
-		fnb.logger.Error("SaveActiveNode", "msg", "Geth 버전이 다르다", "Geth", version, "DB", fnb.config.GethVersion)
+		fnb.logger.Error("SaveActiveNode", "msg", "노드 정보가 다르다", "Geth", version, "DB", fnb.config.GethVersion, "ChainID", chaiID)
 		return
 	}
 }

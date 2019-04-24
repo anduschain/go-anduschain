@@ -133,7 +133,13 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 
 	//참가 여부 확인
 	if err := transport.Send(tsp, transport.ReqLeagueJoinOK,
-		fairtypes.TransferCheck{*otprnWithSig.Otprn, t.manger.GetCoinbase(), node.String(), params.Version}); err != nil {
+		fairtypes.TransferCheck{
+			Otprn:    *otprnWithSig.Otprn,
+			Coinbase: t.manger.GetCoinbase(),
+			Enode:    node.String(),
+			Version:  params.Version,
+			ChanID:   t.manger.GetBlockChain().Config().ChainID.Uint64(),
+		}); err != nil {
 		return
 	}
 

@@ -23,7 +23,7 @@ type Config struct {
 
 	Port    string // 네트워크 포트
 	NAT     string
-	ChainID int64
+	ChainID uint64
 	Epoch   int64
 	Debug   bool
 	SysLog  bool
@@ -90,7 +90,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")
-	DefaultConfig.ChainID = ctx.GlobalInt64("chainID")
+	DefaultConfig.ChainID = ctx.GlobalUint64("chainID")
 
 	DefaultConfig.Debug = ctx.GlobalBool("debug")
 	DefaultConfig.SysLog = ctx.GlobalBool("syslog")

@@ -160,9 +160,9 @@ func (fu *FairUdp) manageActiveNode(exit chan struct{}) {
 
 					if !addr.IP.Equal(net.IPv4zero) {
 						if addr.IP.String() != fromGeth.IP {
-							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, addr.IP.String(), fromGeth.Version)
+							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, addr.IP.String(), fromGeth.Version, fromGeth.ChainID)
 						} else {
-							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP, fromGeth.Version)
+							fu.db.SaveActiveNode(fromGeth.Enode, fromGeth.Coinbase, fromGeth.Port, fromGeth.IP, fromGeth.Version, fromGeth.ChainID)
 						}
 					}
 				default:

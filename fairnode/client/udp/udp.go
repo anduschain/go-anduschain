@@ -132,6 +132,7 @@ Exit:
 				Coinbase: u.manger.GetCoinbase(),
 				Port:     config.DefaultConfig.ClientPort,
 				Version:  params.Version,
+				ChainID:  u.manger.GetBlockChain().Config().ChainID.Uint64(),
 			}
 
 			node, err := discover.ParseNode(u.manger.GetP2PServer().NodeInfo().Enode)

@@ -56,7 +56,7 @@ func init() {
 			Value: "none",
 			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
 		},
-		cli.Int64Flag{
+		cli.Uint64Flag{
 			Name:  "chainID",
 			Value: 3355,
 			Usage: "default chainid is 3355",

@@ -66,7 +66,7 @@ func New() (*FairManager, error) {
 
 	fm := &FairManager{
 		Epoch:         big.NewInt(config.DefaultConfig.Epoch),
-		Signer:        types.NewEIP155Signer(big.NewInt(config.DefaultConfig.ChainID)),
+		Signer:        types.NewEIP155Signer(big.NewInt(int64(config.DefaultConfig.ChainID))),
 		exit:          make(chan struct{}),
 		ManageOtprnCh: make(chan struct{}),
 		StopLeagueCh:  make(chan struct{}),

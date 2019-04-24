@@ -51,9 +51,13 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 			return errors.New("Enode IP is Nil")
 		}
 
-		ft.logger.Debug("노드 버전 확인", "Geth", tsf.Version, "Current", config.DefaultConfig.GethVersion)
+		ft.logger.Debug("노드 정보 확인", "Geth", tsf.Version, "Current", config.DefaultConfig.GethVersion, "ChainID", tsf.ChanID)
 		if strings.Compare(tsf.Version, config.DefaultConfig.GethVersion) != 0 {
 			return errors.New("버전 정보가 다르다")
+		}
+
+		if tsf.ChanID != config.DefaultConfig.ChainID {
+			return errors.New("ChainID 다르다")
 		}
 
 		otprnHash := tsf.Otprn.HashOtprn()
