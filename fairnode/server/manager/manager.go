@@ -61,12 +61,12 @@ func New() (*FairManager, error) {
 	}
 
 	if !config.DefaultConfig.Debug {
-		log.Root().SetHandler(log.DiscardHandler())
-	} else {
 		handler := log.MultiHandler(
 			log.Must.FileHandler("./fairnode.log", log.TerminalFormat()), // fairnode.log로 저장
 		)
 		log.Root().SetHandler(handler)
+	} else {
+		log.Root().SetHandler(log.DiscardHandler())
 	}
 
 	fm := &FairManager{
