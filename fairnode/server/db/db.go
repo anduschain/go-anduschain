@@ -6,6 +6,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
@@ -26,6 +27,7 @@ type FairNodeDB struct {
 	MinerNode     *mgo.Collection
 	OtprnList     *mgo.Collection
 	BlockChain    *mgo.Collection
+	BlockChainRaw *mgo.Collection
 	signer        types.Signer
 	logger        log.Logger
 	config        *config.Config
@@ -69,6 +71,7 @@ func (fnb *FairNodeDB) Start() error {
 	fnb.MinerNode = session.DB(DBNAME).C("MinerNode")
 	fnb.OtprnList = session.DB(DBNAME).C("OtprnList")
 	fnb.BlockChain = session.DB(DBNAME).C("BlockChain")
+	fnb.BlockChainRaw = session.DB(DBNAME).C("BlockChainRaw")
 
 	return nil
 }
@@ -108,7 +111,7 @@ func (fnb *FairNodeDB) GetChainConfig() *ChainConfig {
 func (fnb *FairNodeDB) SaveActiveNode(enode string, coinbase common.Address, clientport string, ip string, version string) {
 	trial := net.ParseIP(ip)
 	if trial.To4() == nil {
-		fmt.Println("to4 nil")
+		fnb.logger.Warn("to4 nil")
 		return
 	}
 	if strings.Compare(version, fnb.config.GethVersion) == 0 {
@@ -270,15 +273,56 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	}
 
 	b := storedBlock{
+		block.Hash().String(),
 		header,
 		txs,
 		common.BytesToHash(block.FairNodeSig).String(),
 		voter,
 	}
 
-	err := fnb.BlockChain.Insert(b)
-	if err != nil {
-		fnb.logger.Warn("SaveFianlBlock", "error", err)
+	if err := fnb.SaveRawBlock(block); err != nil {
+		fnb.logger.Warn("SaveRawBlock", "error", err)
 	}
 
+	if err := fnb.BlockChain.Insert(b); err != nil {
+		fnb.logger.Warn("SaveFianlBlock", "error", err)
+	}
+}
+
+// 바이트로 블록 저장 size 100000 * 1024
+func (fnb *FairNodeDB) SaveRawBlock(block *types.Block) error {
+	SPLIT_BYTE := 10 * 1024 * 1024 // 10MB
+	blockByte := fairtypes.EncodeBlock(block)
+	raws := fairutil.ByteTrimSize(blockByte, SPLIT_BYTE)
+
+	if len(raws) < 1 {
+		return errors.New("Raw block make error")
+	}
+
+	for i := 0; i < len(raws); i++ {
+		raw := storeFinalBlockRaw{block.Hash().String(), int64(i), int64(len(raws[i])), raws[i]}
+		if err := fnb.BlockChainRaw.Insert(raw); err != nil {
+			return err
+		}
+
+		fnb.logger.Debug("Save Block raw", "hash", block.Hash(), "order", i, "size", len(raws[i]))
+	}
+
+	return nil
+}
+
+func (fnb *FairNodeDB) GetRawBlock(blockHash string) (*types.Block, error) {
+	var res []storeFinalBlockRaw
+	var b []byte
+	err := fnb.BlockChainRaw.Find(bson.M{"blockhash": blockHash}).Sort("order").All(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(res); i++ {
+		b = append(b, res[i].Raw...)
+	}
+
+	block := fairtypes.DecodeBlock(b)
+	return block, nil
 }

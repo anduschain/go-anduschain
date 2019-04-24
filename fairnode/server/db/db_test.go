@@ -2,14 +2,14 @@ package db
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/types"
 	"gopkg.in/mgo.v2/bson"
 	"log"
+	"strings"
 	"testing"
 	"time"
 )
 
-var session, _ = New("localhost", "27017", "", "", nil)
+var session, _ = New(nil)
 
 type enodeid2 struct {
 	Enodeid string
@@ -112,7 +112,7 @@ func TestFairNodeDB_GetCurrentBlock(t *testing.T) {
 	defer session.Stop()
 	session.Start()
 
-	qury := func() uint64 {
+	qury := func() int64 {
 		var count *storedBlock
 		err := session.BlockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(&count)
 		if err != nil {
@@ -129,4 +129,36 @@ func TestFairNodeDB_GetCurrentBlock(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		fmt.Println("Currnet block", qury())
 	}
+}
+
+func TestFairNodeDB_GetRawBlock(t *testing.T) {
+	defer session.Stop()
+	session.Start()
+
+	hashs := []struct {
+		hash    string
+		txCount int64
+	}{
+		{"0xe4c90f3174ee8c98728f80c2f130f596af66a656383a9b52714e4301d91b467e", 15},
+		{"0x59e6e1097b172bc2f281c953d76f13bb76be6b79d7ca4fd18ebcf7af34f4952e", 3},
+	}
+
+	for i := 0; i < len(hashs); i++ {
+		block, err := session.GetRawBlock(hashs[i].hash)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if strings.Compare(block.Hash().String(), hashs[i].hash) == 0 {
+			if block.Transactions().Len() == int(hashs[i].txCount) {
+				t.Log("블록이 성공적으로 가져와짐", "txcount", hashs[i].txCount, true)
+				for i := range block.Transactions() {
+					t.Log("txhash", block.Transactions()[i].Hash().String())
+				}
+			}
+		} else {
+			t.Log("블록을 정상적으로 가져오지 못함", false)
+		}
+	}
+
 }

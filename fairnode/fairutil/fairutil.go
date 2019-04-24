@@ -62,3 +62,35 @@ func ValidationSign(hash, sig []byte, sAddr common.Address) bool {
 
 	return false
 }
+
+// 지정된 용량으로 바이트 배열을 잘라서 리턴함
+func ByteTrimSize(data []byte, size int) [][]byte {
+	var res [][]byte
+	num := len(data) / size
+	if len(data)%size != 0 {
+		num++
+	}
+
+	for i := 0; i < num; i++ {
+		var buf []byte
+
+		if size <= len(data) {
+			for i := 0; i < size; i++ {
+				buf = append(buf, data[i])
+			}
+
+			if len(data) > size {
+				data = data[size:]
+			}
+
+		} else {
+			for i := 0; i < len(data); i++ {
+				buf = append(buf, data[i])
+			}
+		}
+
+		res = append(res, buf[:])
+	}
+
+	return res
+}

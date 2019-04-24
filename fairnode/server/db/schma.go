@@ -67,8 +67,16 @@ type vote struct {
 }
 
 type storedBlock struct {
+	BlockHash    string `bson:"_id,omitempty"`
 	Header       header
 	Transactions []transaction
 	FairNodeSig  string
 	Voter        []vote
+}
+
+type storeFinalBlockRaw struct {
+	BlockHash string
+	Order     int64
+	Size      int64
+	Raw       []byte
 }
