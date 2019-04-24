@@ -119,10 +119,11 @@ func init() {
 
 		go func() {
 			sigc := make(chan os.Signal, 1)
-			signal.Notify(sigc, syscall.SIGTERM)
+			//signal.Ignore(syscall.SIGTERM)
+			signal.Notify(sigc, syscall.SIGHUP)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Warn("Got sigterm, shutting swarm down...")
+			log.Warn("Got sigterm, shutting fairnode down...")
 			w.Done()
 		}()
 
@@ -132,6 +133,7 @@ func init() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
 		log.Error("App Run", "error", os.Stderr, "error", err)
 		os.Exit(1)
