@@ -33,6 +33,12 @@ $ geth --testnet console
 > geth version : Geth/v0.6.7-anduschain-unstable-3c7dd541
 ```
 
+## Issue report
+You will report the issue, using geth. It will connect github issue site. 
+```
+$ geth bug
+```
+
 ## License
 
 The go-anduschain library (i.e. all code outside of the `cmd` directory) is licensed under the
