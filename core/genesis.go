@@ -309,6 +309,7 @@ func DefaultGenesisBlock() *Genesis {
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
+		ExtraData:  []byte("anduschain-testnet"),
 	}
 }
 
@@ -323,6 +324,7 @@ func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
+		ExtraData:  []byte("anduschain-testnet"),
 	}
 }
 
