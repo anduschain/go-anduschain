@@ -66,12 +66,14 @@ var (
 		utils.DashboardAddrFlag,
 		utils.DashboardPortFlag,
 		utils.DashboardRefreshFlag,
-		utils.EthashCacheDirFlag,
-		utils.EthashCachesInMemoryFlag,
-		utils.EthashCachesOnDiskFlag,
-		utils.EthashDatasetDirFlag,
-		utils.EthashDatasetsInMemoryFlag,
-		utils.EthashDatasetsOnDiskFlag,
+		// --> fixme : deprecated
+		//utils.EthashCacheDirFlag,
+		//utils.EthashCachesInMemoryFlag,
+		//utils.EthashCachesOnDiskFlag,
+		//utils.EthashDatasetDirFlag,
+		//utils.EthashDatasetsInMemoryFlag,
+		//utils.EthashDatasetsOnDiskFlag,
+		// <-- fixme : deprecated
 		utils.TxPoolLocalsFlag,
 		utils.TxPoolNoLocalsFlag,
 		utils.TxPoolJournalFlag,
@@ -117,18 +119,18 @@ var (
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
 		utils.DeveloperFlag,
-		//utils.DeveloperPeriodFlag,
+		//utils.DeveloperPeriodFlag, // --> fixme : deprecated
 		utils.TestnetFlag,
 		utils.SoloFlag,
-		//utils.RinkebyFlag,
-		// TODO : andus >> consensus
+		//utils.RinkebyFlag, // --> fixme : deprecated
+
 		utils.DebFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
 		utils.RPCVirtualHostsFlag,
 		utils.EthStatsURLFlag,
-		utils.MetricsEnabledFlag,
+		//utils.MetricsEnabledFlag, // --> fixme : deprecated
 		utils.FakePoWFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
@@ -170,6 +172,12 @@ var (
 		utils.FairclientPort,
 		utils.FairserverIP,
 		utils.FairserverPort,
+	}
+
+	exportDbFlages = []cli.Flag{
+		utils.FairDBHost,
+		utils.FairDBPort,
+		utils.FairDBUser,
 	}
 )
 
@@ -216,6 +224,7 @@ func init() {
 	app.Flags = append(app.Flags, whisperFlags...)
 	app.Flags = append(app.Flags, metricsFlags...)
 	app.Flags = append(app.Flags, fairclientFlages...) // andus >> fairnode 통신용 포트셋팅
+	app.Flags = append(app.Flags, exportDbFlages...)   // andus >> export blockchain file from fairnode db
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())

@@ -5,6 +5,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
+	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"strconv"
@@ -75,6 +76,7 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Address) bool {
 	fpKey, err := crypto.SigToPub(hash.Bytes(), sig)
 	if err != nil {
+		log.Error("ValidationFairSignature SigToPub", "msg", err)
 		return false
 	}
 
@@ -82,6 +84,8 @@ func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Addre
 	if addr == fairAddr {
 		return true
 	}
+
+	log.Error("ValidationFairSignature PubkeyToAddress", "addr", addr, "fairaddr", fairAddr)
 
 	return false
 }

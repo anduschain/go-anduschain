@@ -27,6 +27,9 @@ import (
 var (
 	MainnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
 	TestnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
+
+	MainNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
+	TestNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
 )
 
 var (
@@ -43,7 +46,7 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{},
+		Deb:                 &DebConfig{MainNetFairAddress},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
@@ -58,7 +61,7 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{},
+		Deb:                 &DebConfig{TestNetFairAddress},
 	}
 
 	// TODO : andus >> consensus 추가

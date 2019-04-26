@@ -20,6 +20,7 @@ package utils
 import (
 	"compress/gzip"
 	"fmt"
+	"github.com/anduschain/go-anduschain/fairnode/server/db/export"
 	"io"
 	"os"
 	"os/signal"
@@ -183,6 +184,42 @@ func missingBlocks(chain *core.BlockChain, blocks []*types.Block) []*types.Block
 			return blocks[i:]
 		}
 	}
+	return nil
+}
+
+func ExportChainFromDb(gBlock *types.Block, fDB *export.FairNodeDB, fn string) error {
+	err := fDB.Start()
+	if err != nil {
+		return err
+	}
+
+	defer fDB.Stop()
+
+	log.Info("Exporting blockchain", "file", fn)
+	// Open the file handle and potentially wrap with a gzip stream
+	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+
+	var writer io.Writer = fh
+	if strings.HasSuffix(fn, ".gz") {
+		writer = gzip.NewWriter(writer)
+		defer writer.(*gzip.Writer).Close()
+	}
+
+	// genesis block save
+	if err := gBlock.EncodeRLP(writer); err != nil {
+		return err
+	}
+
+	// Iterate over the blocks and export them
+	if err := fDB.Export(writer); err != nil {
+		return err
+	}
+	log.Info("Exported blockchain", "file", fn)
+
 	return nil
 }
 

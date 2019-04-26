@@ -105,17 +105,17 @@ var AppHelpFlagGroups = []flagGroup{
 			//utils.DeveloperPeriodFlag,
 		},
 	},
-	{
-		Name: "ETHASH",
-		Flags: []cli.Flag{
-			utils.EthashCacheDirFlag,
-			utils.EthashCachesInMemoryFlag,
-			utils.EthashCachesOnDiskFlag,
-			utils.EthashDatasetDirFlag,
-			utils.EthashDatasetsInMemoryFlag,
-			utils.EthashDatasetsOnDiskFlag,
-		},
-	},
+	//{
+	//	Name: "ETHASH",
+	//	Flags: []cli.Flag{
+	//		utils.EthashCacheDirFlag,
+	//		utils.EthashCachesInMemoryFlag,
+	//		utils.EthashCachesOnDiskFlag,
+	//		utils.EthashDatasetDirFlag,
+	//		utils.EthashDatasetsInMemoryFlag,
+	//		utils.EthashDatasetsOnDiskFlag,
+	//	},
+	//},
 	//{
 	//	Name: "DASHBOARD",
 	//	Flags: []cli.Flag{
@@ -230,6 +230,14 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.FakePoWFlag,
 			utils.NoCompactionFlag,
 		}, debug.Flags...),
+	},
+	{
+		Name: "EXPORT BLOCKCHAIN FROM DB",
+		Flags: []cli.Flag{
+			utils.FairDBHost,
+			utils.FairDBPort,
+			utils.FairDBUser,
+		},
 	},
 	{
 		Name: "METRICS AND STATS",

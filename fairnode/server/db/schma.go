@@ -66,7 +66,7 @@ type vote struct {
 	Diff string
 }
 
-type storedBlock struct {
+type StoredBlock struct {
 	BlockHash    string `bson:"_id,omitempty"`
 	Header       header
 	Transactions []transaction
@@ -74,7 +74,7 @@ type storedBlock struct {
 	Voter        []vote
 }
 
-type storeFinalBlockRaw struct {
+type StoreFinalBlockRaw struct {
 	BlockHash string
 	Order     int64
 	Size      int64

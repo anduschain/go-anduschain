@@ -214,7 +214,7 @@ func (fnb *FairNodeDB) GetMinerNodeNum(otprnHash string) uint64 {
 
 func (fnb *FairNodeDB) GetCurrentBlock() *big.Int {
 
-	var sBlock *storedBlock
+	var sBlock *StoredBlock
 
 	err := fnb.BlockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(&sBlock)
 	if err != nil {
@@ -272,7 +272,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		voter = append(voter, vote{block.Voter[i].Addr.String(), block.Voter[i].Sig, block.Voter[i].Difficulty})
 	}
 
-	b := storedBlock{
+	b := StoredBlock{
 		block.Hash().String(),
 		header,
 		txs,
@@ -300,7 +300,7 @@ func (fnb *FairNodeDB) SaveRawBlock(block *types.Block) error {
 	}
 
 	for i := 0; i < len(raws); i++ {
-		raw := storeFinalBlockRaw{block.Hash().String(), int64(i), int64(len(raws[i])), raws[i]}
+		raw := StoreFinalBlockRaw{block.Hash().String(), int64(i), int64(len(raws[i])), raws[i]}
 		if err := fnb.BlockChainRaw.Insert(raw); err != nil {
 			return err
 		}
@@ -312,7 +312,7 @@ func (fnb *FairNodeDB) SaveRawBlock(block *types.Block) error {
 }
 
 func (fnb *FairNodeDB) GetRawBlock(blockHash string) (*types.Block, error) {
-	var res []storeFinalBlockRaw
+	var res []StoreFinalBlockRaw
 	var b []byte
 	err := fnb.BlockChainRaw.Find(bson.M{"blockhash": blockHash}).Sort("order").All(&res)
 	if err != nil {

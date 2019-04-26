@@ -21,22 +21,13 @@ import (
 	"bufio"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/pkg/errors"
-	"io/ioutil"
-	"math/big"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/fdlimit"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/clique"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
@@ -61,7 +52,15 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/netutil"
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
+	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
+	"io/ioutil"
+	"math/big"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var (
@@ -216,35 +215,35 @@ var (
 		Value: dashboard.DefaultConfig.Refresh,
 	}
 	// Ethash settings
-	EthashCacheDirFlag = DirectoryFlag{
-		Name:  "ethash.cachedir",
-		Usage: "Directory to store the ethash verification caches (default = inside the datadir)",
-	}
-	EthashCachesInMemoryFlag = cli.IntFlag{
-		Name:  "ethash.cachesinmem",
-		Usage: "Number of recent ethash caches to keep in memory (16MB each)",
-		Value: eth.DefaultConfig.Ethash.CachesInMem,
-	}
-	EthashCachesOnDiskFlag = cli.IntFlag{
-		Name:  "ethash.cachesondisk",
-		Usage: "Number of recent ethash caches to keep on disk (16MB each)",
-		Value: eth.DefaultConfig.Ethash.CachesOnDisk,
-	}
-	EthashDatasetDirFlag = DirectoryFlag{
-		Name:  "ethash.dagdir",
-		Usage: "Directory to store the ethash mining DAGs (default = inside home folder)",
-		Value: DirectoryString{eth.DefaultConfig.Ethash.DatasetDir},
-	}
-	EthashDatasetsInMemoryFlag = cli.IntFlag{
-		Name:  "ethash.dagsinmem",
-		Usage: "Number of recent ethash mining DAGs to keep in memory (1+GB each)",
-		Value: eth.DefaultConfig.Ethash.DatasetsInMem,
-	}
-	EthashDatasetsOnDiskFlag = cli.IntFlag{
-		Name:  "ethash.dagsondisk",
-		Usage: "Number of recent ethash mining DAGs to keep on disk (1+GB each)",
-		Value: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-	}
+	//EthashCacheDirFlag = DirectoryFlag{
+	//	Name:  "ethash.cachedir",
+	//	Usage: "Directory to store the ethash verification caches (default = inside the datadir)",
+	//}
+	//EthashCachesInMemoryFlag = cli.IntFlag{
+	//	Name:  "ethash.cachesinmem",
+	//	Usage: "Number of recent ethash caches to keep in memory (16MB each)",
+	//	Value: eth.DefaultConfig.Ethash.CachesInMem,
+	//}
+	//EthashCachesOnDiskFlag = cli.IntFlag{
+	//	Name:  "ethash.cachesondisk",
+	//	Usage: "Number of recent ethash caches to keep on disk (16MB each)",
+	//	Value: eth.DefaultConfig.Ethash.CachesOnDisk,
+	//}
+	//EthashDatasetDirFlag = DirectoryFlag{
+	//	Name:  "ethash.dagdir",
+	//	Usage: "Directory to store the ethash mining DAGs (default = inside home folder)",
+	//	Value: DirectoryString{eth.DefaultConfig.Ethash.DatasetDir},
+	//}
+	//EthashDatasetsInMemoryFlag = cli.IntFlag{
+	//	Name:  "ethash.dagsinmem",
+	//	Usage: "Number of recent ethash mining DAGs to keep in memory (1+GB each)",
+	//	Value: eth.DefaultConfig.Ethash.DatasetsInMem,
+	//}
+	//EthashDatasetsOnDiskFlag = cli.IntFlag{
+	//	Name:  "ethash.dagsondisk",
+	//	Usage: "Number of recent ethash mining DAGs to keep on disk (1+GB each)",
+	//	Value: eth.DefaultConfig.Ethash.DatasetsOnDisk,
+	//}
 	// Transaction pool settings
 	TxPoolLocalsFlag = cli.StringFlag{
 		Name:  "txpool.locals",
@@ -585,7 +584,7 @@ var (
 		Usage: "Restrict connection between two whisper light clients",
 	}
 
-	// Metrics flags
+	//Metrics flags
 	MetricsEnabledFlag = cli.BoolFlag{
 		Name:  metrics.MetricsEnabledFlag,
 		Usage: "Enable metrics collection and reporting",
@@ -631,7 +630,6 @@ var (
 		Value: "50002",
 	}
 
-	// FIXME : andus >> 기본값은 페어노드 서버 아이피
 	FairserverIP = cli.StringFlag{
 		Name:  "serverHost",
 		Usage: "fairnode connection IP",
@@ -645,6 +643,12 @@ var (
 	}
 
 	//for DB export file
+	FairDBHost = cli.StringFlag{
+		Name:  "dbhost",
+		Usage: "fairnode database Host",
+		Value: "localhost",
+	}
+
 	FairDBPort = cli.StringFlag{
 		Name:  "dbport",
 		Usage: "fairnode database Port",
@@ -652,9 +656,8 @@ var (
 	}
 
 	FairDBUser = cli.StringFlag{
-		Name:  "dbport",
-		Usage: "fairnode database Port",
-		Value: "27017",
+		Name:  "dbuser",
+		Usage: "fairnode database user",
 	}
 )
 
@@ -1082,24 +1085,24 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 }
 
 func setEthash(ctx *cli.Context, cfg *eth.Config) {
-	if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
-		cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
-	}
-	if ctx.GlobalIsSet(EthashDatasetDirFlag.Name) {
-		cfg.Ethash.DatasetDir = ctx.GlobalString(EthashDatasetDirFlag.Name)
-	}
-	if ctx.GlobalIsSet(EthashCachesInMemoryFlag.Name) {
-		cfg.Ethash.CachesInMem = ctx.GlobalInt(EthashCachesInMemoryFlag.Name)
-	}
-	if ctx.GlobalIsSet(EthashCachesOnDiskFlag.Name) {
-		cfg.Ethash.CachesOnDisk = ctx.GlobalInt(EthashCachesOnDiskFlag.Name)
-	}
-	if ctx.GlobalIsSet(EthashDatasetsInMemoryFlag.Name) {
-		cfg.Ethash.DatasetsInMem = ctx.GlobalInt(EthashDatasetsInMemoryFlag.Name)
-	}
-	if ctx.GlobalIsSet(EthashDatasetsOnDiskFlag.Name) {
-		cfg.Ethash.DatasetsOnDisk = ctx.GlobalInt(EthashDatasetsOnDiskFlag.Name)
-	}
+	//if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
+	//	cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
+	//}
+	//if ctx.GlobalIsSet(EthashDatasetDirFlag.Name) {
+	//	cfg.Ethash.DatasetDir = ctx.GlobalString(EthashDatasetDirFlag.Name)
+	//}
+	//if ctx.GlobalIsSet(EthashCachesInMemoryFlag.Name) {
+	//	cfg.Ethash.CachesInMem = ctx.GlobalInt(EthashCachesInMemoryFlag.Name)
+	//}
+	//if ctx.GlobalIsSet(EthashCachesOnDiskFlag.Name) {
+	//	cfg.Ethash.CachesOnDisk = ctx.GlobalInt(EthashCachesOnDiskFlag.Name)
+	//}
+	//if ctx.GlobalIsSet(EthashDatasetsInMemoryFlag.Name) {
+	//	cfg.Ethash.DatasetsInMem = ctx.GlobalInt(EthashDatasetsInMemoryFlag.Name)
+	//}
+	//if ctx.GlobalIsSet(EthashDatasetsOnDiskFlag.Name) {
+	//	cfg.Ethash.DatasetsOnDisk = ctx.GlobalInt(EthashDatasetsOnDiskFlag.Name)
+	//}
 }
 
 // checkExclusive verifies that only a single instance of the provided flags was
