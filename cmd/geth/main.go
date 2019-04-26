@@ -183,6 +183,7 @@ func init() {
 		initCommand,
 		importCommand,
 		exportCommand,
+		dbExportCommand,
 		importPreimagesCommand,
 		exportPreimagesCommand,
 		copydbCommand,

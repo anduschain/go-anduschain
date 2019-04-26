@@ -39,12 +39,6 @@
 			"revisionTime": "2018-01-16T20:38:02Z"
 		},
 		{
-			"checksumSHA1": "NYATFy4WsvCbx53Ms08xmOj2GQQ=",
-			"path": "github.com/anduschain/go-anduschain",
-			"revision": "2aa2eac523349aefced9a213a28cca1ba66c1711",
-			"revisionTime": "2018-10-29T03:54:10Z"
-		},
-		{
 			"checksumSHA1": "USkefO0g1U9mr+8hagv3fpSkrxg=",
 			"path": "github.com/aristanetworks/goarista/monotime",
 			"revision": "ea17b1a17847fb6e4c0a91de0b674704693469b0",

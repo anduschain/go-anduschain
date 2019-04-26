@@ -643,6 +643,19 @@ var (
 		Usage: "fairnode connection Port",
 		Value: "60002",
 	}
+
+	//for DB export file
+	FairDBPort = cli.StringFlag{
+		Name:  "dbport",
+		Usage: "fairnode database Port",
+		Value: "27017",
+	}
+
+	FairDBUser = cli.StringFlag{
+		Name:  "dbport",
+		Usage: "fairnode database Port",
+		Value: "27017",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
