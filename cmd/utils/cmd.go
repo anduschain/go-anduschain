@@ -223,6 +223,37 @@ func ExportChainFromDb(gBlock *types.Block, fDB *export.FairNodeDB, fn string) e
 	return nil
 }
 
+func ExportChainFromDBAppendChain(fDB *export.FairNodeDB, fn string, first, last uint64) error {
+	err := fDB.Start()
+	if err != nil {
+		return err
+	}
+
+	defer fDB.Stop()
+
+	log.Info("Exporting blockchain", "file", fn)
+	// Open the file handle and potentially wrap with a gzip stream
+	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+
+	var writer io.Writer = fh
+	if strings.HasSuffix(fn, ".gz") {
+		writer = gzip.NewWriter(writer)
+		defer writer.(*gzip.Writer).Close()
+	}
+
+	// Iterate over the blocks and export them
+	if err := fDB.ExportN(writer, first, last); err != nil {
+		return err
+	}
+	log.Info("Exported blockchain", "file", fn)
+
+	return nil
+}
+
 // ExportChain exports a blockchain into the specified file, truncating any data
 // already present in the file.
 func ExportChain(blockchain *core.BlockChain, fn string) error {

@@ -66,7 +66,7 @@ func (fnb *FairNodeDB) Export(w io.Writer) error {
 
 func (fnb *FairNodeDB) ExportN(w io.Writer, first uint64, last uint64) error {
 	fnb.logger.Info("ExportN", "first", first, "last", last)
-	iter := fnb.BlockChain.Find(nil).Sort("header.number").Limit(int(last)).Iter()
+	iter := fnb.BlockChain.Find(bson.M{"header.number": bson.M{"$gte": first, "$lte": last}}).Sort("header.number").Iter()
 	var sBlock db.StoredBlock
 	for iter.Next(&sBlock) {
 		block, err := fnb.GetRawBlock(sBlock.BlockHash)
