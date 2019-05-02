@@ -26,6 +26,7 @@ const (
 	nextBlockMakeTerm  = 7  // 블록생성 후  다음 블록 생성 신호 전달 term
 	blockVote          = 10 // 블록생성 메시지 전송 후 10초
 	LeagueSelectValue  = 5  // 리그전송시 보내는 노드 수
+	blockVoteWaiting   = 5  // 투표 대기
 )
 
 func (fu *FairTcp) sendLeague(otprnHash common.Hash) {
@@ -82,6 +83,7 @@ func (fu *FairTcp) leagueControlle(otprnHash common.Hash) {
 					fu.logger.Debug("블록 투표", "otprnhash", otprnHash.String(), "blockNum", fu.manager.GetLastBlockNum().Uint64()+1)
 					fu.sendTcpAll(otprnHash, transport.WinningBlockVote, fairtypes.BlockMakeMessage{otprnHash, fu.manager.GetLastBlockNum().Uint64() + 1})
 					go fu.sendFinalBlock(otprnHash)
+
 				})
 
 				//// peer list 전송후 14초 / 리그 내 블록 생성 후 10초
@@ -177,28 +179,32 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 
 	votePool := fu.manager.GetVotePool()
 	notify := make(chan *fairtypes.FinalBlock)
-	go func() {
-		t := time.NewTicker(time.Second)
-		conter := 0
-		for {
-			select {
-			case <-t.C:
-				fb := fu.GetFinalBlock(otprnHash, votePool)
-				if fb == nil {
-					//10초 이후에 리그 교체 (투표 메시지 전달 후 10초 동안 투표가 없을경우)
-					if conter == noVoteBolckLeagChn {
-						notify <- nil
+
+	time.AfterFunc(blockVoteWaiting*time.Second, func() {
+		fu.logger.Debug("Get Final block start")
+		go func() {
+			t := time.NewTicker(time.Second)
+			counter := 0
+			for {
+				select {
+				case <-t.C:
+					fb := fu.GetFinalBlock(otprnHash, votePool)
+					if fb == nil {
+						//10초 이후에 리그 교체 (투표 메시지 전달 후 10초 동안 투표가 없을경우)
+						if counter == noVoteBolckLeagChn {
+							notify <- nil
+							return
+						}
+						counter++
+						continue
+					} else {
+						notify <- fb
 						return
 					}
-					conter++
-					continue
-				} else {
-					notify <- fb
-					return
 				}
 			}
-		}
-	}()
+		}()
+	})
 
 	for {
 		select {
@@ -214,6 +220,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 
 				time.Sleep(nextBlockMakeTerm * time.Second)
 				fu.manager.GetManagerOtprnCh() <- struct{}{}
+				return
 			} else {
 				fu.logger.Warn("파이널 블록 전송 시간 초과로 인한 리그 교체")
 				fu.manager.GetStopLeagueCh() <- struct{}{}

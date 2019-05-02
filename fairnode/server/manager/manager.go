@@ -66,7 +66,7 @@ func New() (*FairManager, error) {
 		)
 		log.Root().SetHandler(handler)
 	} else {
-		log.Root().SetHandler(log.DiscardHandler())
+		log.Root().SetHandler(log.StdoutHandler)
 	}
 
 	fm := &FairManager{

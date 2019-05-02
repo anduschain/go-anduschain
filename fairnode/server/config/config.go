@@ -65,10 +65,10 @@ func NewConfig() *Config {
 		ChainID: 3355,
 		Debug:   false,
 		SysLog:  false,
-		Version: "1.0.0", // Fairnode version
+		Version: "1.0.1", // Fairnode version
 
 		//Mining Config
-		GethVersion: "0.6.6",
+		GethVersion: "0.6.9",
 		Miner:       100,
 		Epoch:       100,
 		Fee:         6,
