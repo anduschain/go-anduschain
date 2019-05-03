@@ -168,12 +168,13 @@ Exit:
 			tsp.Close()
 			break Exit
 		case vote := <-t.manger.VoteBlock():
+			t.logger.Debug("Block Vote Start", "HeaderHash", vote.HeaderHash.String(), "Voter", vote.Voter.String())
 			err := transport.Send(tsp, transport.SendBlockForVote, vote)
 			if err != nil {
 				t.logger.Error("Block Vote", "msg", err)
 				continue
 			}
-			t.logger.Info("Block Vote", "HeaderHash", vote.HeaderHash.String(), "Voter", vote.Voter.String())
+			t.logger.Debug("Block Vote End", "HeaderHash", vote.HeaderHash.String(), "Voter", vote.Voter.String())
 		}
 	}
 }
