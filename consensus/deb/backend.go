@@ -12,6 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
+	"time"
 )
 
 const (
@@ -240,21 +241,23 @@ Exit:
 					}
 				}
 			}
-		case <-c.chans.GetWinningBlockVoteStartCh():
+		case _, ok := <-c.chans.GetWinningBlockVoteStartCh():
+			c.logger.Debug("블록 투표 채널 호출", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash(), "status", ok)
 			wb := winningBlock
-
 			if wb == nil {
-				c.logger.Debug("블록투표 실패", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+				c.logger.Error("블록투표 실패", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
 				break Exit
 			}
 
 			if chain.CurrentHeader().Number.Cmp(wb.Block.Number()) >= 0 {
-				continue
+				c.logger.Error("투표 블록 번호가 맞지 않음", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+				break Exit
 			}
 			// 위닝블록 전송
 			mySig, err := c.SignBlockHeader(wb.Block.Header().Hash().Bytes())
 			if err != nil {
-				continue
+				c.logger.Error("블록투표 서명 실패", "msg", err)
+				break Exit
 			}
 
 			c.chans.GetWinningBlockCh() <- &fairtypes.Vote{
@@ -268,6 +271,9 @@ Exit:
 
 			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)
 			c.logger.Debug("블록투표 ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
+			break Exit
+		case <-time.After(VotingWaitTime * time.Second):
+			c.logger.Debug("Vote goroutine end of time", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
 			break Exit
 		}
 	}
