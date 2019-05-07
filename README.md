@@ -30,7 +30,7 @@ You can join whenever you want.
 
 ```
 $ geth --testnet console
-> geth version : Geth/v0.6.11-anduschain-unstable-3c7dd541
+> geth version : Geth/v0.6.11-anduschain-unstable
 ```
 
 ## Issue report
