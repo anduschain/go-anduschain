@@ -1,6 +1,8 @@
 package db
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -11,6 +13,7 @@ import (
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"strings"
@@ -20,17 +23,22 @@ import (
 const DBNAME = "AndusChain"
 
 type FairNodeDB struct {
-	url           string
-	Mongo         *mgo.Session
+	url      string
+	dialInfo *mgo.DialInfo
+	Mongo    *mgo.Session
+
 	ChainConfig   *mgo.Collection
 	ActiveNodeCol *mgo.Collection
 	MinerNode     *mgo.Collection
 	OtprnList     *mgo.Collection
 	BlockChain    *mgo.Collection
 	BlockChainRaw *mgo.Collection
-	signer        types.Signer
-	logger        log.Logger
-	config        *config.Config
+
+	Transactions *mgo.Collection
+
+	signer types.Signer
+	logger log.Logger
+	config *config.Config
 }
 
 var (
@@ -47,7 +55,32 @@ func New(signer types.Signer) (*FairNodeDB, error) {
 	if strings.Compare(fnb.config.DBuser, "") != 0 {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", fnb.config.DBuser, fnb.config.DBpass, fnb.config.DBhost, fnb.config.DBport, DBNAME)
 	} else {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s", fnb.config.DBhost, fnb.config.DBport)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s/%s", fnb.config.DBhost, fnb.config.DBport, DBNAME)
+	}
+
+	// SSL db connection config
+	if strings.Compare(fnb.config.SSL_path, "") != 0 {
+		tlsConfig := &tls.Config{}
+		tlsConfig.InsecureSkipVerify = true
+
+		roots := x509.NewCertPool()
+		if ca, err := ioutil.ReadFile(fnb.config.SSL_path); err == nil {
+			roots.AppendCertsFromPEM(ca)
+		}
+
+		tlsConfig.RootCAs = roots
+
+		dialInfo, err := mgo.ParseURL(fnb.url)
+		if err != nil {
+			return nil, err
+		}
+
+		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+			return conn, err
+		}
+
+		fnb.dialInfo = dialInfo
 	}
 
 	fnb.signer = signer
@@ -56,8 +89,15 @@ func New(signer types.Signer) (*FairNodeDB, error) {
 }
 
 func (fnb *FairNodeDB) Start() error {
+	var session *mgo.Session
+	var err error
 
-	session, err := mgo.Dial(fnb.url)
+	if fnb.dialInfo == nil {
+		session, err = mgo.Dial(fnb.url)
+	} else {
+		session, err = mgo.DialWithInfo(fnb.dialInfo)
+	}
+
 	if err != nil {
 		fnb.logger.Error("Mongo DB Dial", "error", err)
 		return MongDBConnectError
@@ -72,6 +112,7 @@ func (fnb *FairNodeDB) Start() error {
 	fnb.OtprnList = session.DB(DBNAME).C("OtprnList")
 	fnb.BlockChain = session.DB(DBNAME).C("BlockChain")
 	fnb.BlockChainRaw = session.DB(DBNAME).C("BlockChainRaw")
+	fnb.Transactions = session.DB(DBNAME).C("Transactions")
 
 	return nil
 }

@@ -17,6 +17,8 @@ type Config struct {
 	DBuser string
 	DBpass string
 
+	SSL_path string // for connection mongodb using ssl cert
+
 	//key
 	KeyPath string
 	KeyPass string
@@ -54,9 +56,10 @@ func init() {
 
 func NewConfig() *Config {
 	return &Config{
-		DBhost: "localhost",
-		DBport: "27017",
-		DBuser: "",
+		DBhost:   "localhost",
+		DBport:   "27017",
+		DBuser:   "",
+		SSL_path: "",
 
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
@@ -87,6 +90,9 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.DBhost = ctx.GlobalString("dbhost")
 	DefaultConfig.DBport = ctx.GlobalString("dbport")
 	DefaultConfig.DBuser = ctx.GlobalString("dbuser")
+
+	DefaultConfig.SSL_path = ctx.GlobalString("dbCertPath")
+
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
 	DefaultConfig.Port = ctx.GlobalString("port")
 	DefaultConfig.NAT = ctx.GlobalString("nat")

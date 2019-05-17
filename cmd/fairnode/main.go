@@ -42,6 +42,11 @@ func init() {
 			Usage: "default user is nil",
 		},
 		cli.StringFlag{
+			Name:  "dbCertPath",
+			Value: "",
+			Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
+		},
+		cli.StringFlag{
 			Name:  "port",
 			Value: "60002",
 			Usage: "default port 60002",

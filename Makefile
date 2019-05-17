@@ -68,6 +68,12 @@ devtools:
 
 # Cross Compilation Targets (xgo)
 
+# fairnode
+fairnode-linux-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/fairnode
+	@echo "Linux amd64 cross compilation done:"
+	@ls -ld $(GOBIN)/fairnode-linux-* | grep amd64
+
 # bootnode
 bootnode-linux-amd64:
 	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/bootnode
