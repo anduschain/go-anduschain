@@ -39,11 +39,12 @@ type Keystore struct {
 }
 
 type LoadTest struct {
-	rc   *rpc.Client
-	ec   *ethclient.Client
-	ks   *ecdsa.PrivateKey
-	addr common.Address
-	pwd  string
+	rc    *rpc.Client
+	ec    *ethclient.Client
+	ks    *ecdsa.PrivateKey
+	addr  common.Address
+	pwd   string
+	nonce uint64
 }
 
 func NewLoadTestModule(client *rpc.Client, addr, pwd string) *LoadTest {
@@ -115,11 +116,18 @@ func (l *LoadTest) CheckBalance() bool {
 	return false
 }
 
-func (l *LoadTest) SendTransaction() error {
+func (l *LoadTest) GetNonce() error {
 	nonce, err := l.ec.PendingNonceAt(context.Background(), l.addr)
 	if err != nil {
 		return err
 	}
+
+	l.nonce = nonce
+	return nil
+}
+
+func (l *LoadTest) SendTransaction() error {
+	fmt.Println("nonce", l.nonce)
 
 	value := price
 	gasLimit := uint64(100000000)
@@ -136,7 +144,7 @@ func (l *LoadTest) SendTransaction() error {
 		return err
 	}
 
-	tx := types.NewTransaction(nonce, toAddress, value, gasLimit, gasPrice, bData)
+	tx := types.NewTransaction(l.nonce, toAddress, value, gasLimit, gasPrice, bData)
 	signedTx, err := types.SignTx(tx, signer, l.ks)
 	if err != nil {
 		return err
@@ -149,7 +157,9 @@ func (l *LoadTest) SendTransaction() error {
 		return err
 	}
 
-	fmt.Println("tx sent", signedTx.Hash().Hex())
+	l.nonce++
+
+	fmt.Println("tx sent", signedTx.Hash().Hex(), l.nonce)
 
 	return nil
 }

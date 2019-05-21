@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/loadtest"
 	"github.com/anduschain/go-anduschain/rpc"
+	"log"
 	"strings"
 	"time"
 )
@@ -13,7 +14,6 @@ var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
 	address  = flag.String("address", "0x25dde181b6e75f686acc6132f07b8424702306b0", "transaction issue account")
 	password = flag.String("password", "", "account password")
-	keyStore = flag.String("keystore", "", "keystore")
 )
 
 func main() {
@@ -48,14 +48,22 @@ func main() {
 			return
 		}
 
-		for {
+		err = lt.GetNonce()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		for i := 0; i < 4000; i++ {
 			err = lt.SendTransaction()
 			if err != nil {
 				fmt.Println("SendTransaction", err)
 				return
 			}
 
-			time.Sleep(30 * time.Second)
+			log.Println("SendTransaction", "count", i)
+
+			time.Sleep(2 * time.Millisecond)
 		}
 	}
 }
