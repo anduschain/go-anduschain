@@ -2,13 +2,12 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-# TODO : andus >> 2018-11-05 fairnode 추가..
-.PHONY: geth android ios fairnode geth-cross swarm evm all test clean
+.PHONY: geth android ios geth-cross swarm evm all test clean
 .PHONY: geth-linux geth-linux-386 geth-linux-amd64 geth-linux-mips64 geth-linux-mips64le
 .PHONY: geth-linux-arm geth-linux-arm-5 geth-linux-arm-6 geth-linux-arm-7 geth-linux-arm64
 .PHONY: geth-darwin geth-darwin-386 geth-darwin-amd64
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
-.PHONY: bootnode-linux-amd64
+.PHONY: fairnode loadtest bootnode-linux-amd64
 
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
@@ -18,11 +17,16 @@ geth:
 	@echo "Done building geth."
 	@echo "Run \"$(GOBIN)/geth\" to launch geth."
 
-# TODO : andus >> 2018-11-05 fairnode 추가..
 fairnode:
 	build/env.sh go run build/ci.go install ./cmd/fairnode
 	@echo "Done building fairnode."
 	@echo "Run \"$(GOBIN)/fairnode\" to launch fairnode."
+
+
+loadtest:
+	build/env.sh go run build/ci.go install ./cmd/loadtest
+	@echo "Done building loadtest."
+	@echo "Run \"$(GOBIN)/loadtest\" to launch loadtest."
 
 swarm:
 	build/env.sh go run build/ci.go install ./cmd/swarm
