@@ -70,13 +70,16 @@ var (
 		executablePath("geth"),
 	}
 
-	// TODO : andus >> 2018-11-05 fairnode 추가..
 	fairnodeArchiveFiles = []string{
 		"COPYING",
 		executablePath("fairnode"),
 	}
 
-	// TODO : andus >> 2018-11-05 fairnode 추가..
+	loadtestArchiveFiles = []string{
+		"COPYING",
+		executablePath("loadtest"),
+	}
+
 	// Files that end up in the geth-alltools*.zip archive.
 	allToolsArchiveFiles = []string{
 		"COPYING",
@@ -85,6 +88,7 @@ var (
 		executablePath("evm"),
 		executablePath("geth"),
 		executablePath("fairnode"),
+		executablePath("loadtest"),
 		executablePath("puppeth"),
 		executablePath("rlpdump"),
 		executablePath("wnode"),
@@ -113,11 +117,15 @@ var (
 		},
 		{
 			BinaryName:  "geth",
-			Description: "Ethereum CLI client.",
+			Description: "Anduschain CLI client.",
 		},
 		{
 			BinaryName:  "fairnode",
-			Description: "DEB Fairnode Server.",
+			Description: "Anduschain Fairnode Server.",
+		},
+		{
+			BinaryName:  "loadtest",
+			Description: "Anduschain loadtest program",
 		},
 		{
 			BinaryName:  "puppeth",
@@ -430,6 +438,9 @@ func doArchive(cmdline []string) {
 		log.Fatal(err)
 	}
 	if err := build.WriteArchive(geth, fairnodeArchiveFiles); err != nil {
+		log.Fatal(err)
+	}
+	if err := build.WriteArchive(geth, loadtestArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
 	if err := build.WriteArchive(alltools, allToolsArchiveFiles); err != nil {
