@@ -72,6 +72,12 @@ devtools:
 
 # Cross Compilation Targets (xgo)
 
+# loadtest
+loadtest-linux-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/loadtest
+	@echo "Linux amd64 cross compilation done:"
+	@ls -ld $(GOBIN)/loadtest-linux-* | grep amd64
+
 # fairnode
 fairnode-linux-amd64:
 	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/fairnode
