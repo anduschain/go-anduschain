@@ -15,7 +15,7 @@ var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
 	accPath  = flag.String("path", "", "accounts file path")
 	duration = flag.Int64("duration", 20, "send transation term / millisecond")
-	chainid  = flag.Int64("chainID", 1315, "chain ID")
+	chainID  = flag.Int64("chainID", 1315, "chain ID")
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 		log.Fatalln("accounts file path is empty")
 	}
 
-	if *chainid == 0 {
+	if *chainID == 0 {
 		log.Fatalln("please input chainid")
 	}
 
@@ -46,7 +46,7 @@ func main() {
 
 	for {
 		for i := range accounts {
-			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainid, endChan)
+			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainID, endChan)
 			<-endChan
 		}
 	}
