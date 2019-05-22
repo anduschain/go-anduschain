@@ -26,7 +26,7 @@ const (
 	nextBlockMakeTerm  = 7  // 블록생성 후  다음 블록 생성 신호 전달 term
 	blockVote          = 10 // 블록생성 메시지 전송 후 10초
 	LeagueSelectValue  = 5  // 리그전송시 보내는 노드 수
-	blockVoteWaiting   = 5  // 투표 대기
+	blockVoteWaiting   = 15 // 투표 대기
 )
 
 func (fu *FairTcp) sendLeague(otprnHash common.Hash) {

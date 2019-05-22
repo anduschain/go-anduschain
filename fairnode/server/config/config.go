@@ -65,13 +65,13 @@ func NewConfig() *Config {
 
 		Port:    "60002",
 		NAT:     "none",
-		ChainID: 3355,
+		ChainID: 1315,
 		Debug:   false,
 		SysLog:  false,
-		Version: "1.0.1", // Fairnode version
+		Version: "1.0.2", // Fairnode version
 
 		//Mining Config
-		GethVersion: "0.6.9",
+		GethVersion: "0.6.11",
 		Miner:       100,
 		Epoch:       100,
 		Fee:         6,
