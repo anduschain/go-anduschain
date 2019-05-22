@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/loadtest"
+	"github.com/anduschain/go-anduschain/cmd/loadtest/util"
 	"github.com/anduschain/go-anduschain/rpc"
 	"log"
 	"strings"
@@ -12,16 +13,20 @@ import (
 
 var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
-	address  = flag.String("address", "0x25dde181b6e75f686acc6132f07b8424702306b0", "transaction issue account")
-	password = flag.String("password", "", "account password")
+	accPath  = flag.String("path", "", "accounts file path")
+	duration = flag.Int64("duration", 20, "send transation term / millisecond")
 )
 
 func main() {
 	flag.Parse()
 
-	if strings.Compare("", *password) == 0 {
-		fmt.Println("password is empty")
-		return
+	if strings.Compare("", *accPath) == 0 {
+		log.Fatalln("accounts file path is empty")
+	}
+
+	accounts, err := util.GetAccounts(*accPath)
+	if err != nil {
+		log.Fatalln("GetAccount", err)
 	}
 
 	rpcClient, err := rpc.Dial(*connUrl)
@@ -30,40 +35,55 @@ func main() {
 		return
 	}
 
-	lt := loadtest.NewLoadTestModule(rpcClient, *address, *password)
-
 	defer rpcClient.Close()
 
-	result := lt.UnlockAccount()
-	if result {
+	endChan := make(chan struct{})
+
+	for {
+		for i := range accounts {
+			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, endChan)
+			<-endChan
+		}
+	}
+}
+
+func loadTest(rc *rpc.Client, addr, pwd string, term int64, endCh chan struct{}) {
+	defer func() {
+		endCh <- struct{}{}
+		log.Println("loadtest killed")
+	}()
+
+	lt := loadtest.NewLoadTestModule(rc, addr, pwd)
+	if err := lt.UnlockAccount(); err == nil {
 		err := lt.GetPrivateKey()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 
-		res := lt.CheckBalance()
-		if !res {
-			fmt.Println("잔액이 없습니다")
-			return
-		}
-
-		err = lt.GetNonce()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		for i := 0; i < 4000; i++ {
-			err = lt.SendTransaction()
+		if err := lt.CheckBalance(); err == nil {
+			err = lt.GetNonce()
 			if err != nil {
-				fmt.Println("SendTransaction", err)
+				log.Println(err)
 				return
 			}
 
-			log.Println("SendTransaction", "count", i)
-
-			time.Sleep(2 * time.Millisecond)
+			for i := 0; i < 3000; i++ {
+				err = lt.SendTransaction()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				log.Println("SendTransaction", "count", i+1)
+				time.Sleep(time.Duration(term) * time.Millisecond)
+			}
+		} else {
+			log.Println(err)
+			return
 		}
+
+	} else {
+		log.Println(err)
+		return
 	}
 }

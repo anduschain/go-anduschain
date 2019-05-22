@@ -13,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/rpc"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net/url"
 	"strings"
@@ -61,8 +62,7 @@ func (l *LoadTest) GetPrivateKey() error {
 	var rawurl string
 	err := l.rc.CallContext(context.Background(), &res, "personal_listWallets")
 	if err != nil {
-		fmt.Println("GetPrivateKey", err)
-		return nil
+		return err
 	}
 
 	for i := range res {
@@ -75,6 +75,10 @@ func (l *LoadTest) GetPrivateKey() error {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return errors.New(fmt.Sprintf("GetPrivateKey", err))
+	}
+
+	if strings.Compare(u.Path, "") == 0 {
+		return errors.New("path is nil")
 	}
 
 	// Open the account key file
@@ -93,27 +97,26 @@ func (l *LoadTest) GetPrivateKey() error {
 	return nil
 }
 
-func (l *LoadTest) UnlockAccount() bool {
+func (l *LoadTest) UnlockAccount() error {
 	var result bool
 	err := l.rc.CallContext(context.Background(), &result, "personal_unlockAccount", l.addr, l.pwd)
 	if err != nil {
-		fmt.Println("rpcClient.CallContext", err)
-		return false
+		return err
 	}
-	return result
+	return nil
 }
 
-func (l *LoadTest) CheckBalance() bool {
+func (l *LoadTest) CheckBalance() error {
 	balance, err := l.ec.BalanceAt(context.Background(), l.addr, nil)
 	if err != nil {
-		return false
+		return err
 	}
 
-	if balance.Cmp(price) > 0 {
-		return true
+	if balance.Cmp(price) < 0 {
+		return errors.New("잔액이 부족합니다")
 	}
 
-	return false
+	return nil
 }
 
 func (l *LoadTest) GetNonce() error {
@@ -127,8 +130,6 @@ func (l *LoadTest) GetNonce() error {
 }
 
 func (l *LoadTest) SendTransaction() error {
-	fmt.Println("nonce", l.nonce)
-
 	value := price
 	gasLimit := uint64(100000000)
 	gasPrice := big.NewInt(40 * params.GWei)
@@ -150,16 +151,12 @@ func (l *LoadTest) SendTransaction() error {
 		return err
 	}
 
-	fmt.Println("signedTx.Hash()", signedTx.Hash().String())
-
 	err = l.ec.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		return err
 	}
 
 	l.nonce++
-
-	fmt.Println("tx sent", signedTx.Hash().Hex(), l.nonce)
-
+	log.Println("tx sent", signedTx.Hash().Hex())
 	return nil
 }
