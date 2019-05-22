@@ -23,9 +23,6 @@ import (
 var (
 	price = new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Daon))
 	fee   = 0.00000001 * params.Daon
-
-	chainID = big.NewInt(1315)
-	signer  = types.NewEIP155Signer(chainID)
 )
 
 type Account struct {
@@ -40,20 +37,22 @@ type Keystore struct {
 }
 
 type LoadTest struct {
-	rc    *rpc.Client
-	ec    *ethclient.Client
-	ks    *ecdsa.PrivateKey
-	addr  common.Address
-	pwd   string
-	nonce uint64
+	rc     *rpc.Client
+	ec     *ethclient.Client
+	ks     *ecdsa.PrivateKey
+	addr   common.Address
+	pwd    string
+	nonce  uint64
+	signer types.EIP155Signer
 }
 
-func NewLoadTestModule(client *rpc.Client, addr, pwd string) *LoadTest {
+func NewLoadTestModule(client *rpc.Client, addr, pwd string, chainID int64) *LoadTest {
 	return &LoadTest{
-		rc:   client,
-		ec:   ethclient.NewClient(client),
-		addr: common.HexToAddress(addr),
-		pwd:  pwd,
+		rc:     client,
+		ec:     ethclient.NewClient(client),
+		addr:   common.HexToAddress(addr),
+		pwd:    pwd,
+		signer: types.NewEIP155Signer(big.NewInt(chainID)),
 	}
 }
 
@@ -146,7 +145,7 @@ func (l *LoadTest) SendTransaction() error {
 	}
 
 	tx := types.NewTransaction(l.nonce, toAddress, value, gasLimit, gasPrice, bData)
-	signedTx, err := types.SignTx(tx, signer, l.ks)
+	signedTx, err := types.SignTx(tx, l.signer, l.ks)
 	if err != nil {
 		return err
 	}

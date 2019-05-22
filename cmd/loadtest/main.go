@@ -15,6 +15,7 @@ var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
 	accPath  = flag.String("path", "", "accounts file path")
 	duration = flag.Int64("duration", 20, "send transation term / millisecond")
+	chainid  = flag.Int64("chainID", 1315, "chain ID")
 )
 
 func main() {
@@ -22,6 +23,10 @@ func main() {
 
 	if strings.Compare("", *accPath) == 0 {
 		log.Fatalln("accounts file path is empty")
+	}
+
+	if *chainid == 0 {
+		log.Fatalln("please input chainid")
 	}
 
 	accounts, err := util.GetAccounts(*accPath)
@@ -41,19 +46,19 @@ func main() {
 
 	for {
 		for i := range accounts {
-			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, endChan)
+			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainid, endChan)
 			<-endChan
 		}
 	}
 }
 
-func loadTest(rc *rpc.Client, addr, pwd string, term int64, endCh chan struct{}) {
+func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, endCh chan struct{}) {
 	defer func() {
 		endCh <- struct{}{}
 		log.Println("loadtest killed")
 	}()
 
-	lt := loadtest.NewLoadTestModule(rc, addr, pwd)
+	lt := loadtest.NewLoadTestModule(rc, addr, pwd, chainid)
 	if err := lt.UnlockAccount(); err == nil {
 		err := lt.GetPrivateKey()
 		if err != nil {
