@@ -16,6 +16,7 @@ var (
 	accPath  = flag.String("path", "", "accounts file path")
 	duration = flag.Int64("duration", 20, "send transation term / millisecond")
 	chainID  = flag.Int64("chainID", 1315, "chain ID")
+	TxCnt    = flag.Int("TxCnt", 200, "트랜잭션 발생 갯수")
 )
 
 func main() {
@@ -46,13 +47,13 @@ func main() {
 
 	for {
 		for i := range accounts {
-			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainID, endChan)
+			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainID, *TxCnt, endChan)
 			<-endChan
 		}
 	}
 }
 
-func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, endCh chan struct{}) {
+func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, txcnt int, endCh chan struct{}) {
 	defer func() {
 		endCh <- struct{}{}
 		log.Println("loadtest killed")
@@ -73,7 +74,7 @@ func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, endCh chan 
 				return
 			}
 
-			for i := 0; i < 3000; i++ {
+			for i := 0; i < txcnt; i++ {
 				err = lt.SendTransaction()
 				if err != nil {
 					log.Println(err)
