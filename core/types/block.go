@@ -33,8 +33,8 @@ import (
 )
 
 var (
-	EmptyRootHash  = DeriveSha(Transactions{})
-	EmptyUncleHash = CalcUncleHash(nil)
+	EmptyRootHash = DeriveSha(Transactions{})
+	//EmptyUncleHash = CalcUncleHash(nil) // TODO : deprecated
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
