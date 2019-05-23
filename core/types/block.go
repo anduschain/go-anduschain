@@ -66,23 +66,32 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
 
-// Header represents a block header in the Ethereum blockchain.
+// Header represents a block header in the Anduschain blockchain.
 type Header struct {
-	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"`
-	Coinbase    common.Address `json:"miner"            gencodec:"required"`
-	Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
-	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
-	ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
-	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
-	Difficulty  *big.Int       `json:"difficulty"       gencodec:"required"`
-	Number      *big.Int       `json:"number"           gencodec:"required"`
-	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
-	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
-	Extra       []byte         `json:"extraData"        gencodec:"required"`
-	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
-	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+	ParentHash common.Hash `json:"parentHash"       gencodec:"required"`
+	//UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"` // TODO : deprecated
+
+	Coinbase common.Address `json:"miner"            gencodec:"required"`
+	Root     common.Hash    `json:"stateRoot"        gencodec:"required"`
+
+	TxHash     common.Hash `json:"genTransactionsRoot" gencodec:"required"`
+	JoinTxHash common.Hash `json:"joinTransactionsRoot" gencodec:"required"` // TODO : add - jointx
+	VoteHash   common.Hash `json:"voteRoot" gencodec:"required"`             // TODO : add - voteRoot, not import header hash - from fairnode
+
+	ReceiptHash     common.Hash `json:"genTxReceiptsRoot"     gencodec:"required"`
+	JoinReceiptHash common.Hash `json:"joinTxReceiptsRoot"     gencodec:"required"` // TODO : add - jointx receipthash
+
+	Bloom      Bloom    `json:"logsBloom"        gencodec:"required"`
+	Difficulty *big.Int `json:"difficulty"       gencodec:"required"`
+	Number     *big.Int `json:"number"           gencodec:"required"`
+	GasLimit   uint64   `json:"gasLimit"         gencodec:"required"`
+	GasUsed    uint64   `json:"gasUsed"          gencodec:"required"`
+	Time       *big.Int `json:"timestamp"        gencodec:"required"`
+	Extra      []byte   `json:"extraData"        gencodec:"required"`
+	//MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"` // TODO : deprecated
+
+	Nonce       BlockNonce `json:"nonce"            gencodec:"required"`
+	FairNodeSig []byte     `json:"fairnodeSig"            gencodec:"required"` // TODO : add - fairnode signature, not import header hash - from fairnode
 }
 
 // field type overrides for gencodec
@@ -99,7 +108,23 @@ type headerMarshaling struct {
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() common.Hash {
-	return rlpHash(h)
+	return rlpHash([]interface{}{
+		h.ParentHash,
+		h.Coinbase,
+		h.Root,
+		h.TxHash,
+		h.JoinTxHash,
+		h.ReceiptHash,
+		h.JoinReceiptHash,
+		h.Bloom,
+		h.Difficulty,
+		h.Number,
+		h.GasLimit,
+		h.GasUsed,
+		h.Time,
+		h.Extra,
+		h.Nonce,
+	})
 }
 
 // Size returns the approximate memory used by all internal contents. It is used
@@ -118,10 +143,12 @@ func rlpHash(x interface{}) (h common.Hash) {
 // Body is a simple (mutable, non-safe) data container for storing and moving
 // a block's data contents (transactions and uncles) together.
 type Body struct {
-	FairNodeSig  []byte
-	Voter        []Voter
-	Transactions []*Transaction
-	Uncles       []*Header
+	JoinTransactions []*Transaction // join transactions
+	Transactions     []*Transaction // general transactions
+	Voter            []Voter
+
+	//FairNodeSig  []byte // TODO : goto header
+	//Uncles       []*Header // deprecated
 }
 type Voter struct {
 	Addr       common.Address
@@ -135,11 +162,12 @@ func (v *Voter) Size() common.StorageSize {
 	return common.StorageSize(c)
 }
 
-// Block represents an entire block in the Ethereum blockchain.
+// Block represents an entire block in the Anduschain blockchain.
 type Block struct {
-	header       *Header
-	uncles       []*Header
-	transactions Transactions
+	header *Header
+	//uncles       []*Header // TODO : deprecated
+	transactions    Transactions
+	joinTransations Transactions
 
 	// caches
 	hash atomic.Value
@@ -149,9 +177,9 @@ type Block struct {
 	// of the chain up to and including the block.
 	td *big.Int
 
-	// TODO : andus >> FairNode 서명
-	FairNodeSig []byte
-	Voter       []Voter
+	//FairNodeSig []byte // TODO : goto header
+
+	Voter []Voter
 	// These fields are used by package eth to track
 	// inter-peer block relay.
 	ReceivedAt   time.Time
@@ -173,11 +201,12 @@ type StorageBlock Block
 
 // "external" block encoding. used for eth protocol, etc.
 type extblock struct {
-	Header *Header
-	Txs    []*Transaction
+	Header  *Header
+	Txs     []*Transaction
+	JoinTxs []*Transaction // TODO : add  - jointx
 	//Uncles      []*Header
-	FairNodeSig []byte
-	Voter       []Voter
+	//FairNodeSig []byte // TODO : goto header
+	Voter []Voter
 }
 
 // [deprecated by eth/63]
@@ -215,15 +244,17 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 		b.header.Bloom = CreateBloom(receipts)
 	}
 
-	if len(uncles) == 0 {
-		b.header.UncleHash = EmptyUncleHash
-	} else {
-		b.header.UncleHash = CalcUncleHash(uncles)
-		b.uncles = make([]*Header, len(uncles))
-		for i := range uncles {
-			b.uncles[i] = CopyHeader(uncles[i])
-		}
-	}
+	// TODO : deprecated
+
+	//if len(uncles) == 0 {
+	//	b.header.UncleHash = EmptyUncleHash
+	//} else {
+	//	b.header.UncleHash = CalcUncleHash(uncles)
+	//	b.uncles = make([]*Header, len(uncles))
+	//	for i := range uncles {
+	//		b.uncles[i] = CopyHeader(uncles[i])
+	//	}
+	//}
 
 	return b
 }
@@ -263,7 +294,8 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 	b.header, b.transactions = eb.Header, eb.Txs
-	b.FairNodeSig, b.Voter = eb.FairNodeSig, eb.Voter
+	b.Voter = eb.Voter
+
 	b.size.Store(common.StorageSize(rlp.ListSize(size)))
 	return nil
 }
@@ -274,8 +306,8 @@ func (b *Block) EncodeRLP(w io.Writer) error {
 		Header: b.header,
 		Txs:    b.transactions,
 		//Uncles:      b.uncles,
-		FairNodeSig: b.FairNodeSig,
-		Voter:       b.Voter,
+		//FairNodeSig: b.FairNodeSig,
+		Voter: b.Voter,
 	})
 }
 
@@ -285,13 +317,11 @@ func (b *StorageBlock) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&sb); err != nil {
 		return err
 	}
-	b.header, b.uncles, b.transactions, b.td = sb.Header, sb.Uncles, sb.Txs, sb.TD
+	b.header, b.transactions, b.td = sb.Header, sb.Txs, sb.TD
 	return nil
 }
 
-// TODO: copies
-
-func (b *Block) Uncles() []*Header          { return b.uncles }
+//func (b *Block) Uncles() []*Header          { return b.uncles } // TODO : deprecated
 func (b *Block) Transactions() Transactions { return b.transactions }
 
 func (b *Block) Transaction(hash common.Hash) *Transaction {
@@ -309,8 +339,9 @@ func (b *Block) GasUsed() uint64      { return b.header.GasUsed }
 func (b *Block) Difficulty() *big.Int { return new(big.Int).Set(b.header.Difficulty) }
 func (b *Block) Time() *big.Int       { return new(big.Int).Set(b.header.Time) }
 
-func (b *Block) NumberU64() uint64        { return b.header.Number.Uint64() }
-func (b *Block) MixDigest() common.Hash   { return b.header.MixDigest }
+func (b *Block) NumberU64() uint64 { return b.header.Number.Uint64() }
+
+//func (b *Block) MixDigest() common.Hash   { return b.header.MixDigest } // TODO : deprecated
 func (b *Block) Nonce() uint64            { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
 func (b *Block) Bloom() Bloom             { return b.header.Bloom }
 func (b *Block) Coinbase() common.Address { return b.header.Coinbase }
@@ -318,19 +349,23 @@ func (b *Block) Root() common.Hash        { return b.header.Root }
 func (b *Block) ParentHash() common.Hash  { return b.header.ParentHash }
 func (b *Block) TxHash() common.Hash      { return b.header.TxHash }
 func (b *Block) ReceiptHash() common.Hash { return b.header.ReceiptHash }
-func (b *Block) UncleHash() common.Hash   { return b.header.UncleHash }
-func (b *Block) Extra() []byte            { return b.header.Extra }
+
+//func (b *Block) UncleHash() common.Hash   { return b.header.UncleHash } // TODO : deprecated
+func (b *Block) Extra() []byte { return b.header.Extra }
 
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
-func (b *Block) Body() *Body { return &Body{b.FairNodeSig, b.Voter, b.transactions, b.uncles} }
+func (b *Block) Body() *Body { return &Body{b.joinTransations, b.transactions, b.Voter} }
 
-// TODO : andus >> 페어노드 서명을 조회 하는 부분
-// FIXME : 패어노드 서명을 확인해서 있는지 리턴해줄것, 안쓰면 삭제
+// TODO : add - 구조변경으로 추가 되는 메소드들
+func (b *Block) FairNodeSig() []byte          { return b.header.FairNodeSig }
+func (b *Block) JoinTxHash() common.Hash      { return b.header.JoinTxHash }
+func (b *Block) JoinReceiptHash() common.Hash { return b.header.JoinReceiptHash }
+
 func (b *Block) GetFairNodeSig() ([]byte, bool) {
-	if len(b.FairNodeSig) > 0 {
-		return b.FairNodeSig, true
+	if len(b.header.FairNodeSig) > 0 {
+		return b.header.FairNodeSig, true
 	} else {
 		return nil, false
 	}
@@ -365,25 +400,28 @@ func (b *Block) WithSeal(header *Header) *Block {
 	cpy := *header
 
 	return &Block{
-		header:       &cpy,
-		transactions: b.transactions,
-		uncles:       b.uncles,
+		header:          &cpy,
+		transactions:    b.transactions,
+		joinTransations: b.joinTransations,
 	}
 }
 
 // WithBody returns a new block with the given transaction and uncle contents.
-func (b *Block) WithBody(transactions []*Transaction, uncles []*Header, fairnodesig []byte, voters []Voter) *Block {
+func (b *Block) WithBody(joinTransactions []*Transaction, genTransactions []*Transaction, voters []Voter) *Block {
 	block := &Block{
-		header:       CopyHeader(b.header),
-		transactions: make([]*Transaction, len(transactions)),
-		uncles:       make([]*Header, len(uncles)),
-		FairNodeSig:  fairnodesig,
-		Voter:        voters,
+		header:          CopyHeader(b.header),
+		joinTransations: make([]*Transaction, len(joinTransactions)),
+		transactions:    make([]*Transaction, len(genTransactions)),
+		Voter:           voters,
 	}
-	copy(block.transactions, transactions)
-	for i := range uncles {
-		block.uncles[i] = CopyHeader(uncles[i])
-	}
+
+	copy(block.transactions, genTransactions)
+	copy(block.joinTransations, joinTransactions) // TODO : add - jTxs copy
+
+	//for i := range uncles {
+	//	block.uncles[i] = CopyHeader(uncles[i])
+	//}
+
 	return block
 }
 

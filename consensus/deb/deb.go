@@ -194,13 +194,13 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 
 	// Ensure that the mix digest is zero as we don't have fork protection currently
-	if header.MixDigest != (common.Hash{}) {
-		return errInvalidMixDigest
-	}
+	//if header.MixDigest != (common.Hash{}) {
+	//	return errInvalidMixDigest
+	//}  // TODO : deprecated
 	// Ensure that the block doesn't contain any uncles which are meaningless in PoA
-	if header.UncleHash != uncleHash {
-		return errInvalidUncleHash
-	}
+	//if header.UncleHash != uncleHash {
+	//	return errInvalidUncleHash
+	//}  // TODO : deprecated
 	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
 		rand := MakeRand(header.Nonce.Uint64(), common.BytesToHash(header.Extra), header.Coinbase, header.ParentHash)
@@ -247,9 +247,9 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 // VerifyUncles implements consensus.Engine, always returning an error for any
 // uncles as this consensus mechanism doesn't permit uncles.
 func (c *Deb) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-	if len(block.Uncles()) > 0 {
-		return errors.New("uncles not allowed")
-	}
+	//if len(block.Uncles()) > 0 {
+	//	return errors.New("uncles not allowed")
+	//}  // TODO : deprecated
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	number := header.Number.Uint64()
 
 	// Mix digest is reserved for now, set to empty
-	header.MixDigest = common.Hash{}
+	//header.MixDigest = common.Hash{}  // TODO : deprecated
 
 	// Ensure the timestamp has the correct delay
 	parent := chain.GetHeader(header.ParentHash, number-1)
@@ -320,7 +320,8 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
 	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = types.CalcUncleHash(nil)
+
+	//header.UncleHash = types.CalcUncleHash(nil) // TODO : deprecated
 
 	block := types.NewBlock(header, txs, nil, receipts)
 
