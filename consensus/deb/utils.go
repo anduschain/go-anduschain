@@ -23,7 +23,7 @@ func sigHash(header *types.Header) (hash common.Hash) {
 
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
-		header.UncleHash,
+		//header.UncleHash,
 		header.Coinbase,
 		header.Root,
 		header.TxHash,
@@ -34,7 +34,7 @@ func sigHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
-		header.MixDigest,
+		//header.MixDigest,
 		header.Nonce,
 	})
 	hasher.Sum(hash[:0])

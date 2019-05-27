@@ -40,10 +40,15 @@ type BlockGen struct {
 	header      *types.Header
 	statedb     *state.StateDB
 
-	gasPool  *GasPool
-	txs      []*types.Transaction
-	receipts []*types.Receipt
-	uncles   []*types.Header
+	gasPool *GasPool
+
+	joinTxs      []*types.Transaction
+	joinReceipts []*types.Receipt
+
+	genTxs      []*types.Transaction
+	genReceipts []*types.Receipt
+
+	//uncles   []*types.Header // TODO : deprecated
 
 	config *params.ChainConfig
 	engine consensus.Engine
@@ -53,7 +58,7 @@ type BlockGen struct {
 // It can be called at most once.
 func (b *BlockGen) SetCoinbase(addr common.Address) {
 	if b.gasPool != nil {
-		if len(b.txs) > 0 {
+		if len(b.genTxs) > 0 {
 			panic("coinbase must be set before adding transactions")
 		}
 		panic("coinbase can only be set once")
@@ -91,13 +96,13 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
 	}
-	b.statedb.Prepare(tx.Hash(), common.Hash{}, len(b.txs))
+	b.statedb.Prepare(tx.Hash(), common.Hash{}, len(b.genTxs), len(b.joinTxs))
 	receipt, _, err := ApplyTransaction(b.config, bc, &b.header.Coinbase, b.gasPool, b.statedb, b.header, tx, &b.header.GasUsed, vm.Config{})
 	if err != nil {
 		panic(err)
 	}
-	b.txs = append(b.txs, tx)
-	b.receipts = append(b.receipts, receipt)
+	b.genTxs = append(b.genTxs, tx)
+	b.genReceipts = append(b.genReceipts, receipt)
 }
 
 // Number returns the block number of the block being generated.
@@ -110,9 +115,11 @@ func (b *BlockGen) Number() *big.Int {
 //
 // AddUncheckedReceipt will cause consensus failures when used during real
 // chain processing. This is best used in conjunction with raw block insertion.
-func (b *BlockGen) AddUncheckedReceipt(receipt *types.Receipt) {
-	b.receipts = append(b.receipts, receipt)
-}
+
+// TODO : deprecated
+//func (b *BlockGen) AddUncheckedReceipt(receipt *types.Receipt) {
+//	b.receipts = append(b.receipts, receipt)
+//}
 
 // TxNonce returns the next valid transaction nonce for the
 // account at addr. It panics if the account does not exist.
@@ -123,10 +130,20 @@ func (b *BlockGen) TxNonce(addr common.Address) uint64 {
 	return b.statedb.GetNonce(addr)
 }
 
-// AddUncle adds an uncle header to the generated block.
-func (b *BlockGen) AddUncle(h *types.Header) {
-	b.uncles = append(b.uncles, h)
+// joinNonce returns the next valid transaction nonce for the
+// account at addr. It panics if the account does not exist.
+func (b *BlockGen) JoinNonce(addr common.Address) uint64 {
+	if !b.statedb.Exist(addr) {
+		panic("account does not exist")
+	}
+	return b.statedb.GetJoinNonce(addr)
 }
+
+// AddUncle adds an uncle header to the generated block.
+// TODO : deprecated
+//func (b *BlockGen) AddUncle(h *types.Header) {
+//	b.uncles = append(b.uncles, h)
+//}
 
 // PrevBlock returns a previously generated block by number. It panics if
 // num is greater or equal to the number of the block being generated.
@@ -164,12 +181,12 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // Blocks created by GenerateChain do not contain valid proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
 // a similar non-validating proof of work implementation.
-func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
+func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts, []types.Receipts) {
 	if config == nil {
 		config = params.TestChainConfig
 	}
-	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
-	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts) {
+	blocks, genReceipts, joinReceipts := make(types.Blocks, n), make([]types.Receipts, n), make([]types.Receipts, n)
+	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts, types.Receipts) {
 		// TODO(karalabe): This is needed for clique, which depends on multiple blocks.
 		// It's nonetheless ugly to spin up a blockchain here. Get rid of this somehow.
 		blockchain, _ := NewBlockChain(db, nil, config, engine, vm.Config{})
@@ -196,7 +213,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		}
 
 		if b.engine != nil {
-			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.uncles, b.receipts)
+			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.genTxs, b.joinTxs, b.genReceipts, b.joinReceipts)
 			// Write state changes to db
 			root, err := statedb.Commit(config.IsEIP158(b.header.Number))
 			if err != nil {
@@ -205,21 +222,22 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
 				panic(fmt.Sprintf("trie write error: %v", err))
 			}
-			return block, b.receipts
+			return block, b.genReceipts, b.joinReceipts
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	for i := 0; i < n; i++ {
 		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
 		if err != nil {
 			panic(err)
 		}
-		block, receipt := genblock(i, parent, statedb)
+		block, genReceipt, joinReceipt := genblock(i, parent, statedb)
 		blocks[i] = block
-		receipts[i] = receipt
+		genReceipts[i] = genReceipt
+		joinReceipts[i] = joinReceipt
 		parent = block
 	}
-	return blocks, receipts
+	return blocks, genReceipts, joinReceipts
 }
 
 func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.StateDB, engine consensus.Engine) *types.Header {
@@ -238,7 +256,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 			Number:     parent.Number(),
 			Time:       new(big.Int).Sub(time, big.NewInt(10)),
 			Difficulty: parent.Difficulty(),
-			UncleHash:  parent.UncleHash(),
+			//UncleHash:  parent.UncleHash(),
 		}),
 		GasLimit: CalcGasLimit(parent, parent.GasLimit(), parent.GasLimit()),
 		Number:   new(big.Int).Add(parent.Number(), common.Big1),
@@ -258,7 +276,7 @@ func makeHeaderChain(parent *types.Header, n int, engine consensus.Engine, db et
 
 // makeBlockChain creates a deterministic chain of blocks rooted at parent.
 func makeBlockChain(parent *types.Block, n int, engine consensus.Engine, db ethdb.Database, seed int) []*types.Block {
-	blocks, _ := GenerateChain(params.TestChainConfig, parent, engine, db, n, func(i int, b *BlockGen) {
+	blocks, _, _ := GenerateChain(params.TestChainConfig, parent, engine, db, n, func(i int, b *BlockGen) {
 		b.SetCoinbase(common.Address{0: byte(seed), 19: byte(i)})
 	})
 	return blocks

@@ -271,22 +271,30 @@ func (fnb *FairNodeDB) GetCurrentBlock() *big.Int {
 
 func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	header := header{
-		block.Header().ParentHash.String(),
-		block.Header().UncleHash.String(),
-		block.Header().Coinbase.String(),
-		block.Header().Root.String(),
-		block.Header().TxHash.String(),
-		block.Header().ReceiptHash.String(),
-		block.Header().Difficulty.String(),
-		block.Header().Number.Int64(),
-		int64(block.Header().GasLimit),
-		int64(block.Header().GasUsed),
-		block.Header().Time.String(),
-		block.Header().Extra,
-		block.Header().MixDigest.String(),
-		int64(block.Header().Nonce.Uint64()),
+		ParentHash: block.ParentHash().String(),
+		Coinbase:   block.Coinbase().String(),
+		Root:       block.Root().String(),
+
+		VoteHash: block.VoterHash().String(),
+
+		TxHash:     block.Header().TxHash.String(),
+		JoinTxHash: block.Header().JoinTxHash.String(),
+
+		ReceiptHash:     block.Header().ReceiptHash.String(),
+		JoinReceiptHash: block.Header().JoinReceiptHash.String(),
+
+		Difficulty: block.Header().Difficulty.String(),
+		Number:     block.Header().Number.Int64(),
+		GasLimit:   int64(block.Header().GasLimit),
+		GasUsed:    int64(block.Header().GasUsed),
+		Time:       block.Header().Time.String(),
+		Extra:      block.Header().Extra,
+		Nonce:      int64(block.Nonce()),
+
+		FairnodeSig: block.FairNodeSig(),
 	}
 
+	// General transaction
 	var txs []transaction
 	for i := range block.Transactions() {
 		tx := block.Transactions()[i]
@@ -308,17 +316,40 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		})
 	}
 
-	var voter []vote
-	for i := range block.Voter {
-		voter = append(voter, vote{block.Voter[i].Addr.String(), block.Voter[i].Sig, block.Voter[i].Difficulty})
+	// Join transaction
+	var joinTxs []transaction
+	for i := range block.JoinTransactions() {
+		joinTx := block.JoinTransactions()[i]
+		joinTxhash := block.JoinTransactions()[i].Hash()
+		from, _ := types.Sender(fnb.signer, joinTx)
+		to := "contract"
+		if joinTx.To() != nil {
+			to = joinTx.To().String()
+		}
+
+		txs = append(txs, transaction{
+			Txhash:       joinTxhash.String(),
+			From:         from.String(),
+			To:           to,
+			AccountNonce: int64(joinTx.Nonce()),
+			Price:        joinTx.GasPrice().String(),
+			Amount:       joinTx.Value().String(),
+			Payload:      joinTx.Data(),
+		})
+	}
+
+	var voters []vote
+	for i := range block.Voters() {
+		voter := block.Voters()[i]
+		voters = append(voters, vote{voter.Addr.String(), voter.Sig, voter.Difficulty})
 	}
 
 	b := StoredBlock{
-		block.Hash().String(),
-		header,
-		txs,
-		common.BytesToHash(block.FairNodeSig).String(),
-		voter,
+		BlockHash:        block.Hash().String(),
+		Header:           header,
+		GenTransactions:  txs,
+		JoinTransactions: joinTxs,
+		Voters:           voters,
 	}
 
 	if err := fnb.SaveRawBlock(block); err != nil {

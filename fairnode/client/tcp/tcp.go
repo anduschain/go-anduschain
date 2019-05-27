@@ -265,7 +265,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 			tsFb := &fairtypes.TsFinalBlock{}
 			msg.Decode(&tsFb)
 			fb := tsFb.GetFinalBlock()
-			t.logger.Info("파이널블록 수신", "blockNum", fb.Block.Number().String(), "miner", fb.Block.Coinbase().String(), "voteCount", len(fb.Block.Voter))
+			t.logger.Info("파이널블록 수신", "blockNum", fb.Block.Number().String(), "miner", fb.Block.Coinbase().String(), "voteCount", len(fb.Block.Voters()))
 			t.manger.FinalBlock() <- *fb
 		}
 	case transport.FinishLeague:

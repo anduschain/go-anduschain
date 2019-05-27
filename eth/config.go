@@ -20,13 +20,10 @@ import (
 	"math/big"
 	"os"
 	"os/user"
-	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/gasprice"
@@ -34,18 +31,8 @@ import (
 )
 
 // DefaultConfig contains default settings for use on the Anduschain test net. -> will change main net
-// TODO : andus >> anduschain main net 컨센서스 선택부분 설정 해야함
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
-
-	// TODO : andus >> 여기서 컨센서스 엔진 부분 교체
-	//Ethash: ethash.Config{
-	//	CacheDir:       "ethash",
-	//	CachesInMem:    2,
-	//	CachesOnDisk:   3,
-	//	DatasetsInMem:  1,
-	//	DatasetsOnDisk: 2,
-	//},
 
 	NetworkId:     102,
 	LightPeers:    100,
@@ -53,7 +40,7 @@ var DefaultConfig = Config{
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
 
-	// andus : gaslimite 올림
+	// TODO : gaslimite 올림
 	MinerGasFloor: 8000000000,
 	MinerGasCeil:  8000000000000000000,
 	MinerGasPrice: big.NewInt(params.GWei),
@@ -73,11 +60,13 @@ func init() {
 			home = user.HomeDir
 		}
 	}
-	if runtime.GOOS == "windows" {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, "AppData", "Ethash")
-	} else {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, ".ethash")
-	}
+
+	//TODO : deprecated ethash
+	//if runtime.GOOS == "windows" {
+	//	DefaultConfig.Ethash.DatasetDir = filepath.Join(home, "AppData", "Ethash")
+	//} else {
+	//	DefaultConfig.Ethash.DatasetDir = filepath.Join(home, ".ethash")
+	//}
 }
 
 //go:generate gencodec -type Config -field-override configMarshaling -formats toml -out gen_config.go
@@ -114,7 +103,7 @@ type Config struct {
 	MinerNoverify  bool
 
 	// Ethash options
-	Ethash ethash.Config
+	//Ethash ethash.Config //TODO : deprecated ethash
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig

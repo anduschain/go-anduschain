@@ -541,12 +541,13 @@ func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, blockHash comm
 func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) (map[string]interface{}, error) {
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
-		uncles := block.Uncles()
-		if index >= hexutil.Uint(len(uncles)) {
-			log.Debug("Requested uncle not found", "number", blockNr, "hash", block.Hash(), "index", index)
-			return nil, nil
-		}
-		block = types.NewBlockWithHeader(uncles[index])
+		// TODO : deprecated uncle
+		//uncles := block.Uncles()
+		//if index >= hexutil.Uint(len(uncles)) {
+		//	log.Debug("Requested uncle not found", "number", blockNr, "hash", block.Hash(), "index", index)
+		//	return nil, nil
+		//}
+		//block = types.NewBlockWithHeader(uncles[index])
 		return s.rpcOutputBlock(block, false, false)
 	}
 	return nil, err
@@ -557,34 +558,37 @@ func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context,
 func (s *PublicBlockChainAPI) GetUncleByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) (map[string]interface{}, error) {
 	block, err := s.b.GetBlock(ctx, blockHash)
 	if block != nil {
-		uncles := block.Uncles()
-		if index >= hexutil.Uint(len(uncles)) {
-			log.Debug("Requested uncle not found", "number", block.Number(), "hash", blockHash, "index", index)
-			return nil, nil
-		}
-		block = types.NewBlockWithHeader(uncles[index])
+		// TODO : deprecated uncle
+		//uncles := block.Uncles()
+		//if index >= hexutil.Uint(len(uncles)) {
+		//	log.Debug("Requested uncle not found", "number", block.Number(), "hash", blockHash, "index", index)
+		//	return nil, nil
+		//}
+		//block = types.NewBlockWithHeader(uncles[index])
 		return s.rpcOutputBlock(block, false, false)
 	}
 	return nil, err
 }
 
+// TODO : deprecated uncle
 // GetUncleCountByBlockNumber returns number of uncles in the block for the given block number
-func (s *PublicBlockChainAPI) GetUncleCountByBlockNumber(ctx context.Context, blockNr rpc.BlockNumber) *hexutil.Uint {
-	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {
-		n := hexutil.Uint(len(block.Uncles()))
-		return &n
-	}
-	return nil
-}
+//func (s *PublicBlockChainAPI) GetUncleCountByBlockNumber(ctx context.Context, blockNr rpc.BlockNumber) *hexutil.Uint {
+//	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {
+//		n := hexutil.Uint(len(block.Uncles()))
+//		return &n
+//	}
+//	return nil
+//}
 
+// TODO : deprecated uncle
 // GetUncleCountByBlockHash returns number of uncles in the block for the given block hash
-func (s *PublicBlockChainAPI) GetUncleCountByBlockHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
-	if block, _ := s.b.GetBlock(ctx, blockHash); block != nil {
-		n := hexutil.Uint(len(block.Uncles()))
-		return &n
-	}
-	return nil
-}
+//func (s *PublicBlockChainAPI) GetUncleCountByBlockHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
+//	if block, _ := s.b.GetBlock(ctx, blockHash); block != nil {
+//		n := hexutil.Uint(len(block.Uncles()))
+//		return &n
+//	}
+//	return nil
+//}
 
 // GetCode returns the code stored at the given address in the state for the given block number.
 func (s *PublicBlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
@@ -803,12 +807,12 @@ func FormatLogs(logs []vm.StructLog) []StructLogRes {
 func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
 	head := b.Header() // copies the header once
 	fields := map[string]interface{}{
-		"number":           (*hexutil.Big)(head.Number),
-		"hash":             b.Hash(),
-		"parentHash":       head.ParentHash,
-		"nonce":            head.Nonce,
-		"mixHash":          head.MixDigest,
-		"sha3Uncles":       head.UncleHash,
+		"number":     (*hexutil.Big)(head.Number),
+		"hash":       b.Hash(),
+		"parentHash": head.ParentHash,
+		"nonce":      head.Nonce,
+		//"mixHash":          head.MixDigest, // TODO : deprecated
+		//"sha3Uncles":       head.UncleHash, // TODO : deprecated
 		"logsBloom":        head.Bloom,
 		"stateRoot":        head.Root,
 		"miner":            head.Coinbase,
@@ -820,6 +824,11 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 		"timestamp":        (*hexutil.Big)(head.Time),
 		"transactionsRoot": head.TxHash,
 		"receiptsRoot":     head.ReceiptHash,
+
+		"joinTransactionsRoot": head.JoinTxHash,      // TODO : add
+		"joinReceiptsRoot":     head.JoinReceiptHash, // TODO : add
+		"voterHash":            head.VoteHash,        // TODO : add
+		"logsJoinBloom":        head.JoinBloom,       // TODO : add
 	}
 
 	if inclTx {
@@ -842,12 +851,13 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 		fields["transactions"] = transactions
 	}
 
-	uncles := b.Uncles()
-	uncleHashes := make([]common.Hash, len(uncles))
-	for i, uncle := range uncles {
-		uncleHashes[i] = uncle.Hash()
-	}
-	fields["uncles"] = uncleHashes
+	// TODO : deprecated
+	//uncles := b.Uncles()
+	//uncleHashes := make([]common.Hash, len(uncles))
+	//for i, uncle := range uncles {
+	//	uncleHashes[i] = uncle.Hash()
+	//}
+	//fields["uncles"] = uncleHashes
 
 	return fields, nil
 }

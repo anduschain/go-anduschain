@@ -217,6 +217,19 @@ func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 	}
 }
 
+// AsyncSendJoinTransactions queues list of transactions propagation to a remote
+// peer. If the peer's broadcast queue is full, the event is silently dropped. // TODO : add - for join transaction
+func (p *peer) AsyncSendJoinTransactions(txs []*types.Transaction) {
+	select {
+	case p.queuedTxs <- txs:
+		for _, tx := range txs {
+			p.knownTxs.Add(tx.Hash())
+		}
+	default:
+		p.Log().Debug("Dropping join transaction propagation", "count", len(txs))
+	}
+}
+
 // SendNewBlockHashes announces the availability of a number of blocks through
 // a hash notification.
 func (p *peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error {

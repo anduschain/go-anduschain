@@ -51,7 +51,8 @@ func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, resu
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
-		header.Nonce, header.MixDigest = types.BlockNonce{}, common.Hash{}
+		header.Nonce = types.BlockNonce{}
+		//header.MixDigest = common.Hash{}
 		select {
 		case results <- block.WithSeal(header):
 		default:
@@ -161,12 +162,13 @@ search:
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce
-			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
+			//digest, result := hashimotoFull(dataset.dataset, hash, nonce)
+			_, result := hashimotoFull(dataset.dataset, hash, nonce)
 			if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
 				// Correct nonce found, create a new header with it
 				header = types.CopyHeader(header)
 				header.Nonce = types.EncodeNonce(nonce)
-				header.MixDigest = common.BytesToHash(digest)
+				//header.MixDigest = common.BytesToHash(digest)
 
 				// Seal and return a block (if still needed)
 				select {
@@ -262,7 +264,7 @@ func (ethash *Ethash) remote(notify []string, noverify bool) {
 		// Verify the correctness of submitted result.
 		header := block.Header()
 		header.Nonce = nonce
-		header.MixDigest = mixDigest
+		//header.MixDigest = mixDigest
 
 		start := time.Now()
 		if !noverify {

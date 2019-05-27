@@ -63,9 +63,10 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
 		return err
 	}
-	if hash := types.CalcUncleHash(block.Uncles()); hash != header.UncleHash {
-		return fmt.Errorf("uncle root hash mismatch: have %x, want %x", hash, header.UncleHash)
-	}
+	// TODO : deprecated uncle
+	//if hash := types.CalcUncleHash(block.Uncles()); hash != header.UncleHash {
+	//	return fmt.Errorf("uncle root hash mismatch: have %x, want %x", hash, header.UncleHash)
+	//}
 	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
 	}
@@ -76,7 +77,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
+func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, genReceipts types.Receipts, joinReceipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
 
 	//TODO : 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
@@ -88,15 +89,26 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the received block's bloom with the one derived from the generated receipts.
 	// For valid blocks this should always validate to true.
-	rbloom := types.CreateBloom(receipts)
+	rbloom := types.CreateBloom(genReceipts)
 	if rbloom != header.Bloom {
 		return fmt.Errorf("invalid bloom (remote: %x  local: %x)", header.Bloom, rbloom)
 	}
 	// Tre receipt Trie's root (R = (Tr [[H1, R1], ... [Hn, R1]]))
-	receiptSha := types.DeriveSha(receipts)
+	receiptSha := types.DeriveSha(genReceipts)
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}
+
+	jrbloom := types.CreateBloom(joinReceipts)
+	if jrbloom != header.JoinBloom {
+		return fmt.Errorf("invalid join bloom (remote: %x  local: %x)", header.JoinBloom, jrbloom)
+	}
+
+	joinReceiptSha := types.DeriveSha(joinReceipts)
+	if joinReceiptSha != header.JoinReceiptHash {
+		return fmt.Errorf("invalid join receipt root hash (remote: %x local: %x)", header.JoinReceiptHash, joinReceiptSha)
+	}
+
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
 	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {

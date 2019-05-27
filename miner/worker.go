@@ -18,7 +18,6 @@ package miner
 
 import (
 	"bytes"
-	"errors"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/fairnode/client"
@@ -88,18 +87,24 @@ type environment struct {
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
 	family    mapset.Set     // family set (used for checking uncle invalidity)
-	uncles    mapset.Set     // uncle set
-	tcount    int            // tx count in cycle
-	gasPool   *core.GasPool  // available gas used to pack transactions
+	//uncles    mapset.Set     // uncle set
+	tcount  int           // tx count in cycle
+	jtcount int           // join tx count in cycle // TODO : add
+	gasPool *core.GasPool // available gas used to pack transactions
 
 	header   *types.Header
 	txs      []*types.Transaction
 	receipts []*types.Receipt
+
+	joinTxs      []*types.Transaction // TODO : add
+	joinReceipts []*types.Receipt     // TODO : add
 }
 
 // task contains all information for consensus engine sealing and result submitting.
 type task struct {
-	receipts  []*types.Receipt
+	receipts     []*types.Receipt
+	joinReceipts []*types.Receipt // TODO : add
+
 	state     *state.StateDB
 	block     *types.Block
 	createdAt time.Time
@@ -433,25 +438,28 @@ func (w *worker) mainLoop() {
 			w.possibleUncles[ev.Block.Hash()] = ev.Block
 			// If our mining block contains less than 2 uncle blocks,
 			// add the new uncle block if valid and regenerate a mining block.
-			if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
-				start := time.Now()
-				if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
-					var uncles []*types.Header
-					w.current.uncles.Each(func(item interface{}) bool {
-						hash, ok := item.(common.Hash)
-						if !ok {
-							return false
-						}
-						uncle, exist := w.possibleUncles[hash]
-						if !exist {
-							return false
-						}
-						uncles = append(uncles, uncle.Header())
-						return false
-					})
-					w.commit(uncles, nil, true, start)
-				}
-			}
+
+			// TODO : deprecated
+			//if w.isRunning() && w.current != nil {
+			//	start := time.Now()
+			//	if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
+			//		var uncles []*types.Header
+			//		w.current.uncles.Each(func(item interface{}) bool {
+			//			hash, ok := item.(common.Hash)
+			//			if !ok {
+			//				return false
+			//			}
+			//			uncle, exist := w.possibleUncles[hash]
+			//			if !exist {
+			//				return false
+			//			}
+			//			uncles = append(uncles, uncle.Header())
+			//			return false
+			//		})
+			//
+			//		w.commit(uncles, nil, true, start)
+			//	}
+			//}
 
 		case ev := <-w.txsCh:
 			// Apply transactions to the pending state if we're not mining.
@@ -644,7 +652,7 @@ func (w *worker) resultLoop() {
 			}
 
 			// AndusChain check fairnode signature
-			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
+			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig())
 			if err != nil {
 				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
 				continue
@@ -663,19 +671,19 @@ func (w *worker) resultLoop() {
 			}
 
 			// Process block using the parent state as reference point.
-			receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
+			genReceipts, joinReceipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
 			if err != nil {
 				log.Error("Worker result Processor Error", "err", err)
 			}
 
 			// Validate the state using the default validator
-			err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
+			err = w.chain.Validator().ValidateState(block, parent, state, genReceipts, joinReceipts, usedGas)
 			if err != nil {
 				log.Error("Worker result ValidateState Error", "err", err)
 			}
 
 			//Commit block and state to database.
-			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
+			stat, err := w.chain.WriteBlockWithState(block, genReceipts, joinReceipts, state)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
@@ -723,43 +731,45 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		state:     state,
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
-		uncles:    mapset.NewSet(),
-		header:    header,
+		//uncles:    mapset.NewSet(), // TODO : deprecated
+		header: header,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
 	for _, ancestor := range w.chain.GetBlocksFromHash(parent.Hash(), 7) {
-		for _, uncle := range ancestor.Uncles() {
-			env.family.Add(uncle.Hash())
-		}
+		//for _, uncle := range ancestor.Uncles() {
+		//	env.family.Add(uncle.Hash())
+		//}
 		env.family.Add(ancestor.Hash())
 		env.ancestors.Add(ancestor.Hash())
 	}
 
 	// Keep track of transactions which return debErrors so they can be removed
 	env.tcount = 0
+	env.jtcount = 0
 	w.current = env
 	return nil
 }
 
+// TODO : deprecated uncle
 // commitUncle adds the given block to uncle block set, returns error if failed to add.
-func (w *worker) commitUncle(env *environment, uncle *types.Header) error {
-	hash := uncle.Hash()
-	if env.uncles.Contains(hash) {
-		return errors.New("uncle not unique")
-	}
-	if env.header.ParentHash == uncle.ParentHash {
-		return errors.New("uncle is sibling")
-	}
-	if !env.ancestors.Contains(uncle.ParentHash) {
-		return errors.New("uncle's parent unknown")
-	}
-	if env.family.Contains(hash) {
-		return errors.New("uncle already included")
-	}
-	env.uncles.Add(uncle.Hash())
-	return nil
-}
+//func (w *worker) commitUncle(env *environment, uncle *types.Header) error {
+//	hash := uncle.Hash()
+//	if env.uncles.Contains(hash) {
+//		return errors.New("uncle not unique")
+//	}
+//	if env.header.ParentHash == uncle.ParentHash {
+//		return errors.New("uncle is sibling")
+//	}
+//	if !env.ancestors.Contains(uncle.ParentHash) {
+//		return errors.New("uncle's parent unknown")
+//	}
+//	if env.family.Contains(hash) {
+//		return errors.New("uncle already included")
+//	}
+//	env.uncles.Add(uncle.Hash())
+//	return nil
+//}
 
 // updateSnapshot updates pending snapshot block and state.
 // Note this function assumes the current variable is thread safe.
@@ -767,25 +777,27 @@ func (w *worker) updateSnapshot() {
 	w.snapshotMu.Lock()
 	defer w.snapshotMu.Unlock()
 
-	var uncles []*types.Header
-	w.current.uncles.Each(func(item interface{}) bool {
-		hash, ok := item.(common.Hash)
-		if !ok {
-			return false
-		}
-		uncle, exist := w.possibleUncles[hash]
-		if !exist {
-			return false
-		}
-		uncles = append(uncles, uncle.Header())
-		return false
-	})
+	// TODO : deprecated uncle
+	//var uncles []*types.Header
+	//w.current.uncles.Each(func(item interface{}) bool {
+	//	hash, ok := item.(common.Hash)
+	//	if !ok {
+	//		return false
+	//	}
+	//	uncle, exist := w.possibleUncles[hash]
+	//	if !exist {
+	//		return false
+	//	}
+	//	uncles = append(uncles, uncle.Header())
+	//	return false
+	//})
 
 	w.snapshotBlock = types.NewBlock(
 		w.current.header,
 		w.current.txs,
-		uncles,
+		w.current.joinTxs,
 		w.current.receipts,
+		w.current.joinReceipts,
 	)
 
 	w.snapshotState = w.current.state.Copy()
@@ -864,7 +876,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			continue
 		}
 		// Start executing the transaction
-		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
+		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount, w.current.jtcount)
 
 		logs, err := w.commitTransaction(tx, coinbase)
 		switch err {
@@ -887,6 +899,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
 			w.current.tcount++
+			w.current.jtcount++
 			txs.Shift()
 
 		default:
@@ -996,18 +1009,20 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				delete(w.possibleUncles, hash)
 			}
 		}
-		uncles := make([]*types.Header, 0, 2)
-		for hash, uncle := range w.possibleUncles {
-			if len(uncles) == 2 {
-				break
-			}
-			if err := w.commitUncle(env, uncle.Header()); err != nil {
-				log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
-			} else {
-				log.Debug("Committing new uncle to block", "hash", hash)
-				uncles = append(uncles, uncle.Header())
-			}
-		}
+
+		// TODO : deprecated
+		//uncles := make([]*types.Header, 0, 2)
+		//for hash, uncle := range w.possibleUncles {
+		//	if len(uncles) == 2 {
+		//		break
+		//	}
+		//	if err := w.commitUncle(env, uncle.Header()); err != nil {
+		//		log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
+		//	} else {
+		//		log.Debug("Committing new uncle to block", "hash", hash)
+		//		uncles = append(uncles, uncle.Header())
+		//	}
+		//}
 
 		// Fill the block with all available pending transactions.
 		pending, err := w.eth.TxPool().Pending()
@@ -1042,14 +1057,14 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		w.commit(uncles, w.fullTaskHook, true, tstart)
+		w.commit(w.fullTaskHook, true, tstart)
 	}
 
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
+func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := make([]*types.Receipt, len(w.current.receipts))
 	for i, l := range w.current.receipts {
@@ -1057,7 +1072,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		*receipts[i] = *l
 	}
 	s := w.current.state.Copy()
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.joinTxs, w.current.receipts, w.current.joinReceipts)
 	if err != nil {
 		return err
 	}
@@ -1086,7 +1101,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Daon)))
 
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"uncles", len(uncles), "txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
+				"joinTxs", w.current.jtcount, "txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:
 			log.Info("Worker has exited")

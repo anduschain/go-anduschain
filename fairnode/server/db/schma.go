@@ -34,20 +34,25 @@ type saveotprn struct {
 }
 
 type header struct {
-	ParentHash  string
-	UncleHash   string
-	Coinbase    string
-	Root        string
-	TxHash      string
-	ReceiptHash string
-	Difficulty  string
-	Number      int64
-	GasLimit    int64
-	GasUsed     int64
-	Time        string
-	Extra       []byte
-	MixDigest   string
-	Nonce       int64
+	ParentHash string
+	Coinbase   string
+	Root       string
+
+	VoteHash        string
+	TxHash          string
+	JoinTxHash      string // TODO : add
+	ReceiptHash     string
+	JoinReceiptHash string // TODO : add
+
+	Difficulty string
+	Number     int64
+	GasLimit   int64
+	GasUsed    int64
+	Time       string
+	Extra      []byte
+	Nonce      int64
+
+	FairnodeSig []byte
 }
 
 type transaction struct {
@@ -67,11 +72,11 @@ type vote struct {
 }
 
 type StoredBlock struct {
-	BlockHash    string `bson:"_id,omitempty"`
-	Header       header
-	Transactions []transaction
-	FairNodeSig  string
-	Voter        []vote
+	BlockHash        string `bson:"_id,omitempty"`
+	Header           header
+	GenTransactions  []transaction
+	JoinTransactions []transaction
+	Voters           []vote
 }
 
 type StoreFinalBlockRaw struct {

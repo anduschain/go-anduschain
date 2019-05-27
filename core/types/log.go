@@ -42,9 +42,15 @@ type Log struct {
 	// block in which the transaction was included
 	BlockNumber uint64 `json:"blockNumber"`
 	// hash of the transaction
-	TxHash common.Hash `json:"transactionHash" gencodec:"required"`
+	TxHash common.Hash `json:"genTransactionHash" gencodec:"required"`
 	// index of the transaction in the block
-	TxIndex uint `json:"transactionIndex" gencodec:"required"`
+	TxIndex uint `json:"genTransactionIndex" gencodec:"required"`
+
+	// hash of the transaction
+	JoinTxHash common.Hash `json:"joinTransactionHash" gencodec:"required"` // TODO : add - for join tx
+	// index of the transaction in the block
+	JoinTxIndex uint `json:"joinTransactionIndex" gencodec:"required"` // TODO : add - for join tx
+
 	// hash of the block in which the transaction was included
 	BlockHash common.Hash `json:"blockHash"`
 	// index of the log in the receipt
@@ -59,6 +65,7 @@ type logMarshaling struct {
 	Data        hexutil.Bytes
 	BlockNumber hexutil.Uint64
 	TxIndex     hexutil.Uint
+	JoinTxIndex hexutil.Uint // TODO : add - for join tx
 	Index       hexutil.Uint
 }
 
@@ -75,8 +82,12 @@ type rlpStorageLog struct {
 	BlockNumber uint64
 	TxHash      common.Hash
 	TxIndex     uint
-	BlockHash   common.Hash
-	Index       uint
+
+	JoinTxHash  common.Hash // TODO : add - for join tx
+	JoinTxIndex uint        // TODO : add - for join tx
+
+	BlockHash common.Hash
+	Index     uint
 }
 
 // EncodeRLP implements rlp.Encoder.
@@ -107,6 +118,8 @@ func (l *LogForStorage) EncodeRLP(w io.Writer) error {
 		BlockNumber: l.BlockNumber,
 		TxHash:      l.TxHash,
 		TxIndex:     l.TxIndex,
+		JoinTxHash:  l.JoinTxHash,  // TODO : add - for join tx
+		JoinTxIndex: l.JoinTxIndex, // TODO : add - for join tx
 		BlockHash:   l.BlockHash,
 		Index:       l.Index,
 	})
@@ -124,6 +137,8 @@ func (l *LogForStorage) DecodeRLP(s *rlp.Stream) error {
 			BlockNumber: dec.BlockNumber,
 			TxHash:      dec.TxHash,
 			TxIndex:     dec.TxIndex,
+			JoinTxHash:  dec.JoinTxHash,  // TODO : add - for join tx
+			JoinTxIndex: dec.JoinTxIndex, // TODO : add - for join tx
 			BlockHash:   dec.BlockHash,
 			Index:       dec.Index,
 		}

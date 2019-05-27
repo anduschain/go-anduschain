@@ -124,30 +124,36 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 	var (
 		txs     [][]*types.Transaction
-		uncles  [][]*types.Header
-		fairsig [][]byte
-		voter   [][]types.Voter
+		joinTxs [][]*types.Transaction
+		voters  [][]*types.Voter
 	)
 	for _, hash := range hashes {
 		block := rawdb.ReadBlock(p.db, hash, *p.hc.GetBlockNumber(hash))
 
 		txs = append(txs, block.Transactions())
-		uncles = append(uncles, block.Uncles())
-		fairsig = append(fairsig, block.FairNodeSig)
-		voter = append(voter, block.Voter)
+		voters = append(voters, block.Voters())
 	}
-	p.dl.DeliverBodies(p.id, txs, uncles, fairsig, voter)
+	p.dl.DeliverBodies(p.id, txs, joinTxs, voters)
 	return nil
 }
 
 // RequestReceipts implements downloader.Peer, returning a batch of transaction
 // receipts corresponding to the specified block hashes.
 func (p *FakePeer) RequestReceipts(hashes []common.Hash) error {
-	var receipts [][]*types.Receipt
+	receipts := struct {
+		genReceipts  [][]*types.Receipt
+		joinReceipts [][]*types.Receipt
+	}{}
+
 	for _, hash := range hashes {
-		receipts = append(receipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
+		receipts.genReceipts = append(receipts.genReceipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
 	}
-	p.dl.DeliverReceipts(p.id, receipts)
+
+	for _, hash := range hashes {
+		receipts.joinReceipts = append(receipts.joinReceipts, rawdb.ReadJoinReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
+	}
+
+	p.dl.DeliverReceipts(p.id, receipts.genReceipts, receipts.joinReceipts)
 	return nil
 }
 

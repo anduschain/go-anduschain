@@ -337,8 +337,8 @@ func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Ac
 		return err
 	}
 
-	block.Voter = vBlock.Voters
-	block.FairNodeSig = sig
+	// Fairnode block 서명 및 voter 추가
+	block.WithSealFairnode(vBlock.Voters, sig)
 
 	return nil
 }

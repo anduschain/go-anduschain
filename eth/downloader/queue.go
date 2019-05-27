@@ -57,13 +57,16 @@ type fetchResult struct {
 	Pending int         // Number of data fetches still pending
 	Hash    common.Hash // Hash of the header to prevent recalculating
 
-	Header       *types.Header
-	Uncles       []*types.Header
-	Transactions types.Transactions
-	Receipts     types.Receipts
-	//TODO >> andus
-	FairNodeSig []byte
-	Voters      []types.Voter
+	Header *types.Header
+	//Uncles       []*types.Header // TODO : deprecated
+	GenTransactions  types.Transactions
+	JoinTransactions types.Transactions
+
+	GenReceipts  types.Receipts
+	JoinReceipts types.Receipts
+
+	//FairNodeSig []byte // TODO : goto header
+	Voters types.Voters
 }
 
 // queue represents hashes that are either need fetching or are being fetched
@@ -389,17 +392,28 @@ func (q *queue) Results(block bool) []*fetchResult {
 		// Recalculate the result item weights to prevent memory exhaustion
 		for _, result := range results {
 			size := result.Header.Size()
-			for _, uncle := range result.Uncles {
-				size += uncle.Size()
-			}
-			for _, receipt := range result.Receipts {
+			//for _, uncle := range result.Uncles {
+			//	size += uncle.Size()
+			//}
+
+			for _, receipt := range result.JoinReceipts {
 				size += receipt.Size()
 			}
-			for _, tx := range result.Transactions {
+
+			for _, tx := range result.JoinTransactions {
 				size += tx.Size()
 			}
+
+			for _, receipt := range result.GenReceipts {
+				size += receipt.Size()
+			}
+
+			for _, tx := range result.GenTransactions {
+				size += tx.Size()
+			}
+
 			//anduschain
-			size += common.StorageSize(len(result.FairNodeSig))
+			//size += common.StorageSize(len(result.FairNodeSig))
 
 			for _, voter := range result.Voters {
 				size += voter.Size()
@@ -466,7 +480,7 @@ func (q *queue) ReserveHeaders(p *peerConnection, count int) *fetchRequest {
 // returns a flag whether empty blocks were queued requiring processing.
 func (q *queue) ReserveBodies(p *peerConnection, count int) (*fetchRequest, bool, error) {
 	isNoop := func(header *types.Header) bool {
-		return header.TxHash == types.EmptyRootHash && header.UncleHash == types.EmptyUncleHash
+		return header.TxHash == types.EmptyRootHash
 	}
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -774,40 +788,53 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 // DeliverBodies injects a block body retrieval response into the results queue.
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
-func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, uncleLists [][]*types.Header, fairsig [][]byte, voter [][]types.Voter) (int, error) {
+func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxLists [][]*types.Transaction, voters [][]*types.Voter) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash || types.CalcUncleHash(uncleLists[index]) != header.UncleHash {
+		if types.DeriveSha(types.Transactions(joinTxLists[index])) != header.JoinTxHash {
 			return errInvalidBody
 		}
-		result.Transactions = txLists[index]
-		result.Uncles = uncleLists[index]
-		//TODO >> andus
-		result.FairNodeSig = fairsig[index]
-		result.Voters = voter[index]
+
+		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash {
+			return errInvalidBody
+		}
+
+		if types.DeriveSha(types.Voters(voters[index])) != header.VoteHash {
+			return errInvalidBody
+		}
+
+		result.GenTransactions = txLists[index]
+		result.JoinTransactions = joinTxLists[index]
+		result.Voters = voters[index]
 
 		return nil
 	}
-	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, bodyReqTimer, len(txLists), reconstruct)
+	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, bodyReqTimer, len(txLists), len(joinTxLists), reconstruct)
 }
 
 // DeliverReceipts injects a receipt retrieval response into the results queue.
 // The method returns the number of transaction receipts accepted from the delivery
 // and also wakes any threads waiting for data delivery.
-func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int, error) {
+func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, joinReceiptList [][]*types.Receipt) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Receipts(receiptList[index])) != header.ReceiptHash {
+		if types.DeriveSha(types.Receipts(genReceiptList[index])) != header.ReceiptHash {
 			return errInvalidReceipt
 		}
-		result.Receipts = receiptList[index]
+
+		if types.DeriveSha(types.Receipts(joinReceiptList[index])) != header.ReceiptHash {
+			return errInvalidReceipt
+		}
+
+		result.GenReceipts = genReceiptList[index]
+		result.JoinReceipts = joinReceiptList[index]
 		return nil
 	}
-	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, receiptReqTimer, len(receiptList), reconstruct)
+	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, receiptReqTimer, len(genReceiptList), len(joinReceiptList), reconstruct)
 }
 
 // deliver injects a data retrieval response into the results queue.
@@ -817,7 +844,7 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 // to access the queue, so they already need a lock anyway.
 func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQueue *prque.Prque,
 	pendPool map[string]*fetchRequest, donePool map[common.Hash]struct{}, reqTimer metrics.Timer,
-	results int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
+	genResults int, joinResults int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
 
 	// Short circuit if the data was never requested
 	request := pendPool[id]
@@ -828,22 +855,35 @@ func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQ
 	delete(pendPool, id)
 
 	// If no data items were retrieved, mark them as unavailable for the origin peer
-	if results == 0 {
+	if genResults == 0 {
 		for _, header := range request.Headers {
 			request.Peer.MarkLacking(header.Hash())
 		}
 	}
+
+	if joinResults == 0 {
+		for _, header := range request.Headers {
+			request.Peer.MarkLacking(header.Hash())
+		}
+	}
+
 	// Assemble each of the results with their headers and retrieved data parts
 	var (
 		accepted int
 		failure  error
 		useful   bool
 	)
+
 	for i, header := range request.Headers {
 		// Short circuit assembly if no more fetch results are found
-		if i >= results {
+		if i >= genResults {
 			break
 		}
+
+		if i >= joinResults {
+			break
+		}
+
 		// Reconstruct the next result if contents match up
 		index := int(header.Number.Int64() - int64(q.resultOffset))
 		if index >= len(q.resultCache) || index < 0 || q.resultCache[index] == nil {

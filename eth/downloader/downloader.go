@@ -193,8 +193,8 @@ type BlockChain interface {
 	// InsertChain inserts a batch of blocks into the local chain.
 	InsertChain(types.Blocks) (int, error)
 
-	// InsertReceiptChain inserts a batch of receipts into the local chain.
-	InsertReceiptChain(types.Blocks, []types.Receipts) (int, error)
+	// InsertReceiptChain inserts a batch of receipts into the local chain. // order genReceipts, joinReceipts
+	InsertReceiptChain(types.Blocks, []types.Receipts, []types.Receipts) (int, error)
 }
 
 // New creates a new downloader to fetch hashes and blocks from remote peers.
@@ -930,7 +930,7 @@ func (d *Downloader) fetchBodies(from uint64) error {
 	var (
 		deliver = func(packet dataPack) (int, error) {
 			pack := packet.(*bodyPack)
-			return d.queue.DeliverBodies(pack.peerID, pack.transactions, pack.uncles, pack.fairnodesig, pack.voter)
+			return d.queue.DeliverBodies(pack.peerID, pack.genTransactions, pack.joinTransactions, pack.voters)
 		}
 		expire   = func() map[string]int { return d.queue.ExpireBodies(d.requestTTL()) }
 		fetch    = func(p *peerConnection, req *fetchRequest) error { return p.FetchBodies(req) }
@@ -954,7 +954,7 @@ func (d *Downloader) fetchReceipts(from uint64) error {
 	var (
 		deliver = func(packet dataPack) (int, error) {
 			pack := packet.(*receiptPack)
-			return d.queue.DeliverReceipts(pack.peerID, pack.receipts)
+			return d.queue.DeliverReceipts(pack.peerID, pack.genReceipts, pack.joinReceipts)
 		}
 		expire   = func() map[string]int { return d.queue.ExpireReceipts(d.requestTTL()) }
 		fetch    = func(p *peerConnection, req *fetchRequest) error { return p.FetchReceipts(req) }
@@ -1356,7 +1356,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	)
 	blocks := make([]*types.Block, len(results))
 	for i, result := range results {
-		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles, result.FairNodeSig, result.Voters)
+		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.GenTransactions, result.JoinTransactions, result.Voters)
 	}
 	if index, err := d.blockchain.InsertChain(blocks); err != nil {
 		log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
@@ -1496,12 +1496,14 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 		"lastnumn", last.Number, "lasthash", last.Hash(),
 	)
 	blocks := make([]*types.Block, len(results))
-	receipts := make([]types.Receipts, len(results))
+	genReceipts := make([]types.Receipts, len(results))
+	joinReceipts := make([]types.Receipts, len(results))
 	for i, result := range results {
-		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles, result.FairNodeSig, result.Voters)
-		receipts[i] = result.Receipts
+		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.GenTransactions, result.JoinTransactions, result.Voters)
+		genReceipts[i] = result.GenReceipts
+		joinReceipts[i] = result.JoinReceipts
 	}
-	if index, err := d.blockchain.InsertReceiptChain(blocks, receipts); err != nil {
+	if index, err := d.blockchain.InsertReceiptChain(blocks, genReceipts, joinReceipts); err != nil {
 		log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
 		return errInvalidChain
 	}
@@ -1509,9 +1511,9 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 }
 
 func (d *Downloader) commitPivotBlock(result *fetchResult) error {
-	block := types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles, result.FairNodeSig, result.Voters)
+	block := types.NewBlockWithHeader(result.Header).WithBody(result.GenTransactions, result.JoinTransactions, result.Voters)
 	log.Debug("Committing fast sync pivot as new head", "number", block.Number(), "hash", block.Hash())
-	if _, err := d.blockchain.InsertReceiptChain([]*types.Block{block}, []types.Receipts{result.Receipts}); err != nil {
+	if _, err := d.blockchain.InsertReceiptChain([]*types.Block{block}, []types.Receipts{result.GenReceipts}, []types.Receipts{result.JoinReceipts}); err != nil {
 		return err
 	}
 	if err := d.blockchain.FastSyncCommitHead(block.Hash()); err != nil {
@@ -1528,13 +1530,13 @@ func (d *Downloader) DeliverHeaders(id string, headers []*types.Header) (err err
 }
 
 // DeliverBodies injects a new batch of block bodies received from a remote node.
-func (d *Downloader) DeliverBodies(id string, transactions [][]*types.Transaction, uncles [][]*types.Header, fairnodesig [][]byte, voter [][]types.Voter) (err error) {
-	return d.deliver(id, d.bodyCh, &bodyPack{id, transactions, uncles, fairnodesig, voter}, bodyInMeter, bodyDropMeter)
+func (d *Downloader) DeliverBodies(id string, genTransactions [][]*types.Transaction, joinTransactions [][]*types.Transaction, voters [][]*types.Voter) (err error) {
+	return d.deliver(id, d.bodyCh, &bodyPack{id, genTransactions, joinTransactions, voters}, bodyInMeter, bodyDropMeter)
 }
 
 // DeliverReceipts injects a new batch of receipts received from a remote node.
-func (d *Downloader) DeliverReceipts(id string, receipts [][]*types.Receipt) (err error) {
-	return d.deliver(id, d.receiptCh, &receiptPack{id, receipts}, receiptInMeter, receiptDropMeter)
+func (d *Downloader) DeliverReceipts(id string, genReceipts [][]*types.Receipt, joinReceipts [][]*types.Receipt) (err error) {
+	return d.deliver(id, d.receiptCh, &receiptPack{id, genReceipts, joinReceipts}, receiptInMeter, receiptDropMeter)
 }
 
 // DeliverNodeData injects a new batch of node state data received from a remote node.

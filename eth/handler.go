@@ -71,6 +71,8 @@ type ProtocolManager struct {
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
 
+	acceptJoinTxs uint32 // Flag whether we're considered synchronised (enables transaction processing) // TODO : add
+
 	txpool      txPool
 	blockchain  *core.BlockChain
 	chainconfig *params.ChainConfig
@@ -538,25 +540,25 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver them all to the downloader for queuing
-		transactions := make([][]*types.Transaction, len(request))
-		uncles := make([][]*types.Header, len(request))
-		voter := make([][]types.Voter, len(request))
-		fairnodesig := make([][]byte, len(request))
+		genTransactions := make([][]*types.Transaction, len(request))
+		joinTransactions := make([][]*types.Transaction, len(request))
+		//uncles := make([][]*types.Header, len(request)) // TODO : depredated
+		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {
-			transactions[i] = body.Transactions
-			uncles[i] = body.Uncles
-			voter[i] = body.Voter
-			fairnodesig[i] = body.FairNodeSig
+			genTransactions[i] = body.GenTransactions
+			joinTransactions[i] = body.JoinTransactions
+			voters[i] = body.Voter
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
-		filter := len(transactions) > 0 || len(uncles) > 0
-		if filter {
-			transactions, uncles = pm.fetcher.FilterBodies(p.id, transactions, uncles, time.Now())
-		}
-		if len(transactions) > 0 || len(uncles) > 0 || !filter {
+		filter := len(genTransactions) > 0 || len(joinTransactions) > 0
 
-			err := pm.downloader.DeliverBodies(p.id, transactions, uncles, fairnodesig, voter)
+		if filter {
+			genTransactions, joinTransactions, voters = pm.fetcher.FilterBodies(p.id, genTransactions, joinTransactions, voters, time.Now())
+		}
+
+		if len(genTransactions) > 0 || len(joinTransactions) > 0 || !filter {
+			err := pm.downloader.DeliverBodies(p.id, genTransactions, joinTransactions, voters)
 			if err != nil {
 				log.Debug("Failed to deliver bodies", "err", err)
 			}
@@ -638,12 +640,16 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
-		var receipts [][]*types.Receipt
+		receipts := struct {
+			genReceipts  [][]*types.Receipt
+			joinReceipts [][]*types.Receipt
+		}{}
+
 		if err := msg.Decode(&receipts); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver all to the downloader
-		if err := pm.downloader.DeliverReceipts(p.id, receipts); err != nil {
+		if err := pm.downloader.DeliverReceipts(p.id, receipts.genReceipts, receipts.joinReceipts); err != nil {
 			log.Debug("Failed to deliver receipts", "err", err)
 		}
 
@@ -674,7 +680,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 
-		log.Debug("NewBlockMsg", "blockNum", request.Block.Number().String(), "miner", request.Block.Coinbase().String(), "voterCount", len(request.Block.Voter))
+		log.Debug("NewBlockMsg", "blockNum", request.Block.Number().String(), "miner", request.Block.Coinbase().String(), "voterCount", len(request.Block.Voters()))
 
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
@@ -731,6 +737,24 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
 		}
 
+	case msg.Code == JoinTxMsg:
+		if atomic.LoadUint32(&pm.acceptJoinTxs) == 0 {
+			break
+		}
+		// Transactions can be processed, parse all of them and deliver to the pool
+		var txs []*types.Transaction
+		if err := msg.Decode(&txs); err != nil {
+			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		}
+		for i, tx := range txs {
+			// Validate and mark the remote transaction
+			if tx == nil {
+				return errResp(ErrDecode, "join transaction %d is nil", i)
+			}
+			p.MarkTransaction(tx.Hash())
+		}
+
+		pm.txpool.AddRemotes(txs)
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
 	}
@@ -789,6 +813,27 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
 	for peer, txs := range txset {
 		peer.AsyncSendTransactions(txs)
+	}
+}
+
+// BroadcastTxs will propagate a batch of transactions to all peers which are not known to
+// already have the given transaction.
+func (pm *ProtocolManager) BroadcastJoinTxs(txs types.Transactions) {
+	var txset = make(map[*peer]types.Transactions)
+
+	// Broadcast transactions to a batch of peers not knowing about it
+	for _, tx := range txs {
+		peers := pm.peers.PeersWithoutTx(tx.Hash())
+		for _, peer := range peers {
+			txset[peer] = append(txset[peer], tx)
+		}
+
+		log.Trace("Broadcast join transaction", "hash", tx.Hash(), "recipients", len(peers))
+
+	}
+	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
+	for peer, txs := range txset {
+		peer.AsyncSendJoinTransactions(txs)
 	}
 }
 

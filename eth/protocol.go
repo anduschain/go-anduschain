@@ -30,15 +30,16 @@ import (
 
 // Constants to match up protocol versions and messages
 const (
-	eth62 = 62
-	eth63 = 63
+	eth62  = 62
+	eth63  = 63
+	daon10 = 10
 )
 
 // ProtocolName is the official short name of the protocol used during capability negotiation.
 var ProtocolName = "eth"
 
 // ProtocolVersions are the upported versions of the eth protocol (first is primary).
-var ProtocolVersions = []uint{eth63, eth62}
+var ProtocolVersions = []uint{daon10, eth63, eth62}
 
 // ProtocolLengths are the number of implemented message corresponding to different protocol versions.
 var ProtocolLengths = []uint64{17, 8}
@@ -56,13 +57,16 @@ const (
 	GetBlockBodiesMsg  = 0x05
 	BlockBodiesMsg     = 0x06
 	NewBlockMsg        = 0x07
-	// TODO : andus >> 위닝 블록 관련 package Number msg 추가
-	MakeLeagueBlockMsg = 0x08
+
 	// Protocol messages belonging to eth/63
 	GetNodeDataMsg = 0x0d
 	NodeDataMsg    = 0x0e
 	GetReceiptsMsg = 0x0f
 	ReceiptsMsg    = 0x10
+
+	// Protocol messages belonging to daon/10
+	JoinTxMsg          = 0x010 // TODO : add
+	MakeLeagueBlockMsg = 0x011
 )
 
 type errCode int
@@ -176,11 +180,10 @@ type newBlockData struct {
 
 // blockBody represents the data content of a single block.
 type blockBody struct {
-	//TODO : andus >> 추가
-	FairNodeSig  []byte
-	Voter        []types.Voter
-	Transactions []*types.Transaction // Transactions contained within a block
-	Uncles       []*types.Header      // Uncles contained within a block
+	Voter            []*types.Voter
+	GenTransactions  []*types.Transaction // Transactions contained within a block
+	JoinTransactions []*types.Transaction // Transactions contained within a block
+	//Uncles       []*types.Header      // Uncles contained within a block // TODO : deprecated
 }
 
 // blockBodiesData is the network packet for block content distribution.
