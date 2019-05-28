@@ -3,8 +3,8 @@ package fairudp
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -313,9 +313,8 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, error) {
 	cfg := fu.db.GetChainConfig()
 	fu.manager.SetEpoch(cfg.Epoch)
-	otp := otprn.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
-	acc := fu.manager.GetServerKey()
-	sig, err := otp.SignOtprn(acc.ServerAcc, otp.HashOtprn(), acc.KeyStore)
+	otp := types.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
+	sig, err := otp.SignOtprn(fu.manager.GetServerKey().SeverPiveKey)
 	if err != nil {
 		return fairtypes.TransferOtprn{}, err
 	}

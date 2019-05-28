@@ -113,6 +113,19 @@ type txPool interface {
 	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
 }
 
+type joinTxPool interface {
+	// AddRemotes should add the given join transactions to the pool.
+	AddRemotes([]*types.JoinTransaction) []error
+
+	// Pending should return pending join transactions.
+	// The slice should be modifiable by the caller.
+	Pending() (map[common.Address]types.JoinTransaction, error)
+
+	// SubscribeNewJoinTxsEvent should return an event subscription of
+	// NewJoinTxsEvent and send events to the given channel.
+	SubscribeNewJoinTxsEvent(chan<- core.NewJoinTxsEvent) event.Subscription
+}
+
 // statusData is the network packet for the status message.
 type statusData struct {
 	ProtocolVersion uint32
@@ -181,8 +194,8 @@ type newBlockData struct {
 // blockBody represents the data content of a single block.
 type blockBody struct {
 	Voter            []*types.Voter
-	GenTransactions  []*types.Transaction // Transactions contained within a block
-	JoinTransactions []*types.Transaction // Transactions contained within a block
+	GenTransactions  []*types.Transaction     // Transactions contained within a block
+	JoinTransactions []*types.JoinTransaction // Transactions contained within a block
 	//Uncles       []*types.Header      // Uncles contained within a block // TODO : deprecated
 }
 

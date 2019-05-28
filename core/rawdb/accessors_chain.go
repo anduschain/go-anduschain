@@ -292,31 +292,31 @@ func ReadReceipts(db DatabaseReader, hash common.Hash, number uint64) types.Rece
 }
 
 // ReadReceipts retrieves all the transaction receipts belonging to a block.
-func ReadJoinReceipts(db DatabaseReader, hash common.Hash, number uint64) types.Receipts {
+func ReadJoinReceipts(db DatabaseReader, hash common.Hash, number uint64) types.JoinReceipts {
 	// Retrieve the flattened receipt slice
 	data, _ := db.Get(blockReceiptsKey(number, hash))
 	if len(data) == 0 {
 		return nil
 	}
 	// Convert the revceipts from their storage form to their internal representation
-	storageReceipts := []*types.ReceiptForStorage{}
+	storageReceipts := []*types.JoinReceiptForStorage{}
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
-		log.Error("Invalid receipt array RLP", "hash", hash, "err", err)
+		log.Error("Invalid join receipt array RLP", "hash", hash, "err", err)
 		return nil
 	}
-	receipts := make(types.Receipts, len(storageReceipts))
+	receipts := make(types.JoinReceipts, len(storageReceipts))
 	for i, receipt := range storageReceipts {
-		receipts[i] = (*types.Receipt)(receipt)
+		receipts[i] = (*types.JoinReceipt)(receipt)
 	}
 	return receipts
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
-func WriteJoinReceipts(db DatabaseWriter, hash common.Hash, number uint64, receipts types.Receipts) {
+func WriteJoinReceipts(db DatabaseWriter, hash common.Hash, number uint64, receipts types.JoinReceipts) {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
-		storageReceipts[i] = (*types.ReceiptForStorage)(receipt)
+		storageReceipts[i] = (*types.ReceiptForStorage)(receipt.Receipt)
 	}
 	bytes, err := rlp.EncodeToBytes(storageReceipts)
 	if err != nil {

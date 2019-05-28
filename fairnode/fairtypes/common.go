@@ -5,7 +5,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
@@ -26,13 +25,13 @@ type EnodeCoinbase struct {
 }
 
 type TransferOtprn struct {
-	Otp  otprn.Otprn
+	Otp  types.Otprn
 	Sig  []byte
 	Hash common.Hash
 }
 
 type TransferCheck struct {
-	Otprn    otprn.Otprn
+	Otprn    types.Otprn
 	Coinbase common.Address
 	Enode    string
 	Version  string

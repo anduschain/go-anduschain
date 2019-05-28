@@ -91,9 +91,9 @@ type headerFilterTask struct {
 // bodyFilterTask represents a batch of block bodies (transactions and uncles)
 // needing fetcher filtering.
 type bodyFilterTask struct {
-	peer             string                 // The source peer of block bodies
-	genTransactions  [][]*types.Transaction // Collection of general transactions per block bodies
-	joinTransactions [][]*types.Transaction // Collection of join transactions per block bodies
+	peer             string                     // The source peer of block bodies
+	genTransactions  [][]*types.Transaction     // Collection of general transactions per block bodies
+	joinTransactions [][]*types.JoinTransaction // Collection of join transactions per block bodies
 	// uncles       [][]*types.Header      // Collection of uncles per block bodies // TODO : deprecated
 
 	time   time.Time        // Arrival time of the blocks' contents
@@ -251,7 +251,7 @@ func (f *Fetcher) FilterHeaders(peer string, headers []*types.Header, time time.
 
 // FilterBodies extracts all the block bodies that were explicitly requested by
 // the fetcher, returning those that should be handled differently. // return gen, join, voter
-func (f *Fetcher) FilterBodies(peer string, genTransactions [][]*types.Transaction, joinTransactions [][]*types.Transaction, voters [][]*types.Voter, time time.Time) ([][]*types.Transaction, [][]*types.Transaction, [][]*types.Voter) {
+func (f *Fetcher) FilterBodies(peer string, genTransactions [][]*types.Transaction, joinTransactions [][]*types.JoinTransaction, voters [][]*types.Voter, time time.Time) ([][]*types.Transaction, [][]*types.JoinTransaction, [][]*types.Voter) {
 	log.Trace("Filtering bodies", "peer", peer, "genTxs", len(genTransactions), "joinTxs", len(joinTransactions))
 
 	// Send the filter channel to the fetcher
@@ -528,14 +528,14 @@ func (f *Fetcher) loop() {
 				for hash, announce := range f.completing {
 					if f.queued[hash] == nil {
 						txnHash := types.DeriveSha(types.Transactions(task.genTransactions[i]))
-						joinTxnHash := types.DeriveSha(types.Transactions(task.joinTransactions[i]))
+						joinTxnHash := types.DeriveSha(types.JoinTransactions(task.joinTransactions[i]))
 
 						if txnHash == announce.header.TxHash && joinTxnHash == announce.header.JoinTxHash && announce.origin == task.peer {
 							// Mark the body matched, reassemble if still unknown
 							matched = true
 
 							if f.getBlock(hash) == nil {
-								block := types.NewBlockWithHeader(announce.header).WithBody(task.joinTransactions[i], task.genTransactions[i], task.voters[i])
+								block := types.NewBlockWithHeader(announce.header).WithBody(task.genTransactions[i], task.joinTransactions[i], task.voters[i])
 								block.ReceivedAt = task.time
 								blocks = append(blocks, block)
 							} else {

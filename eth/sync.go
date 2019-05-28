@@ -34,26 +34,33 @@ const (
 
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
-	txsyncPackSize = 100 * 1024
+	txsyncPackSize = 1000 * 1024 // TODO(hakuna) : increase pack size 100 -> 1000
 )
 
 type txsync struct {
-	p   *peer
-	txs []*types.Transaction
+	p    *peer
+	txs  []*types.Transaction
+	jtxs []*types.JoinTransaction
 }
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) syncTransactions(p *peer) {
 	var txs types.Transactions
+	var jtxs types.JoinTransactions
+
 	pending, _ := pm.txpool.Pending()
 	for _, batch := range pending {
 		txs = append(txs, batch...)
 	}
+
 	if len(txs) == 0 {
 		return
 	}
+
+	// FIXME(hakuna) : jointx pool
+
 	select {
-	case pm.txsyncCh <- &txsync{p, txs}:
+	case pm.txsyncCh <- &txsync{p, txs, jtxs}:
 	case <-pm.quitSync:
 	}
 }

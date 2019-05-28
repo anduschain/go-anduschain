@@ -778,23 +778,23 @@ func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts ty
 }
 
 // SetJoinReceiptsData computes all the non-consensus fields of the receipts
-func SetJoinReceiptsData(config *params.ChainConfig, block *types.Block, receipts types.Receipts) error {
+func SetJoinReceiptsData(config *params.ChainConfig, block *types.Block, receipts types.JoinReceipts) error {
 	signer := types.MakeSigner(config, block.Number())
 
-	transactions, logIndex := block.JoinTransactions(), uint(0)
-	if len(transactions) != len(receipts) {
+	jtxs, logIndex := block.JoinTransactions(), uint(0)
+	if len(jtxs) != len(receipts) {
 		return errors.New("transaction and receipt count mismatch")
 	}
 
 	for j := 0; j < len(receipts); j++ {
 		// The transaction hash can be retrieved from the transaction itself
-		receipts[j].TxHash = transactions[j].Hash()
+		receipts[j].TxHash = jtxs[j].Hash()
 
 		// The contract address can be derived from the transaction itself
-		if transactions[j].To() == nil {
+		if jtxs[j].To() == nil {
 			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := types.Sender(signer, transactions[j])
-			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
+			from, _ := types.Sender(signer, jtxs[j].Transaction)
+			receipts[j].ContractAddress = crypto.CreateAddress(from, jtxs[j].Nonce())
 		}
 		// The used gas can be calculated based on previous receipts
 		if j == 0 {
@@ -817,7 +817,7 @@ func SetJoinReceiptsData(config *params.ChainConfig, block *types.Block, receipt
 
 // InsertReceiptChain attempts to complete an already existing header chain with
 // transaction and receipt data.
-func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChain []types.Receipts, joinRceiptChain []types.Receipts) (int, error) {
+func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChain []types.Receipts, joinRceiptChain []types.JoinReceipts) (int, error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -866,7 +866,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChai
 		// Write all the data out into the database
 		rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
 		rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receipts)
-		rawdb.WriteJoinReceipts(batch, block.Hash(), block.NumberU64(), receipts) // TODO : add
+		rawdb.WriteJoinReceipts(batch, block.Hash(), block.NumberU64(), joinReceipts) // TODO : add
 		rawdb.WriteTxLookupEntries(batch, block)
 		rawdb.WriteJoinTxLookupEntries(batch, block) // TODO : add
 
@@ -927,7 +927,7 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 }
 
 // WriteBlockWithState writes the block and all associated state to the database.
-func (bc *BlockChain) WriteBlockWithState(block *types.Block, genReceipts []*types.Receipt, joinReceipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
+func (bc *BlockChain) WriteBlockWithState(block *types.Block, genReceipts []*types.Receipt, joinReceipts []*types.JoinReceipt, state *state.StateDB) (status WriteStatus, err error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1232,9 +1232,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, parent, state, genReceipts, genReceipts, usedGas)
+		err = bc.Validator().ValidateState(block, parent, state, genReceipts, joinReceipts, usedGas)
 		if err != nil {
-			bc.reportBlock(block, genReceipts, genReceipts, err)
+			bc.reportBlock(block, genReceipts, joinReceipts, err)
 			return i, events, coalescedLogs, err
 		}
 		proctime := time.Since(bstart)
@@ -1506,7 +1506,7 @@ func (bc *BlockChain) addBadBlock(block *types.Block) {
 }
 
 // reportBlock logs a bad block error.
-func (bc *BlockChain) reportBlock(block *types.Block, genReceipts types.Receipts, joinReceipts types.Receipts, err error) {
+func (bc *BlockChain) reportBlock(block *types.Block, genReceipts types.Receipts, joinReceipts types.JoinReceipts, err error) {
 	bc.addBadBlock(block)
 
 	var receiptString string

@@ -321,7 +321,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	for i := range block.JoinTransactions() {
 		joinTx := block.JoinTransactions()[i]
 		joinTxhash := block.JoinTransactions()[i].Hash()
-		from, _ := types.Sender(fnb.signer, joinTx)
+		from, _ := types.Sender(fnb.signer, joinTx.Transaction)
 		to := "contract"
 		if joinTx.To() != nil {
 			to = joinTx.To().String()

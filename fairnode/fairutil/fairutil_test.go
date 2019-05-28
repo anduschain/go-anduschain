@@ -3,14 +3,14 @@ package fairutil
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
+	"github.com/anduschain/go-anduschain/core/types"
 	"testing"
 )
 
 func TestIsJoinOK(t *testing.T) {
 	t.Log("OTPRN 생성")
 
-	tOtprn := otprn.New(1, 100, 100, 100)
+	tOtprn := types.New(1, 100, 100, 100)
 	//for i:=0; i < 4; i++ {
 	//	tOtprn = append(tOtprn, *otprn.New(11))
 	//}

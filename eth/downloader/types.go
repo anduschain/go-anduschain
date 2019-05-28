@@ -46,7 +46,7 @@ func (p *headerPack) Stats() string  { return fmt.Sprintf("%d", len(p.headers)) 
 type bodyPack struct {
 	peerID           string
 	genTransactions  [][]*types.Transaction
-	joinTransactions [][]*types.Transaction
+	joinTransactions [][]*types.JoinTransaction
 	voters           [][]*types.Voter
 }
 
@@ -66,7 +66,7 @@ func (p *bodyPack) Stats() string {
 type receiptPack struct {
 	peerID       string
 	genReceipts  [][]*types.Receipt
-	joinReceipts [][]*types.Receipt
+	joinReceipts [][]*types.JoinReceipt
 }
 
 func (p *receiptPack) PeerId() string { return p.peerID }

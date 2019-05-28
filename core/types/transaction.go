@@ -19,14 +19,13 @@ package types
 import (
 	"container/heap"
 	"errors"
-	"io"
-	"math/big"
-	"sync/atomic"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
+	"math/big"
+	"sync/atomic"
 )
 
 //go:generate gencodec -type txdata -field-override txdataMarshaling -out gen_tx_json.go

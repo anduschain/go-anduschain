@@ -19,10 +19,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math"
 	"math/big"
 	"sort"
@@ -34,7 +30,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
-	clientType "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/params"
@@ -577,19 +572,6 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
-
-	var joinTx bool
-	var joinTxdata *clientType.JoinTxData
-
-	if tx.To() != nil {
-		if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
-			joinTx = true
-			if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-				return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
-			}
-		}
-	}
-
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
@@ -620,39 +602,41 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNonceTooLow
 	}
 
-	// JOINTX가 아닌 케이스
-	if !joinTx {
-		// Drop non-local transactions under our own minimal accepted gas price
-		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
-			return ErrUnderpriced
-		}
-
-		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
-		if err != nil {
-			return err
-		}
-
-		if tx.Gas() < intrGas {
-			return ErrIntrinsicGas
-		}
-	} else {
-		// JOINTX 맞는 케이스
-		// nonce가 joinNounc와 같은가?
-		if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
-			return ErrJoinNonceNotMmatch
-		}
-
-		// 참가비가 제대로 지정되어 있는가?
-		if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
-			return ErrTicketPriceNotMatch
-		}
-
-		// fairnode의 서명이 맞는가?
-		if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
-			return ErrFairNodeSigNotMatch
-		}
+	// Drop non-local transactions under our own minimal accepted gas price
+	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
+	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+		return ErrUnderpriced
 	}
+
+	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+	if err != nil {
+		return err
+	}
+
+	if tx.Gas() < intrGas {
+		return ErrIntrinsicGas
+	}
+
+	//// JOINTX가 아닌 케이스 // TODO(hakuna) : goto jointx pool
+	//if !joinTx {
+	//
+	//} else {
+	//	// JOINTX 맞는 케이스
+	//	// nonce가 joinNounc와 같은가?
+	//	if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
+	//		return ErrJoinNonceNotMmatch
+	//	}
+	//
+	//	// 참가비가 제대로 지정되어 있는가?
+	//	if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
+	//		return ErrTicketPriceNotMatch
+	//	}
+	//
+	//	// fairnode의 서명이 맞는가?
+	//	if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
+	//		return ErrFairNodeSigNotMatch
+	//	}
+	//}
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package otprn
+package types
 
 import (
 	crand "crypto/rand"

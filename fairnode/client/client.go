@@ -13,11 +13,9 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	clinetTcp "github.com/anduschain/go-anduschain/fairnode/client/tcp"
-	clinetTypes "github.com/anduschain/go-anduschain/fairnode/client/types"
 	clinetUdp "github.com/anduschain/go-anduschain/fairnode/client/udp"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
@@ -59,7 +57,7 @@ type FairnodeClient struct {
 	wBlocks     map[common.Hash]map[common.Hash]*types.Block // 위닝 블록 임시 저장
 	IsBlockMine bool
 
-	UsingOtprn *clinetTypes.OtprnWithSig
+	UsingOtprn *types.OtprnWithSig
 	OtprnQueue *queue.Queue
 
 	realAddr *net.UDPAddr
@@ -163,19 +161,19 @@ func (fc *FairnodeClient) Stop() {
 
 }
 
-func (fc *FairnodeClient) StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte) {
+func (fc *FairnodeClient) StoreOtprnWidthSig(otprn *types.Otprn, sig []byte) {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
-	fc.OtprnQueue.Push(&clinetTypes.OtprnWithSig{otprn, sig})
+	fc.OtprnQueue.Push(&types.OtprnWithSig{otprn, sig})
 }
 
-func (fc *FairnodeClient) GetStoreOtprnWidthSig() *otprn.Otprn {
+func (fc *FairnodeClient) GetStoreOtprnWidthSig() *types.Otprn {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
 
 	item := fc.OtprnQueue.Pop()
 	if item != nil {
-		otprnSig := item.(*clinetTypes.OtprnWithSig)
+		otprnSig := item.(*types.OtprnWithSig)
 		fc.UsingOtprn = otprnSig
 		return otprnSig.Otprn
 	}
@@ -190,14 +188,14 @@ func (fc *FairnodeClient) DeleteStoreOtprnWidthSig() {
 	}
 }
 
-func (fc *FairnodeClient) GetUsingOtprnWithSig() *clinetTypes.OtprnWithSig { return fc.UsingOtprn }
+func (fc *FairnodeClient) GetUsingOtprnWithSig() *types.OtprnWithSig { return fc.UsingOtprn }
 func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
 	var hashs []common.Hash
 	if fc.OtprnQueue.Len() > 0 {
 		for i := range fc.OtprnQueue.All() {
-			if otprnWithSig, ok := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig); ok {
+			if otprnWithSig, ok := fc.OtprnQueue.All()[i].(*types.OtprnWithSig); ok {
 				hashs = append(hashs, otprnWithSig.Otprn.HashOtprn())
 			}
 		}
@@ -205,10 +203,10 @@ func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 
 	return hashs
 }
-func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *clinetTypes.OtprnWithSig {
+func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *types.OtprnWithSig {
 	if fc.OtprnQueue.Len() > 0 {
 		for i := range fc.OtprnQueue.All() {
-			otprnWithSig := fc.OtprnQueue.All()[i].(*clinetTypes.OtprnWithSig)
+			otprnWithSig := fc.OtprnQueue.All()[i].(*types.OtprnWithSig)
 			if otprnWithSig.Otprn.HashOtprn() == otprnHash {
 				return otprnWithSig
 			}

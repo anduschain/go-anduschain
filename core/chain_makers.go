@@ -42,8 +42,8 @@ type BlockGen struct {
 
 	gasPool *GasPool
 
-	joinTxs      []*types.Transaction
-	joinReceipts []*types.Receipt
+	joinTxs      []*types.JoinTransaction
+	joinReceipts []*types.JoinReceipt
 
 	genTxs      []*types.Transaction
 	genReceipts []*types.Receipt
@@ -181,12 +181,12 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // Blocks created by GenerateChain do not contain valid proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
 // a similar non-validating proof of work implementation.
-func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts, []types.Receipts) {
+func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts, []types.JoinReceipts) {
 	if config == nil {
 		config = params.TestChainConfig
 	}
-	blocks, genReceipts, joinReceipts := make(types.Blocks, n), make([]types.Receipts, n), make([]types.Receipts, n)
-	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts, types.Receipts) {
+	blocks, genReceipts, joinReceipts := make(types.Blocks, n), make([]types.Receipts, n), make([]types.JoinReceipts, n)
+	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts, types.JoinReceipts) {
 		// TODO(karalabe): This is needed for clique, which depends on multiple blocks.
 		// It's nonetheless ugly to spin up a blockchain here. Get rid of this somehow.
 		blockchain, _ := NewBlockChain(db, nil, config, engine, vm.Config{})

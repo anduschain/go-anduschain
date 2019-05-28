@@ -60,10 +60,10 @@ type fetchResult struct {
 	Header *types.Header
 	//Uncles       []*types.Header // TODO : deprecated
 	GenTransactions  types.Transactions
-	JoinTransactions types.Transactions
+	JoinTransactions types.JoinTransactions
 
 	GenReceipts  types.Receipts
-	JoinReceipts types.Receipts
+	JoinReceipts types.JoinReceipts
 
 	//FairNodeSig []byte // TODO : goto header
 	Voters types.Voters
@@ -788,12 +788,12 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 // DeliverBodies injects a block body retrieval response into the results queue.
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
-func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxLists [][]*types.Transaction, voters [][]*types.Voter) (int, error) {
+func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxLists [][]*types.JoinTransaction, voters [][]*types.Voter) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Transactions(joinTxLists[index])) != header.JoinTxHash {
+		if types.DeriveSha(types.JoinTransactions(joinTxLists[index])) != header.JoinTxHash {
 			return errInvalidBody
 		}
 
@@ -817,7 +817,7 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxL
 // DeliverReceipts injects a receipt retrieval response into the results queue.
 // The method returns the number of transaction receipts accepted from the delivery
 // and also wakes any threads waiting for data delivery.
-func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, joinReceiptList [][]*types.Receipt) (int, error) {
+func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, joinReceiptList [][]*types.JoinReceipt) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -826,7 +826,7 @@ func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, jo
 			return errInvalidReceipt
 		}
 
-		if types.DeriveSha(types.Receipts(joinReceiptList[index])) != header.ReceiptHash {
+		if types.DeriveSha(types.JoinReceipts(joinReceiptList[index])) != header.ReceiptHash {
 			return errInvalidReceipt
 		}
 

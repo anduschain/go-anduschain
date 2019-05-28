@@ -124,7 +124,7 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 	var (
 		txs     [][]*types.Transaction
-		joinTxs [][]*types.Transaction
+		joinTxs [][]*types.JoinTransaction
 		voters  [][]*types.Voter
 	)
 	for _, hash := range hashes {
@@ -142,7 +142,7 @@ func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 func (p *FakePeer) RequestReceipts(hashes []common.Hash) error {
 	receipts := struct {
 		genReceipts  [][]*types.Receipt
-		joinReceipts [][]*types.Receipt
+		joinReceipts [][]*types.JoinReceipt
 	}{}
 
 	for _, hash := range hashes {

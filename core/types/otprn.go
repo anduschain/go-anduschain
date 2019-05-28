@@ -1,19 +1,14 @@
-package otprn
+package types
 
 import (
+	"crypto/ecdsa"
 	crand "crypto/rand"
-	"github.com/anduschain/go-anduschain/accounts"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/rlp"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"time"
 )
-
-//const (
-//	Mminer uint64 = 100 // TODO : andus >> 최대 채굴 참여 가능인원
-//)
 
 var (
 	OtprnNum = new(uint64)
@@ -27,6 +22,11 @@ type Otprn struct {
 	Epoch     uint64
 	Fee       uint64
 	TimeStamp uint64
+}
+
+type OtprnWithSig struct {
+	Otprn *Otprn
+	Sig   []byte
 }
 
 func New(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
@@ -47,18 +47,16 @@ func New(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
 		Rand:      rand,
 		Epoch:     Epoch,
 		Fee:       Fee,
-		TimeStamp: uint64(time.Now().UnixNano()),
+		TimeStamp: uint64(time.Now().UTC().UnixNano()),
 	}
 }
 
-func (otprn *Otprn) SignOtprn(account accounts.Account, hash common.Hash, ks *keystore.KeyStore) ([]byte, error) {
-	sig, err := ks.SignHash(account, hash.Bytes())
+func (otprn *Otprn) SignOtprn(prv *ecdsa.PrivateKey) ([]byte, error) {
+	sig, err := crypto.Sign(otprn.HashOtprn().Bytes(), prv)
 	if err != nil {
-		log.Error("블록에 서명 에러 발생", "position", "SignOtprn", "error", err)
 		return nil, err
 	}
-
-	return sig, nil
+	return sig, err
 }
 
 func (otprn *Otprn) HashOtprn() common.Hash {
@@ -78,11 +76,4 @@ func DecodeOtprn(otpByte []byte) (*Otprn, error) {
 	}
 
 	return otp, nil
-}
-
-func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
 }

@@ -4,7 +4,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
 	"github.com/anduschain/go-anduschain/fairnode/server/config"
 	"github.com/anduschain/go-anduschain/fairnode/server/db"
@@ -42,7 +41,7 @@ type FairManager struct {
 	StopLeagueCh  chan struct{}
 	mux           sync.Mutex
 
-	UsingOtprn *otprn.Otprn // 사용중인 otprn
+	UsingOtprn *types.Otprn // 사용중인 otprn
 	OtprnQueue *queue.Queue // fairnode에서 받은 otprn 저장 queue
 
 	reSendOtprn chan common.Hash
@@ -147,20 +146,20 @@ func (fm *FairManager) Stop() error {
 	return nil
 }
 
-func (fm *FairManager) StoreOtprn(otprn *otprn.Otprn) {
+func (fm *FairManager) StoreOtprn(otprn *types.Otprn) {
 	fm.mux.Lock()
 	defer fm.mux.Unlock()
 	fm.OtprnQueue.Push(otprn)
 }
 
 // 순차적으로 만든 otprn return
-func (fm *FairManager) GetStoredOtprn() *otprn.Otprn {
+func (fm *FairManager) GetStoredOtprn() *types.Otprn {
 	fm.mux.Lock()
 	defer fm.mux.Unlock()
 
 	item := fm.OtprnQueue.Pop()
 	if item != nil {
-		otprn := item.(*otprn.Otprn)
+		otprn := item.(*types.Otprn)
 		fm.UsingOtprn = otprn
 		return otprn
 	}
@@ -179,7 +178,7 @@ func (fm *FairManager) GetReSendOtprn() chan common.Hash {
 	return fm.reSendOtprn
 }
 
-func (fm *FairManager) GetUsingOtprn() *otprn.Otprn     { return fm.UsingOtprn }
+func (fm *FairManager) GetUsingOtprn() *types.Otprn     { return fm.UsingOtprn }
 func (fm *FairManager) GetStopLeagueCh() chan struct{}  { return fm.StopLeagueCh }
 func (fm *FairManager) GetEpoch() *big.Int              { return fm.Epoch }
 func (fm *FairManager) SetEpoch(epoch int64)            { fm.Epoch = big.NewInt(epoch) }

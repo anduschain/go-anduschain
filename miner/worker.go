@@ -96,14 +96,14 @@ type environment struct {
 	txs      []*types.Transaction
 	receipts []*types.Receipt
 
-	joinTxs      []*types.Transaction // TODO : add
-	joinReceipts []*types.Receipt     // TODO : add
+	joinTxs      []*types.JoinTransaction // TODO : add
+	joinReceipts []*types.JoinReceipt     // TODO : add
 }
 
 // task contains all information for consensus engine sealing and result submitting.
 type task struct {
 	receipts     []*types.Receipt
-	joinReceipts []*types.Receipt // TODO : add
+	joinReceipts []*types.JoinReceipt // TODO : add
 
 	state     *state.StateDB
 	block     *types.Block

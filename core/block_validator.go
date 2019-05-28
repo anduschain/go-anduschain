@@ -60,10 +60,13 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	}
 	// Header validity is known at this point, check the uncles and transactions
 	header := block.Header()
-	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
-		return err
-	}
+
 	// TODO : deprecated uncle
+
+	//if err := v.engine.VerifyUncles(v.bc, block); err != nil {
+	//	return err
+	//}
+
 	//if hash := types.CalcUncleHash(block.Uncles()); hash != header.UncleHash {
 	//	return fmt.Errorf("uncle root hash mismatch: have %x, want %x", hash, header.UncleHash)
 	//}
@@ -77,7 +80,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, genReceipts types.Receipts, joinReceipts types.Receipts, usedGas uint64) error {
+func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, genReceipts types.Receipts, joinReceipts types.JoinReceipts, usedGas uint64) error {
 	header := block.Header()
 
 	//TODO : 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
@@ -99,7 +102,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}
 
-	jrbloom := types.CreateBloom(joinReceipts)
+	jrbloom := types.CreateJoinBloom(joinReceipts)
 	if jrbloom != header.JoinBloom {
 		return fmt.Errorf("invalid join bloom (remote: %x  local: %x)", header.JoinBloom, jrbloom)
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	types2 "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -86,7 +85,7 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, joinNonce uint64) error {
 	signer := types.NewEIP155Signer(chainid)
 	txs := block.Transactions()
-	var datas types2.JoinTxData
+	var datas types.JoinTxData
 	var isMyJoinTx bool
 	for i := range txs {
 		if txs[i].To() != nil {

@@ -8,7 +8,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/fairnode/server/manager/pool"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	"time"
@@ -230,7 +229,7 @@ func (fu *FairTcp) sendFinalBlock(otprnHash common.Hash) {
 	}
 }
 
-func (fu *FairTcp) JoinTotalNum(otprn *otprn.Otprn, persent float64) uint64 {
+func (fu *FairTcp) JoinTotalNum(otprn *types.Otprn, persent float64) uint64 {
 	aciveNode := fu.Db.GetActiveNodeList()
 	var count float64 = 0
 	for i := range aciveNode {

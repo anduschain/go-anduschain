@@ -51,6 +51,8 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
+
+	joinTxChanSize = 4096 // TODO(hakuna) : add
 )
 
 var (
@@ -84,9 +86,12 @@ type ProtocolManager struct {
 
 	SubProtocols []p2p.Protocol
 
-	eventMux      *event.TypeMux
-	txsCh         chan core.NewTxsEvent
-	txsSub        event.Subscription
+	eventMux *event.TypeMux
+	txsCh    chan core.NewTxsEvent
+	txsSub   event.Subscription
+
+	joinTxsCh chan core.NewJoinTxsEvent
+
 	minedBlockSub *event.TypeMuxSubscription
 
 	// channels for fetcher, syncer, txsyncLoop
@@ -219,6 +224,10 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.txsCh = make(chan core.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
+
+	pm.joinTxsCh = make(chan core.NewJoinTxsEvent, joinTxChanSize)
+	//pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh) // FIXME(hakuna) : join tx pool
+	go pm.joinTxBroadcastLoop()
 
 	// broadcast mined blocks
 	pm.minedBlockSub = pm.eventMux.Subscribe(core.NewMinedBlockEvent{})
@@ -541,7 +550,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		// Deliver them all to the downloader for queuing
 		genTransactions := make([][]*types.Transaction, len(request))
-		joinTransactions := make([][]*types.Transaction, len(request))
+		joinTransactions := make([][]*types.JoinTransaction, len(request))
 		//uncles := make([][]*types.Header, len(request)) // TODO : depredated
 		voters := make([][]*types.Voter, len(request))
 
@@ -642,7 +651,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// A batch of receipts arrived to one of our previous requests
 		receipts := struct {
 			genReceipts  [][]*types.Receipt
-			joinReceipts [][]*types.Receipt
+			joinReceipts [][]*types.JoinReceipt
 		}{}
 
 		if err := msg.Decode(&receipts); err != nil {
@@ -818,21 +827,21 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
-func (pm *ProtocolManager) BroadcastJoinTxs(txs types.Transactions) {
-	var txset = make(map[*peer]types.Transactions)
+func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.JoinTransactions) {
+	var jtxset = make(map[*peer]types.JoinTransactions)
 
-	// Broadcast transactions to a batch of peers not knowing about it
-	for _, tx := range txs {
-		peers := pm.peers.PeersWithoutTx(tx.Hash())
+	// Broadcast join transactions to a batch of peers not knowing about it
+	for _, jtx := range jtsx {
+		peers := pm.peers.PeersWithoutTx(jtx.Hash())
 		for _, peer := range peers {
-			txset[peer] = append(txset[peer], tx)
+			jtxset[peer] = append(jtxset[peer], jtx)
 		}
 
-		log.Trace("Broadcast join transaction", "hash", tx.Hash(), "recipients", len(peers))
+		log.Trace("Broadcast join transaction", "hash", jtx.Hash(), "recipients", len(peers))
 
 	}
 	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
-	for peer, txs := range txset {
+	for peer, txs := range jtxset {
 		peer.AsyncSendJoinTransactions(txs)
 	}
 }
@@ -856,6 +865,19 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
+			return
+		}
+	}
+}
+
+func (pm *ProtocolManager) joinTxBroadcastLoop() {
+	for {
+		select {
+		case event := <-pm.joinTxsCh:
+			pm.BroadcastJoinTxs(event.JTxs)
+
+		// Err() channel will be closed when unsubscribing.
+		case <-pm.txsSub.Err(): // FIXME(hakuna) : join tx pool
 			return
 		}
 	}

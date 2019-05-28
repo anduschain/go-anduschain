@@ -2,14 +2,14 @@ package fairutil
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	mrand "math/rand"
 	"strings"
 )
 
 // OS 영향 받지 않게 rand값을 추출 하기 위해서 "math/rand" 사용
-func IsJoinOK(otprn *otprn.Otprn, addr common.Address) bool {
+func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
 	if otprn.Mminer > 0 {
 		div := uint64(otprn.Cminer / otprn.Mminer)

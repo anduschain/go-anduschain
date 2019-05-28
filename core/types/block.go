@@ -146,8 +146,8 @@ func rlpHash(x interface{}) (h common.Hash) {
 // Body is a simple (mutable, non-safe) data container for storing and moving
 // a block's data contents (transactions and uncles) together.
 type Body struct {
-	JoinTransactions []*Transaction // join transactions
-	Transactions     []*Transaction // general transactions
+	JoinTransactions []*JoinTransaction // join transactions
+	Transactions     []*Transaction     // general transactions
 	Voters           []*Voter
 
 	//FairNodeSig  []byte // TODO : goto header
@@ -159,7 +159,7 @@ type Block struct {
 	header *Header
 	//uncles       []*Header // TODO : deprecated
 	transactions    Transactions
-	joinTransations Transactions
+	joinTransations JoinTransactions
 
 	// caches
 	hash atomic.Value
@@ -195,7 +195,7 @@ type StorageBlock Block
 type extblock struct {
 	Header  *Header
 	Txs     []*Transaction
-	JoinTxs []*Transaction // TODO : add  - jointx
+	JoinTxs []*JoinTransaction // TODO : add  - jointx
 	//Uncles      []*Header
 	//FairNodeSig []byte // TODO : goto header
 	Voters Voters
@@ -217,7 +217,7 @@ type storageblock struct {
 // The values of TxHash, UncleHash, ReceiptHash and Bloom in header
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
-func NewBlock(header *Header, genTxs []*Transaction, joinTxs []*Transaction, genReceipts []*Receipt, joinReceipts []*Receipt) *Block {
+func NewBlock(header *Header, genTxs []*Transaction, joinTxs []*JoinTransaction, genReceipts []*Receipt, joinReceipts []*JoinReceipt) *Block {
 	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
 	if len(genTxs) != len(genReceipts) {
@@ -228,21 +228,23 @@ func NewBlock(header *Header, genTxs []*Transaction, joinTxs []*Transaction, gen
 		panic("not equal joinTxs and joinReceipts")
 	}
 
+	// FOR JOIN_TX
 	if len(joinTxs) == 0 {
 		b.header.JoinTxHash = EmptyRootHash
 	} else {
-		b.header.JoinTxHash = DeriveSha(Transactions(joinTxs))
-		b.joinTransations = make(Transactions, len(joinTxs))
-		copy(b.joinTransations, genTxs)
+		b.header.JoinTxHash = DeriveSha(JoinTransactions(joinTxs))
+		b.joinTransations = make(JoinTransactions, len(joinTxs))
+		copy(b.joinTransations, joinTxs)
 	}
 
 	if len(joinReceipts) == 0 {
 		b.header.JoinReceiptHash = EmptyRootHash
 	} else {
-		b.header.JoinReceiptHash = DeriveSha(Receipts(joinReceipts))
-		b.header.JoinBloom = CreateBloom(joinReceipts)
+		b.header.JoinReceiptHash = DeriveSha(JoinReceipts(joinReceipts))
+		b.header.JoinBloom = CreateJoinBloom(joinReceipts)
 	}
 
+	// FOR GEN_TX
 	if len(genTxs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
@@ -384,9 +386,9 @@ func (b *Block) GetFairNodeSig() ([]byte, bool) {
 	}
 }
 
-func (b *Block) JoinTransactions() Transactions { return b.joinTransations }
+func (b *Block) JoinTransactions() JoinTransactions { return b.joinTransations }
 
-func (b *Block) JoinTransaction(hash common.Hash) *Transaction {
+func (b *Block) JoinTransaction(hash common.Hash) *JoinTransaction {
 	for _, joinTransaction := range b.joinTransations {
 		if joinTransaction.Hash() == hash {
 			return joinTransaction
@@ -452,10 +454,10 @@ func (b *Block) WithSealFairnode(voters Voters, fairnodeSig []byte) *Block {
 }
 
 // WithBody returns a new block with the given transaction and uncle contents.
-func (b *Block) WithBody(joinTransactions []*Transaction, genTransactions []*Transaction, voters []*Voter) *Block {
+func (b *Block) WithBody(genTransactions []*Transaction, joinTransactions []*JoinTransaction, voters []*Voter) *Block {
 	block := &Block{
 		header:          CopyHeader(b.header),
-		joinTransations: make([]*Transaction, len(joinTransactions)),
+		joinTransations: make([]*JoinTransaction, len(joinTransactions)),
 		transactions:    make([]*Transaction, len(genTransactions)),
 		voters:          make([]*Voter, len(voters)),
 	}

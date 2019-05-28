@@ -53,10 +53,10 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, types.Receipts, []*types.Log, uint64, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, types.JoinReceipts, []*types.Log, uint64, error) {
 	var (
 		genReceipts  types.Receipts
-		joinReceipts types.Receipts
+		joinReceipts types.JoinReceipts
 
 		usedGas = new(uint64)
 		header  = block.Header()
@@ -69,19 +69,19 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	}
 
 	// Iterate over and process the individual join transactions
-	for i, tx := range block.JoinTransactions() {
-		statedb.Prepare(tx.Hash(), block.Hash(), 0, i)
+	for i, jtx := range block.JoinTransactions() {
+		statedb.Prepare(jtx.Hash(), block.Hash(), 0, i)
 
-		var receipt *types.Receipt
+		var jreceipt *types.JoinReceipt
 		var err error
 
-		receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+		jreceipt.Receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, jtx.Transaction, usedGas, cfg)
 		if err != nil {
 			return nil, nil, nil, 0, err
 		}
 
-		joinReceipts = append(joinReceipts, receipt)
-		allLogs = append(allLogs, receipt.Logs...)
+		joinReceipts = append(joinReceipts, jreceipt)
+		allLogs = append(allLogs, jreceipt.Logs...)
 	}
 
 	// Iterate over and process the individual general transactions

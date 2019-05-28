@@ -25,10 +25,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/fdlimit"
-	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -1447,24 +1444,9 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 	if err != nil {
 		Fatalf("%v", err)
 	}
-	var engine consensus.Engine
-	if config.Deb != nil {
-		engine = deb.New(config.Deb, chainDb)
-	} else if config.Clique != nil {
-		engine = clique.New(config.Clique, chainDb)
-	} else {
-		engine = ethash.NewFaker()
-		if !ctx.GlobalBool(FakePoWFlag.Name) {
-			//engine = ethash.New(ethash.Config{
-			//	CacheDir:       stack.ResolvePath(eth.DefaultConfig.Ethash.CacheDir),
-			//	CachesInMem:    eth.DefaultConfig.Ethash.CachesInMem,
-			//	CachesOnDisk:   eth.DefaultConfig.Ethash.CachesOnDisk,
-			//	DatasetDir:     stack.ResolvePath(eth.DefaultConfig.Ethash.DatasetDir),
-			//	DatasetsInMem:  eth.DefaultConfig.Ethash.DatasetsInMem,
-			//	DatasetsOnDisk: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-			//}, nil, false)
-		}
-	}
+
+	engine := deb.New(config.Deb, chainDb) // TODO : change concensus enine deb
+
 	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}

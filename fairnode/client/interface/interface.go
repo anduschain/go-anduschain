@@ -4,10 +4,8 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	gethType "github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/fairnode/client/types"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/otprn"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"math/big"
@@ -32,16 +30,16 @@ type Client interface {
 	BlockMakeStart() chan struct{}
 	VoteBlock() chan *fairtypes.Vote
 	FinalBlock() chan fairtypes.FinalBlock
-	GetSigner() gethType.Signer
+	GetSigner() types.Signer
 	GetCurrentNonce(addr common.Address) uint64
 
-	SaveWiningBlock(otprnHash common.Hash, block *gethType.Block)
-	GetWinningBlock(otprnHash common.Hash, hash common.Hash) *gethType.Block
+	SaveWiningBlock(otprnHash common.Hash, block *types.Block)
+	GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block
 	DelWinningBlock(otprnHash common.Hash)
 
-	StoreOtprnWidthSig(otprn *otprn.Otprn, sig []byte)
+	StoreOtprnWidthSig(otprn *types.Otprn, sig []byte)
 	DeleteStoreOtprnWidthSig()
-	GetStoreOtprnWidthSig() *otprn.Otprn
+	GetStoreOtprnWidthSig() *types.Otprn
 	GetUsingOtprnWithSig() *types.OtprnWithSig
 	GetSavedOtprnHashs() []common.Hash
 	FindOtprn(otprnHash common.Hash) *types.OtprnWithSig
