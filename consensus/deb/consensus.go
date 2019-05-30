@@ -115,6 +115,26 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	return deb
 }
 
+func NewFaker() *Deb {
+	return &Deb{}
+}
+
+func NewFakeFailer(fail uint64) *Deb {
+	return &Deb{}
+}
+
+func NewFakeDelayer(delay time.Duration) *Deb {
+	return &Deb{}
+}
+
+func NewFullFaker() *Deb {
+	return &Deb{}
+}
+
+func NewShared() *Deb {
+	return &Deb{}
+}
+
 func (c *Deb) SetSignKey(signKey *ecdsa.PrivateKey) {
 	c.privKey = signKey
 }

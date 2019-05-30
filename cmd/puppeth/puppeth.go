@@ -15,6 +15,7 @@
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 // puppeth is a command to assemble and maintain private networks.
+// TODO(hakuna) : puppeth -> puppAndusChain ( 프라이빗 네트워크 마법사로 새로 구성 예정)
 package main
 
 import (
@@ -31,7 +32,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "puppeth"
-	app.Usage = "assemble and maintain private Ethereum networks"
+	app.Usage = "assemble and maintain private Anduschain networks"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "network",

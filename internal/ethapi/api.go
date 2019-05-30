@@ -30,7 +30,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -1421,14 +1420,15 @@ func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (strin
 	return spew.Sdump(block), nil
 }
 
-// SeedHash retrieves the seed hash of a block.
-func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string, error) {
-	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
-	if block == nil {
-		return "", fmt.Errorf("block #%d not found", number)
-	}
-	return fmt.Sprintf("0x%x", ethash.SeedHash(number)), nil
-}
+// TODO(hakuna) : deprecated
+//// SeedHash retrieves the seed hash of a block.
+//func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string, error) {
+//	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
+//	if block == nil {
+//		return "", fmt.Errorf("block #%d not found", number)
+//	}
+//	return fmt.Sprintf("0x%x", ethash.SeedHash(number)), nil
+//}
 
 // PrivateDebugAPI is the collection of Ethereum APIs exposed over the private
 // debugging endpoint.

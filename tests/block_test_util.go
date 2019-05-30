@@ -22,12 +22,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -111,7 +111,7 @@ func (t *BlockTest) Run() error {
 		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", gblock.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
 	}
 
-	chain, err := core.NewBlockChain(db, nil, config, ethash.NewShared(), vm.Config{})
+	chain, err := core.NewBlockChain(db, nil, config, deb.NewShared(), vm.Config{})
 	if err != nil {
 		return err
 	}

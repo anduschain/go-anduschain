@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
@@ -436,18 +435,19 @@ func (s *Ethereum) StartMining(threads int) error {
 		if _, ok := s.engine.(*deb.Deb); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err[andus]", err)
+				log.Error("Coinbase account unavailable locally", "err[andus]", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
-
-		} else if clique, ok := s.engine.(*clique.Clique); ok {
-			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
-			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err", err)
-				return fmt.Errorf("signer missing: %v", err)
-			}
-			clique.Authorize(eb, wallet.SignHash)
 		}
+
+		//} else if clique, ok := s.engine.(*clique.Clique); ok {
+		//	wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+		//	if wallet == nil || err != nil {
+		//		log.Error("Etherbase account unavailable locally", "err", err)
+		//		return fmt.Errorf("signer missing: %v", err)
+		//	}
+		//	clique.Authorize(eb, wallet.SignHash)
+		//}
 
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
