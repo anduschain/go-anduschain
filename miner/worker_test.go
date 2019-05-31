@@ -17,6 +17,8 @@
 package miner
 
 import (
+	"github.com/anduschain/go-anduschain/core/event_type"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"testing"
 	"time"
@@ -36,7 +38,7 @@ import (
 
 var (
 	// Test chain configurations
-	testTxPoolConfig  core.TxPoolConfig
+	testTxPoolConfig  txpool.TxPoolConfig
 	ethashChainConfig *params.ChainConfig
 	cliqueChainConfig *params.ChainConfig
 
@@ -54,7 +56,7 @@ var (
 )
 
 func init() {
-	testTxPoolConfig = core.DefaultTxPoolConfig
+	testTxPoolConfig = txpool.DefaultTxPoolConfig
 	testTxPoolConfig.Journal = ""
 	ethashChainConfig = params.TestChainConfig
 	cliqueChainConfig = params.TestChainConfig
@@ -71,7 +73,7 @@ func init() {
 // testWorkerBackend implements worker.Backend interfaces and wraps all information needed during the testing.
 type testWorkerBackend struct {
 	db         ethdb.Database
-	txPool     *core.TxPool
+	txPool     *txpool.TxPool
 	chain      *core.BlockChain
 	testTxFeed event.Feed
 	uncleBlock *types.Block
@@ -97,7 +99,7 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	genesis := gspec.MustCommit(db)
 
 	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
-	txpool := core.NewTxPool(testTxPoolConfig, chainConfig, chain)
+	txpool := txpool.NewTxPool(testTxPoolConfig, chainConfig, chain)
 
 	// Generate a small n-block chain and an uncle block for it
 	if n > 0 {
@@ -125,7 +127,7 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 }
 
 func (b *testWorkerBackend) BlockChain() *core.BlockChain { return b.chain }
-func (b *testWorkerBackend) TxPool() *core.TxPool         { return b.txPool }
+func (b *testWorkerBackend) TxPool() *txpool.TxPool       { return b.txPool }
 func (b *testWorkerBackend) PostChainEvents(events []interface{}) {
 	b.chain.PostChainEvents(events, nil)
 }
@@ -276,7 +278,7 @@ func TestStreamUncleBlock(t *testing.T) {
 			t.Error("new task timeout")
 		}
 	}
-	b.PostChainEvents([]interface{}{core.ChainSideEvent{Block: b.uncleBlock}})
+	b.PostChainEvents([]interface{}{event_type.ChainSideEvent{Block: b.uncleBlock}})
 
 	select {
 	case <-taskCh:

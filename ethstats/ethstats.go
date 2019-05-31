@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 	"net"
 	"regexp"
@@ -33,7 +34,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/mclock"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/event"
@@ -59,11 +59,11 @@ const (
 type txPool interface {
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
 }
 
 type blockChain interface {
-	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
 }
 
 // Service implements an Ethereum netstats reporting daemon that pushes local
@@ -146,11 +146,11 @@ func (s *Service) loop() {
 		txpool = s.les.TxPool()
 	}
 
-	chainHeadCh := make(chan core.ChainHeadEvent, chainHeadChanSize)
+	chainHeadCh := make(chan event_type.ChainHeadEvent, chainHeadChanSize)
 	headSub := blockchain.SubscribeChainHeadEvent(chainHeadCh)
 	defer headSub.Unsubscribe()
 
-	txEventCh := make(chan core.NewTxsEvent, txChanSize)
+	txEventCh := make(chan event_type.NewTxsEvent, txChanSize)
 	txSub := txpool.SubscribeNewTxsEvent(txEventCh)
 	defer txSub.Unsubscribe()
 

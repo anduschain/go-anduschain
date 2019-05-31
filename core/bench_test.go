@@ -19,6 +19,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/core/state"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -88,7 +89,7 @@ func genValueTx(nbytes int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		toaddr := common.Address{}
 		data := make([]byte, nbytes)
-		gas, _ := IntrinsicGas(data, false, false)
+		gas, _ := state.IntrinsicGas(data, false, false)
 		tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data), types.HomesteadSigner{}, benchRootKey)
 		gen.AddTx(tx)
 	}

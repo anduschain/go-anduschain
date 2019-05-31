@@ -18,6 +18,7 @@ package core
 
 import (
 	"container/list"
+	//"github.com/anduschain/go-anduschain/pools/txpool"
 
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/ethdb"
@@ -29,8 +30,8 @@ type TestManager struct {
 	// stateManager *StateManager
 	eventMux *event.TypeMux
 
-	db         ethdb.Database
-	txPool     *TxPool
+	db ethdb.Database
+	//txPool     *txpool.TxPool
 	blockChain *BlockChain
 	Blocks     []*types.Block
 }
@@ -55,9 +56,9 @@ func (tm *TestManager) BlockChain() *BlockChain {
 	return tm.blockChain
 }
 
-func (tm *TestManager) TxPool() *TxPool {
-	return tm.txPool
-}
+//func (tm *TestManager) TxPool() *txpool.TxPool {
+//	return tm.txPool
+//}
 
 // func (tm *TestManager) StateManager() *StateManager {
 // 	return tm.stateManager

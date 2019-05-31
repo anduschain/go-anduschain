@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package core
+package txpool
 
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"math"
 	"math/big"
 	"sort"
@@ -124,7 +126,7 @@ type blockChain interface {
 	GetBlock(hash common.Hash, number uint64) *types.Block
 	StateAt(root common.Hash) (*state.StateDB, error)
 
-	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -195,7 +197,7 @@ type TxPool struct {
 	gasPrice     *big.Int
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan ChainHeadEvent
+	chainHeadCh  chan event_type.ChainHeadEvent
 	chainHeadSub event.Subscription
 	signer       types.Signer
 	mu           sync.RWMutex
@@ -234,7 +236,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		queue:       make(map[common.Address]*txList),
 		beats:       make(map[common.Address]time.Time),
 		all:         newTxLookup(),
-		chainHeadCh: make(chan ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan event_type.ChainHeadEvent, chainHeadChanSize),
 		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
 	}
 	pool.locals = newAccountSet(pool.signer)
@@ -422,7 +424,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 
 	// Inject any transactions discarded due to reorgs
 	log.Debug("Reinjecting stale transactions", "count", len(reinject))
-	senderCacher.recover(pool.signer, reinject)
+	//pools.SenderCacher.Recover(pool.signer, reinject)
 	pool.addTxsLocked(reinject, false)
 
 	// validate the pool of pending transactions, this will remove
@@ -458,7 +460,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -608,7 +610,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrUnderpriced
 	}
 
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+	intrGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
 	if err != nil {
 		return err
 	}
@@ -699,7 +701,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		log.Info("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
 		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(NewTxsEvent{types.Transactions{tx}})
+		go pool.txFeed.Send(event_type.NewTxsEvent{types.Transactions{tx}})
 
 		return old != nil, nil
 	}
@@ -1012,7 +1014,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	}
 	// Notify subsystem for new promoted transactions.
 	if len(promoted) > 0 {
-		go pool.txFeed.Send(NewTxsEvent{promoted})
+		go pool.txFeed.Send(event_type.NewTxsEvent{promoted})
 	}
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)

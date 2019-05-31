@@ -20,8 +20,10 @@ import (
 	"bytes"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -142,11 +144,11 @@ type worker struct {
 
 	// Subscriptions
 	mux          *event.TypeMux
-	txsCh        chan core.NewTxsEvent
+	txsCh        chan event_type.NewTxsEvent
 	txsSub       event.Subscription
-	chainHeadCh  chan core.ChainHeadEvent
+	chainHeadCh  chan event_type.ChainHeadEvent
 	chainHeadSub event.Subscription
-	chainSideCh  chan core.ChainSideEvent
+	chainSideCh  chan event_type.ChainSideEvent
 	chainSideSub event.Subscription
 
 	// Channels
@@ -202,9 +204,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		possibleUncles:     make(map[common.Hash]*types.Block),
 		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		pendingTasks:       make(map[common.Hash]*task),
-		txsCh:              make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
+		txsCh:              make(chan event_type.NewTxsEvent, txChanSize),
+		chainHeadCh:        make(chan event_type.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:        make(chan event_type.ChainSideEvent, chainSideChanSize),
 		newWorkCh:          make(chan *newWorkReq),
 		taskCh:             make(chan *task),
 		resultCh:           make(chan *types.Block, resultQueueSize),
@@ -693,18 +695,18 @@ func (w *worker) resultLoop() {
 				"elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			// Broadcast the block and announce chain insertion event
-			w.mux.Post(core.NewMinedBlockEvent{Block: block})
+			w.mux.Post(event_type.NewMinedBlockEvent{Block: block})
 
 			var CanonStatTy, SideStatTy bool
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
 				CanonStatTy = true
-				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, core.ChainHeadEvent{Block: block})
+				events = append(events, event_type.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+				events = append(events, event_type.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
-				events = append(events, core.ChainSideEvent{Block: block})
+				events = append(events, event_type.ChainSideEvent{Block: block})
 			}
 
 			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
@@ -885,7 +887,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			log.Trace("Gas limit exceeded for current block", "sender", from)
 			txs.Pop()
 
-		case core.ErrNonceTooLow:
+		case txpool.ErrNonceTooLow:
 			// New head notification data race between the transaction pool and miner, shift
 			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
@@ -923,7 +925,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			cpy[i] = new(types.Log)
 			*cpy[i] = *l
 		}
-		go w.mux.Post(core.PendingLogsEvent{Logs: cpy})
+		go w.mux.Post(event_type.PendingLogsEvent{Logs: cpy})
 	}
 	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
 	// than the user-specified one.

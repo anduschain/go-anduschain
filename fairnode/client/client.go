@@ -19,6 +19,7 @@ import (
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"log"
 	"math/big"
 	"net"
@@ -33,7 +34,7 @@ type FairnodeClient struct {
 	Services           map[string]_interface.ServiceFunc
 	Srv                *p2p.Server
 	CoinBasePrivateKey ecdsa.PrivateKey
-	txPool             *core.TxPool
+	txPool             *txpool.TxPool
 	BlockChain         *core.BlockChain
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
@@ -65,7 +66,7 @@ type FairnodeClient struct {
 	nat      nat.Interface
 }
 
-func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
+func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *txpool.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
 		chans:                   chans,
@@ -226,7 +227,7 @@ func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }
 func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
 func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
 
-func (fc *FairnodeClient) GetTxpool() *core.TxPool               { return fc.txPool }
+func (fc *FairnodeClient) GetTxpool() *txpool.TxPool             { return fc.txPool }
 func (fc *FairnodeClient) GetBlockChain() *core.BlockChain       { return fc.BlockChain }
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.CoinBasePrivateKey }
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }

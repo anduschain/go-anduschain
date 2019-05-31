@@ -3,6 +3,7 @@
 package eth
 
 import (
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"time"
 
@@ -37,7 +38,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		MinerGasPrice           *big.Int
 		MinerRecommit           time.Duration
 		MinerNoverify           bool
-		TxPool                  core.TxPoolConfig
+		TxPool                  txpool.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
 		DocRoot                 string `toml:"-"`
@@ -91,7 +92,7 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		MinerGasPrice           *big.Int
 		MinerRecommit           *time.Duration
 		MinerNoverify           *bool
-		TxPool                  *core.TxPoolConfig
+		TxPool                  *txpool.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
 		DocRoot                 *string `toml:"-"`

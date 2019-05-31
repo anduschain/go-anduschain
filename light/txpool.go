@@ -19,11 +19,13 @@ package light
 import (
 	"context"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/event_type"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"sync"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -54,7 +56,7 @@ type TxPool struct {
 	quit         chan bool
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan core.ChainHeadEvent
+	chainHeadCh  chan event_type.ChainHeadEvent
 	chainHeadSub event.Subscription
 	mu           sync.RWMutex
 	chain        *LightChain
@@ -94,7 +96,7 @@ func NewTxPool(config *params.ChainConfig, chain *LightChain, relay TxRelayBacke
 		pending:     make(map[common.Hash]*types.Transaction),
 		mined:       make(map[common.Hash][]*types.Transaction),
 		quit:        make(chan bool),
-		chainHeadCh: make(chan core.ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan event_type.ChainHeadEvent, chainHeadChanSize),
 		chain:       chain,
 		relay:       relay,
 		odr:         chain.Odr(),
@@ -325,7 +327,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of core.NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -349,32 +351,32 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 	// Validate the transaction sender and it's sig. Throw
 	// if the from fields is invalid.
 	if from, err = types.Sender(pool.signer, tx); err != nil {
-		return core.ErrInvalidSender
+		return txpool.ErrInvalidSender
 	}
 	// Last but not least check for nonce errors
 	currentState := pool.currentState(ctx)
 	if n := currentState.GetNonce(from); n > tx.Nonce() {
-		return core.ErrNonceTooLow
+		return txpool.ErrNonceTooLow
 	}
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
 	header := pool.chain.GetHeaderByHash(pool.head)
 	if header.GasLimit < tx.Gas() {
-		return core.ErrGasLimit
+		return txpool.ErrGasLimit
 	}
 
 	// Transactions can't be negative. This may never happen
 	// using RLP decoded transactions but may occur if you create
 	// a transaction using the RPC for example.
 	if tx.Value().Sign() < 0 {
-		return core.ErrNegativeValue
+		return txpool.ErrNegativeValue
 	}
 
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if b := currentState.GetBalance(from); b.Cmp(tx.Cost()) < 0 {
-		return core.ErrInsufficientFunds
+		return txpool.ErrInsufficientFunds
 	}
 
 	// Should supply enough intrinsic gas
@@ -383,7 +385,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 		return err
 	}
 	if tx.Gas() < gas {
-		return core.ErrIntrinsicGas
+		return txpool.ErrIntrinsicGas
 	}
 	return currentState.Error()
 }
@@ -414,7 +416,7 @@ func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 		// Notify the subscribers. This event is posted in a goroutine
 		// because it's possible that somewhere during the post "Remove transaction"
 		// gets called which will then wait for the global tx pool lock and deadlock.
-		go self.txFeed.Send(core.NewTxsEvent{Txs: types.Transactions{tx}})
+		go self.txFeed.Send(event_type.NewTxsEvent{Txs: types.Transactions{tx}})
 	}
 
 	// Print a log message if low enough level is set

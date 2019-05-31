@@ -19,10 +19,10 @@ package filters
 import (
 	"context"
 	"errors"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/ethdb"
@@ -38,9 +38,9 @@ type Backend interface {
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
 
-	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
-	SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription
-	SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
+	SubscribeChainEvent(ch chan<- event_type.ChainEvent) event.Subscription
+	SubscribeRemovedLogsEvent(ch chan<- event_type.RemovedLogsEvent) event.Subscription
 	SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription
 
 	BloomStatus() (uint64, uint64)

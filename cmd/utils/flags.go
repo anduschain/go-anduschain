@@ -48,6 +48,7 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/nat"
 	"github.com/anduschain/go-anduschain/p2p/netutil"
 	"github.com/anduschain/go-anduschain/params"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
 	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
@@ -253,12 +254,12 @@ var (
 	TxPoolJournalFlag = cli.StringFlag{
 		Name:  "txpool.journal",
 		Usage: "Disk journal for local transaction to survive node restarts",
-		Value: core.DefaultTxPoolConfig.Journal,
+		Value: txpool.DefaultTxPoolConfig.Journal,
 	}
 	TxPoolRejournalFlag = cli.DurationFlag{
 		Name:  "txpool.rejournal",
 		Usage: "Time interval to regenerate the local transaction journal",
-		Value: core.DefaultTxPoolConfig.Rejournal,
+		Value: txpool.DefaultTxPoolConfig.Rejournal,
 	}
 	TxPoolPriceLimitFlag = cli.Uint64Flag{
 		Name:  "txpool.pricelimit",
@@ -1038,7 +1039,7 @@ func setGPO(ctx *cli.Context, cfg *gasprice.Config) {
 	}
 }
 
-func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
+func setTxPool(ctx *cli.Context, cfg *txpool.TxPoolConfig) {
 	if ctx.GlobalIsSet(TxPoolLocalsFlag.Name) {
 		locals := strings.Split(ctx.GlobalString(TxPoolLocalsFlag.Name), ",")
 		for _, account := range locals {

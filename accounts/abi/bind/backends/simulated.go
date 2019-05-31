@@ -27,6 +27,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -463,16 +464,16 @@ func (fb *filterBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*ty
 	return logs, nil
 }
 
-func (fb *filterBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+func (fb *filterBackend) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
 	return event.NewSubscription(func(quit <-chan struct{}) error {
 		<-quit
 		return nil
 	})
 }
-func (fb *filterBackend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
+func (fb *filterBackend) SubscribeChainEvent(ch chan<- event_type.ChainEvent) event.Subscription {
 	return fb.bc.SubscribeChainEvent(ch)
 }
-func (fb *filterBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
+func (fb *filterBackend) SubscribeRemovedLogsEvent(ch chan<- event_type.RemovedLogsEvent) event.Subscription {
 	return fb.bc.SubscribeRemovedLogsEvent(ch)
 }
 func (fb *filterBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {

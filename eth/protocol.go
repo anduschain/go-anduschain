@@ -18,11 +18,11 @@ package eth
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"io"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -110,7 +110,7 @@ type txPool interface {
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
 }
 
 type joinTxPool interface {
@@ -123,7 +123,7 @@ type joinTxPool interface {
 
 	// SubscribeNewJoinTxsEvent should return an event subscription of
 	// NewJoinTxsEvent and send events to the given channel.
-	SubscribeNewJoinTxsEvent(chan<- core.NewJoinTxsEvent) event.Subscription
+	SubscribeNewJoinTxsEvent(chan<- event_type.NewJoinTxsEvent) event.Subscription
 }
 
 // statusData is the network packet for the status message.

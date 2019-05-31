@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
@@ -87,10 +88,10 @@ type ProtocolManager struct {
 	SubProtocols []p2p.Protocol
 
 	eventMux *event.TypeMux
-	txsCh    chan core.NewTxsEvent
+	txsCh    chan event_type.NewTxsEvent
 	txsSub   event.Subscription
 
-	joinTxsCh chan core.NewJoinTxsEvent
+	joinTxsCh chan event_type.NewJoinTxsEvent
 
 	minedBlockSub *event.TypeMuxSubscription
 
@@ -221,16 +222,16 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
 	// broadcast transactions
-	pm.txsCh = make(chan core.NewTxsEvent, txChanSize)
+	pm.txsCh = make(chan event_type.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
-	pm.joinTxsCh = make(chan core.NewJoinTxsEvent, joinTxChanSize)
+	pm.joinTxsCh = make(chan event_type.NewJoinTxsEvent, joinTxChanSize)
 	//pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh) // FIXME(hakuna) : join tx pool
 	go pm.joinTxBroadcastLoop()
 
 	// broadcast mined blocks
-	pm.minedBlockSub = pm.eventMux.Subscribe(core.NewMinedBlockEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(event_type.NewMinedBlockEvent{})
 	go pm.minedBroadcastLoop()
 
 	// start sync handlers
@@ -850,7 +851,7 @@ func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.JoinTransactions) {
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
-		if ev, ok := obj.Data.(core.NewMinedBlockEvent); ok {
+		if ev, ok := obj.Data.(event_type.NewMinedBlockEvent); ok {
 			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
 			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
 		}

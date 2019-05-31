@@ -22,6 +22,7 @@ package eth
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 	"sort"
 	"sync"
@@ -124,7 +125,7 @@ func (p *testTxPool) Pending() (map[common.Address]types.Transactions, error) {
 	return batches, nil
 }
 
-func (p *testTxPool) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+func (p *testTxPool) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
 	return p.txFeed.Subscribe(ch)
 }
 

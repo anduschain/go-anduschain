@@ -19,6 +19,7 @@ package core
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -901,7 +902,7 @@ func TestLogReorgs(t *testing.T) {
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
 	defer blockchain.Stop()
 
-	rmLogsCh := make(chan RemovedLogsEvent)
+	rmLogsCh := make(chan event_type.RemovedLogsEvent)
 	blockchain.SubscribeRemovedLogsEvent(rmLogsCh)
 	chain, _, _ := GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), db, 2, func(i int, gen *BlockGen) {
 		if i == 1 {
@@ -963,7 +964,7 @@ func TestReorgSideEvent(t *testing.T) {
 		}
 		gen.AddTx(tx)
 	})
-	chainSideCh := make(chan ChainSideEvent, 64)
+	chainSideCh := make(chan event_type.ChainSideEvent, 64)
 	blockchain.SubscribeChainSideEvent(chainSideCh)
 	if _, err := blockchain.InsertChain(replacementBlocks); err != nil {
 		t.Fatalf("failed to insert chain: %v", err)

@@ -22,6 +22,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"sync/atomic"
 	"time"
 
@@ -39,7 +40,7 @@ import (
 // Backend wraps all methods required for mining.
 type Backend interface {
 	BlockChain() *core.BlockChain
-	TxPool() *core.TxPool
+	TxPool() *txpool.TxPool
 }
 
 // TODO : andus >> DebBackend interface type 추가 ( andus deb 전용 인터페이스 )

@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 )
 
@@ -24,7 +25,7 @@ type Client interface {
 
 	GetCurrentBalance() *big.Int
 	GetCurrentJoinNonce() uint64
-	GetTxpool() *core.TxPool
+	GetTxpool() *txpool.TxPool
 	GetBlockChain() *core.BlockChain
 	GetCoinbsePrivKey() *ecdsa.PrivateKey
 	BlockMakeStart() chan struct{}

@@ -21,6 +21,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/event_type"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"net"
 	"sync"
@@ -29,7 +31,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/mclock"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -80,12 +81,12 @@ type BlockChain interface {
 	GetHeaderByNumber(number uint64) *types.Header
 	GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64)
 	Genesis() *types.Block
-	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
 }
 
 type txPool interface {
 	AddRemotes(txs []*types.Transaction) []error
-	Status(hashes []common.Hash) []core.TxStatus
+	Status(hashes []common.Hash) []txpool.TxStatus
 }
 
 type ProtocolManager struct {
@@ -1050,7 +1051,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		stats := pm.txStatus(hashes)
 		for i, stat := range stats {
-			if stat.Status == core.TxStatusUnknown {
+			if stat.Status == txpool.TxStatusUnknown {
 				if errs := pm.txpool.AddRemotes([]*types.Transaction{req.Txs[i]}); errs[0] != nil {
 					stats[i].Error = errs[0].Error()
 					continue
@@ -1166,9 +1167,9 @@ func (pm *ProtocolManager) txStatus(hashes []common.Hash) []txStatus {
 		stats[i].Status = stat
 
 		// If the transaction is unknown to the pool, try looking it up locally
-		if stat == core.TxStatusUnknown {
+		if stat == txpool.TxStatusUnknown {
 			if block, number, index := rawdb.ReadTxLookupEntry(pm.chainDb, hashes[i]); block != (common.Hash{}) {
-				stats[i].Status = core.TxStatusIncluded
+				stats[i].Status = txpool.TxStatusIncluded
 				stats[i].Lookup = &rawdb.TxLookupEntry{BlockHash: block, BlockIndex: number, Index: index}
 			}
 		}
