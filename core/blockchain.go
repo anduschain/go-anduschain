@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core/event_type"
+	"github.com/anduschain/go-anduschain/pools"
 	"io"
 	"math/big"
 	"sync"
@@ -1130,7 +1131,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
-	//pools.SenderCacher.RecoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
+	pools.SenderCacher.RecoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
+
 	//
 	// Iterate over the blocks and insert when the verifier permits
 	for i, block := range chain {

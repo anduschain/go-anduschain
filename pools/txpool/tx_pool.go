@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/event_type"
+	"github.com/anduschain/go-anduschain/pools"
 	"math"
 	"math/big"
 	"sort"
@@ -424,7 +425,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 
 	// Inject any transactions discarded due to reorgs
 	log.Debug("Reinjecting stale transactions", "count", len(reinject))
-	//pools.SenderCacher.Recover(pool.signer, reinject)
+	pools.SenderCacher.Recover(pool.signer, reinject)
 	pool.addTxsLocked(reinject, false)
 
 	// validate the pool of pending transactions, this will remove
