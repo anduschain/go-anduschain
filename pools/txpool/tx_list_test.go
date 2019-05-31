@@ -37,15 +37,15 @@ func TestStrictTxListAdd(t *testing.T) {
 	// Insert the transactions in a random order
 	list := newTxList(true)
 	for _, v := range rand.Perm(len(txs)) {
-		Add(txs[v], PriceBump)
+		list.Add(txs[v], DefaultTxPoolConfig.PriceBump)
 	}
 	// Verify internal state
-	if len(items) != len(txs) {
-		t.Errorf("transaction count mismatch: have %d, want %d", len(items), len(txs))
+	if len(list.txs.items) != len(txs) {
+		t.Errorf("transaction count mismatch: have %d, want %d", len(list.txs.items), len(txs))
 	}
 	for i, tx := range txs {
-		if items[tx.Nonce()] != tx {
-			t.Errorf("item %d: transaction mismatch: have %v, want %v", i, items[tx.Nonce()], tx)
+		if list.txs.items[tx.Nonce()] != tx {
+			t.Errorf("item %d: transaction mismatch: have %v, want %v", i, list.txs.items[tx.Nonce()], tx)
 		}
 	}
 }
