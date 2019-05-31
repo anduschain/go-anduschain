@@ -18,6 +18,7 @@ package core
 
 import (
 	"crypto/ecdsa"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -25,7 +26,6 @@ import (
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -52,12 +52,15 @@ func BenchmarkInsertChain_valueTx_100kB_memdb(b *testing.B) {
 func BenchmarkInsertChain_valueTx_100kB_diskdb(b *testing.B) {
 	benchInsertChain(b, true, genValueTx(100*1024))
 }
-func BenchmarkInsertChain_uncles_memdb(b *testing.B) {
-	benchInsertChain(b, false, genUncles)
-}
-func BenchmarkInsertChain_uncles_diskdb(b *testing.B) {
-	benchInsertChain(b, true, genUncles)
-}
+
+// TODO(hakuna) : deprecated
+//func BenchmarkInsertChain_uncles_memdb(b *testing.B) {
+//	benchInsertChain(b, false, genUncles)
+//}
+//func BenchmarkInsertChain_uncles_diskdb(b *testing.B) {
+//	benchInsertChain(b, true, genUncles)
+//}
+
 func BenchmarkInsertChain_ring200_memdb(b *testing.B) {
 	benchInsertChain(b, false, genTxRing(200))
 }
@@ -134,17 +137,18 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 	}
 }
 
+// TODO(hakuna) : deprecated
 // genUncles generates blocks with two uncle headers.
-func genUncles(i int, gen *BlockGen) {
-	if i >= 6 {
-		b2 := gen.PrevBlock(i - 6).Header()
-		b2.Extra = []byte("foo")
-		gen.AddUncle(b2)
-		b3 := gen.PrevBlock(i - 6).Header()
-		b3.Extra = []byte("bar")
-		gen.AddUncle(b3)
-	}
-}
+//func genUncles(i int, gen *BlockGen) {
+//	if i >= 6 {
+//		b2 := gen.PrevBlock(i - 6).Header()
+//		b2.Extra = []byte("foo")
+//		gen.AddUncle(b2)
+//		b3 := gen.PrevBlock(i - 6).Header()
+//		b3.Extra = []byte("bar")
+//		gen.AddUncle(b3)
+//	}
+//}
 
 func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	// Create the database in memory or in a temporary directory.
@@ -171,11 +175,11 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 		Alloc:  GenesisAlloc{benchRootAddr: {Balance: benchRootFunds}},
 	}
 	genesis := gspec.MustCommit(db)
-	chain, _ := GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, b.N, gen)
+	chain, _, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.
-	chainman, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{})
+	chainman, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
 	defer chainman.Stop()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -227,11 +231,11 @@ func makeChainForBench(db ethdb.Database, full bool, count uint64) {
 	var hash common.Hash
 	for n := uint64(0); n < count; n++ {
 		header := &types.Header{
-			Coinbase:    common.Address{},
-			Number:      big.NewInt(int64(n)),
-			ParentHash:  hash,
-			Difficulty:  big.NewInt(1),
-			UncleHash:   types.EmptyUncleHash,
+			Coinbase:   common.Address{},
+			Number:     big.NewInt(int64(n)),
+			ParentHash: hash,
+			Difficulty: big.NewInt(1),
+			//UncleHash:   types.EmptyUncleHash,
 			TxHash:      types.EmptyRootHash,
 			ReceiptHash: types.EmptyRootHash,
 		}
@@ -287,7 +291,7 @@ func benchReadChain(b *testing.B, full bool, count uint64) {
 		if err != nil {
 			b.Fatalf("error opening database at %v: %v", dir, err)
 		}
-		chain, err := NewBlockChain(db, nil, params.TestChainConfig, ethash.NewFaker(), vm.Config{})
+		chain, err := NewBlockChain(db, nil, params.TestChainConfig, deb.NewFaker(), vm.Config{})
 		if err != nil {
 			b.Fatalf("error creating chain: %v", err)
 		}

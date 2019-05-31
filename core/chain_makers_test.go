@@ -18,9 +18,9 @@ package core
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math/big"
 
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -50,7 +50,7 @@ func ExampleGenerateChain() {
 	// each block and adds different features to gen based on the
 	// block index.
 	signer := types.HomesteadSigner{}
-	chain, _ := GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, 5, func(i int, gen *BlockGen) {
+	chain, _, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
 			// In block 1, addr1 sends addr2 some ether.
@@ -71,15 +71,15 @@ func ExampleGenerateChain() {
 			// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
 			b2 := gen.PrevBlock(1).Header()
 			b2.Extra = []byte("foo")
-			gen.AddUncle(b2)
+			//gen.AddUncle(b2)
 			b3 := gen.PrevBlock(2).Header()
 			b3.Extra = []byte("foo")
-			gen.AddUncle(b3)
+			//gen.AddUncle(b3)
 		}
 	})
 
 	// Import the chain. This runs all block validation rules.
-	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{})
+	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
 	defer blockchain.Stop()
 
 	if i, err := blockchain.InsertChain(chain); err != nil {
