@@ -88,10 +88,10 @@ type ProtocolManager struct {
 	SubProtocols []p2p.Protocol
 
 	eventMux *event.TypeMux
-	txsCh    chan event_type.NewTxsEvent
+	txsCh    chan eventType.NewTxsEvent
 	txsSub   event.Subscription
 
-	joinTxsCh chan event_type.NewJoinTxsEvent
+	joinTxsCh chan eventType.NewJoinTxsEvent
 
 	minedBlockSub *event.TypeMuxSubscription
 
@@ -222,16 +222,16 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
 	// broadcast transactions
-	pm.txsCh = make(chan event_type.NewTxsEvent, txChanSize)
+	pm.txsCh = make(chan eventType.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
-	pm.joinTxsCh = make(chan event_type.NewJoinTxsEvent, joinTxChanSize)
+	pm.joinTxsCh = make(chan eventType.NewJoinTxsEvent, joinTxChanSize)
 	//pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh) // FIXME(hakuna) : join tx pool
 	go pm.joinTxBroadcastLoop()
 
 	// broadcast mined blocks
-	pm.minedBlockSub = pm.eventMux.Subscribe(event_type.NewMinedBlockEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(eventType.NewMinedBlockEvent{})
 	go pm.minedBroadcastLoop()
 
 	// start sync handlers
@@ -851,7 +851,7 @@ func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.JoinTransactions) {
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
-		if ev, ok := obj.Data.(event_type.NewMinedBlockEvent); ok {
+		if ev, ok := obj.Data.(eventType.NewMinedBlockEvent); ok {
 			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
 			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
 		}

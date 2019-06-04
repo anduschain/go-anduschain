@@ -81,7 +81,7 @@ type BlockChain interface {
 	GetHeaderByNumber(number uint64) *types.Header
 	GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64)
 	Genesis() *types.Block
-	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription
 }
 
 type txPool interface {

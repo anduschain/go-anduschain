@@ -144,11 +144,11 @@ type worker struct {
 
 	// Subscriptions
 	mux          *event.TypeMux
-	txsCh        chan event_type.NewTxsEvent
+	txsCh        chan eventType.NewTxsEvent
 	txsSub       event.Subscription
-	chainHeadCh  chan event_type.ChainHeadEvent
+	chainHeadCh  chan eventType.ChainHeadEvent
 	chainHeadSub event.Subscription
-	chainSideCh  chan event_type.ChainSideEvent
+	chainSideCh  chan eventType.ChainSideEvent
 	chainSideSub event.Subscription
 
 	// Channels
@@ -204,9 +204,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		possibleUncles:     make(map[common.Hash]*types.Block),
 		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		pendingTasks:       make(map[common.Hash]*task),
-		txsCh:              make(chan event_type.NewTxsEvent, txChanSize),
-		chainHeadCh:        make(chan event_type.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:        make(chan event_type.ChainSideEvent, chainSideChanSize),
+		txsCh:              make(chan eventType.NewTxsEvent, txChanSize),
+		chainHeadCh:        make(chan eventType.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:        make(chan eventType.ChainSideEvent, chainSideChanSize),
 		newWorkCh:          make(chan *newWorkReq),
 		taskCh:             make(chan *task),
 		resultCh:           make(chan *types.Block, resultQueueSize),
@@ -695,18 +695,18 @@ func (w *worker) resultLoop() {
 				"elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			// Broadcast the block and announce chain insertion event
-			w.mux.Post(event_type.NewMinedBlockEvent{Block: block})
+			w.mux.Post(eventType.NewMinedBlockEvent{Block: block})
 
 			var CanonStatTy, SideStatTy bool
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
 				CanonStatTy = true
-				events = append(events, event_type.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, event_type.ChainHeadEvent{Block: block})
+				events = append(events, eventType.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+				events = append(events, eventType.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
-				events = append(events, event_type.ChainSideEvent{Block: block})
+				events = append(events, eventType.ChainSideEvent{Block: block})
 			}
 
 			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
@@ -925,7 +925,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			cpy[i] = new(types.Log)
 			*cpy[i] = *l
 		}
-		go w.mux.Post(event_type.PendingLogsEvent{Logs: cpy})
+		go w.mux.Post(eventType.PendingLogsEvent{Logs: cpy})
 	}
 	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
 	// than the user-specified one.

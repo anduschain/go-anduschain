@@ -38,9 +38,9 @@ type Backend interface {
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
 
-	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
-	SubscribeChainEvent(ch chan<- event_type.ChainEvent) event.Subscription
-	SubscribeRemovedLogsEvent(ch chan<- event_type.RemovedLogsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
+	SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription
+	SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription
 	SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription
 
 	BloomStatus() (uint64, uint64)

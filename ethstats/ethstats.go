@@ -59,11 +59,11 @@ const (
 type txPool interface {
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
 }
 
 type blockChain interface {
-	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription
 }
 
 // Service implements an Ethereum netstats reporting daemon that pushes local
@@ -146,11 +146,11 @@ func (s *Service) loop() {
 		txpool = s.les.TxPool()
 	}
 
-	chainHeadCh := make(chan event_type.ChainHeadEvent, chainHeadChanSize)
+	chainHeadCh := make(chan eventType.ChainHeadEvent, chainHeadChanSize)
 	headSub := blockchain.SubscribeChainHeadEvent(chainHeadCh)
 	defer headSub.Unsubscribe()
 
-	txEventCh := make(chan event_type.NewTxsEvent, txChanSize)
+	txEventCh := make(chan eventType.NewTxsEvent, txChanSize)
 	txSub := txpool.SubscribeNewTxsEvent(txEventCh)
 	defer txSub.Unsubscribe()
 

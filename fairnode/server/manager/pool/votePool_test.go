@@ -3,7 +3,7 @@ package pool
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/ethdb"
@@ -15,10 +15,10 @@ import (
 func TestNewVotePool(t *testing.T) {
 
 	var (
-		testdb    = ethdb.NewMemDatabase()
-		gspec     = &core.Genesis{Config: params.TestChainConfig}
-		genesis   = gspec.MustCommit(testdb)
-		blocks, _ = core.GenerateChain(params.TestChainConfig, genesis, ethash.NewFaker(), testdb, 8, nil)
+		testdb       = ethdb.NewMemDatabase()
+		gspec        = &core.Genesis{Config: params.TestChainConfig}
+		genesis      = gspec.MustCommit(testdb)
+		blocks, _, _ = core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
 	)
 
 	//headers := make([]*types.Header, len(blocks))
@@ -32,10 +32,10 @@ func TestNewVotePool(t *testing.T) {
 	addr2 := "0x47dffCF319F986E658B61287644b1b6127D2b9c3"
 
 	votes := []Vote{
-		{hash, blocks[0].Hash(), types.Voter{common.HexToAddress(addr1), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3")}}, // 없음
-		{hash, blocks[0].Hash(), types.Voter{common.HexToAddress(addr2), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3")}}, // 있음 ,중복 아님
-		{hash, blocks[1].Hash(), types.Voter{common.HexToAddress(addr1), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3")}}, // 없음
-		{hash, blocks[1].Hash(), types.Voter{common.HexToAddress(addr2), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3")}}, // 있음 ,중복 아님
+		{hash, blocks[0].Hash(), types.Voter{common.HexToAddress(addr1), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3"), "diffcult"}}, // 없음
+		{hash, blocks[0].Hash(), types.Voter{common.HexToAddress(addr2), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3"), "diffcult"}}, // 있음 ,중복 아님
+		{hash, blocks[1].Hash(), types.Voter{common.HexToAddress(addr1), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3"), "diffcult"}}, // 없음
+		{hash, blocks[1].Hash(), types.Voter{common.HexToAddress(addr2), []byte("0x47dffCF319F986E658B61287644b1b6127D2b9c3"), "diffcult"}}, // 있음 ,중복 아님
 	}
 
 	for i := range votes {

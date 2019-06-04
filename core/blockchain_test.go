@@ -902,7 +902,7 @@ func TestLogReorgs(t *testing.T) {
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
 	defer blockchain.Stop()
 
-	rmLogsCh := make(chan event_type.RemovedLogsEvent)
+	rmLogsCh := make(chan eventType.RemovedLogsEvent)
 	blockchain.SubscribeRemovedLogsEvent(rmLogsCh)
 	chain, _, _ := GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), db, 2, func(i int, gen *BlockGen) {
 		if i == 1 {
@@ -964,7 +964,7 @@ func TestReorgSideEvent(t *testing.T) {
 		}
 		gen.AddTx(tx)
 	})
-	chainSideCh := make(chan event_type.ChainSideEvent, 64)
+	chainSideCh := make(chan eventType.ChainSideEvent, 64)
 	blockchain.SubscribeChainSideEvent(chainSideCh)
 	if _, err := blockchain.InsertChain(replacementBlocks); err != nil {
 		t.Fatalf("failed to insert chain: %v", err)

@@ -1254,7 +1254,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 			coalescedLogs = append(coalescedLogs, logs...)
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, event_type.ChainEvent{block, block.Hash(), logs})
+			events = append(events, eventType.ChainEvent{block, block.Hash(), logs})
 			lastCanon = block
 
 			// Only count canonical blocks for GC processing time
@@ -1265,7 +1265,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 				common.PrettyDuration(time.Since(bstart)), "getTxs", len(block.Transactions()), "joinTxs", len(block.JoinTransactions()), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, event_type.ChainSideEvent{block})
+			events = append(events, eventType.ChainSideEvent{block})
 		}
 		stats.processed++
 		stats.usedGas += usedGas
@@ -1275,7 +1275,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
-		events = append(events, event_type.ChainHeadEvent{lastCanon})
+		events = append(events, eventType.ChainHeadEvent{lastCanon})
 	}
 	return 0, events, coalescedLogs, nil
 }
@@ -1443,12 +1443,12 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	batch.Write()
 
 	if len(deletedLogs) > 0 {
-		go bc.rmLogsFeed.Send(event_type.RemovedLogsEvent{deletedLogs})
+		go bc.rmLogsFeed.Send(eventType.RemovedLogsEvent{deletedLogs})
 	}
 	if len(oldChain) > 0 {
 		go func() {
 			for _, block := range oldChain {
-				bc.chainSideFeed.Send(event_type.ChainSideEvent{Block: block})
+				bc.chainSideFeed.Send(eventType.ChainSideEvent{Block: block})
 			}
 		}()
 	}
@@ -1466,13 +1466,13 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 	}
 	for _, event := range events {
 		switch ev := event.(type) {
-		case event_type.ChainEvent:
+		case eventType.ChainEvent:
 			bc.chainFeed.Send(ev)
 
-		case event_type.ChainHeadEvent:
+		case eventType.ChainHeadEvent:
 			bc.chainHeadFeed.Send(ev)
 
-		case event_type.ChainSideEvent:
+		case eventType.ChainSideEvent:
 			bc.chainSideFeed.Send(ev)
 		}
 	}
@@ -1653,22 +1653,22 @@ func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
 
 // SubscribeRemovedLogsEvent registers a subscription of RemovedLogsEvent.
-func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- event_type.RemovedLogsEvent) event.Subscription {
+func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription {
 	return bc.scope.Track(bc.rmLogsFeed.Subscribe(ch))
 }
 
 // SubscribeChainEvent registers a subscription of ChainEvent.
-func (bc *BlockChain) SubscribeChainEvent(ch chan<- event_type.ChainEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription {
 	return bc.scope.Track(bc.chainFeed.Subscribe(ch))
 }
 
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
-func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription {
 	return bc.scope.Track(bc.chainHeadFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
-func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- event_type.ChainSideEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- eventType.ChainSideEvent) event.Subscription {
 	return bc.scope.Track(bc.chainSideFeed.Subscribe(ch))
 }
 

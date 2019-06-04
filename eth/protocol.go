@@ -110,7 +110,7 @@ type txPool interface {
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- event_type.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
 }
 
 type joinTxPool interface {
@@ -123,7 +123,7 @@ type joinTxPool interface {
 
 	// SubscribeNewJoinTxsEvent should return an event subscription of
 	// NewJoinTxsEvent and send events to the given channel.
-	SubscribeNewJoinTxsEvent(chan<- event_type.NewJoinTxsEvent) event.Subscription
+	SubscribeNewJoinTxsEvent(chan<- eventType.NewJoinTxsEvent) event.Subscription
 }
 
 // statusData is the network packet for the status message.

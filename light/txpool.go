@@ -56,7 +56,7 @@ type TxPool struct {
 	quit         chan bool
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan event_type.ChainHeadEvent
+	chainHeadCh  chan eventType.ChainHeadEvent
 	chainHeadSub event.Subscription
 	mu           sync.RWMutex
 	chain        *LightChain
@@ -96,7 +96,7 @@ func NewTxPool(config *params.ChainConfig, chain *LightChain, relay TxRelayBacke
 		pending:     make(map[common.Hash]*types.Transaction),
 		mined:       make(map[common.Hash][]*types.Transaction),
 		quit:        make(chan bool),
-		chainHeadCh: make(chan event_type.ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan eventType.ChainHeadEvent, chainHeadChanSize),
 		chain:       chain,
 		relay:       relay,
 		odr:         chain.Odr(),
@@ -327,7 +327,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of core.NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- eventType.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -416,7 +416,7 @@ func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 		// Notify the subscribers. This event is posted in a goroutine
 		// because it's possible that somewhere during the post "Remove transaction"
 		// gets called which will then wait for the global tx pool lock and deadlock.
-		go self.txFeed.Send(event_type.NewTxsEvent{Txs: types.Transactions{tx}})
+		go self.txFeed.Send(eventType.NewTxsEvent{Txs: types.Transactions{tx}})
 	}
 
 	// Print a log message if low enough level is set
