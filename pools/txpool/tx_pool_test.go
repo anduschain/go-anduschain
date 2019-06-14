@@ -65,7 +65,7 @@ func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, error) {
 	return bc.statedb, nil
 }
 
-func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription {
+func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription {
 	return bc.chainHeadFeed.Subscribe(ch)
 }
 
@@ -119,7 +119,7 @@ func validateTxPoolInternals(pool *TxPool) error {
 
 // validateEvents checks that the correct number of transaction addition events
 // were fired on the pool's event feed.
-func validateEvents(events chan event_type.NewTxsEvent, count int) error {
+func validateEvents(events chan eventType.NewTxsEvent, count int) error {
 	var received []*types.Transaction
 
 	for len(received) < count {
@@ -676,7 +676,7 @@ func TestTransactionGapFilling(t *testing.T) {
 	pool.currentState.AddBalance(account, big.NewInt(1000000))
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, testTxPoolConfig.AccountQueue+5)
+	events := make(chan eventType.NewTxsEvent, testTxPoolConfig.AccountQueue+5)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 
@@ -927,7 +927,7 @@ func TestTransactionPendingLimiting(t *testing.T) {
 	pool.currentState.AddBalance(account, big.NewInt(1000000))
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, testTxPoolConfig.AccountQueue+5)
+	events := make(chan eventType.NewTxsEvent, testTxPoolConfig.AccountQueue+5)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 
@@ -1147,7 +1147,7 @@ func TestTransactionPoolRepricing(t *testing.T) {
 	defer pool.Stop()
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, 32)
+	events := make(chan eventType.NewTxsEvent, 32)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 
@@ -1334,7 +1334,7 @@ func TestTransactionPoolUnderpricing(t *testing.T) {
 	defer pool.Stop()
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, 32)
+	events := make(chan eventType.NewTxsEvent, 32)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 
@@ -1440,7 +1440,7 @@ func TestTransactionPoolStableUnderpricing(t *testing.T) {
 	defer pool.Stop()
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, 32)
+	events := make(chan eventType.NewTxsEvent, 32)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 
@@ -1502,7 +1502,7 @@ func TestTransactionReplacement(t *testing.T) {
 	defer pool.Stop()
 
 	// Keep track of transaction events to ensure all executables get announced
-	events := make(chan event_type.NewTxsEvent, 32)
+	events := make(chan eventType.NewTxsEvent, 32)
 	sub := pool.txFeed.Subscribe(events)
 	defer sub.Unsubscribe()
 

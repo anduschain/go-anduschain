@@ -79,12 +79,6 @@ var (
 	// than some meaningful limit a user might use. This is not a consensus error
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
-
-	ErrJoinNonceNotMmatch  = errors.New("JOIN NONCE 값이 올바르지 않습니다.")
-	ErrBlockNumberNotMatch = errors.New("JOIN TX의 생성할 블록 넘버와 맞지 않습니다")
-	ErrTicketPriceNotMatch = errors.New("JOIN TX의 참가비가 올바르지 않습니다.")
-	ErrFairNodeSigNotMatch = errors.New("패어 노드의 서명이 올바르지 않습니다")
-	ErrDecodeOtprn         = errors.New("OTPRN DECODING ERROR")
 )
 
 var (
@@ -119,16 +113,6 @@ const (
 	TxStatusPending
 	TxStatusIncluded
 )
-
-// blockChain provides the state of blockchain and current gas limit to do
-// some pre checks in tx pool and event subscribers.
-type blockChain interface {
-	CurrentBlock() *types.Block
-	GetBlock(hash common.Hash, number uint64) *types.Block
-	StateAt(root common.Hash) (*state.StateDB, error)
-
-	SubscribeChainHeadEvent(ch chan<- event_type.ChainHeadEvent) event.Subscription
-}
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
 type TxPoolConfig struct {
@@ -194,11 +178,11 @@ func (config *TxPoolConfig) sanitize() TxPoolConfig {
 type TxPool struct {
 	config       TxPoolConfig
 	chainconfig  *params.ChainConfig
-	chain        blockChain
+	chain        pools.BlockChain
 	gasPrice     *big.Int
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan event_type.ChainHeadEvent
+	chainHeadCh  chan eventType.ChainHeadEvent
 	chainHeadSub event.Subscription
 	signer       types.Signer
 	mu           sync.RWMutex
@@ -223,7 +207,7 @@ type TxPool struct {
 
 // NewTxPool creates a new transaction pool to gather, sort and filter inbound
 // transactions from the network.
-func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain blockChain) *TxPool {
+func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain pools.BlockChain) *TxPool {
 	// Sanitize the input to ensure no vulnerable gas prices are set
 	config = (&config).sanitize()
 
@@ -237,10 +221,11 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		queue:       make(map[common.Address]*txList),
 		beats:       make(map[common.Address]time.Time),
 		all:         newTxLookup(),
-		chainHeadCh: make(chan event_type.ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan eventType.ChainHeadEvent, chainHeadChanSize),
 		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
 	}
-	pool.locals = newAccountSet(pool.signer)
+
+	//pool.locals = pools.NewAccountSet(pools.Signer) // FIXME(hakuna) : pool method로 교체할것
 	for _, addr := range config.Locals {
 		log.Info("Setting new local account", "address", addr)
 		pool.locals.add(addr)
@@ -260,13 +245,24 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		}
 	}
 	// Subscribe events from blockchain
+	//pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
+
+	// Start the event loop and return
+	//pool.wg.Add(1)
+	//go pool.loop()
+
+	return pool
+}
+
+func (pool *TxPool) Start() {
+	// Subscribe events from blockchain
 	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
 
 	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()
 
-	return pool
+	log.Info("Transaction pool stared")
 }
 
 // loop is the transaction pool's main event loop, waiting for and reacting to
@@ -461,7 +457,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- event_type.NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- eventType.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -702,7 +698,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		log.Info("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
 		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(event_type.NewTxsEvent{types.Transactions{tx}})
+		go pool.txFeed.Send(eventType.NewTxsEvent{types.Transactions{tx}})
 
 		return old != nil, nil
 	}
@@ -1015,7 +1011,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	}
 	// Notify subsystem for new promoted transactions.
 	if len(promoted) > 0 {
-		go pool.txFeed.Send(event_type.NewTxsEvent{promoted})
+		go pool.txFeed.Send(eventType.NewTxsEvent{promoted})
 	}
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)
