@@ -35,7 +35,7 @@ func TestDAOForkRangeExtradata(t *testing.T) {
 	db := ethdb.NewMemDatabase()
 	gspec := new(Genesis)
 	genesis := gspec.MustCommit(db)
-	prefix, _, _ := GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), db, int(forkBlock.Int64()-1), func(i int, gen *BlockGen) {})
+	prefix, _ := GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), db, int(forkBlock.Int64()-1), func(i int, gen *BlockGen) {})
 
 	// Create the concurrent, conflicting two nodes
 	proDb := ethdb.NewMemDatabase()
@@ -82,12 +82,12 @@ func TestDAOForkRangeExtradata(t *testing.T) {
 		if err := bc.stateCache.TrieDB().Commit(bc.CurrentHeader().Root, true); err != nil {
 			t.Fatalf("failed to commit contra-fork head for expansion: %v", err)
 		}
-		blocks, _, _ = GenerateChain(&proConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+		blocks, _ = GenerateChain(&proConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 		if _, err := conBc.InsertChain(blocks); err == nil {
 			t.Fatalf("contra-fork chain accepted pro-fork block: %v", blocks[0])
 		}
 		// Create a proper no-fork block for the contra-forker
-		blocks, _, _ = GenerateChain(&conConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+		blocks, _ = GenerateChain(&conConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 		if _, err := conBc.InsertChain(blocks); err != nil {
 			t.Fatalf("contra-fork chain didn't accepted no-fork block: %v", err)
 		}
@@ -107,12 +107,12 @@ func TestDAOForkRangeExtradata(t *testing.T) {
 		if err := bc.stateCache.TrieDB().Commit(bc.CurrentHeader().Root, true); err != nil {
 			t.Fatalf("failed to commit pro-fork head for expansion: %v", err)
 		}
-		blocks, _, _ = GenerateChain(&conConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+		blocks, _ = GenerateChain(&conConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 		if _, err := proBc.InsertChain(blocks); err == nil {
 			t.Fatalf("pro-fork chain accepted contra-fork block: %v", blocks[0])
 		}
 		// Create a proper pro-fork block for the pro-forker
-		blocks, _, _ = GenerateChain(&proConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+		blocks, _ = GenerateChain(&proConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 		if _, err := proBc.InsertChain(blocks); err != nil {
 			t.Fatalf("pro-fork chain didn't accepted pro-fork block: %v", err)
 		}
@@ -133,7 +133,7 @@ func TestDAOForkRangeExtradata(t *testing.T) {
 	if err := bc.stateCache.TrieDB().Commit(bc.CurrentHeader().Root, true); err != nil {
 		t.Fatalf("failed to commit contra-fork head for expansion: %v", err)
 	}
-	blocks, _, _ = GenerateChain(&proConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+	blocks, _ = GenerateChain(&proConf, conBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 	if _, err := conBc.InsertChain(blocks); err != nil {
 		t.Fatalf("contra-fork chain didn't accept pro-fork block post-fork: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestDAOForkRangeExtradata(t *testing.T) {
 	if err := bc.stateCache.TrieDB().Commit(bc.CurrentHeader().Root, true); err != nil {
 		t.Fatalf("failed to commit pro-fork head for expansion: %v", err)
 	}
-	blocks, _, _ = GenerateChain(&conConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
+	blocks, _ = GenerateChain(&conConf, proBc.CurrentBlock(), deb.NewFaker(), db, 1, func(i int, gen *BlockGen) {})
 	if _, err := proBc.InsertChain(blocks); err != nil {
 		t.Fatalf("pro-fork chain didn't accept contra-fork block post-fork: %v", err)
 	}

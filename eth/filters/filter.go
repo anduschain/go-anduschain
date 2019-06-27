@@ -19,7 +19,6 @@ package filters
 import (
 	"context"
 	"errors"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -38,9 +37,9 @@ type Backend interface {
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
 
-	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
-	SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription
-	SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
+	SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription
+	SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription
 	SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription
 
 	BloomStatus() (uint64, uint64)

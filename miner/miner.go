@@ -20,9 +20,9 @@ package miner
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/fairnode/client"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"sync/atomic"
 	"time"
 

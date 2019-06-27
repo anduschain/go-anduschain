@@ -22,6 +22,8 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 type ErrorType int
@@ -334,39 +336,37 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
-func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB,
-	genTxs []*types.Transaction, joinTxs []*types.JoinTransaction, genReceipts []*types.Receipt, joinReceipts []*types.JoinReceipt) (*types.Block, error) {
+func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs *types.TransactionsSet, receipts []*types.Receipt) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
 	//자기것은 joinnonce 를 0으로 만든다.
 	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
-	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, genTxs, header.Coinbase)
+	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
-	//header.UncleHash = types.CalcUncleHash(nil) // TODO : deprecated
-
-	block := types.NewBlock(header, genTxs, joinTxs, genReceipts, joinReceipts)
+	block := types.NewBlock(header, Txs, receipts)
 
 	// Assemble and return the final block for sealing
 	return block, nil
 }
 
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
-func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, genTxs []*types.Transaction, coinbase common.Address) {
-	signer := types.NewEIP155Signer(chainid)
-	for i := range genTxs {
-		if genTxs[i].To() != nil {
-			if fairutil.CmpAddress(*genTxs[i].To(), c.fairAddr) {
-				from, _ := types.Sender(signer, genTxs[i])
+func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, Txs *types.TransactionsSet, coinbase common.Address) {
+	signer := txType.NewEIP155Signer(chainid)
+	for i := range Txs.All() {
+		tx := Txs.All()[i]
+		if tx.To() != nil {
+			if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
+				from, _ := tx.Sender(signer)
 				state.AddJoinNonce(from)
 				c.logger.Debug("Add JOIN_NONCE", "addr", from.String())
 
 				//채굴자 보상
-				state.AddBalance(coinbase, genTxs[i].Value())
+				state.AddBalance(coinbase, tx.Value())
 				c.logger.Debug("Add Reword", "addr", coinbase.String())
 
 				//패어 노드 차감
-				state.SubBalance(c.fairAddr, genTxs[i].Value())
+				state.SubBalance(c.fairAddr, tx.Value())
 				c.logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
 			}
 		}

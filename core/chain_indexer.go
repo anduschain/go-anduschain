@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,7 +54,7 @@ type ChainIndexerChain interface {
 	CurrentHeader() *types.Header
 
 	// SubscribeChainEvent subscribes to new head header notifications.
-	SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription
+	SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription
 }
 
 // ChainIndexer does a post-processing job for equally sized sections of the
@@ -143,7 +142,7 @@ func (c *ChainIndexer) AddCheckpoint(section uint64, shead common.Hash) {
 // cascading background processing. Children do not need to be started, they
 // are notified about new events by their parents.
 func (c *ChainIndexer) Start(chain ChainIndexerChain) {
-	events := make(chan eventType.ChainEvent, 10)
+	events := make(chan types.ChainEvent, 10)
 	sub := chain.SubscribeChainEvent(events)
 
 	go c.eventLoop(chain.CurrentHeader(), events, sub)
@@ -191,7 +190,7 @@ func (c *ChainIndexer) Close() error {
 // eventLoop is a secondary - optional - event loop of the indexer which is only
 // started for the outermost indexer to push chain head events into a processing
 // queue.
-func (c *ChainIndexer) eventLoop(currentHeader *types.Header, events chan eventType.ChainEvent, sub event.Subscription) {
+func (c *ChainIndexer) eventLoop(currentHeader *types.Header, events chan types.ChainEvent, sub event.Subscription) {
 	// Mark the chain indexer as active, requiring an additional teardown
 	atomic.StoreUint32(&c.active, 1)
 

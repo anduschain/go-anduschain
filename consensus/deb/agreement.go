@@ -1,15 +1,12 @@
 package deb
 
 import (
-	"errors"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"time"
 )
@@ -83,44 +80,46 @@ func (c *Deb) ValidationVoteBlock(chain consensus.ChainReader, voteblock *types.
 }
 
 func (c *Deb) ValidationBlockWidthJoinTx(chainid *big.Int, block *types.Block, joinNonce uint64) error {
-	signer := types.NewEIP155Signer(chainid)
-	txs := block.Transactions()
-	var datas types.JoinTxData
-	var isMyJoinTx bool
-	for i := range txs {
-		if txs[i].To() != nil {
-			if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
-				err := rlp.DecodeBytes(txs[i].Data(), &datas)
-				if err != nil {
-					return errDecodeTx
-				}
+	//signer := tx.NewEIP155Signer(chainid)
+	//txs := block.Transactions()
+	//var datas types.JoinTxData
+	//var isMyJoinTx bool
+	//for i := range txs {
+	//	if txs[i].To() != nil {
+	//		if fairutil.CmpAddress(*txs[i].To(), c.fairAddr) {
+	//			err := rlp.DecodeBytes(txs[i].Data(), &datas)
+	//			if err != nil {
+	//				return errDecodeTx
+	//			}
+	//
+	//			//참가비확인
+	//			if txs[i].Value().Cmp(config.CalPirce(int64(datas.Otprn.Fee))) != 0 {
+	//				return errTxTicketPriceNotAvailable
+	//			}
+	//
+	//			//내 jointx가 있는지 확인 && otprn
+	//			if c.otprnHash == datas.Otprn.HashOtprn() && datas.NextBlockNum == block.Number().Uint64() {
+	//				from, _ := types.Sender(signer, txs[i])
+	//				if fairutil.CmpAddress(from, block.Header().Coinbase) {
+	//					if datas.JoinNonce == joinNonce {
+	//						isMyJoinTx = true
+	//					} else {
+	//						c.logger.Debug("JOIN_NONCE", "joinTx", datas.JoinNonce, "current", joinNonce)
+	//						return errors.New("JoinNonce가 다르다")
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	//
+	//if isMyJoinTx {
+	//	return nil
+	//}
+	//
+	//return errNotInJoinTX
 
-				//참가비확인
-				if txs[i].Value().Cmp(config.CalPirce(int64(datas.Otprn.Fee))) != 0 {
-					return errTxTicketPriceNotAvailable
-				}
-
-				//내 jointx가 있는지 확인 && otprn
-				if c.otprnHash == datas.Otprn.HashOtprn() && datas.NextBlockNum == block.Number().Uint64() {
-					from, _ := types.Sender(signer, txs[i])
-					if fairutil.CmpAddress(from, block.Header().Coinbase) {
-						if datas.JoinNonce == joinNonce {
-							isMyJoinTx = true
-						} else {
-							c.logger.Debug("JOIN_NONCE", "joinTx", datas.JoinNonce, "current", joinNonce)
-							return errors.New("JoinNonce가 다르다")
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if isMyJoinTx {
-		return nil
-	}
-
-	return errNotInJoinTX
+	return nil
 }
 
 // 투표블록 서명 검증하고 난이도 검증

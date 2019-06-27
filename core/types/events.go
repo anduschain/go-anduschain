@@ -14,38 +14,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package eventType
+package types
 
 import (
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.
-type NewTxsEvent struct{ Txs []*types.Transaction }
+type NewTxsEvent struct{ Txs []Transaction }
 
 // NewJoinTxsEvent is posted when a batch of join transactions enter the join transaction pool.
-type NewJoinTxsEvent struct{ JTxs []*types.JoinTransaction }
+type NewJoinTxsEvent struct{ JoinTxs []Transaction }
 
 // PendingLogsEvent is posted pre mining and notifies of pending logs.
 type PendingLogsEvent struct {
-	Logs []*types.Log
+	Logs []*Log
 }
 
 // NewMinedBlockEvent is posted when a block has been imported.
-type NewMinedBlockEvent struct{ Block *types.Block }
+type NewMinedBlockEvent struct{ Block *Block }
 
 // RemovedLogsEvent is posted when a reorg happens
-type RemovedLogsEvent struct{ Logs []*types.Log }
+type RemovedLogsEvent struct{ Logs []*Log }
 
 type ChainEvent struct {
-	Block *types.Block
+	Block *Block
 	Hash  common.Hash
-	Logs  []*types.Log
+	Logs  []*Log
 }
 
 type ChainSideEvent struct {
-	Block *types.Block
+	Block *Block
 }
 
-type ChainHeadEvent struct{ Block *types.Block }
+type ChainHeadEvent struct{ Block *Block }

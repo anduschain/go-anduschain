@@ -123,7 +123,7 @@ func TestSetupGenesis(t *testing.T) {
 				bc, _ := NewBlockChain(db, nil, oldcustomg.Config, deb.NewFullFaker(), vm.Config{})
 				defer bc.Stop()
 
-				blocks, _, _ := GenerateChain(oldcustomg.Config, genesis, deb.NewFaker(), db, 4, nil)
+				blocks, _ := GenerateChain(oldcustomg.Config, genesis, deb.NewFaker(), db, 4, nil)
 				bc.InsertChain(blocks)
 				bc.CurrentBlock()
 				// This should return a compatibility error.

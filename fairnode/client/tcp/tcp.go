@@ -4,18 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
+	gethTypes "github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
-	ftype "github.com/anduschain/go-anduschain/fairnode/client/types"
+	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/transport"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
+	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"math/big"
 	"net"
+	"time"
 )
 
 var (
@@ -28,7 +31,7 @@ type Tcp struct {
 	SAddrTCP   *net.TCPAddr
 	LaddrTCP   *net.TCPAddr
 	manger     _interface.Client
-	services   map[common.Hash]map[string]ftype.Goroutine
+	services   map[common.Hash]map[string]types.Goroutine
 	IsRuning   map[common.Hash]bool
 	logger     logger.Logger
 	leagueList []string
@@ -50,7 +53,7 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 		SAddrTCP: SAddrTCP,
 		LaddrTCP: LaddrTCP,
 		manger:   manger,
-		services: make(map[common.Hash]map[string]ftype.Goroutine),
+		services: make(map[common.Hash]map[string]types.Goroutine),
 		IsRuning: make(map[common.Hash]bool),
 		logger:   logger.New("fairclient", "TCP"),
 	}
@@ -60,8 +63,8 @@ func New(faiorServerString string, clientString string, manger _interface.Client
 
 func (t *Tcp) Start(otprnHash common.Hash) error {
 
-	t.services[otprnHash] = make(map[string]ftype.Goroutine)
-	t.services[otprnHash]["tcploop"] = ftype.Goroutine{t.tcpLoop, make(chan struct{})}
+	t.services[otprnHash] = make(map[string]types.Goroutine)
+	t.services[otprnHash]["tcploop"] = types.Goroutine{t.tcpLoop, make(chan struct{})}
 
 	if !t.IsRuning[otprnHash] {
 		for name, serv := range t.services[otprnHash] {
@@ -176,7 +179,7 @@ Exit:
 	}
 }
 
-func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.OtprnWithSig) error {
+func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethTypes.OtprnWithSig) error {
 	msg, err := rw.ReadMsg()
 	if err != nil {
 		return err
@@ -312,7 +315,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *types.Ot
 	return nil
 }
 
-func (t *Tcp) checkBalance(otprn *types.Otprn) (bool, *big.Int) {
+func (t *Tcp) checkBalance(otprn *gethTypes.Otprn) (bool, *big.Int) {
 	currentBalance := t.manger.GetCurrentBalance()
 	epoch := big.NewInt(int64(otprn.Epoch))
 
@@ -323,26 +326,35 @@ func (t *Tcp) checkBalance(otprn *types.Otprn) (bool, *big.Int) {
 	return currentBalance.Cmp(totalPrice) > 0, price
 }
 
-func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *types.Otprn, sig []byte) error {
+func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *gethTypes.Otprn, sig []byte) error {
+	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
 	if ok, price := t.checkBalance(otprn); ok {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		jtd := types.NewJoinTxData(currentJoinNonce, otprn, sig, t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64()+1)
-
-		// FIXME(hakuna) : join tx nonce로 변경
+		data := types.JoinTxData{
+			JoinNonce:    currentJoinNonce,
+			Otprn:        otprn,
+			FairNodeSig:  sig,
+			TimeStamp:    time.Now(),
+			NextBlockNum: t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64() + 1,
+		}
+		joinTxData, err := rlp.EncodeToBytes(&data)
+		if err != nil {
+			t.logger.Error("makeJoinTx EncodeToBytes", "error", err)
+		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
-		jtx := types.NewJoinTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, jtd)
-		signedJoinTx, err := types.SignJoinTx(jtx, t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+		// joinNonce Fairnode에게 보내는 Tx
+		tx, err := txType.SignTx(
+			txType.NewGenTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
+		t.logger.Info("Maked JoinTx", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash(), "fee", price)
 
-		t.logger.Info("Maked JoinTx", "blockNum", jtd.NextBlockNum, "joinNonce", jtd.JoinNonce, "joinTxHash", signedJoinTx.Hash(), "fee", price)
-
-		////add To txPool // TODO(hakuna) : join txpool로 변경해야함
-		//if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
-		//	return errorAddTxPool
-		//}
+		//add To txPool
+		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {
+			return errorAddTxPool
+		}
 
 		t.logger.Debug("Current Peer", "count", t.manger.GetP2PServer().PeerCount())
 

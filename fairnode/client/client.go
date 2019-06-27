@@ -9,6 +9,8 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
@@ -19,7 +21,6 @@ import (
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"log"
 	"math/big"
 	"net"
@@ -51,7 +52,7 @@ type FairnodeClient struct {
 	WinningBlockVoteStartCh chan struct{} //  투표 시작 채널
 
 	chans  fairtypes.Channals
-	Signer types.EIP155Signer
+	Signer txType.EIP155Signer
 
 	mux sync.Mutex
 
@@ -79,7 +80,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *txpool.TxPoo
 		StartCh:                 make(chan struct{}),
 		WinningBlockVoteStartCh: make(chan struct{}),
 		Services:                make(map[string]_interface.ServiceFunc),
-		Signer:                  types.NewEIP155Signer(blockChain.Config().ChainID),
+		Signer:                  txType.NewEIP155Signer(blockChain.Config().ChainID),
 		wBlocks:                 make(map[common.Hash]map[common.Hash]*types.Block),
 		IsBlockMine:             false,
 		OtprnQueue:              queue.NewQueue(1),
@@ -233,7 +234,7 @@ func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.Co
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }
 func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote       { return fc.chans.GetWinningBlockCh() }
 func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.chans.GetFinalBlockCh() }
-func (fc *FairnodeClient) GetSigner() types.Signer               { return fc.Signer }
+func (fc *FairnodeClient) GetSigner() txType.Signer              { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 

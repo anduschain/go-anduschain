@@ -3,13 +3,13 @@
 package eth
 
 import (
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 )

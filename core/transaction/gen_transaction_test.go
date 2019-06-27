@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package types
+package transaction
 
 import (
 	"bytes"
@@ -31,14 +31,14 @@ import (
 // The values in those tests are from the Transaction Tests
 // at github.com/ethereum/tests.
 var (
-	emptyTx = NewTransaction(
+	emptyTx = NewGenTransaction(
 		0,
 		common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87"),
 		big.NewInt(0), 0, big.NewInt(0),
 		nil,
 	)
 
-	rightvrsTx, _ = NewTransaction(
+	rightvrsTx, _ = NewGenTransaction(
 		3,
 		common.HexToAddress("b94f5374fce5edbc8e2a8697c15331677e6ebf0b"),
 		big.NewInt(10),
@@ -72,8 +72,8 @@ func TestTransactionEncode(t *testing.T) {
 	}
 }
 
-func decodeTx(data []byte) (*Transaction, error) {
-	var tx Transaction
+func decodeTx(data []byte) (*GenTransaction, error) {
+	var tx GenTransaction
 	t, err := &tx, rlp.Decode(bytes.NewReader(data), &tx)
 
 	return t, err
@@ -93,7 +93,7 @@ func TestRecipientEmpty(t *testing.T) {
 		t.FailNow()
 	}
 
-	from, err := Sender(HomesteadSigner{}, tx)
+	from, err := tx.Sender(HomesteadSigner{})
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -112,7 +112,7 @@ func TestRecipientNormal(t *testing.T) {
 		t.FailNow()
 	}
 
-	from, err := Sender(HomesteadSigner{}, tx)
+	from, err := tx.Sender(HomesteadSigner{})
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -139,7 +139,7 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 	for start, key := range keys {
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 		for i := 0; i < 25; i++ {
-			tx, _ := SignTx(NewTransaction(uint64(start+i), common.Address{}, big.NewInt(100), 100, big.NewInt(int64(start+i)), nil), signer, key)
+			tx, _ := SignTx(NewGenTransaction(uint64(start+i), common.Address{}, big.NewInt(100), 100, big.NewInt(int64(start+i)), nil), signer, key)
 			groups[addr] = append(groups[addr], tx)
 		}
 	}
@@ -155,11 +155,11 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 		t.Errorf("expected %d transactions, found %d", 25*25, len(txs))
 	}
 	for i, txi := range txs {
-		fromi, _ := Sender(signer, txi)
+		fromi, _ := txi.Sender(signer)
 
 		// Make sure the nonce order is valid
 		for j, txj := range txs[i+1:] {
-			fromj, _ := Sender(signer, txj)
+			fromj, _ := txj.Sender(signer)
 
 			if fromi == fromj && txi.Nonce() > txj.Nonce() {
 				t.Errorf("invalid nonce ordering: tx #%d (A=%x N=%v) < tx #%d (A=%x N=%v)", i, fromi[:4], txi.Nonce(), i+j, fromj[:4], txj.Nonce())
@@ -169,10 +169,15 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 		// If the next tx has different from account, the price must be lower than the current one
 		if i+1 < len(txs) {
 			next := txs[i+1]
-			fromNext, _ := Sender(signer, next)
-			if fromi != fromNext && txi.GasPrice().Cmp(next.GasPrice()) < 0 {
-				t.Errorf("invalid gasprice ordering: tx #%d (A=%x P=%v) < tx #%d (A=%x P=%v)", i, fromi[:4], txi.GasPrice(), i+1, fromNext[:4], next.GasPrice())
+			fromNext, _ := next.Sender(signer)
+
+			gtx, _ := txi.(*GenTransaction)
+			nextGtx, _ := next.(*GenTransaction)
+
+			if fromi != fromNext && gtx.GasPrice().Cmp(nextGtx.GasPrice()) < 0 {
+				t.Errorf("invalid gasprice ordering: tx #%d (A=%x P=%v) < tx #%d (A=%x P=%v)", i, fromi[:4], gtx.GasPrice(), i+1, fromNext[:4], nextGtx.GasPrice())
 			}
+
 		}
 	}
 }
@@ -186,35 +191,37 @@ func TestTransactionJSON(t *testing.T) {
 	signer := NewEIP155Signer(common.Big1)
 
 	for i := uint64(0); i < 25; i++ {
-		var tx *Transaction
+		var gtx *GenTransaction
 		switch i % 2 {
 		case 0:
-			tx = NewTransaction(i, common.Address{1}, common.Big0, 1, common.Big2, []byte("abcdef"))
+			gtx = NewGenTransaction(i, common.Address{1}, common.Big0, 1, common.Big2, []byte("abcdef"))
 		case 1:
-			tx = NewContractCreation(i, common.Big0, 1, common.Big2, []byte("abcdef"))
+			gtx = NewContractCreation(i, common.Big0, 1, common.Big2, []byte("abcdef"))
 		}
 
-		tx, err := SignTx(tx, signer, key)
+		tx, err := SignTx(gtx, signer, key)
 		if err != nil {
 			t.Fatalf("could not sign transaction: %v", err)
 		}
 
-		data, err := json.Marshal(tx)
+		genT, _ := tx.(*GenTransaction)
+
+		data, err := json.Marshal(genT)
 		if err != nil {
 			t.Errorf("json.Marshal failed: %v", err)
 		}
 
-		var parsedTx *Transaction
+		var parsedTx *GenTransaction
 		if err := json.Unmarshal(data, &parsedTx); err != nil {
 			t.Errorf("json.Unmarshal failed: %v", err)
 		}
 
 		// compare nonce, price, gaslimit, recipient, amount, payload, V, R, S
-		if tx.Hash() != parsedTx.Hash() {
+		if genT.Hash() != parsedTx.Hash() {
 			t.Errorf("parsed tx differs from original tx, want %v, got %v", tx, parsedTx)
 		}
-		if tx.ChainId().Cmp(parsedTx.ChainId()) != 0 {
-			t.Errorf("invalid chain id, want %d, got %d", tx.ChainId(), parsedTx.ChainId())
+		if genT.ChainId().Cmp(parsedTx.ChainId()) != 0 {
+			t.Errorf("invalid chain id, want %d, got %d", genT.ChainId(), parsedTx.ChainId())
 		}
 	}
 }

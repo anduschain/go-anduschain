@@ -100,15 +100,6 @@ func CreateBloom(receipts Receipts) Bloom {
 	return BytesToBloom(bin.Bytes())
 }
 
-func CreateJoinBloom(joinReceipts JoinReceipts) Bloom {
-	bin := new(big.Int)
-	for _, joinReceipt := range joinReceipts {
-		bin.Or(bin, LogsBloom(joinReceipt.Logs))
-	}
-
-	return BytesToBloom(bin.Bytes())
-}
-
 func LogsBloom(logs []*Log) *big.Int {
 	bin := new(big.Int)
 	for _, log := range logs {

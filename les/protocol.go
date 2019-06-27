@@ -23,7 +23,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/pools/txpool"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"io"
 	"math/big"
 

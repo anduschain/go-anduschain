@@ -123,9 +123,8 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 // corresponding to the specified block hashes.
 func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 	var (
-		txs     [][]*types.Transaction
-		joinTxs [][]*types.JoinTransaction
-		voters  [][]*types.Voter
+		txs    []*types.TransactionsSet
+		voters [][]*types.Voter
 	)
 	for _, hash := range hashes {
 		block := rawdb.ReadBlock(p.db, hash, *p.hc.GetBlockNumber(hash))
@@ -133,7 +132,7 @@ func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 		txs = append(txs, block.Transactions())
 		voters = append(voters, block.Voters())
 	}
-	p.dl.DeliverBodies(p.id, txs, joinTxs, voters)
+	p.dl.DeliverBodies(p.id, txs, voters)
 	return nil
 }
 
@@ -141,19 +140,14 @@ func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 // receipts corresponding to the specified block hashes.
 func (p *FakePeer) RequestReceipts(hashes []common.Hash) error {
 	receipts := struct {
-		genReceipts  [][]*types.Receipt
-		joinReceipts [][]*types.JoinReceipt
+		receipts [][]*types.Receipt
 	}{}
 
 	for _, hash := range hashes {
-		receipts.genReceipts = append(receipts.genReceipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
+		receipts.receipts = append(receipts.receipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
 	}
 
-	for _, hash := range hashes {
-		receipts.joinReceipts = append(receipts.joinReceipts, rawdb.ReadJoinReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
-	}
-
-	p.dl.DeliverReceipts(p.id, receipts.genReceipts, receipts.joinReceipts)
+	p.dl.DeliverReceipts(p.id, receipts.receipts)
 	return nil
 }
 

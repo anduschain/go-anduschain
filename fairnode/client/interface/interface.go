@@ -4,11 +4,12 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/nat"
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 )
 
@@ -31,7 +32,7 @@ type Client interface {
 	BlockMakeStart() chan struct{}
 	VoteBlock() chan *fairtypes.Vote
 	FinalBlock() chan fairtypes.FinalBlock
-	GetSigner() types.Signer
+	GetSigner() txType.Signer
 	GetCurrentNonce(addr common.Address) uint64
 
 	SaveWiningBlock(otprnHash common.Hash, block *types.Block)

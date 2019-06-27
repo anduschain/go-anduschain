@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/core/event_type"
-	"github.com/anduschain/go-anduschain/pools"
 	"io"
 	"math/big"
 	"sync"
@@ -35,6 +33,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -629,19 +628,6 @@ func (bc *BlockChain) GetBlocksFromHash(hash common.Hash, n int) (blocks []*type
 	return
 }
 
-// TODO : deprecated uncle
-// GetUnclesInChain retrieves all the uncles from a given block backwards until
-// a specific distance is reached.
-//func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.Header {
-//	//uncles := []*types.Header{}
-//	//for i := 0; block != nil && i < length; i++ {
-//	//	uncles = append(uncles, block.Uncles()...)
-//	//	block = bc.GetBlock(block.ParentHash(), block.NumberU64()-1)
-//	//}
-//	//return uncles
-//	return nil
-//}
-
 // TrieNode retrieves a blob of data associated with a trie node (or code hash)
 // either from ephemeral in-memory cache, or from persistent storage.
 func (bc *BlockChain) TrieNode(hash common.Hash) ([]byte, error) {
@@ -743,60 +729,22 @@ func (bc *BlockChain) Rollback(chain []common.Hash) {
 
 // SetReceiptsData computes all the non-consensus fields of the receipts
 func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts types.Receipts) error {
-	signer := types.MakeSigner(config, block.Number())
+	signer := txType.MakeSigner(config, block.Number())
 
 	transactions, logIndex := block.Transactions(), uint(0)
-	if len(transactions) != len(receipts) {
+	if transactions.Len() != len(receipts) {
 		return errors.New("transaction and receipt count mismatch")
 	}
 
 	for j := 0; j < len(receipts); j++ {
 		// The transaction hash can be retrieved from the transaction itself
-		receipts[j].TxHash = transactions[j].Hash()
+		receipts[j].TxHash = transactions.All()[j].Hash()
 
 		// The contract address can be derived from the transaction itself
-		if transactions[j].To() == nil {
+		if transactions.All()[j].To() == nil {
 			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := types.Sender(signer, transactions[j])
-			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
-		}
-		// The used gas can be calculated based on previous receipts
-		if j == 0 {
-			receipts[j].GasUsed = receipts[j].CumulativeGasUsed
-		} else {
-			receipts[j].GasUsed = receipts[j].CumulativeGasUsed - receipts[j-1].CumulativeGasUsed
-		}
-		// The derived log fields can simply be set from the block and transaction
-		for k := 0; k < len(receipts[j].Logs); k++ {
-			receipts[j].Logs[k].BlockNumber = block.NumberU64()
-			receipts[j].Logs[k].BlockHash = block.Hash()
-			receipts[j].Logs[k].TxHash = receipts[j].TxHash
-			receipts[j].Logs[k].TxIndex = uint(j)
-			receipts[j].Logs[k].Index = logIndex
-			logIndex++
-		}
-	}
-	return nil
-}
-
-// SetJoinReceiptsData computes all the non-consensus fields of the receipts
-func SetJoinReceiptsData(config *params.ChainConfig, block *types.Block, receipts types.JoinReceipts) error {
-	signer := types.MakeSigner(config, block.Number())
-
-	jtxs, logIndex := block.JoinTransactions(), uint(0)
-	if len(jtxs) != len(receipts) {
-		return errors.New("transaction and receipt count mismatch")
-	}
-
-	for j := 0; j < len(receipts); j++ {
-		// The transaction hash can be retrieved from the transaction itself
-		receipts[j].TxHash = jtxs[j].Hash()
-
-		// The contract address can be derived from the transaction itself
-		if jtxs[j].To() == nil {
-			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := types.Sender(signer, jtxs[j].Transaction)
-			receipts[j].ContractAddress = crypto.CreateAddress(from, jtxs[j].Nonce())
+			from, _ := transactions.All()[j].Sender(signer)
+			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions.All()[j].Nonce())
 		}
 		// The used gas can be calculated based on previous receipts
 		if j == 0 {
@@ -819,7 +767,7 @@ func SetJoinReceiptsData(config *params.ChainConfig, block *types.Block, receipt
 
 // InsertReceiptChain attempts to complete an already existing header chain with
 // transaction and receipt data.
-func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChain []types.Receipts, joinRceiptChain []types.JoinReceipts) (int, error) {
+func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain []types.Receipts) (int, error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -840,8 +788,8 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChai
 		batch = bc.db.NewBatch()
 	)
 	for i, block := range blockChain {
-		receipts := genReceiptChain[i]
-		joinReceipts := joinRceiptChain[i]
+		receipts := receiptChain[i]
+
 		// Short circuit insertion if shutting down or processing failed
 		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 			return 0, nil
@@ -860,17 +808,10 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, genReceiptChai
 			return i, fmt.Errorf("failed to set receipts data: %v", err)
 		}
 
-		// TODO : add
-		if err := SetJoinReceiptsData(bc.chainConfig, block, joinReceipts); err != nil {
-			return i, fmt.Errorf("failed to set receipts data: %v", err)
-		}
-
 		// Write all the data out into the database
 		rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
 		rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receipts)
-		rawdb.WriteJoinReceipts(batch, block.Hash(), block.NumberU64(), joinReceipts) // TODO : add
 		rawdb.WriteTxLookupEntries(batch, block)
-		rawdb.WriteJoinTxLookupEntries(batch, block) // TODO : add
 
 		stats.processed++
 
@@ -929,7 +870,7 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 }
 
 // WriteBlockWithState writes the block and all associated state to the database.
-func (bc *BlockChain) WriteBlockWithState(block *types.Block, genReceipts []*types.Receipt, joinReceipts []*types.JoinReceipt, state *state.StateDB) (status WriteStatus, err error) {
+func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1017,8 +958,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, genReceipts []*typ
 
 	// Write other block data using a batch.
 	batch := bc.db.NewBatch()
-	rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), genReceipts)
-	rawdb.WriteJoinReceipts(batch, block.Hash(), block.NumberU64(), joinReceipts)
+	rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receipts)
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
@@ -1131,7 +1071,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
-	pools.SenderCacher.RecoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
+	//txpool.SenderCacher.RecoverFromBlocks(txType.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
 
 	//
 	// Iterate over the blocks and insert when the verifier permits
@@ -1143,7 +1083,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[block.Hash()] {
-			bc.reportBlock(block, nil, nil, ErrBlacklistedHash)
+			bc.reportBlock(block, nil, ErrBlacklistedHash)
 			return i, events, coalescedLogs, ErrBlacklistedHash
 		}
 		// Wait for the block's verification to complete
@@ -1212,7 +1152,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			}
 
 		case err != nil:
-			bc.reportBlock(block, nil, nil, err)
+			bc.reportBlock(block, nil, err)
 			return i, events, coalescedLogs, err
 		}
 		// Create a new statedb using the parent block and report an
@@ -1229,32 +1169,32 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		// TODO : andus >> 스테이트 처리... joinNonce
 		// Process block using the parent state as reference point.
-		genReceipts, joinReceipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
+		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
-			bc.reportBlock(block, genReceipts, joinReceipts, err)
+			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, parent, state, genReceipts, joinReceipts, usedGas)
+		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		if err != nil {
-			bc.reportBlock(block, genReceipts, joinReceipts, err)
+			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
 		proctime := time.Since(bstart)
 
 		// Write the block to the chain and get the status.
-		status, err := bc.WriteBlockWithState(block, genReceipts, joinReceipts, state)
+		status, err := bc.WriteBlockWithState(block, receipts, state)
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
 		switch status {
 		case CanonStatTy:
 			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(),
-				"genTxs", len(block.Transactions()), "joinTxs", len(block.JoinTransactions()), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
+				"Txs", block.Transactions().Len(), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			coalescedLogs = append(coalescedLogs, logs...)
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, eventType.ChainEvent{block, block.Hash(), logs})
+			events = append(events, types.ChainEvent{block, block.Hash(), logs})
 			lastCanon = block
 
 			// Only count canonical blocks for GC processing time
@@ -1262,10 +1202,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash(), "diff", block.Difficulty(), "elapsed",
-				common.PrettyDuration(time.Since(bstart)), "getTxs", len(block.Transactions()), "joinTxs", len(block.JoinTransactions()), "gas", block.GasUsed())
+				common.PrettyDuration(time.Since(bstart)), "Txs", block.Transactions().Len(), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, eventType.ChainSideEvent{block})
+			events = append(events, types.ChainSideEvent{block})
 		}
 		stats.processed++
 		stats.usedGas += usedGas
@@ -1275,7 +1215,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
-		events = append(events, eventType.ChainHeadEvent{lastCanon})
+		events = append(events, types.ChainHeadEvent{lastCanon})
 	}
 	return 0, events, coalescedLogs, nil
 }
@@ -1303,11 +1243,11 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 	// If we're at the last block of the batch or report period reached, log
 	if index == len(chain)-1 || elapsed >= statsReportLimit {
 		var (
-			end             = chain[index]
-			genTxs, joinTxs = countTransactions(chain[st.lastIndex : index+1])
+			end = chain[index]
+			Txs = countTransactions(chain[st.lastIndex : index+1])
 		)
 		context := []interface{}{
-			"blocks", st.processed, "genTxs", genTxs, "joinTxs", joinTxs, "mgas", float64(st.usedGas) / 1000000,
+			"blocks", st.processed, "Txs", Txs, "mgas", float64(st.usedGas) / 1000000,
 			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
 			"number", end.Number(), "hash", end.Hash(), "cache", cache,
 		}
@@ -1323,13 +1263,11 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 	}
 }
 
-// TODO : add - join tx
-func countTransactions(chain []*types.Block) (c int, j int) {
+func countTransactions(chain []*types.Block) (c int) {
 	for _, b := range chain {
-		c += len(b.Transactions())
-		j += len(b.JoinTransactions())
+		c += b.Transactions().Len()
 	}
-	return c, j
+	return c
 }
 
 // reorgs takes two blocks, an old chain and a new chain and will reconstruct the blocks and inserts them
@@ -1359,15 +1297,6 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 					deletedLogs = append(deletedLogs, &del)
 				}
 			}
-
-			joinReceipts := rawdb.ReadJoinReceipts(bc.db, hash, *number)
-			for _, receipt := range joinReceipts {
-				for _, log := range receipt.Logs {
-					del := *log
-					del.Removed = true
-					deletedLogs = append(deletedLogs, &del)
-				}
-			}
 		}
 	)
 
@@ -1376,7 +1305,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// reduce old chain
 		for ; oldBlock != nil && oldBlock.NumberU64() != newBlock.NumberU64(); oldBlock = bc.GetBlock(oldBlock.ParentHash(), oldBlock.NumberU64()-1) {
 			oldChain = append(oldChain, oldBlock)
-			deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
+			deletedTxs = append(deletedTxs, oldBlock.Transactions().All()...)
 
 			collectLogs(oldBlock.Hash())
 		}
@@ -1401,7 +1330,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 
 		oldChain = append(oldChain, oldBlock)
 		newChain = append(newChain, newBlock)
-		deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
+		deletedTxs = append(deletedTxs, oldBlock.Transactions().All()...)
 		collectLogs(oldBlock.Hash())
 
 		oldBlock, newBlock = bc.GetBlock(oldBlock.ParentHash(), oldBlock.NumberU64()-1), bc.GetBlock(newBlock.ParentHash(), newBlock.NumberU64()-1)
@@ -1430,7 +1359,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		bc.insert(newChain[i])
 		// write lookup entries for hash based transaction/receipt searches
 		rawdb.WriteTxLookupEntries(bc.db, newChain[i])
-		addedTxs = append(addedTxs, newChain[i].Transactions()...)
+		addedTxs = append(addedTxs, newChain[i].Transactions().All()...)
 	}
 	// calculate the difference between deleted and added transactions
 	diff := types.TxDifference(deletedTxs, addedTxs)
@@ -1443,12 +1372,12 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	batch.Write()
 
 	if len(deletedLogs) > 0 {
-		go bc.rmLogsFeed.Send(eventType.RemovedLogsEvent{deletedLogs})
+		go bc.rmLogsFeed.Send(types.RemovedLogsEvent{deletedLogs})
 	}
 	if len(oldChain) > 0 {
 		go func() {
 			for _, block := range oldChain {
-				bc.chainSideFeed.Send(eventType.ChainSideEvent{Block: block})
+				bc.chainSideFeed.Send(types.ChainSideEvent{Block: block})
 			}
 		}()
 	}
@@ -1466,13 +1395,13 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 	}
 	for _, event := range events {
 		switch ev := event.(type) {
-		case eventType.ChainEvent:
+		case types.ChainEvent:
 			bc.chainFeed.Send(ev)
 
-		case eventType.ChainHeadEvent:
+		case types.ChainHeadEvent:
 			bc.chainHeadFeed.Send(ev)
 
-		case eventType.ChainSideEvent:
+		case types.ChainSideEvent:
 			bc.chainSideFeed.Send(ev)
 		}
 	}
@@ -1509,15 +1438,11 @@ func (bc *BlockChain) addBadBlock(block *types.Block) {
 }
 
 // reportBlock logs a bad block error.
-func (bc *BlockChain) reportBlock(block *types.Block, genReceipts types.Receipts, joinReceipts types.JoinReceipts, err error) {
+func (bc *BlockChain) reportBlock(block *types.Block, receipts types.Receipts, err error) {
 	bc.addBadBlock(block)
 
 	var receiptString string
-	for _, receipt := range genReceipts {
-		receiptString += fmt.Sprintf("\t%v\n", receipt)
-	}
-
-	for _, receipt := range joinReceipts {
+	for _, receipt := range receipts {
 		receiptString += fmt.Sprintf("\t%v\n", receipt)
 	}
 
@@ -1653,22 +1578,22 @@ func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
 
 // SubscribeRemovedLogsEvent registers a subscription of RemovedLogsEvent.
-func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription {
+func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return bc.scope.Track(bc.rmLogsFeed.Subscribe(ch))
 }
 
 // SubscribeChainEvent registers a subscription of ChainEvent.
-func (bc *BlockChain) SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return bc.scope.Track(bc.chainFeed.Subscribe(ch))
 }
 
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
-func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription {
 	return bc.scope.Track(bc.chainHeadFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
-func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- eventType.ChainSideEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription {
 	return bc.scope.Track(bc.chainSideFeed.Subscribe(ch))
 }
 

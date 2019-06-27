@@ -21,6 +21,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core/state"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -53,10 +54,9 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, types.JoinReceipts, []*types.Log, uint64, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
 	var (
-		genReceipts  types.Receipts
-		joinReceipts types.JoinReceipts
+		receipts types.Receipts
 
 		usedGas = new(uint64)
 		header  = block.Header()
@@ -68,50 +68,34 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		misc.ApplyDAOHardFork(statedb)
 	}
 
-	// Iterate over and process the individual join transactions
-	for i, jtx := range block.JoinTransactions() {
-		statedb.Prepare(jtx.Hash(), block.Hash(), 0, i)
-
-		var jreceipt *types.JoinReceipt
-		var err error
-
-		jreceipt.Receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, jtx.Transaction, usedGas, cfg)
-		if err != nil {
-			return nil, nil, nil, 0, err
-		}
-
-		joinReceipts = append(joinReceipts, jreceipt)
-		allLogs = append(allLogs, jreceipt.Logs...)
-	}
-
 	// Iterate over and process the individual general transactions
-	for i, tx := range block.Transactions() {
-		statedb.Prepare(tx.Hash(), block.Hash(), i, 0)
+	for i, tx := range block.Transactions().All() {
+		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
 		var receipt *types.Receipt
 		var err error
 
 		receipt, _, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
 		if err != nil {
-			return nil, nil, nil, 0, err
+			return nil, nil, 0, err
 		}
 
-		genReceipts = append(genReceipts, receipt)
+		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.JoinTransactions(), genReceipts, joinReceipts)
+	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), receipts)
 
-	return genReceipts, joinReceipts, allLogs, *usedGas, nil
+	return receipts, allLogs, *usedGas, nil
 }
 
 // ApplyTransaction attempts to apply a transaction to the given state database
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
-func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
+func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	msg, err := tx.AsMessage(txType.MakeSigner(config, header.Number))
 	if err != nil {
 		return nil, 0, err
 	}

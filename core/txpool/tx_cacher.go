@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package pools
+package txpool
 
 import (
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"runtime"
 )
@@ -31,8 +32,8 @@ var SenderCacher = newTxSenderCacher(runtime.NumCPU())
 // which is used to feed the same underlying input array to different threads but
 // ensure they process the early transactions fast.
 type txSenderCacherRequest struct {
-	signer types.Signer
-	txs    []*types.Transaction
+	signer txType.Signer
+	txs    []types.Transaction
 	inc    int
 }
 
@@ -61,7 +62,7 @@ func newTxSenderCacher(threads int) *txSenderCacher {
 func (cacher *txSenderCacher) cache() {
 	for task := range cacher.tasks {
 		for i := 0; i < len(task.txs); i += task.inc {
-			types.Sender(task.signer, task.txs[i])
+			task.txs[i].Sender(task.signer)
 		}
 	}
 }
@@ -69,7 +70,7 @@ func (cacher *txSenderCacher) cache() {
 // recover recovers the senders from a batch of transactions and caches them
 // back into the same data structures. There is no validation being done, nor
 // any reaction to invalid signatures. That is up to calling code later.
-func (cacher *txSenderCacher) Recover(signer types.Signer, txs []*types.Transaction) {
+func (cacher *txSenderCacher) recover(signer txType.Signer, txs []types.Transaction) {
 	// If there's nothing to recover, abort
 	if len(txs) == 0 {
 		return
@@ -91,14 +92,14 @@ func (cacher *txSenderCacher) Recover(signer types.Signer, txs []*types.Transact
 // recoverFromBlocks recovers the senders from a batch of blocks and caches them
 // back into the same data structures. There is no validation being done, nor
 // any reaction to invalid signatures. That is up to calling code later.
-func (cacher *txSenderCacher) RecoverFromBlocks(signer types.Signer, blocks []*types.Block) {
+func (cacher *txSenderCacher) RecoverFromBlocks(signer txType.Signer, blocks []*types.Block) {
 	count := 0
 	for _, block := range blocks {
-		count += len(block.Transactions())
+		count += block.Transactions().Len()
 	}
-	txs := make([]*types.Transaction, 0, count)
+	txs := make([]types.Transaction, 0, count)
 	for _, block := range blocks {
-		txs = append(txs, block.Transactions()...)
+		txs = append(txs, block.Transactions().All()...)
 	}
-	cacher.Recover(signer, txs)
+	cacher.recover(signer, txs)
 }

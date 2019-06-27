@@ -18,6 +18,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const DBNAME = "AndusChain"
@@ -36,7 +38,7 @@ type FairNodeDB struct {
 
 	Transactions *mgo.Collection
 
-	signer types.Signer
+	signer txType.Signer
 	logger log.Logger
 	config *config.Config
 }
@@ -46,7 +48,7 @@ var (
 )
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-func New(signer types.Signer) (*FairNodeDB, error) {
+func New(signer txType.Signer) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 
 	fnb.logger = log.New("fairnode", "mongodb")
@@ -277,11 +279,9 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 
 		VoteHash: block.VoterHash().String(),
 
-		TxHash:     block.Header().TxHash.String(),
-		JoinTxHash: block.Header().JoinTxHash.String(),
+		TxHash: block.Header().TxHash.String(),
 
-		ReceiptHash:     block.Header().ReceiptHash.String(),
-		JoinReceiptHash: block.Header().JoinReceiptHash.String(),
+		ReceiptHash: block.Header().ReceiptHash.String(),
 
 		Difficulty: block.Header().Difficulty.String(),
 		Number:     block.Header().Number.Int64(),
@@ -296,10 +296,10 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 
 	// General transaction
 	var txs []transaction
-	for i := range block.Transactions() {
-		tx := block.Transactions()[i]
-		txhash := block.Transactions()[i].Hash()
-		from, _ := types.Sender(fnb.signer, tx)
+	for i := range block.Transactions().All() {
+		tx := block.Transactions().All()[i]
+		txhash := block.Transactions().All()[i].Hash()
+		from, _ := tx.Sender(fnb.signer)
 		to := "contract"
 		if tx.To() != nil {
 			to = tx.To().String()
@@ -310,31 +310,9 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 			From:         from.String(),
 			To:           to,
 			AccountNonce: int64(tx.Nonce()),
-			Price:        tx.GasPrice().String(),
+			Price:        tx.Price().String(),
 			Amount:       tx.Value().String(),
 			Payload:      tx.Data(),
-		})
-	}
-
-	// Join transaction
-	var joinTxs []transaction
-	for i := range block.JoinTransactions() {
-		joinTx := block.JoinTransactions()[i]
-		joinTxhash := block.JoinTransactions()[i].Hash()
-		from, _ := types.Sender(fnb.signer, joinTx.Transaction)
-		to := "contract"
-		if joinTx.To() != nil {
-			to = joinTx.To().String()
-		}
-
-		txs = append(txs, transaction{
-			Txhash:       joinTxhash.String(),
-			From:         from.String(),
-			To:           to,
-			AccountNonce: int64(joinTx.Nonce()),
-			Price:        joinTx.GasPrice().String(),
-			Amount:       joinTx.Value().String(),
-			Payload:      joinTx.Data(),
 		})
 	}
 
@@ -345,11 +323,10 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	}
 
 	b := StoredBlock{
-		BlockHash:        block.Hash().String(),
-		Header:           header,
-		GenTransactions:  txs,
-		JoinTransactions: joinTxs,
-		Voters:           voters,
+		BlockHash:       block.Hash().String(),
+		Header:          header,
+		GenTransactions: txs,
+		Voters:          voters,
 	}
 
 	if err := fnb.SaveRawBlock(block); err != nil {

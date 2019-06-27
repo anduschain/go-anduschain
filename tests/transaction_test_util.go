@@ -20,14 +20,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // TransactionTest checks RLP decoding and sender derivation of transactions.
@@ -68,7 +70,7 @@ type ttTransactionMarshaling struct {
 }
 
 func (tt *TransactionTest) Run(config *params.ChainConfig) error {
-	tx := new(types.Transaction)
+	var tx types.Transaction
 	if err := rlp.DecodeBytes(tt.json.RLP, tx); err != nil {
 		if tt.json.Transaction == nil {
 			return nil
@@ -76,8 +78,8 @@ func (tt *TransactionTest) Run(config *params.ChainConfig) error {
 		return fmt.Errorf("RLP decoding failed: %v", err)
 	}
 	// Check sender derivation.
-	signer := types.MakeSigner(config, new(big.Int).SetUint64(uint64(tt.json.BlockNumber)))
-	sender, err := types.Sender(signer, tx)
+	signer := txType.MakeSigner(config, new(big.Int).SetUint64(uint64(tt.json.BlockNumber)))
+	sender, err := tx.Sender(signer)
 	if err != nil {
 		return err
 	}
@@ -95,20 +97,20 @@ func (tt *TransactionTest) Run(config *params.ChainConfig) error {
 	return nil
 }
 
-func (tt *ttTransaction) verify(signer types.Signer, tx *types.Transaction) error {
+func (tt *ttTransaction) verify(signer txType.Signer, tx types.Transaction) error {
 	if !bytes.Equal(tx.Data(), tt.Data) {
 		return fmt.Errorf("Tx input data mismatch: got %x want %x", tx.Data(), tt.Data)
 	}
 	if tx.Gas() != tt.GasLimit {
 		return fmt.Errorf("GasLimit mismatch: got %d, want %d", tx.Gas(), tt.GasLimit)
 	}
-	if tx.GasPrice().Cmp(tt.GasPrice) != 0 {
-		return fmt.Errorf("GasPrice mismatch: got %v, want %v", tx.GasPrice(), tt.GasPrice)
+	if tx.Price().Cmp(tt.GasPrice) != 0 {
+		return fmt.Errorf("GasPrice mismatch: got %v, want %v", tx.Price(), tt.GasPrice)
 	}
 	if tx.Nonce() != tt.Nonce {
 		return fmt.Errorf("Nonce mismatch: got %v, want %v", tx.Nonce(), tt.Nonce)
 	}
-	v, r, s := tx.RawSignatureValues()
+	v, r, s := tx.Signature().V, tx.Signature().R, tx.Signature().S
 	if r.Cmp(tt.R) != 0 {
 		return fmt.Errorf("R mismatch: got %v, want %v", r, tt.R)
 	}

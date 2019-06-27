@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 )
 
@@ -34,26 +35,26 @@ type senderFromServer struct {
 
 var errNotCached = errors.New("sender not cached")
 
-func setSenderFromServer(tx *types.Transaction, addr common.Address, block common.Hash) {
+func setSenderFromServer(tx types.Transaction, addr common.Address, block common.Hash) {
 	// Use types.Sender for side-effect to store our signer into the cache.
-	types.Sender(&senderFromServer{addr, block}, tx)
+	tx.Sender(&senderFromServer{addr, block})
 }
 
-func (s *senderFromServer) Equal(other types.Signer) bool {
+func (s *senderFromServer) Equal(other txType.Signer) bool {
 	os, ok := other.(*senderFromServer)
 	return ok && os.blockhash == s.blockhash
 }
 
-func (s *senderFromServer) Sender(tx *types.Transaction) (common.Address, error) {
+func (s *senderFromServer) Sender(tx txType.Transactioner) (common.Address, error) {
 	if s.blockhash == (common.Hash{}) {
 		return common.Address{}, errNotCached
 	}
 	return s.addr, nil
 }
 
-func (s *senderFromServer) Hash(tx *types.Transaction) common.Hash {
+func (s *senderFromServer) Hash(tx txType.Transactioner) common.Hash {
 	panic("can't sign with senderFromServer")
 }
-func (s *senderFromServer) SignatureValues(tx *types.Transaction, sig []byte) (R, S, V *big.Int, err error) {
+func (s *senderFromServer) SignatureValues(tx txType.Transactioner, sig []byte) (R, S, V *big.Int, err error) {
 	panic("can't sign with senderFromServer")
 }

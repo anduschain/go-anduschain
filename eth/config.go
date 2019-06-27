@@ -17,7 +17,7 @@
 package eth
 
 import (
-	"github.com/anduschain/go-anduschain/pools/txpool"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"math/big"
 	"os"
 	"os/user"

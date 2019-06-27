@@ -18,7 +18,6 @@ package eth
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"io"
 	"math/big"
 
@@ -26,6 +25,8 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/rlp"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // Constants to match up protocol versions and messages
@@ -102,28 +103,15 @@ var errorToString = map[int]string{
 
 type txPool interface {
 	// AddRemotes should add the given transactions to the pool.
-	AddRemotes([]*types.Transaction) []error
+	AddRemotes([]txType.Transaction) []error
 
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
-	Pending() (map[common.Address]types.Transactions, error)
+	Pending() (map[common.Address]txType.Transactions, error)
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
-}
-
-type joinTxPool interface {
-	// AddRemotes should add the given join transactions to the pool.
-	AddRemotes([]*types.JoinTransaction) []error
-
-	// Pending should return pending join transactions.
-	// The slice should be modifiable by the caller.
-	Pending() (map[common.Address]types.JoinTransaction, error)
-
-	// SubscribeNewJoinTxsEvent should return an event subscription of
-	// NewJoinTxsEvent and send events to the given channel.
-	SubscribeNewJoinTxsEvent(chan<- eventType.NewJoinTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
 }
 
 // statusData is the network packet for the status message.
@@ -193,10 +181,8 @@ type newBlockData struct {
 
 // blockBody represents the data content of a single block.
 type blockBody struct {
-	Voter            []*types.Voter
-	GenTransactions  []*types.Transaction     // Transactions contained within a block
-	JoinTransactions []*types.JoinTransaction // Transactions contained within a block
-	//Uncles       []*types.Header      // Uncles contained within a block // TODO : deprecated
+	Voter        []*types.Voter
+	Transactions *types.Transactions // Transactions contained within a block
 }
 
 // blockBodiesData is the network packet for block content distribution.

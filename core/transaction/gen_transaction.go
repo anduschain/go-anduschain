@@ -1,10 +1,8 @@
-package genTx
+package transaction
 
 import (
-	"container/heap"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
-	tx "github.com/anduschain/go-anduschain/core/types/transaction"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
@@ -14,6 +12,7 @@ import (
 
 //go:generate gencodec -type genTxdata -field-override genTxdataMarshaling -out gen_tx_json.go
 
+// GenTransaction is a fully derived transaction and implements Transactioner
 type GenTransaction struct {
 	data genTxdata
 	// caches
@@ -50,7 +49,7 @@ type genTxdataMarshaling struct {
 	S            *hexutil.Big
 }
 
-func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *GenTransaction {
+func NewGenTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *GenTransaction {
 	return newGenTransaction(nonce, &to, amount, gasLimit, gasPrice, data)
 }
 
@@ -88,8 +87,26 @@ func (gtx *GenTransaction) TransactionId() string {
 	return "general"
 }
 
-func (gtx *GenTransaction) Signature() tx.Signature {
-	return tx.Signature{
+func (gtx *GenTransaction) Sender(signer Signer) (common.Address, error) {
+	if sc := gtx.from.Load(); sc != nil {
+		sigCache := sc.(sigCache)
+		// If the signer used to derive from in a previous
+		// call is not the same as used current, invalidate
+		// the cache.
+		if signer.Equal(signer) {
+			return sigCache.from, nil
+		}
+	}
+	addr, err := signer.Sender(gtx)
+	if err != nil {
+		return common.Address{}, err
+	}
+	gtx.from.Store(sigCache{signer: signer, from: addr})
+	return addr, nil
+}
+
+func (gtx *GenTransaction) Signature() Signature {
+	return Signature{
 		V: gtx.data.V,
 		R: gtx.data.R,
 		S: gtx.data.S,
@@ -98,7 +115,7 @@ func (gtx *GenTransaction) Signature() tx.Signature {
 
 // ChainId returns which chain id this transaction was signed for (if at all)
 func (gtx *GenTransaction) ChainId() *big.Int {
-	return tx.DeriveChainId(gtx.data.V)
+	return DeriveChainId(gtx.data.V)
 }
 
 // Protected returns whether the transaction is protected from replay protection.
@@ -147,13 +164,13 @@ func (gtx *GenTransaction) UnmarshalJSON(input []byte) error {
 	}
 	var V byte
 	if isProtectedV(dec.V) {
-		chainID := tx.DeriveChainId(dec.V).Uint64()
+		chainID := DeriveChainId(dec.V).Uint64()
 		V = byte(dec.V.Uint64() - 35 - 2*chainID)
 	} else {
 		V = byte(dec.V.Uint64() - 27)
 	}
 	if !crypto.ValidateSignatureValues(V, dec.R, dec.S, false) {
-		return tx.ErrInvalidSig
+		return ErrInvalidSig
 	}
 	*gtx = GenTransaction{data: dec}
 	return nil
@@ -166,8 +183,7 @@ func (gtx *GenTransaction) Value() *big.Int    { return new(big.Int).Set(gtx.dat
 func (gtx *GenTransaction) Nonce() uint64      { return gtx.data.AccountNonce }
 func (gtx *GenTransaction) CheckNonce() bool   { return true }
 
-func (gtx *GenTransaction) From() atomic.Value { return gtx.from }
-func (gtx *GenTransaction) Price() *big.Int    { return new(big.Int).Set(gtx.data.Price) }
+func (gtx *GenTransaction) Price() *big.Int { return new(big.Int).Set(gtx.data.Price) }
 
 // To returns the recipient address of the transaction.
 // It returns nil if the transaction is a contract creation.
@@ -185,7 +201,7 @@ func (gtx *GenTransaction) Hash() common.Hash {
 	if hash := gtx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
-	v := tx.RlpHash(gtx)
+	v := RlpHash(gtx)
 	gtx.hash.Store(v)
 	return v
 }
@@ -202,7 +218,7 @@ func (gtx *GenTransaction) SigHash(values ...interface{}) common.Hash {
 
 	data = append(data, values...)
 
-	return tx.RlpHash(data)
+	return RlpHash(data)
 }
 
 // Size returns the true RLP encoded storage size of the transaction, either by
@@ -211,7 +227,7 @@ func (gtx *GenTransaction) Size() common.StorageSize {
 	if size := gtx.size.Load(); size != nil {
 		return size.(common.StorageSize)
 	}
-	c := tx.WriteCounter(0)
+	c := WriteCounter(0)
 	rlp.Encode(&c, &gtx.data)
 	gtx.size.Store(common.StorageSize(c))
 	return common.StorageSize(c)
@@ -222,7 +238,7 @@ func (gtx *GenTransaction) Size() common.StorageSize {
 // AsMessage requires a signer to derive the sender.
 //
 // XXX Rename message to something less arbitrary?
-func (gtx *GenTransaction) AsMessage(s tx.Signer) (Message, error) {
+func (gtx *GenTransaction) AsMessage(s Signer) (Message, error) {
 	msg := Message{
 		nonce:      gtx.data.AccountNonce,
 		gasLimit:   gtx.data.GasLimit,
@@ -234,13 +250,13 @@ func (gtx *GenTransaction) AsMessage(s tx.Signer) (Message, error) {
 	}
 
 	var err error
-	msg.from, err = tx.Sender(s, gtx)
+	msg.from, err = gtx.Sender(s)
 	return msg, err
 }
 
 // WithSignature returns a new transaction with the given signature.
 // This signature needs to be formatted as described in the yellow paper (v+27).
-func (gtx *GenTransaction) WithSignature(signer tx.Signer, sig []byte) (tx.Transaction, error) {
+func (gtx *GenTransaction) WithSignature(signer Signer, sig []byte) (Transactioner, error) {
 	r, s, v, err := signer.SignatureValues(gtx, sig)
 	if err != nil {
 		return nil, err
@@ -259,116 +275,6 @@ func (gtx *GenTransaction) Cost() *big.Int {
 
 func (gtx *GenTransaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return gtx.data.V, gtx.data.R, gtx.data.S
-}
-
-// TxDifference returns a new set which is the difference between a and b.
-func TxDifference(a, b tx.Transactions) tx.Transactions {
-	keep := make(tx.Transactions, 0, len(a))
-
-	remove := make(map[common.Hash]struct{})
-	for _, tx := range b {
-		remove[tx.Hash()] = struct{}{}
-	}
-
-	for _, tx := range a {
-		if _, ok := remove[tx.Hash()]; !ok {
-			keep = append(keep, tx)
-		}
-	}
-
-	return keep
-}
-
-// TxByNonce implements the sort interface to allow sorting a list of transactions
-// by their nonces. This is usually only useful for sorting transactions from a
-// single account, otherwise a nonce comparison doesn't make much sense.
-type TxByNonce tx.Transactions
-
-func (s TxByNonce) Len() int           { return len(s) }
-func (s TxByNonce) Less(i, j int) bool { return s[i].Nonce() < s[j].Nonce() }
-func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-// TxByPrice implements both the sort and the heap interface, making it useful
-// for all at once sorting as well as individually adding and removing elements.
-type TxByPrice tx.Transactions
-
-func (s TxByPrice) Len() int           { return len(s) }
-func (s TxByPrice) Less(i, j int) bool { return s[i].Price().Cmp(s[j].Price()) > 0 }
-func (s TxByPrice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-func (s *TxByPrice) Push(x interface{}) {
-	*s = append(*s, x.(*GenTransaction))
-}
-
-func (s *TxByPrice) Pop() interface{} {
-	old := *s
-	n := len(old)
-	x := old[n-1]
-	*s = old[0 : n-1]
-	return x
-}
-
-// TransactionsByPriceAndNonce represents a set of GenTransactions that can return
-// transactions in a profit-maximizing sorted order, while supporting removing
-// entire batches of transactions for non-executable accounts.
-type TransactionsByPriceAndNonce struct {
-	txs    map[common.Address]tx.Transactions // Per account nonce-sorted list of transactions
-	heads  TxByPrice                          // Next transaction for each unique account (price heap)
-	signer tx.Signer                          // Signer for the set of transactions
-}
-
-// NewTransactionsByPriceAndNonce creates a transaction set that can retrieve
-// price sorted transactions in a nonce-honouring way.
-//
-// Note, the input map is reowned so the caller should not interact any more with
-// if after providing it to the constructor.
-func NewTransactionsByPriceAndNonce(signer tx.Signer, txs map[common.Address]tx.Transactions) *TransactionsByPriceAndNonce {
-	// Initialize a price based heap with the head transactions
-
-	heads := make(TxByPrice, 0, len(txs))
-	for from, accTxs := range txs {
-		heads = append(heads, accTxs[0])
-		// Ensure the sender address is from the signer
-		acc, _ := tx.Sender(signer, accTxs[0])
-		txs[acc] = accTxs[1:]
-		if from != acc {
-			delete(txs, from)
-		}
-	}
-	heap.Init(&heads)
-
-	// Assemble and return the transaction set
-	return &TransactionsByPriceAndNonce{
-		txs:    txs,
-		heads:  heads,
-		signer: signer,
-	}
-}
-
-// Peek returns the next transaction by price.
-func (t *TransactionsByPriceAndNonce) Peek() tx.Transaction {
-	if len(t.heads) == 0 {
-		return nil
-	}
-	return t.heads[0]
-}
-
-// Shift replaces the current best head with the next one from the same account.
-func (t *TransactionsByPriceAndNonce) Shift() {
-	acc, _ := tx.Sender(t.signer, t.heads[0])
-	if txs, ok := t.txs[acc]; ok && len(txs) > 0 {
-		t.heads[0], t.txs[acc] = txs[0], txs[1:]
-		heap.Fix(&t.heads, 0)
-	} else {
-		heap.Pop(&t.heads)
-	}
-}
-
-// Pop removes the best transaction, *not* replacing it with the next one from
-// the same account. This should be used when a transaction cannot be executed
-// and hence all subsequent ones should be discarded from the same account.
-func (t *TransactionsByPriceAndNonce) Pop() {
-	heap.Pop(&t.heads)
 }
 
 // Message is a fully derived transaction and implements core.Message

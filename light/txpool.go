@@ -20,8 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/event_type"
-	"github.com/anduschain/go-anduschain/pools/txpool"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"sync"
 	"time"
 
@@ -34,6 +33,8 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const (
@@ -52,11 +53,11 @@ var txPermanent = uint64(500)
 // created.
 type TxPool struct {
 	config       *params.ChainConfig
-	signer       types.Signer
+	signer       txType.Signer
 	quit         chan bool
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan eventType.ChainHeadEvent
+	chainHeadCh  chan types.ChainHeadEvent
 	chainHeadSub event.Subscription
 	mu           sync.RWMutex
 	chain        *LightChain
@@ -64,10 +65,10 @@ type TxPool struct {
 	chainDb      ethdb.Database
 	relay        TxRelayBackend
 	head         common.Hash
-	nonce        map[common.Address]uint64            // "pending" nonce
-	pending      map[common.Hash]*types.Transaction   // pending transactions by tx hash
-	mined        map[common.Hash][]*types.Transaction // mined transactions by block hash
-	clearIdx     uint64                               // earliest block nr that can contain mined tx info
+	nonce        map[common.Address]uint64           // "pending" nonce
+	pending      map[common.Hash]types.Transactions  // pending transactions by tx hash
+	mined        map[common.Hash][]types.Transaction // mined transactions by block hash
+	clearIdx     uint64                              // earliest block nr that can contain mined tx info
 
 	homestead bool
 }
@@ -91,12 +92,12 @@ type TxRelayBackend interface {
 func NewTxPool(config *params.ChainConfig, chain *LightChain, relay TxRelayBackend) *TxPool {
 	pool := &TxPool{
 		config:      config,
-		signer:      types.NewEIP155Signer(config.ChainID),
+		signer:      txType.NewEIP155Signer(config.ChainID),
 		nonce:       make(map[common.Address]uint64),
-		pending:     make(map[common.Hash]*types.Transaction),
-		mined:       make(map[common.Hash][]*types.Transaction),
+		pending:     make(map[common.Hash]types.Transactions),
+		mined:       make(map[common.Hash][]types.Transaction),
 		quit:        make(chan bool),
-		chainHeadCh: make(chan eventType.ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan types.ChainHeadEvent, chainHeadChanSize),
 		chain:       chain,
 		relay:       relay,
 		odr:         chain.Odr(),
@@ -175,7 +176,7 @@ func (pool *TxPool) checkMinedTxs(ctx context.Context, hash common.Hash, number 
 	}
 	// Gather all the local transaction mined in this block
 	list := pool.mined[hash]
-	for _, tx := range block.Transactions() {
+	for _, tx := range block.Transactions().All() {
 		if _, ok := pool.pending[tx.Hash()]; ok {
 			list = append(list, tx)
 		}
@@ -206,7 +207,7 @@ func (pool *TxPool) rollbackTxs(hash common.Hash, txc txStateChanges) {
 		for _, tx := range list {
 			txHash := tx.Hash()
 			rawdb.DeleteTxLookupEntry(batch, txHash)
-			pool.pending[txHash] = tx
+			pool.pending[txHash] = append(pool.pending[txHash], tx)
 			txc.setState(txHash, false)
 		}
 		delete(pool.mined, hash)
@@ -312,7 +313,7 @@ func (pool *TxPool) setNewHead(head *types.Header) {
 	m, r := txc.getLists()
 	pool.relay.NewHead(pool.head, m, r)
 	pool.homestead = pool.config.IsHomestead(head.Number)
-	pool.signer = types.MakeSigner(pool.config, head.Number)
+	pool.signer = txType.MakeSigner(pool.config, head.Number)
 }
 
 // Stop stops the light transaction pool
@@ -327,7 +328,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of core.NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- eventType.NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -341,7 +342,7 @@ func (pool *TxPool) Stats() (pending int) {
 }
 
 // validateTx checks whether a transaction is valid according to the consensus rules.
-func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error {
+func (pool *TxPool) validateTx(ctx context.Context, tx types.Transaction) error {
 	// Validate sender
 	var (
 		from common.Address
@@ -350,7 +351,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 
 	// Validate the transaction sender and it's sig. Throw
 	// if the from fields is invalid.
-	if from, err = types.Sender(pool.signer, tx); err != nil {
+	if from, err = tx.Sender(pool.signer); err != nil {
 		return txpool.ErrInvalidSender
 	}
 	// Last but not least check for nonce errors
@@ -392,7 +393,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 
 // add validates a new transaction and sets its state pending if processable.
 // It also updates the locally stored nonce if necessary.
-func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
+func (self *TxPool) add(ctx context.Context, tx types.Transaction) error {
 	hash := tx.Hash()
 
 	if self.pending[hash] != nil {
@@ -404,11 +405,9 @@ func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 	}
 
 	if _, ok := self.pending[hash]; !ok {
-		self.pending[hash] = tx
-
+		self.pending[hash] = append(self.pending[hash], tx)
 		nonce := tx.Nonce() + 1
-
-		addr, _ := types.Sender(self.signer, tx)
+		addr, _ := tx.Sender(self.signer)
 		if nonce > self.nonce[addr] {
 			self.nonce[addr] = nonce
 		}
@@ -416,17 +415,17 @@ func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 		// Notify the subscribers. This event is posted in a goroutine
 		// because it's possible that somewhere during the post "Remove transaction"
 		// gets called which will then wait for the global tx pool lock and deadlock.
-		go self.txFeed.Send(eventType.NewTxsEvent{Txs: types.Transactions{tx}})
+		go self.txFeed.Send(types.NewTxsEvent{Txs: types.Transactions{tx}})
 	}
 
 	// Print a log message if low enough level is set
-	log.Debug("Pooled new transaction", "hash", hash, "from", log.Lazy{Fn: func() common.Address { from, _ := types.Sender(self.signer, tx); return from }}, "to", tx.To())
+	log.Debug("Pooled new transaction", "hash", hash, "from", log.Lazy{Fn: func() common.Address { from, _ := tx.Sender(self.signer); return from }}, "to", tx.To())
 	return nil
 }
 
 // Add adds a transaction to the pool if valid and passes it to the tx relay
 // backend
-func (self *TxPool) Add(ctx context.Context, tx *types.Transaction) error {
+func (self *TxPool) Add(ctx context.Context, tx types.Transaction) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -447,7 +446,7 @@ func (self *TxPool) Add(ctx context.Context, tx *types.Transaction) error {
 
 // AddTransactions adds all valid transactions to the pool and passes them to
 // the tx relay backend
-func (self *TxPool) AddBatch(ctx context.Context, txs []*types.Transaction) {
+func (self *TxPool) AddBatch(ctx context.Context, txs []types.Transaction) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	var sendTx types.Transactions
@@ -464,10 +463,10 @@ func (self *TxPool) AddBatch(ctx context.Context, txs []*types.Transaction) {
 
 // GetTransaction returns a transaction if it is contained in the pool
 // and nil otherwise.
-func (tp *TxPool) GetTransaction(hash common.Hash) *types.Transaction {
+func (tp *TxPool) GetTransaction(hash common.Hash) types.Transaction {
 	// check the txs first
 	if tx, ok := tp.pending[hash]; ok {
-		return tx
+		return tx[0]
 	}
 	return nil
 }
@@ -481,7 +480,7 @@ func (self *TxPool) GetTransactions() (txs types.Transactions, err error) {
 	txs = make(types.Transactions, len(self.pending))
 	i := 0
 	for _, tx := range self.pending {
-		txs[i] = tx
+		txs[i] = tx[0]
 		i++
 	}
 	return txs, nil
@@ -496,8 +495,8 @@ func (self *TxPool) Content() (map[common.Address]types.Transactions, map[common
 	// Retrieve all the pending transactions and sort by account and by nonce
 	pending := make(map[common.Address]types.Transactions)
 	for _, tx := range self.pending {
-		account, _ := types.Sender(self.signer, tx)
-		pending[account] = append(pending[account], tx)
+		account, _ := tx[0].Sender(self.signer)
+		pending[account] = append(pending[account], tx[0])
 	}
 	// There are no queued transactions in a light pool, just return an empty map
 	queued := make(map[common.Address]types.Transactions)
@@ -505,7 +504,7 @@ func (self *TxPool) Content() (map[common.Address]types.Transactions, map[common
 }
 
 // RemoveTransactions removes all given transactions from the pool.
-func (self *TxPool) RemoveTransactions(txs types.Transactions) {
+func (self *TxPool) RemoveTransactions(txs txType.Transactions) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 

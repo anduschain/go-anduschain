@@ -21,8 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/event_type"
-	"github.com/anduschain/go-anduschain/pools/txpool"
+	"github.com/anduschain/go-anduschain/core/txpool"
 	"math/big"
 	"net"
 	"sync"
@@ -44,6 +43,8 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/trie"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const (
@@ -81,11 +82,11 @@ type BlockChain interface {
 	GetHeaderByNumber(number uint64) *types.Header
 	GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64)
 	Genesis() *types.Block
-	SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription
 }
 
 type txPool interface {
-	AddRemotes(txs []*types.Transaction) []error
+	AddRemotes(txs []txType.Transaction) []error
 	Status(hashes []common.Hash) []txpool.TxStatus
 }
 
@@ -1015,7 +1016,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrRequestRejected, "")
 		}
 		// Transactions arrived, parse all of them and deliver to the pool
-		var txs []*types.Transaction
+		var txs []txType.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -1035,7 +1036,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Transactions arrived, parse all of them and deliver to the pool
 		var req struct {
 			ReqID uint64
-			Txs   []*types.Transaction
+			Txs   []txType.Transaction
 		}
 		if err := msg.Decode(&req); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
@@ -1052,7 +1053,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		stats := pm.txStatus(hashes)
 		for i, stat := range stats {
 			if stat.Status == txpool.TxStatusUnknown {
-				if errs := pm.txpool.AddRemotes([]*types.Transaction{req.Txs[i]}); errs[0] != nil {
+				if errs := pm.txpool.AddRemotes([]txType.Transaction{req.Txs[i]}); errs[0] != nil {
 					stats[i].Error = errs[0].Error()
 					continue
 				}

@@ -27,6 +27,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/rawdb"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -52,14 +53,6 @@ func BenchmarkInsertChain_valueTx_100kB_memdb(b *testing.B) {
 func BenchmarkInsertChain_valueTx_100kB_diskdb(b *testing.B) {
 	benchInsertChain(b, true, genValueTx(100*1024))
 }
-
-// TODO(hakuna) : deprecated
-//func BenchmarkInsertChain_uncles_memdb(b *testing.B) {
-//	benchInsertChain(b, false, genUncles)
-//}
-//func BenchmarkInsertChain_uncles_diskdb(b *testing.B) {
-//	benchInsertChain(b, true, genUncles)
-//}
 
 func BenchmarkInsertChain_ring200_memdb(b *testing.B) {
 	benchInsertChain(b, false, genTxRing(200))
@@ -89,7 +82,7 @@ func genValueTx(nbytes int) func(int, *BlockGen) {
 		toaddr := common.Address{}
 		data := make([]byte, nbytes)
 		gas, _ := IntrinsicGas(data, false, false)
-		tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data), types.HomesteadSigner{}, benchRootKey)
+		tx, _ := txType.SignTx(txType.NewGenTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data), txType.HomesteadSigner{}, benchRootKey)
 		gen.AddTx(tx)
 	}
 }
@@ -122,7 +115,7 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 				break
 			}
 			to := (from + 1) % naccounts
-			tx := types.NewTransaction(
+			tx := txType.NewGenTransaction(
 				gen.TxNonce(ringAddrs[from]),
 				ringAddrs[to],
 				benchRootFunds,
@@ -130,25 +123,12 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 				nil,
 				nil,
 			)
-			tx, _ = types.SignTx(tx, types.HomesteadSigner{}, ringKeys[from])
-			gen.AddTx(tx)
+			gtx, _ := txType.SignTx(tx, txType.HomesteadSigner{}, ringKeys[from])
+			gen.AddTx(gtx)
 			from = to
 		}
 	}
 }
-
-// TODO(hakuna) : deprecated
-// genUncles generates blocks with two uncle headers.
-//func genUncles(i int, gen *BlockGen) {
-//	if i >= 6 {
-//		b2 := gen.PrevBlock(i - 6).Header()
-//		b2.Extra = []byte("foo")
-//		gen.AddUncle(b2)
-//		b3 := gen.PrevBlock(i - 6).Header()
-//		b3.Extra = []byte("bar")
-//		gen.AddUncle(b3)
-//	}
-//}
 
 func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	// Create the database in memory or in a temporary directory.
@@ -175,7 +155,7 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 		Alloc:  GenesisAlloc{benchRootAddr: {Balance: benchRootFunds}},
 	}
 	genesis := gspec.MustCommit(db)
-	chain, _, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, b.N, gen)
+	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.

@@ -91,13 +91,10 @@ type headerFilterTask struct {
 // bodyFilterTask represents a batch of block bodies (transactions and uncles)
 // needing fetcher filtering.
 type bodyFilterTask struct {
-	peer             string                     // The source peer of block bodies
-	genTransactions  [][]*types.Transaction     // Collection of general transactions per block bodies
-	joinTransactions [][]*types.JoinTransaction // Collection of join transactions per block bodies
-	// uncles       [][]*types.Header      // Collection of uncles per block bodies // TODO : deprecated
-
-	time   time.Time        // Arrival time of the blocks' contents
-	voters [][]*types.Voter // Collection of voters per block bodies
+	peer         string                   // The source peer of block bodies
+	transactions []*types.TransactionsSet // Collection of general transactions per block bodies
+	time         time.Time                // Arrival time of the blocks' contents
+	voters       [][]*types.Voter         // Collection of voters per block bodies
 }
 
 // inject represents a schedules import operation.
@@ -251,8 +248,8 @@ func (f *Fetcher) FilterHeaders(peer string, headers []*types.Header, time time.
 
 // FilterBodies extracts all the block bodies that were explicitly requested by
 // the fetcher, returning those that should be handled differently. // return gen, join, voter
-func (f *Fetcher) FilterBodies(peer string, genTransactions [][]*types.Transaction, joinTransactions [][]*types.JoinTransaction, voters [][]*types.Voter, time time.Time) ([][]*types.Transaction, [][]*types.JoinTransaction, [][]*types.Voter) {
-	log.Trace("Filtering bodies", "peer", peer, "genTxs", len(genTransactions), "joinTxs", len(joinTransactions))
+func (f *Fetcher) FilterBodies(peer string, transactions []*types.TransactionsSet, voters [][]*types.Voter, time time.Time) ([]*types.TransactionsSet, [][]*types.Voter) {
+	log.Trace("Filtering bodies", "peer", peer, "genTxs", len(transactions))
 
 	// Send the filter channel to the fetcher
 	filter := make(chan *bodyFilterTask)
@@ -260,20 +257,20 @@ func (f *Fetcher) FilterBodies(peer string, genTransactions [][]*types.Transacti
 	select {
 	case f.bodyFilter <- filter:
 	case <-f.quit:
-		return nil, nil, nil
+		return nil, nil
 	}
 	// Request the filtering of the body list
 	select {
-	case filter <- &bodyFilterTask{peer: peer, genTransactions: genTransactions, joinTransactions: joinTransactions, voters: voters, time: time}:
+	case filter <- &bodyFilterTask{peer: peer, transactions: transactions, voters: voters, time: time}:
 	case <-f.quit:
-		return nil, nil, nil
+		return nil, nil
 	}
 	// Retrieve the bodies remaining after filtering
 	select {
 	case task := <-filter:
-		return task.genTransactions, task.joinTransactions, task.voters
+		return task.transactions, task.voters
 	case <-f.quit:
-		return nil, nil, nil
+		return nil, nil
 	}
 }
 
@@ -463,7 +460,7 @@ func (f *Fetcher) loop() {
 						announce.time = task.time
 
 						// If the block is empty (header only), short circuit into the final import queue
-						if header.TxHash == types.DeriveSha(types.Transactions{}) {
+						if header.TxHash == types.DeriveSha(types.TransactionsSet{}.All()) {
 							log.Trace("Block empty, skipping body retrieval", "peer", announce.origin, "number", header.Number, "hash", header.Hash())
 
 							block := types.NewBlockWithHeader(header)
@@ -517,25 +514,24 @@ func (f *Fetcher) loop() {
 				return
 			}
 
-			bodyFilterInMeter.Mark(int64(len(task.genTransactions) + len(task.joinTransactions)))
+			bodyFilterInMeter.Mark(int64(len(task.transactions)))
 
 			var blocks []*types.Block
 
-			for i := 0; i < len(task.genTransactions) && i < len(task.joinTransactions); i++ {
+			for i := 0; i < len(task.transactions); i++ {
 				// Match up a body to any possible completion request
 				matched := false
 
 				for hash, announce := range f.completing {
 					if f.queued[hash] == nil {
-						txnHash := types.DeriveSha(types.Transactions(task.genTransactions[i]))
-						joinTxnHash := types.DeriveSha(types.JoinTransactions(task.joinTransactions[i]))
+						txnHash := types.DeriveSha(task.transactions[i].All())
 
-						if txnHash == announce.header.TxHash && joinTxnHash == announce.header.JoinTxHash && announce.origin == task.peer {
+						if txnHash == announce.header.TxHash && announce.origin == task.peer {
 							// Mark the body matched, reassemble if still unknown
 							matched = true
 
 							if f.getBlock(hash) == nil {
-								block := types.NewBlockWithHeader(announce.header).WithBody(task.genTransactions[i], task.joinTransactions[i], task.voters[i])
+								block := types.NewBlockWithHeader(announce.header).WithBody(task.transactions[i], task.voters[i])
 								block.ReceivedAt = task.time
 								blocks = append(blocks, block)
 							} else {
@@ -546,15 +542,13 @@ func (f *Fetcher) loop() {
 				}
 
 				if matched {
-					task.genTransactions = append(task.genTransactions[:i], task.genTransactions[i+1:]...)
-					task.joinTransactions = append(task.joinTransactions[:i], task.joinTransactions[i+1:]...)
-					//task.uncles = append(task.uncles[:i], task.uncles[i+1:]...) // TODO : deprecated uncle
+					task.transactions = append(task.transactions[:i], task.transactions[i+1:]...)
 					i--
 					continue
 				}
 			}
 
-			bodyFilterOutMeter.Mark(int64(len(task.genTransactions) + len(task.joinTransactions)))
+			bodyFilterOutMeter.Mark(int64(len(task.transactions)))
 
 			select {
 			case filter <- task:

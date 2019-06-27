@@ -22,10 +22,11 @@ import (
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const (
@@ -38,15 +39,13 @@ const (
 )
 
 type txsync struct {
-	p    *peer
-	txs  []*types.Transaction
-	jtxs []*types.JoinTransaction
+	p   *peer
+	txs []txType.Transaction
 }
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) syncTransactions(p *peer) {
-	var txs types.Transactions
-	var jtxs types.JoinTransactions
+	var txs txType.Transactions
 
 	pending, _ := pm.txpool.Pending()
 	for _, batch := range pending {
@@ -60,7 +59,7 @@ func (pm *ProtocolManager) syncTransactions(p *peer) {
 	// FIXME(hakuna) : jointx pool
 
 	select {
-	case pm.txsyncCh <- &txsync{p, txs, jtxs}:
+	case pm.txsyncCh <- &txsync{p, txs}:
 	case <-pm.quitSync:
 	}
 }

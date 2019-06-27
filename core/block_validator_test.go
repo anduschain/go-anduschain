@@ -32,10 +32,10 @@ import (
 func TestHeaderVerification(t *testing.T) {
 	// Create a simple chain to verify
 	var (
-		testdb       = ethdb.NewMemDatabase()
-		gspec        = &Genesis{Config: params.TestChainConfig}
-		genesis      = gspec.MustCommit(testdb)
-		blocks, _, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
+		testdb    = ethdb.NewMemDatabase()
+		gspec     = &Genesis{Config: params.TestChainConfig}
+		genesis   = gspec.MustCommit(testdb)
+		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
 	)
 	headers := make([]*types.Header, len(blocks))
 	for i, block := range blocks {
@@ -84,10 +84,10 @@ func TestHeaderConcurrentVerification32(t *testing.T) { testHeaderConcurrentVeri
 func testHeaderConcurrentVerification(t *testing.T, threads int) {
 	// Create a simple chain to verify
 	var (
-		testdb       = ethdb.NewMemDatabase()
-		gspec        = &Genesis{Config: params.TestChainConfig}
-		genesis      = gspec.MustCommit(testdb)
-		blocks, _, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
+		testdb    = ethdb.NewMemDatabase()
+		gspec     = &Genesis{Config: params.TestChainConfig}
+		genesis   = gspec.MustCommit(testdb)
+		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
 	)
 	headers := make([]*types.Header, len(blocks))
 	seals := make([]bool, len(blocks))
@@ -156,10 +156,10 @@ func TestHeaderConcurrentAbortion32(t *testing.T) { testHeaderConcurrentAbortion
 func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	// Create a simple chain to verify
 	var (
-		testdb       = ethdb.NewMemDatabase()
-		gspec        = &Genesis{Config: params.TestChainConfig}
-		genesis      = gspec.MustCommit(testdb)
-		blocks, _, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 1024, nil)
+		testdb    = ethdb.NewMemDatabase()
+		gspec     = &Genesis{Config: params.TestChainConfig}
+		genesis   = gspec.MustCommit(testdb)
+		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 1024, nil)
 	)
 	headers := make([]*types.Header, len(blocks))
 	seals := make([]bool, len(blocks))

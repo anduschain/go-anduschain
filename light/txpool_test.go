@@ -30,6 +30,8 @@ import (
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 type testTxRelay struct {
@@ -55,7 +57,7 @@ const poolTestTxs = 1000
 const poolTestBlocks = 100
 
 // test tx 0..n-1
-var testTx [poolTestTxs]*types.Transaction
+var testTx [poolTestTxs]types.Transaction
 
 // txs sent before block i
 func sentTx(i int) int {
@@ -77,7 +79,7 @@ func txPoolTestChainGen(i int, block *core.BlockGen) {
 
 func TestTxPool(t *testing.T) {
 	for i := range testTx {
-		testTx[i], _ = types.SignTx(types.NewTransaction(uint64(i), acc1Addr, big.NewInt(10000), params.TxGas, nil, nil), types.HomesteadSigner{}, testBankKey)
+		testTx[i], _ = txType.SignTx(txType.NewGenTransaction(uint64(i), acc1Addr, big.NewInt(10000), params.TxGas, nil, nil), txType.HomesteadSigner{}, testBankKey)
 	}
 
 	var (
@@ -89,7 +91,7 @@ func TestTxPool(t *testing.T) {
 	gspec.MustCommit(ldb)
 	// Assemble the test environment
 	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, deb.NewFullFaker(), vm.Config{})
-	gchain, _, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), sdb, poolTestBlocks, txPoolTestChainGen)
+	gchain, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), sdb, poolTestBlocks, txPoolTestChainGen)
 	if _, err := blockchain.InsertChain(gchain); err != nil {
 		panic(err)
 	}

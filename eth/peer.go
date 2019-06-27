@@ -29,6 +29,8 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/deckarep/golang-set"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 var (
@@ -46,7 +48,7 @@ const (
 	// contain a single transaction, or thousands.
 	maxQueuedTxs = 128
 
-	// maxQueuedJoinTxs is the maximum number of join transaction lists to queue up before
+	// maxQueuedTxs is the maximum number of transaction lists to queue up before
 	// dropping broadcasts. This is a sensitive number as a transaction list might
 	// contain a single transaction, or thousands.
 	maxQueuedJoinTxs = 128
@@ -94,9 +96,9 @@ type peer struct {
 	knownTxs     mapset.Set // Set of transaction hashes known to be known by this peer
 	knownJoinTxs mapset.Set // Set of join transaction hashes known to be known by this peer  // TODO(hakuna) : add
 
-	knownBlocks   mapset.Set                    // Set of block hashes known to be known by this peer
-	queuedTxs     chan []*types.Transaction     // Queue of transactions to broadcast to the peer
-	queuedJoinTxs chan []*types.JoinTransaction // Queue of transactions to broadcast to the peer // TODO(hakuna) : add
+	knownBlocks   mapset.Set                // Set of block hashes known to be known by this peer
+	queuedTxs     chan []txType.Transaction // Queue of transactions to broadcast to the peer
+	queuedJoinTxs chan []txType.Transaction // Queue of transactions to broadcast to the peer
 
 	queuedProps chan *propEvent   // Queue of blocks to broadcast to the peer
 	queuedAnns  chan *types.Block // Queue of blocks to announce to the peer
@@ -112,8 +114,8 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		knownTxs:      mapset.NewSet(),
 		knownJoinTxs:  mapset.NewSet(),
 		knownBlocks:   mapset.NewSet(),
-		queuedTxs:     make(chan []*types.Transaction, maxQueuedTxs),
-		queuedJoinTxs: make(chan []*types.JoinTransaction, maxQueuedJoinTxs),
+		queuedTxs:     make(chan []txType.Transaction, maxQueuedTxs),
+		queuedJoinTxs: make(chan []txType.Transaction, maxQueuedJoinTxs),
 		queuedProps:   make(chan *propEvent, maxQueuedProps),
 		queuedAnns:    make(chan *types.Block, maxQueuedAnns),
 		term:          make(chan struct{}),
@@ -213,7 +215,7 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 
 // SendTransactions sends transactions to the peer and includes the hashes
 // in its transaction hash set for future reference.
-func (p *peer) SendTransactions(txs types.Transactions) error {
+func (p *peer) SendTransactions(txs txType.Transactions) error {
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
 	}
@@ -223,17 +225,16 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 
 // SendTransactions sends join transactions to the peer and includes the hashes
 // in its transaction hash set for future reference.
-func (p *peer) SendJoinTransactions(jtxs types.JoinTransactions) error {
+func (p *peer) SendJoinTransactions(jtxs txType.Transactions) error {
 	for _, jtx := range jtxs {
 		p.knownJoinTxs.Add(jtx.Hash())
 	}
-
 	return p2p.Send(p.rw, JoinTxMsg, jtxs)
 }
 
 // AsyncSendTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped.
-func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
+func (p *peer) AsyncSendTransactions(txs []txType.Transaction) {
 	select {
 	case p.queuedTxs <- txs:
 		for _, tx := range txs {
@@ -246,7 +247,7 @@ func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 
 // AsyncSendJoinTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped. // TODO : add - for join transaction
-func (p *peer) AsyncSendJoinTransactions(jtxs []*types.JoinTransaction) {
+func (p *peer) AsyncSendJoinTransactions(jtxs []txType.Transaction) {
 	select {
 	case p.queuedJoinTxs <- jtxs:
 		for _, jtx := range jtxs {

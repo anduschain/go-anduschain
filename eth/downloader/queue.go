@@ -58,14 +58,10 @@ type fetchResult struct {
 	Hash    common.Hash // Hash of the header to prevent recalculating
 
 	Header *types.Header
-	//Uncles       []*types.Header // TODO : deprecated
-	GenTransactions  types.Transactions
-	JoinTransactions types.JoinTransactions
 
-	GenReceipts  types.Receipts
-	JoinReceipts types.JoinReceipts
+	Transactions *types.TransactionsSet
+	Receipts     types.Receipts
 
-	//FairNodeSig []byte // TODO : goto header
 	Voters types.Voters
 }
 
@@ -392,23 +388,11 @@ func (q *queue) Results(block bool) []*fetchResult {
 		// Recalculate the result item weights to prevent memory exhaustion
 		for _, result := range results {
 			size := result.Header.Size()
-			//for _, uncle := range result.Uncles {
-			//	size += uncle.Size()
-			//}
-
-			for _, receipt := range result.JoinReceipts {
+			for _, receipt := range result.Receipts {
 				size += receipt.Size()
 			}
 
-			for _, tx := range result.JoinTransactions {
-				size += tx.Size()
-			}
-
-			for _, receipt := range result.GenReceipts {
-				size += receipt.Size()
-			}
-
-			for _, tx := range result.GenTransactions {
+			for _, tx := range result.Transactions.All() {
 				size += tx.Size()
 			}
 
@@ -788,16 +772,12 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 // DeliverBodies injects a block body retrieval response into the results queue.
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
-func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxLists [][]*types.JoinTransaction, voters [][]*types.Voter) (int, error) {
+func (q *queue) DeliverBodies(id string, txLists []*types.TransactionsSet, voters [][]*types.Voter) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.JoinTransactions(joinTxLists[index])) != header.JoinTxHash {
-			return errInvalidBody
-		}
-
-		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash {
+		if types.DeriveSha(txLists[index].All()) != header.TxHash {
 			return errInvalidBody
 		}
 
@@ -805,36 +785,30 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, joinTxL
 			return errInvalidBody
 		}
 
-		result.GenTransactions = txLists[index]
-		result.JoinTransactions = joinTxLists[index]
+		result.Transactions = txLists[index]
 		result.Voters = voters[index]
 
 		return nil
 	}
-	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, bodyReqTimer, len(txLists), len(joinTxLists), reconstruct)
+	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, bodyReqTimer, len(txLists), reconstruct)
 }
 
 // DeliverReceipts injects a receipt retrieval response into the results queue.
 // The method returns the number of transaction receipts accepted from the delivery
 // and also wakes any threads waiting for data delivery.
-func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, joinReceiptList [][]*types.JoinReceipt) (int, error) {
+func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Receipts(genReceiptList[index])) != header.ReceiptHash {
+		if types.DeriveSha(types.Receipts(receiptList[index])) != header.ReceiptHash {
 			return errInvalidReceipt
 		}
 
-		if types.DeriveSha(types.JoinReceipts(joinReceiptList[index])) != header.ReceiptHash {
-			return errInvalidReceipt
-		}
-
-		result.GenReceipts = genReceiptList[index]
-		result.JoinReceipts = joinReceiptList[index]
+		result.Receipts = receiptList[index]
 		return nil
 	}
-	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, receiptReqTimer, len(genReceiptList), len(joinReceiptList), reconstruct)
+	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, receiptReqTimer, len(receiptList), reconstruct)
 }
 
 // deliver injects a data retrieval response into the results queue.
@@ -844,7 +818,7 @@ func (q *queue) DeliverReceipts(id string, genReceiptList [][]*types.Receipt, jo
 // to access the queue, so they already need a lock anyway.
 func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQueue *prque.Prque,
 	pendPool map[string]*fetchRequest, donePool map[common.Hash]struct{}, reqTimer metrics.Timer,
-	genResults int, joinResults int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
+	results int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
 
 	// Short circuit if the data was never requested
 	request := pendPool[id]
@@ -855,13 +829,7 @@ func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQ
 	delete(pendPool, id)
 
 	// If no data items were retrieved, mark them as unavailable for the origin peer
-	if genResults == 0 {
-		for _, header := range request.Headers {
-			request.Peer.MarkLacking(header.Hash())
-		}
-	}
-
-	if joinResults == 0 {
+	if results == 0 {
 		for _, header := range request.Headers {
 			request.Peer.MarkLacking(header.Hash())
 		}
@@ -876,11 +844,7 @@ func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQ
 
 	for i, header := range request.Headers {
 		// Short circuit assembly if no more fetch results are found
-		if i >= genResults {
-			break
-		}
-
-		if i >= joinResults {
+		if i >= results {
 			break
 		}
 

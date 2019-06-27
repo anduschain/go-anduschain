@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math"
 	"math/big"
@@ -43,6 +42,8 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const (
@@ -88,10 +89,10 @@ type ProtocolManager struct {
 	SubProtocols []p2p.Protocol
 
 	eventMux *event.TypeMux
-	txsCh    chan eventType.NewTxsEvent
+	txsCh    chan types.NewTxsEvent
 	txsSub   event.Subscription
 
-	joinTxsCh chan eventType.NewJoinTxsEvent
+	joinTxsCh chan types.NewJoinTxsEvent
 
 	minedBlockSub *event.TypeMuxSubscription
 
@@ -222,16 +223,16 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
 	// broadcast transactions
-	pm.txsCh = make(chan eventType.NewTxsEvent, txChanSize)
+	pm.txsCh = make(chan types.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
-	pm.joinTxsCh = make(chan eventType.NewJoinTxsEvent, joinTxChanSize)
+	pm.joinTxsCh = make(chan types.NewJoinTxsEvent, joinTxChanSize)
 	//pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh) // FIXME(hakuna) : join tx pool
 	go pm.joinTxBroadcastLoop()
 
 	// broadcast mined blocks
-	pm.minedBlockSub = pm.eventMux.Subscribe(eventType.NewMinedBlockEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(types.NewMinedBlockEvent{})
 	go pm.minedBroadcastLoop()
 
 	// start sync handlers
@@ -550,25 +551,22 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver them all to the downloader for queuing
-		genTransactions := make([][]*types.Transaction, len(request))
-		joinTransactions := make([][]*types.JoinTransaction, len(request))
-		//uncles := make([][]*types.Header, len(request)) // TODO : depredated
+		transactions := make([]*types.Transactions, len(request))
 		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {
-			genTransactions[i] = body.GenTransactions
-			joinTransactions[i] = body.JoinTransactions
+			transactions[i] = body.Transactions
 			voters[i] = body.Voter
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
-		filter := len(genTransactions) > 0 || len(joinTransactions) > 0
+		filter := len(transactions) > 0 || len(voters) > 0
 
 		if filter {
-			genTransactions, joinTransactions, voters = pm.fetcher.FilterBodies(p.id, genTransactions, joinTransactions, voters, time.Now())
+			transactions, voters = pm.fetcher.FilterBodies(p.id, transactions, voters, time.Now())
 		}
 
-		if len(genTransactions) > 0 || len(joinTransactions) > 0 || !filter {
-			err := pm.downloader.DeliverBodies(p.id, genTransactions, joinTransactions, voters)
+		if len(transactions) > 0 || len(voters) > 0 || !filter {
+			err := pm.downloader.DeliverBodies(p.id, transactions, voters)
 			if err != nil {
 				log.Debug("Failed to deliver bodies", "err", err)
 			}
@@ -651,15 +649,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
 		receipts := struct {
-			genReceipts  [][]*types.Receipt
-			joinReceipts [][]*types.JoinReceipt
+			receipts [][]*types.Receipt
 		}{}
 
 		if err := msg.Decode(&receipts); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver all to the downloader
-		if err := pm.downloader.DeliverReceipts(p.id, receipts.genReceipts, receipts.joinReceipts); err != nil {
+		if err := pm.downloader.DeliverReceipts(p.id, receipts.receipts); err != nil {
 			log.Debug("Failed to deliver receipts", "err", err)
 		}
 
@@ -724,7 +721,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []*types.Transaction
+		var txs []txType.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -752,7 +749,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []*types.Transaction
+		var txs []txType.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -807,8 +804,8 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
-func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
-	var txset = make(map[*peer]types.Transactions)
+func (pm *ProtocolManager) BroadcastTxs(txs txType.Transactions) {
+	var txset = make(map[*peer]txType.Transactions)
 
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
@@ -828,8 +825,8 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
-func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.JoinTransactions) {
-	var jtxset = make(map[*peer]types.JoinTransactions)
+func (pm *ProtocolManager) BroadcastJoinTxs(jtsx txType.Transactions) {
+	var jtxset = make(map[*peer]txType.Transactions)
 
 	// Broadcast join transactions to a batch of peers not knowing about it
 	for _, jtx := range jtsx {
@@ -851,7 +848,7 @@ func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.JoinTransactions) {
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
-		if ev, ok := obj.Data.(eventType.NewMinedBlockEvent); ok {
+		if ev, ok := obj.Data.(types.NewMinedBlockEvent); ok {
 			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
 			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
 		}
@@ -875,7 +872,7 @@ func (pm *ProtocolManager) joinTxBroadcastLoop() {
 	for {
 		select {
 		case event := <-pm.joinTxsCh:
-			pm.BroadcastJoinTxs(event.JTxs)
+			pm.BroadcastJoinTxs(event.JoinTxs)
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err(): // FIXME(hakuna) : join tx pool

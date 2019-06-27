@@ -5,10 +5,9 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"math/big"
-	"sync/atomic"
 )
 
-type Transaction interface {
+type Transactioner interface {
 	TransactionId() string
 	ChainId() *big.Int
 	Protected() bool
@@ -23,13 +22,21 @@ type Transaction interface {
 	CheckNonce() bool
 
 	Price() *big.Int
+	Cost() *big.Int
+
+	Gas() uint64
 
 	To() *common.Address
-	From() atomic.Value
 	Hash() common.Hash
 	Size() common.StorageSize
 
-	WithSignature(signer Signer, sig []byte) (Transaction, error)
+	RawSignatureValues() (*big.Int, *big.Int, *big.Int)
+
+	WithSignature(signer Signer, sig []byte) (Transactioner, error)
 	Signature() Signature
 	SigHash(values ...interface{}) common.Hash
+
+	Sender(signer Signer) (common.Address, error)
+
+	AsMessage(s Signer) (Message, error)
 }

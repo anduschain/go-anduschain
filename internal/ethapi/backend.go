@@ -20,7 +20,6 @@ package ethapi
 import (
 	"context"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -33,6 +32,8 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // Backend interface provides the common API services (that are provided by
@@ -55,18 +56,18 @@ type Backend interface {
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetTd(blockHash common.Hash) *big.Int
 	GetEVM(ctx context.Context, msg core.Message, state *state.StateDB, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error)
-	SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription
-	SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription
-	SubscribeChainSideEvent(ch chan<- eventType.ChainSideEvent) event.Subscription
+	SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription
+	SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription
 
 	// TxPool API
-	SendTx(ctx context.Context, signedTx *types.Transaction) error
-	GetPoolTransactions() (types.Transactions, error)
-	GetPoolTransaction(txHash common.Hash) *types.Transaction
+	SendTx(ctx context.Context, signedTx types.Transaction) error
+	GetPoolTransactions() (txType.Transactions, error)
+	GetPoolTransaction(txHash common.Hash) types.Transaction
 	GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error)
 	Stats() (pending int, queued int)
 	TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions)
-	SubscribeNewTxsEvent(chan<- eventType.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
 
 	ChainConfig() *params.ChainConfig
 	CurrentBlock() *types.Block

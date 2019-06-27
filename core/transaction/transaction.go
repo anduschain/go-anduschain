@@ -1,15 +1,15 @@
-package types
+package transaction
 
 import (
 	"container/heap"
 	"github.com/anduschain/go-anduschain/common"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
+	"math/big"
 )
 
-//README(hakuna) : this transaction type is using types packages.
-type Transaction txType.Transactioner
-type Transactions []Transaction
+// Transactions is a Transaction slice type for basic sorting.
+type Transactions []Transactioner
 
 // Len returns the length of s.
 func (s Transactions) Len() int { return len(s) }
@@ -23,50 +23,6 @@ func (s Transactions) GetRlp(i int) []byte {
 	return enc
 }
 
-// New Type for Anduschain, transactions is as transaction group for block body.
-type TransactionsSet struct {
-	Gen  Transactions
-	Join Transactions
-}
-
-func (ts TransactionsSet) Len() int {
-	return ts.Gen.Len() + ts.Join.Len()
-}
-
-func (ts TransactionsSet) All() Transactions {
-	var totalTxs Transactions
-	totalTxs = append(totalTxs, ts.Gen...)
-	totalTxs = append(totalTxs, ts.Join...)
-	return totalTxs
-}
-
-// TxDifference returns a new set which is the difference between a and b.
-func TxDifference(a, b Transactions) Transactions {
-	keep := make(Transactions, 0, len(a))
-
-	remove := make(map[common.Hash]struct{})
-	for _, tx := range b {
-		remove[tx.Hash()] = struct{}{}
-	}
-
-	for _, tx := range a {
-		if _, ok := remove[tx.Hash()]; !ok {
-			keep = append(keep, tx)
-		}
-	}
-
-	return keep
-}
-
-// TxByNonce implements the sort interface to allow sorting a list of transactions
-// by their nonces. This is usually only useful for sorting transactions from a
-// single account, otherwise a nonce comparison doesn't make much sense.
-type TxByNonce Transactions
-
-func (s TxByNonce) Len() int           { return len(s) }
-func (s TxByNonce) Less(i, j int) bool { return s[i].Nonce() < s[j].Nonce() }
-func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
 // TxByPrice implements both the sort and the heap interface, making it useful
 // for all at once sorting as well as individually adding and removing elements.
 type TxByPrice Transactions
@@ -76,7 +32,7 @@ func (s TxByPrice) Less(i, j int) bool { return s[i].Price().Cmp(s[j].Price()) >
 func (s TxByPrice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (s *TxByPrice) Push(x interface{}) {
-	*s = append(*s, x.(Transaction))
+	*s = append(*s, x.(Transactioner))
 }
 
 func (s *TxByPrice) Pop() interface{} {
@@ -93,7 +49,7 @@ func (s *TxByPrice) Pop() interface{} {
 type TransactionsByPriceAndNonce struct {
 	txs    map[common.Address]Transactions // Per account nonce-sorted list of transactions
 	heads  TxByPrice                       // Next transaction for each unique account (price heap)
-	signer txType.Signer                   // Signer for the set of transactions
+	signer Signer                          // Signer for the set of transactions
 }
 
 // NewTransactionsByPriceAndNonce creates a transaction set that can retrieve
@@ -101,7 +57,7 @@ type TransactionsByPriceAndNonce struct {
 //
 // Note, the input map is reowned so the caller should not interact any more with
 // if after providing it to the constructor.
-func NewTransactionsByPriceAndNonce(signer txType.Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
+func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
 	// Initialize a price based heap with the head transactions
 
 	heads := make(TxByPrice, 0, len(txs))
@@ -125,7 +81,7 @@ func NewTransactionsByPriceAndNonce(signer txType.Signer, txs map[common.Address
 }
 
 // Peek returns the next transaction by price.
-func (t *TransactionsByPriceAndNonce) Peek() Transaction {
+func (t *TransactionsByPriceAndNonce) Peek() Transactioner {
 	if len(t.heads) == 0 {
 		return nil
 	}
@@ -148,4 +104,37 @@ func (t *TransactionsByPriceAndNonce) Shift() {
 // and hence all subsequent ones should be discarded from the same account.
 func (t *TransactionsByPriceAndNonce) Pop() {
 	heap.Pop(&t.heads)
+}
+
+type WriteCounter common.StorageSize
+
+func (c *WriteCounter) Write(b []byte) (int, error) {
+	*c += WriteCounter(len(b))
+	return len(b), nil
+}
+
+type Signature struct {
+	V *big.Int
+	R *big.Int
+	S *big.Int
+}
+
+// deriveChainId derives the chain id from the given v parameter
+func DeriveChainId(v *big.Int) *big.Int {
+	if v.BitLen() <= 64 {
+		v := v.Uint64()
+		if v == 27 || v == 28 {
+			return new(big.Int)
+		}
+		return new(big.Int).SetUint64((v - 35) / 2)
+	}
+	v = new(big.Int).Sub(v, big.NewInt(35))
+	return v.Div(v, big.NewInt(2))
+}
+
+func RlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
 }

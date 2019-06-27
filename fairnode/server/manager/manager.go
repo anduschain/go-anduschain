@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil/queue"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
@@ -34,7 +35,7 @@ type FairManager struct {
 	votePool      *pool.VotePool
 	LastBlockNum  *big.Int
 	db            *db.FairNodeDB
-	Signer        types.Signer
+	Signer        txType.Signer
 	exit          chan struct{}
 	Epoch         *big.Int
 	ManageOtprnCh chan struct{}
@@ -70,7 +71,7 @@ func New() (*FairManager, error) {
 
 	fm := &FairManager{
 		Epoch:         big.NewInt(config.DefaultConfig.Epoch),
-		Signer:        types.NewEIP155Signer(big.NewInt(int64(config.DefaultConfig.ChainID))),
+		Signer:        txType.NewEIP155Signer(big.NewInt(int64(config.DefaultConfig.ChainID))),
 		exit:          make(chan struct{}),
 		ManageOtprnCh: make(chan struct{}),
 		StopLeagueCh:  make(chan struct{}),
@@ -191,7 +192,7 @@ func (fm *FairManager) GetLastBlockNum() *big.Int {
 	fm.LastBlockNum = fm.db.GetCurrentBlock()
 	return fm.LastBlockNum
 }
-func (fm *FairManager) GetSinger() types.Signer          { return fm.Signer }
+func (fm *FairManager) GetSinger() txType.Signer         { return fm.Signer }
 func (fm *FairManager) GetManagerOtprnCh() chan struct{} { return fm.ManageOtprnCh }
 func (fm *FairManager) RequestWinningBlock(exit chan struct{}) {
 	for {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/ethclient"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -43,7 +43,7 @@ type LoadTest struct {
 	addr   common.Address
 	pwd    string
 	nonce  uint64
-	signer types.EIP155Signer
+	signer txType.EIP155Signer
 }
 
 func NewLoadTestModule(client *rpc.Client, addr, pwd string, chainID int64) *LoadTest {
@@ -52,7 +52,7 @@ func NewLoadTestModule(client *rpc.Client, addr, pwd string, chainID int64) *Loa
 		ec:     ethclient.NewClient(client),
 		addr:   common.HexToAddress(addr),
 		pwd:    pwd,
-		signer: types.NewEIP155Signer(big.NewInt(chainID)),
+		signer: txType.NewEIP155Signer(big.NewInt(chainID)),
 	}
 }
 
@@ -144,8 +144,8 @@ func (l *LoadTest) SendTransaction() error {
 		return err
 	}
 
-	tx := types.NewTransaction(l.nonce, toAddress, value, gasLimit, gasPrice, bData)
-	signedTx, err := types.SignTx(tx, l.signer, l.ks)
+	tx := txType.NewGenTransaction(l.nonce, toAddress, value, gasLimit, gasPrice, bData)
+	signedTx, err := txType.SignTx(tx, l.signer, l.ks)
 	if err != nil {
 		return err
 	}

@@ -44,10 +44,9 @@ func (p *headerPack) Stats() string  { return fmt.Sprintf("%d", len(p.headers)) 
 
 // bodyPack is a batch of block bodies returned by a peer.
 type bodyPack struct {
-	peerID           string
-	genTransactions  [][]*types.Transaction
-	joinTransactions [][]*types.JoinTransaction
-	voters           [][]*types.Voter
+	peerID       string
+	transactions []*types.TransactionsSet
+	voters       [][]*types.Voter
 }
 
 func (p *bodyPack) PeerId() string { return p.peerID }
@@ -56,23 +55,22 @@ func (p *bodyPack) Items() int {
 	//	return len(p.transactions)
 	//}
 	//return len(p.uncles)
-	return len(p.genTransactions) + len(p.joinTransactions)
+	return len(p.transactions)
 }
 func (p *bodyPack) Stats() string {
-	return fmt.Sprintf("%d:%d:%d", len(p.genTransactions), len(p.joinTransactions), len(p.voters))
+	return fmt.Sprintf("%d:%d", len(p.transactions), len(p.voters))
 }
 
 // receiptPack is a batch of receipts returned by a peer.
 type receiptPack struct {
-	peerID       string
-	genReceipts  [][]*types.Receipt
-	joinReceipts [][]*types.JoinReceipt
+	peerID   string
+	receipts [][]*types.Receipt
 }
 
 func (p *receiptPack) PeerId() string { return p.peerID }
-func (p *receiptPack) Items() int     { return len(p.genReceipts) + len(p.joinReceipts) }
+func (p *receiptPack) Items() int     { return len(p.receipts) }
 func (p *receiptPack) Stats() string {
-	return fmt.Sprintf("%d:%d", len(p.genReceipts), len(p.joinReceipts))
+	return fmt.Sprintf("%d", len(p.receipts))
 }
 
 // statePack is a batch of states returned by a peer.

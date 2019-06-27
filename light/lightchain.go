@@ -19,7 +19,6 @@ package light
 import (
 	"context"
 	"errors"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -333,12 +332,12 @@ func (self *LightChain) Rollback(chain []common.Hash) {
 func (self *LightChain) postChainEvents(events []interface{}) {
 	for _, event := range events {
 		switch ev := event.(type) {
-		case eventType.ChainEvent:
+		case types.ChainEvent:
 			if self.CurrentHeader().Hash() == ev.Hash {
-				self.chainHeadFeed.Send(eventType.ChainHeadEvent{Block: ev.Block})
+				self.chainHeadFeed.Send(types.ChainHeadEvent{Block: ev.Block})
 			}
 			self.chainFeed.Send(ev)
-		case eventType.ChainSideEvent:
+		case types.ChainSideEvent:
 			self.chainSideFeed.Send(ev)
 		}
 	}
@@ -381,11 +380,11 @@ func (self *LightChain) InsertHeaderChain(chain []*types.Header, checkFreq int) 
 		switch status {
 		case core.CanonStatTy:
 			log.Debug("Inserted new header", "number", header.Number, "hash", header.Hash())
-			events = append(events, eventType.ChainEvent{Block: types.NewBlockWithHeader(header), Hash: header.Hash()})
+			events = append(events, types.ChainEvent{Block: types.NewBlockWithHeader(header), Hash: header.Hash()})
 
 		case core.SideStatTy:
 			log.Debug("Inserted forked header", "number", header.Number, "hash", header.Hash())
-			events = append(events, eventType.ChainSideEvent{Block: types.NewBlockWithHeader(header)})
+			events = append(events, types.ChainSideEvent{Block: types.NewBlockWithHeader(header)})
 		}
 		return err
 	}
@@ -509,17 +508,17 @@ func (self *LightChain) UnlockChain() {
 }
 
 // SubscribeChainEvent registers a subscription of ChainEvent.
-func (self *LightChain) SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription {
+func (self *LightChain) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return self.scope.Track(self.chainFeed.Subscribe(ch))
 }
 
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
-func (self *LightChain) SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription {
+func (self *LightChain) SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription {
 	return self.scope.Track(self.chainHeadFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
-func (self *LightChain) SubscribeChainSideEvent(ch chan<- eventType.ChainSideEvent) event.Subscription {
+func (self *LightChain) SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription {
 	return self.scope.Track(self.chainSideFeed.Subscribe(ch))
 }
 
@@ -531,6 +530,6 @@ func (self *LightChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 
 // SubscribeRemovedLogsEvent implements the interface of filters.Backend
 // LightChain does not send core.RemovedLogsEvent, so return an empty subscription.
-func (self *LightChain) SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription {
+func (self *LightChain) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return self.scope.Track(new(event.Feed).Subscribe(ch))
 }

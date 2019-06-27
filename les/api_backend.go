@@ -18,7 +18,6 @@ package les
 
 import (
 	"context"
-	"github.com/anduschain/go-anduschain/core/event_type"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -140,19 +139,19 @@ func (b *LesApiBackend) TxPoolContent() (map[common.Address]types.Transactions, 
 	return b.eth.txPool.Content()
 }
 
-func (b *LesApiBackend) SubscribeNewTxsEvent(ch chan<- eventType.NewTxsEvent) event.Subscription {
+func (b *LesApiBackend) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Subscription {
 	return b.eth.txPool.SubscribeNewTxsEvent(ch)
 }
 
-func (b *LesApiBackend) SubscribeChainEvent(ch chan<- eventType.ChainEvent) event.Subscription {
+func (b *LesApiBackend) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return b.eth.blockchain.SubscribeChainEvent(ch)
 }
 
-func (b *LesApiBackend) SubscribeChainHeadEvent(ch chan<- eventType.ChainHeadEvent) event.Subscription {
+func (b *LesApiBackend) SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription {
 	return b.eth.blockchain.SubscribeChainHeadEvent(ch)
 }
 
-func (b *LesApiBackend) SubscribeChainSideEvent(ch chan<- eventType.ChainSideEvent) event.Subscription {
+func (b *LesApiBackend) SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription {
 	return b.eth.blockchain.SubscribeChainSideEvent(ch)
 }
 
@@ -160,7 +159,7 @@ func (b *LesApiBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 	return b.eth.blockchain.SubscribeLogsEvent(ch)
 }
 
-func (b *LesApiBackend) SubscribeRemovedLogsEvent(ch chan<- eventType.RemovedLogsEvent) event.Subscription {
+func (b *LesApiBackend) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return b.eth.blockchain.SubscribeRemovedLogsEvent(ch)
 }
 

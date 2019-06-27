@@ -1,32 +1,61 @@
-package joinTxpool
+// Copyright 2017 The go-ethereum Authors
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
+package txpool
 
 import (
+	"errors"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
-	"github.com/anduschain/go-anduschain/pools"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"os"
 )
 
+// errNoActiveJournal is returned if a transaction is attempted to be inserted
+// into the journal, but no such file is currently open.
+var errNoActiveJournal = errors.New("no active journal")
+
+// devNull is a WriteCloser that just discards anything written into it. Its
+// goal is to allow the transaction journal to write into a fake journal when
+// loading transactions on startup without printing warnings due to no file
+// being read for write.
+type devNull struct{}
+
+func (*devNull) Write(p []byte) (n int, err error) { return len(p), nil }
+func (*devNull) Close() error                      { return nil }
+
 // txJournal is a rotating log of transactions with the aim of storing locally
 // created transactions to allow non-executed ones to survive node restarts.
-type joinTxJournal struct {
+type txJournal struct {
 	path   string         // Filesystem path to store the transactions at
 	writer io.WriteCloser // Output stream to write new transactions into
 }
 
-// newjoinTxJournal creates a new transaction journal to
-func newjoinTxJournal(path string) *joinTxJournal {
-	return &joinTxJournal{
+// newTxJournal creates a new transaction journal to
+func newTxJournal(path string) *txJournal {
+	return &txJournal{
 		path: path,
 	}
 }
 
 // load parses a transaction journal dump from disk, loading its contents into
 // the specified pool.
-func (journal *joinTxJournal) load(add func([]*types.JoinTransaction) []error) error {
+func (journal *txJournal) load(add func([]types.Transaction) []error) error {
 	// Skip the parsing if the journal file doesn't exist at all
 	if _, err := os.Stat(journal.path); os.IsNotExist(err) {
 		return nil
@@ -39,7 +68,7 @@ func (journal *joinTxJournal) load(add func([]*types.JoinTransaction) []error) e
 	defer input.Close()
 
 	// Temporarily discard any journal additions (don't double add on load)
-	journal.writer = new(pools.DevNull)
+	journal.writer = new(devNull)
 	defer func() { journal.writer = nil }()
 
 	// Inject all transactions from the journal into the pool
@@ -49,21 +78,21 @@ func (journal *joinTxJournal) load(add func([]*types.JoinTransaction) []error) e
 	// Create a method to load a limited batch of transactions and bump the
 	// appropriate progress counters. Then use this method to load all the
 	// journaled transactions in small-ish batches.
-	loadBatch := func(txs types.JoinTransactions) {
+	loadBatch := func(txs types.Transactions) {
 		for _, err := range add(txs) {
 			if err != nil {
-				log.Debug("Failed to add journaled join transaction", "err", err)
+				log.Debug("Failed to add journaled transaction", "err", err)
 				dropped++
 			}
 		}
 	}
 	var (
 		failure error
-		batch   types.JoinTransactions
+		batch   types.Transactions
 	)
 	for {
 		// Parse the next transaction and terminate on error
-		tx := new(types.JoinTransaction)
+		var tx types.Transaction
 		if err = stream.Decode(tx); err != nil {
 			if err != io.EOF {
 				failure = err
@@ -87,9 +116,9 @@ func (journal *joinTxJournal) load(add func([]*types.JoinTransaction) []error) e
 }
 
 // insert adds the specified transaction to the local disk journal.
-func (journal *joinTxJournal) insert(tx *types.JoinTransaction) error {
+func (journal *txJournal) insert(tx types.Transaction) error {
 	if journal.writer == nil {
-		return pools.ErrNoActiveJournal
+		return errNoActiveJournal
 	}
 	if err := rlp.Encode(journal.writer, tx); err != nil {
 		return err
@@ -99,7 +128,7 @@ func (journal *joinTxJournal) insert(tx *types.JoinTransaction) error {
 
 // rotate regenerates the transaction journal based on the current contents of
 // the transaction pool.
-func (journal *joinTxJournal) rotate(all map[common.Address]types.JoinTransactions) error {
+func (journal *txJournal) rotate(all map[common.Address]types.Transactions) error {
 	// Close the current journal (if any is open)
 	if journal.writer != nil {
 		if err := journal.writer.Close(); err != nil {
@@ -133,13 +162,13 @@ func (journal *joinTxJournal) rotate(all map[common.Address]types.JoinTransactio
 		return err
 	}
 	journal.writer = sink
-	log.Info("Regenerated local transaction journal", "join transactions", journaled, "accounts", len(all))
+	log.Info("Regenerated local transaction journal", "transactions", journaled, "accounts", len(all))
 
 	return nil
 }
 
 // close flushes the transaction journal contents to disk and closes the file.
-func (journal *joinTxJournal) close() error {
+func (journal *txJournal) close() error {
 	var err error
 
 	if journal.writer != nil {

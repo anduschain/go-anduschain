@@ -69,7 +69,6 @@ type StateDB struct {
 
 	thash, bhash common.Hash
 	txIndex      int
-	jtxIndex     int // TODO : add - for join tx count
 	logs         map[common.Hash][]*types.Log
 	logSize      uint
 
@@ -125,7 +124,6 @@ func (self *StateDB) Reset(root common.Hash) error {
 	self.thash = common.Hash{}
 	self.bhash = common.Hash{}
 	self.txIndex = 0
-	self.jtxIndex = 0 // TODO : add
 	self.logs = make(map[common.Hash][]*types.Log)
 	self.logSize = 0
 	self.preimages = make(map[common.Hash][]byte)
@@ -139,7 +137,6 @@ func (self *StateDB) AddLog(log *types.Log) {
 	log.TxHash = self.thash
 	log.BlockHash = self.bhash
 	log.TxIndex = uint(self.txIndex)
-	log.JoinTxIndex = uint(self.jtxIndex) // TODO : add - join tx
 	log.Index = self.logSize
 	self.logs[self.thash] = append(self.logs[self.thash], log)
 	self.logSize++
@@ -597,12 +594,10 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 
 // Prepare sets the current transaction hash and index and block hash which is
 // used when the EVM emits new state logs.
-func (self *StateDB) Prepare(thash, bhash common.Hash, ti int, jti int) {
+func (self *StateDB) Prepare(thash, bhash common.Hash, ti int) {
 	self.thash = thash
 	self.bhash = bhash
 	self.txIndex = ti
-	self.jtxIndex = jti
-
 }
 
 func (s *StateDB) clearJournalAndRefund() {
