@@ -119,10 +119,8 @@ var (
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
 		utils.DeveloperFlag,
-		//utils.DeveloperPeriodFlag, // --> fixme : deprecated
 		utils.TestnetFlag,
 		utils.SoloFlag,
-		//utils.RinkebyFlag, // --> fixme : deprecated
 
 		utils.DebFlag,
 		utils.VMEnableDebugFlag,
@@ -130,8 +128,6 @@ var (
 		utils.RPCCORSDomainFlag,
 		utils.RPCVirtualHostsFlag,
 		utils.EthStatsURLFlag,
-		//utils.MetricsEnabledFlag, // --> fixme : deprecated
-		utils.FakePoWFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,

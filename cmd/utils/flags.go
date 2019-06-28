@@ -142,10 +142,6 @@ var (
 		Name:  "testnet",
 		Usage: "AndusChain test network: pre-configured proof-of-deb test network",
 	}
-	//RinkebyFlag = cli.BoolFlag{
-	//	Name:  "rinkeby",
-	//	Usage: "Rinkeby network: pre-configured proof-of-authority test network",
-	//}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-deb network with a pre-funded developer account, mining enabled",
@@ -154,10 +150,6 @@ var (
 		Name:  "solo",
 		Usage: "To make proof-of-deb solo network",
 	}
-	//DeveloperPeriodFlag = cli.IntFlag{
-	//	Name:  "dev.period",
-	//	Usage: "Block period to use in developer mode (0 = mine only if transaction pending)",
-	//}
 	IdentityFlag = cli.StringFlag{
 		Name:  "identity",
 		Usage: "Custom node name",
@@ -212,36 +204,6 @@ var (
 		Usage: "Dashboard metrics collection refresh rate",
 		Value: dashboard.DefaultConfig.Refresh,
 	}
-	// Ethash settings
-	//EthashCacheDirFlag = DirectoryFlag{
-	//	Name:  "ethash.cachedir",
-	//	Usage: "Directory to store the ethash verification caches (default = inside the datadir)",
-	//}
-	//EthashCachesInMemoryFlag = cli.IntFlag{
-	//	Name:  "ethash.cachesinmem",
-	//	Usage: "Number of recent ethash caches to keep in memory (16MB each)",
-	//	Value: eth.DefaultConfig.Ethash.CachesInMem,
-	//}
-	//EthashCachesOnDiskFlag = cli.IntFlag{
-	//	Name:  "ethash.cachesondisk",
-	//	Usage: "Number of recent ethash caches to keep on disk (16MB each)",
-	//	Value: eth.DefaultConfig.Ethash.CachesOnDisk,
-	//}
-	//EthashDatasetDirFlag = DirectoryFlag{
-	//	Name:  "ethash.dagdir",
-	//	Usage: "Directory to store the ethash mining DAGs (default = inside home folder)",
-	//	Value: DirectoryString{eth.DefaultConfig.Ethash.DatasetDir},
-	//}
-	//EthashDatasetsInMemoryFlag = cli.IntFlag{
-	//	Name:  "ethash.dagsinmem",
-	//	Usage: "Number of recent ethash mining DAGs to keep in memory (1+GB each)",
-	//	Value: eth.DefaultConfig.Ethash.DatasetsInMem,
-	//}
-	//EthashDatasetsOnDiskFlag = cli.IntFlag{
-	//	Name:  "ethash.dagsondisk",
-	//	Usage: "Number of recent ethash mining DAGs to keep on disk (1+GB each)",
-	//	Value: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-	//}
 	// Transaction pool settings
 	TxPoolLocalsFlag = cli.StringFlag{
 		Name:  "txpool.locals",
@@ -408,10 +370,6 @@ var (
 	EthStatsURLFlag = cli.StringFlag{
 		Name:  "ethstats",
 		Usage: "Reporting URL of a ethstats service (nodename:secret@host:port)",
-	}
-	FakePoWFlag = cli.BoolFlag{
-		Name:  "fakepow",
-		Usage: "Disables proof-of-work verification",
 	}
 	NoCompactionFlag = cli.BoolFlag{
 		Name:  "nocompaction",
