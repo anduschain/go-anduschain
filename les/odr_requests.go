@@ -114,7 +114,7 @@ func (r *BlockRequest) Validate(db ethdb.Database, msg *Msg) error {
 	if header == nil {
 		return errHeaderUnavailable
 	}
-	if header.TxHash != types.DeriveSha(types.Transactions(body.Transactions)) {
+	if header.TxHash != types.DeriveSha(types.Transactions(body.Transactions.All())) {
 		return errTxHashMismatch
 	}
 

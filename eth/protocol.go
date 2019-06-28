@@ -25,8 +25,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/rlp"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // Constants to match up protocol versions and messages
@@ -103,11 +101,11 @@ var errorToString = map[int]string{
 
 type txPool interface {
 	// AddRemotes should add the given transactions to the pool.
-	AddRemotes([]txType.Transaction) []error
+	AddRemotes([]types.Transaction) []error
 
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
-	Pending() (map[common.Address]txType.Transactions, error)
+	Pending() (map[common.Address]types.Transactions, error)
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
@@ -182,7 +180,7 @@ type newBlockData struct {
 // blockBody represents the data content of a single block.
 type blockBody struct {
 	Voter        []*types.Voter
-	Transactions *types.Transactions // Transactions contained within a block
+	Transactions *types.TransactionsSet // Transactions contained within a block
 }
 
 // blockBodiesData is the network packet for block content distribution.

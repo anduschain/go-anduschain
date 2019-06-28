@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/anduschain/go-anduschain/common"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/rlp"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
@@ -100,7 +101,6 @@ func (h *Header) EncodeJSON() (string, error) {
 
 func (h *Header) GetParentHash() *Hash { return &Hash{h.header.ParentHash} }
 
-//func (h *Header) GetUncleHash() *Hash    { return &Hash{h.header.UncleHash} }  // TODO : deprecated
 func (h *Header) GetCoinbase() *Address  { return &Address{h.header.Coinbase} }
 func (h *Header) GetRoot() *Hash         { return &Hash{h.header.Root} }
 func (h *Header) GetTxHash() *Hash       { return &Hash{h.header.TxHash} }
@@ -113,7 +113,6 @@ func (h *Header) GetGasUsed() int64      { return int64(h.header.GasUsed) }
 func (h *Header) GetTime() int64         { return h.header.Time.Int64() }
 func (h *Header) GetExtra() []byte       { return h.header.Extra }
 
-//func (h *Header) GetMixDigest() *Hash    { return &Hash{h.header.MixDigest} }  // TODO : deprecated
 func (h *Header) GetNonce() *Nonce { return &Nonce{h.header.Nonce} }
 func (h *Header) GetHash() *Hash   { return &Hash{h.header.Hash()} }
 
@@ -192,30 +191,28 @@ func (b *Block) GetHash() *Hash     { return &Hash{b.block.Hash()} }
 func (b *Block) GetHeader() *Header { return &Header{b.block.Header()} }
 
 //func (b *Block) GetUncles() *Headers            { return &Headers{b.block.Uncles()} } // TODO : deprecated
-func (b *Block) GetTransactions() *Transactions { return &Transactions{b.block.Transactions()} }
+func (b *Block) GetTransactions() *Transactions { return &Transactions{b.block.Transactions().All()} }
 func (b *Block) GetTransaction(hash *Hash) *Transaction {
 	return &Transaction{b.block.Transaction(hash.hash)}
 }
 
 // Transaction represents a single Ethereum transaction.
 type Transaction struct {
-	tx *types.Transaction
+	tx types.Transaction
 }
 
 // NewTransaction creates a new transaction with the given properties.
 func NewTransaction(nonce int64, to *Address, amount *BigInt, gasLimit int64, gasPrice *BigInt, data []byte) *Transaction {
-	return &Transaction{types.NewTransaction(uint64(nonce), to.address, amount.bigint, uint64(gasLimit), gasPrice.bigint, common.CopyBytes(data))}
+	return &Transaction{txType.NewGenTransaction(uint64(nonce), to.address, amount.bigint, uint64(gasLimit), gasPrice.bigint, common.CopyBytes(data))}
 }
 
 // NewTransactionFromRLP parses a transaction from an RLP data dump.
 func NewTransactionFromRLP(data []byte) (*Transaction, error) {
-	tx := &Transaction{
-		tx: new(types.Transaction),
-	}
+	var tx Transaction
 	if err := rlp.DecodeBytes(common.CopyBytes(data), tx.tx); err != nil {
 		return nil, err
 	}
-	return tx, nil
+	return &tx, nil
 }
 
 // EncodeRLP encodes a transaction into an RLP data dump.
@@ -225,13 +222,11 @@ func (tx *Transaction) EncodeRLP() ([]byte, error) {
 
 // NewTransactionFromJSON parses a transaction from a JSON data dump.
 func NewTransactionFromJSON(data string) (*Transaction, error) {
-	tx := &Transaction{
-		tx: new(types.Transaction),
-	}
+	var tx Transaction
 	if err := json.Unmarshal([]byte(data), tx.tx); err != nil {
 		return nil, err
 	}
-	return tx, nil
+	return &tx, nil
 }
 
 // EncodeJSON encodes a transaction into a JSON data dump.
@@ -242,7 +237,7 @@ func (tx *Transaction) EncodeJSON() (string, error) {
 
 func (tx *Transaction) GetData() []byte      { return tx.tx.Data() }
 func (tx *Transaction) GetGas() int64        { return int64(tx.tx.Gas()) }
-func (tx *Transaction) GetGasPrice() *BigInt { return &BigInt{tx.tx.GasPrice()} }
+func (tx *Transaction) GetGasPrice() *BigInt { return &BigInt{tx.tx.Price()} }
 func (tx *Transaction) GetValue() *BigInt    { return &BigInt{tx.tx.Value()} }
 func (tx *Transaction) GetNonce() int64      { return int64(tx.tx.Nonce()) }
 
@@ -250,15 +245,15 @@ func (tx *Transaction) GetHash() *Hash   { return &Hash{tx.tx.Hash()} }
 func (tx *Transaction) GetCost() *BigInt { return &BigInt{tx.tx.Cost()} }
 
 // Deprecated: GetSigHash cannot know which signer to use.
-func (tx *Transaction) GetSigHash() *Hash { return &Hash{types.HomesteadSigner{}.Hash(tx.tx)} }
+func (tx *Transaction) GetSigHash() *Hash { return &Hash{txType.HomesteadSigner{}.Hash(tx.tx)} }
 
 // Deprecated: use EthereumClient.TransactionSender
 func (tx *Transaction) GetFrom(chainID *BigInt) (address *Address, _ error) {
-	var signer types.Signer = types.HomesteadSigner{}
+	var signer txType.Signer = txType.HomesteadSigner{}
 	if chainID != nil {
-		signer = types.NewEIP155Signer(chainID.bigint)
+		signer = txType.NewEIP155Signer(chainID.bigint)
 	}
-	from, err := types.Sender(signer, tx.tx)
+	from, err := tx.tx.Sender(signer)
 	return &Address{from}, err
 }
 
@@ -270,9 +265,9 @@ func (tx *Transaction) GetTo() *Address {
 }
 
 func (tx *Transaction) WithSignature(sig []byte, chainID *BigInt) (signedTx *Transaction, _ error) {
-	var signer types.Signer = types.HomesteadSigner{}
+	var signer txType.Signer = txType.HomesteadSigner{}
 	if chainID != nil {
-		signer = types.NewEIP155Signer(chainID.bigint)
+		signer = txType.NewEIP155Signer(chainID.bigint)
 	}
 	rawTx, err := tx.tx.WithSignature(signer, common.CopyBytes(sig))
 	return &Transaction{rawTx}, err

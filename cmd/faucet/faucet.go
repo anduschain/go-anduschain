@@ -45,6 +45,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/eth/downloader"
@@ -184,10 +185,10 @@ func main() {
 
 // request represents an accepted funding request.
 type request struct {
-	Avatar  string             `json:"avatar"`  // Avatar URL to make the UI nicer
-	Account common.Address     `json:"account"` // Ethereum address being funded
-	Time    time.Time          `json:"time"`    // Timestamp when the request was accepted
-	Tx      *types.Transaction `json:"tx"`      // Transaction funding the account
+	Avatar  string            `json:"avatar"`  // Avatar URL to make the UI nicer
+	Account common.Address    `json:"account"` // Ethereum address being funded
+	Time    time.Time         `json:"time"`    // Timestamp when the request was accepted
+	Tx      types.Transaction `json:"tx"`      // Transaction funding the account
 }
 
 // faucet represents a crypto faucet backed by an Ethereum light client.
@@ -471,7 +472,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 			amount = new(big.Int).Mul(amount, new(big.Int).Exp(big.NewInt(5), big.NewInt(int64(msg.Tier)), nil))
 			amount = new(big.Int).Div(amount, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(msg.Tier)), nil))
 
-			tx := types.NewTransaction(f.nonce+uint64(len(f.reqs)), address, amount, 21000, f.price, nil)
+			tx := txType.NewGenTransaction(f.nonce+uint64(len(f.reqs)), address, amount, 21000, f.price, nil)
 			signed, err := f.keystore.SignTx(f.account, tx, f.config.ChainID)
 			if err != nil {
 				f.lock.Unlock()

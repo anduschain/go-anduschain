@@ -24,7 +24,7 @@ import (
 )
 
 type ltrInfo struct {
-	tx     *types.Transaction
+	tx     types.Transaction
 	sentTo map[*peer]struct{}
 }
 

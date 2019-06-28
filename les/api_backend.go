@@ -111,7 +111,7 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, state *sta
 	return vm.NewEVM(context, state, b.eth.chainConfig, vmCfg), state.Error, nil
 }
 
-func (b *LesApiBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+func (b *LesApiBackend) SendTx(ctx context.Context, signedTx types.Transaction) error {
 	return b.eth.txPool.Add(ctx, signedTx)
 }
 
@@ -123,7 +123,7 @@ func (b *LesApiBackend) GetPoolTransactions() (types.Transactions, error) {
 	return b.eth.txPool.GetTransactions()
 }
 
-func (b *LesApiBackend) GetPoolTransaction(txHash common.Hash) *types.Transaction {
+func (b *LesApiBackend) GetPoolTransaction(txHash common.Hash) types.Transaction {
 	return b.eth.txPool.GetTransaction(txHash)
 }
 

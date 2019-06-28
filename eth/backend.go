@@ -192,7 +192,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	eth.txPool = txpool.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
-	eth.txPool.Start()
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth); err != nil {
 		return nil, err

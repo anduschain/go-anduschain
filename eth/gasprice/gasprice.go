@@ -23,11 +23,11 @@ import (
 	"sync"
 
 	"github.com/anduschain/go-anduschain/common"
+	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 var maxPrice = big.NewInt(500 * params.GWei)
@@ -153,7 +153,7 @@ type getBlockPricesResult struct {
 	err   error
 }
 
-type transactionsByGasPrice []txType.Transaction
+type transactionsByGasPrice []types.Transaction
 
 func (t transactionsByGasPrice) Len() int           { return len(t) }
 func (t transactionsByGasPrice) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
@@ -169,7 +169,7 @@ func (gpo *Oracle) getBlockPrices(ctx context.Context, signer txType.Signer, blo
 	}
 
 	blockTxs := block.Transactions().All()
-	txs := make([]txType.Transaction, len(blockTxs))
+	txs := make([]types.Transaction, len(blockTxs))
 	copy(txs, blockTxs)
 	sort.Sort(transactionsByGasPrice(txs))
 

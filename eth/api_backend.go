@@ -18,7 +18,6 @@ package eth
 
 import (
 	"context"
-	"github.com/anduschain/go-anduschain/core/txpool"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -36,8 +35,6 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // EthAPIBackend implements ethapi.Backend for full nodes
@@ -172,23 +169,23 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 	return b.eth.BlockChain().SubscribeLogsEvent(ch)
 }
 
-func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx txType.Transaction) error {
+func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx types.Transaction) error {
 	return b.eth.txPool.AddLocal(signedTx)
 }
 
-func (b *EthAPIBackend) GetPoolTransactions() (txType.Transactions, error) {
+func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 	pending, err := b.eth.txPool.Pending()
 	if err != nil {
 		return nil, err
 	}
-	var txs txType.Transactions
+	var txs types.Transactions
 	for _, batch := range pending {
-		txs = append(txs, batch.All()...)
+		txs = append(txs, batch...)
 	}
 	return txs, nil
 }
 
-func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) txType.Transaction {
+func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) types.Transaction {
 	return b.eth.txPool.Get(hash)
 }
 
@@ -200,7 +197,7 @@ func (b *EthAPIBackend) Stats() (pending int, queued int) {
 	return b.eth.txPool.Stats()
 }
 
-func (b *EthAPIBackend) TxPoolContent() (map[common.Address]*txpool.TxSet, map[common.Address]*txpool.TxSet) {
+func (b *EthAPIBackend) TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {
 	return b.eth.TxPool().Content()
 }
 

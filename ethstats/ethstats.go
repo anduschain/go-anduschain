@@ -534,8 +534,8 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		header = block.Header()
 		td = s.eth.BlockChain().GetTd(header.Hash(), header.Number.Uint64())
 
-		txs = make([]txStats, len(block.Transactions()))
-		for i, tx := range block.Transactions() {
+		txs = make([]txStats, block.Transactions().Len())
+		for i, tx := range block.Transactions().All() {
 			txs[i].Hash = tx.Hash()
 		}
 		//uncles = block.Uncles() // TODO : deprecated uncle

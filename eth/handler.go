@@ -42,8 +42,6 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const (
@@ -551,7 +549,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver them all to the downloader for queuing
-		transactions := make([]*types.Transactions, len(request))
+		transactions := make([]*types.TransactionsSet, len(request))
 		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {
@@ -721,7 +719,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []txType.Transaction
+		var txs []types.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -749,7 +747,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []txType.Transaction
+		var txs []types.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -804,8 +802,8 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
-func (pm *ProtocolManager) BroadcastTxs(txs txType.Transactions) {
-	var txset = make(map[*peer]txType.Transactions)
+func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
+	var txset = make(map[*peer]types.Transactions)
 
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
@@ -825,8 +823,8 @@ func (pm *ProtocolManager) BroadcastTxs(txs txType.Transactions) {
 
 // BroadcastTxs will propagate a batch of transactions to all peers which are not known to
 // already have the given transaction.
-func (pm *ProtocolManager) BroadcastJoinTxs(jtsx txType.Transactions) {
-	var jtxset = make(map[*peer]txType.Transactions)
+func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.Transactions) {
+	var jtxset = make(map[*peer]types.Transactions)
 
 	// Broadcast join transactions to a batch of peers not knowing about it
 	for _, jtx := range jtsx {

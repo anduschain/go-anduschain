@@ -26,6 +26,8 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/abi/bind"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+
+	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // Signer is an interaface defining the callback when a contract requires a
@@ -39,7 +41,7 @@ type signer struct {
 }
 
 func (s *signer) Sign(addr *Address, unsignedTx *Transaction) (signedTx *Transaction, _ error) {
-	sig, err := s.sign(types.HomesteadSigner{}, addr.address, unsignedTx.tx)
+	sig, err := s.sign(txType.HomesteadSigner{}, addr.address, unsignedTx.tx)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,7 @@ func (opts *TransactOpts) GetGasLimit() int64   { return int64(opts.opts.GasLimi
 func (opts *TransactOpts) SetFrom(from *Address) { opts.opts.From = from.address }
 func (opts *TransactOpts) SetNonce(nonce int64)  { opts.opts.Nonce = big.NewInt(nonce) }
 func (opts *TransactOpts) SetSigner(s Signer) {
-	opts.opts.Signer = func(signer types.Signer, addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
+	opts.opts.Signer = func(signer txType.Signer, addr common.Address, tx types.Transaction) (types.Transaction, error) {
 		sig, err := s.Sign(&Address{addr}, &Transaction{tx})
 		if err != nil {
 			return nil, err
@@ -108,7 +110,7 @@ func (opts *TransactOpts) SetContext(context *Context) { opts.opts.Context = con
 type BoundContract struct {
 	contract *bind.BoundContract
 	address  common.Address
-	deployer *types.Transaction
+	deployer types.Transaction
 }
 
 // DeployContract deploys a contract onto the Ethereum blockchain and binds the
