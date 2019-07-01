@@ -123,15 +123,6 @@ func (gtx *GenTransaction) Protected() bool {
 	return isProtectedV(gtx.data.V)
 }
 
-func isProtectedV(V *big.Int) bool {
-	if V.BitLen() <= 8 {
-		v := V.Uint64()
-		return v != 27 && v != 28
-	}
-	// anything not 27 or 28 is considered protected
-	return true
-}
-
 // EncodeRLP implements rlp.Encoder
 func (gtx *GenTransaction) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &gtx.data)
@@ -276,39 +267,3 @@ func (gtx *GenTransaction) Cost() *big.Int {
 func (gtx *GenTransaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return gtx.data.V, gtx.data.R, gtx.data.S
 }
-
-// Message is a fully derived transaction and implements core.Message
-//
-// NOTE: In a future PR this will be removed.
-type Message struct {
-	to         *common.Address
-	from       common.Address
-	nonce      uint64
-	amount     *big.Int
-	gasLimit   uint64
-	gasPrice   *big.Int
-	data       []byte
-	checkNonce bool
-}
-
-func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, checkNonce bool) Message {
-	return Message{
-		from:       from,
-		to:         to,
-		nonce:      nonce,
-		amount:     amount,
-		gasLimit:   gasLimit,
-		gasPrice:   gasPrice,
-		data:       data,
-		checkNonce: checkNonce,
-	}
-}
-
-func (m Message) From() common.Address { return m.from }
-func (m Message) To() *common.Address  { return m.to }
-func (m Message) GasPrice() *big.Int   { return m.gasPrice }
-func (m Message) Value() *big.Int      { return m.amount }
-func (m Message) Gas() uint64          { return m.gasLimit }
-func (m Message) Nonce() uint64        { return m.nonce }
-func (m Message) Data() []byte         { return m.data }
-func (m Message) CheckNonce() bool     { return m.checkNonce }

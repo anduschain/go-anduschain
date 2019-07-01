@@ -26,6 +26,7 @@ import (
 	txTypes "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/params"
@@ -105,6 +106,7 @@ var (
 
 	// General tx metrics
 	invalidTxCounter     = metrics.NewRegisteredCounter("txpool/invalid", nil)
+	invalidJoinTxCounter = metrics.NewRegisteredCounter("txpool/invalidJoinTx", nil)
 	underpricedTxCounter = metrics.NewRegisteredCounter("txpool/underpriced", nil)
 )
 
@@ -341,7 +343,10 @@ func (pool *TxPool) loop() {
 				}
 				// Any non-locals old enough should be removed
 				if time.Since(pool.beats[addr]) > pool.config.Lifetime {
-					// FIXME(hakuna) : add for jointx
+					for _, tx := range pool.queue[addr].Join.Flatten() {
+						pool.removeTx(tx.Hash(), true)
+					}
+
 					for _, tx := range pool.queue[addr].Gen.Flatten() {
 						pool.removeTx(tx.Hash(), true)
 					}
@@ -537,14 +542,15 @@ func (pool *TxPool) Content() (map[common.Address]types.Transactions, map[common
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	// FIXME(hakuna) : add join tx
 	pending := make(map[common.Address]types.Transactions)
 	for addr, list := range pool.pending {
-		pending[addr] = list.Gen.Flatten()
+		pending[addr] = append(pending[addr], list.Join.Flatten()...)
+		pending[addr] = append(pending[addr], list.Gen.Flatten()...)
 	}
 	queued := make(map[common.Address]types.Transactions)
 	for addr, list := range pool.queue {
-		queued[addr] = list.Gen.Flatten()
+		queued[addr] = append(queued[addr], list.Join.Flatten()...)
+		queued[addr] = append(queued[addr], list.Gen.Flatten()...)
 	}
 	return pending, queued
 }
@@ -647,27 +653,30 @@ func (pool *TxPool) validateTx(tx types.Transaction, local bool) error {
 // validateJoinTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateJoinTx(tx types.Transaction, local bool) error {
+	otprn, err := types.DecodeOtprn(tx.Data())
+	if err != nil {
+		return ErrDecodeOtprn
+	}
 
-	//// JOINTX가 아닌 케이스
-	//if !joinTx {
-	//
-	//} else {
-	//	// JOINTX 맞는 케이스
-	//	// nonce가 joinNounc와 같은가?
-	//	if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
-	//		return ErrJoinNonceNotMmatch
-	//	}
-	//
-	//	// 참가비가 제대로 지정되어 있는가?
-	//	if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
-	//		return ErrTicketPriceNotMatch
-	//	}
-	//
-	//	// fairnode의 서명이 맞는가?
-	//	if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
-	//		return ErrFairNodeSigNotMatch
-	//	}
-	//}
+	// VaildateSignature
+	if err := otprn.VaildateSignature(); err != nil {
+		return err
+	}
+
+	from, err := tx.Sender(pool.signer)
+	if err != nil {
+		return ErrInvalidSender
+	}
+
+	// join nonce check
+	if pool.currentState.GetJoinNonce(from) != tx.Nonce() {
+		return ErrJoinNonceNotMmatch
+	}
+
+	// 참가비가 제대로 지정되어 있는가?
+	if tx.Value().Cmp(config.CalPirce(int64(otprn.Fee()))) != 0 {
+		return ErrTicketPriceNotMatch
+	}
 
 	return nil
 }
@@ -688,7 +697,8 @@ func (pool *TxPool) add(tx types.Transaction, local bool) (bool, error) {
 		return false, fmt.Errorf("known transaction: %x", hash)
 	}
 
-	if tx.TransactionId() == "general" {
+	switch tx.TransactionId() {
+	case "general":
 		// If the transaction fails basic validation, discard it
 		if err := pool.validateTx(tx, local); err != nil {
 			log.Trace("Discarding invalid transaction", "hash", hash, "err", err)
@@ -696,33 +706,53 @@ func (pool *TxPool) add(tx types.Transaction, local bool) (bool, error) {
 			return false, err
 		}
 
+		// If the transaction pool is full, discard underpriced transactions
+		if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
+			// If the new transaction is underpriced, don't accept it
+			if !local && pool.priced.Underpriced(tx, pool.locals) {
+				log.Trace("Discarding underpriced transaction", "hash", hash, "price", tx.Price())
+				underpricedTxCounter.Inc(1)
+				return false, ErrUnderpriced
+			}
+			// New transaction is better than our worse ones, make room for it
+			drop := pool.priced.Discard(pool.all.Count()-int(pool.config.GlobalSlots+pool.config.GlobalQueue-1), pool.locals)
+			for _, tx := range drop {
+				log.Trace("Discarding freshly underpriced transaction", "hash", tx.Hash(), "price", tx.Price())
+				underpricedTxCounter.Inc(1)
+				pool.removeTx(tx.Hash(), false)
+			}
+		}
+
+	case "join":
+		// If the transaction fails basic validation, discard it
+		if err := pool.validateJoinTx(tx, local); err != nil {
+			log.Trace("Discarding invalid join transaction", "hash", hash, "err", err)
+			invalidJoinTxCounter.Inc(1)
+			return false, err
+		}
 	}
 
-	// If the transaction pool is full, discard underpriced transactions
-	if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
-		// If the new transaction is underpriced, don't accept it
-		if !local && pool.priced.Underpriced(tx, pool.locals) {
-			log.Trace("Discarding underpriced transaction", "hash", hash, "price", tx.Price())
-			underpricedTxCounter.Inc(1)
-			return false, ErrUnderpriced
-		}
-		// New transaction is better than our worse ones, make room for it
-		drop := pool.priced.Discard(pool.all.Count()-int(pool.config.GlobalSlots+pool.config.GlobalQueue-1), pool.locals)
-		for _, tx := range drop {
-			log.Trace("Discarding freshly underpriced transaction", "hash", tx.Hash(), "price", tx.Price())
-			underpricedTxCounter.Inc(1)
-			pool.removeTx(tx.Hash(), false)
-		}
-	}
 	// If the transaction is replacing an already pending one, do directly
 	from, _ := tx.Sender(pool.signer) // already validated
-	if list := pool.pending[from]; list != nil && list.Gen.Overlaps(tx) {
+	if list := pool.pending[from]; list != nil && (list.Gen.Overlaps(tx) || list.Join.Overlaps(tx)) {
 		// Nonce already pending, check if required price bump is met
-		inserted, old := list.Gen.Add(tx, pool.config.PriceBump)
+		var (
+			inserted bool
+			old      types.Transaction
+		)
+
+		switch tx.TransactionId() {
+		case "general":
+			inserted, old = list.Gen.Add(tx, pool.config.PriceBump)
+		case "join":
+			inserted, old = list.Join.Add(tx, pool.config.PriceBump)
+		}
+
 		if !inserted {
 			pendingDiscardCounter.Inc(1)
 			return false, ErrReplaceUnderpriced
 		}
+
 		// New transaction is better, replace old one
 		if old != nil {
 			pool.all.Remove(old.Hash())
@@ -732,10 +762,16 @@ func (pool *TxPool) add(tx types.Transaction, local bool) (bool, error) {
 		pool.all.Add(tx)
 		pool.priced.Put(tx)
 		pool.journalTx(from, tx)
-		log.Info("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
-		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(types.NewTxsEvent{types.Transactions{tx}})
+		log.Info("Pooled new executable transaction", "type", tx.TransactionId(), "hash", hash, "from", from, "to", tx.To())
+		switch tx.TransactionId() {
+		case "general":
+			// We've directly injected a replacement transaction, notify subsystems
+			go pool.txFeed.Send(types.NewTxsEvent{types.Transactions{tx}})
+		case "join":
+			// We've directly injected a replacement transaction, notify subsystems
+			go pool.txFeed.Send(types.NewJoinTxsEvent{types.Transactions{tx}})
+		}
 
 		return old != nil, nil
 	}
