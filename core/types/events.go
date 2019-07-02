@@ -21,10 +21,10 @@ import (
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.
-type NewTxsEvent struct{ Txs []Transaction }
+type NewTxsEvent struct{ Txs Transactions }
 
 // NewJoinTxsEvent is posted when a batch of join transactions enter the join transaction pool.
-type NewJoinTxsEvent struct{ JoinTxs []Transaction }
+type NewJoinTxsEvent struct{ Txs Transactions }
 
 // PendingLogsEvent is posted pre mining and notifies of pending logs.
 type PendingLogsEvent struct {

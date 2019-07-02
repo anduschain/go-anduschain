@@ -18,7 +18,6 @@ package miner
 
 import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"math/big"
 	"testing"
 	"time"
@@ -35,7 +34,7 @@ import (
 
 var (
 	// Test chain configurations
-	testTxPoolConfig txpool.TxPoolConfig
+	testTxPoolConfig core.TxPoolConfig
 	//ethashChainConfig *params.ChainConfig
 	//cliqueChainConfig *params.ChainConfig
 
@@ -55,7 +54,7 @@ var (
 )
 
 func init() {
-	testTxPoolConfig = txpool.DefaultTxPoolConfig
+	testTxPoolConfig = core.DefaultTxPoolConfig
 	testTxPoolConfig.Journal = ""
 	//ethashChainConfig = params.TestChainConfig
 	//cliqueChainConfig = params.TestChainConfig
@@ -73,7 +72,7 @@ func init() {
 // testWorkerBackend implements worker.Backend interfaces and wraps all information needed during the testing.
 type testWorkerBackend struct {
 	db         ethdb.Database
-	txPool     *txpool.TxPool
+	txPool     *core.TxPool
 	chain      *core.BlockChain
 	testTxFeed event.Feed
 	uncleBlock *types.Block
@@ -96,11 +95,11 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	genesis := gspec.MustCommit(db)
 
 	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
-	txpool := txpool.NewTxPool(testTxPoolConfig, chainConfig, chain)
+	txpool := core.NewTxPool(testTxPoolConfig, chainConfig, chain)
 
 	// Generate a small n-block chain and an uncle block for it
 	if n > 0 {
-		blocks, _, _ := core.GenerateChain(chainConfig, genesis, engine, db, n, func(i int, gen *core.BlockGen) {
+		blocks, _ := core.GenerateChain(chainConfig, genesis, engine, db, n, func(i int, gen *core.BlockGen) {
 			gen.SetCoinbase(testBankAddress)
 		})
 		if _, err := chain.InsertChain(blocks); err != nil {
@@ -111,7 +110,7 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	if n > 0 {
 		parent = chain.GetBlockByHash(chain.CurrentBlock().ParentHash())
 	}
-	blocks, _, _ := core.GenerateChain(chainConfig, parent, engine, db, 1, func(i int, gen *core.BlockGen) {
+	blocks, _ := core.GenerateChain(chainConfig, parent, engine, db, 1, func(i int, gen *core.BlockGen) {
 		gen.SetCoinbase(testUserAddress)
 	})
 
@@ -124,7 +123,7 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 }
 
 func (b *testWorkerBackend) BlockChain() *core.BlockChain { return b.chain }
-func (b *testWorkerBackend) TxPool() *txpool.TxPool       { return b.txPool }
+func (b *testWorkerBackend) TxPool() *core.TxPool         { return b.txPool }
 func (b *testWorkerBackend) PostChainEvents(events []interface{}) {
 	b.chain.PostChainEvents(events, nil)
 }

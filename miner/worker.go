@@ -19,28 +19,24 @@ package miner
 import (
 	"bytes"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/core/txpool"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"math/big"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/deckarep/golang-set"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"math/big"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -85,14 +81,13 @@ const (
 
 // environment is the worker's current environment and holds all of the current state information.
 type environment struct {
-	signer txType.Signer
+	signer types.Signer
 
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
 	family    mapset.Set     // family set (used for checking uncle invalidity)
-	//uncles    mapset.Set     // uncle set
-	tcount  int           // tx count in cycle
-	jtcount int           // join tx count in cycle // TODO : add
+
+	count   int           // tx count in cycle
 	gasPool *core.GasPool // available gas used to pack transactions
 
 	header   *types.Header
@@ -591,7 +586,7 @@ func (w *worker) resultLoop() {
 				Block:      block,
 				HeaderHash: block.Header().Hash(),
 				Sig:        sig,
-				OtprnHash:  w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn(),
+				OtprnHash:  w.fairclient.GetUsingOtprnWithSig().HashOtprn(),
 				Voter:      w.coinbase,
 				//Receipts:   receipts,
 			}
@@ -703,7 +698,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		return err
 	}
 	env := &environment{
-		signer:    txType.NewEIP155Signer(w.config.ChainID),
+		signer:    types.NewEIP155Signer(w.config.ChainID),
 		state:     state,
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
@@ -720,8 +715,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	}
 
 	// Keep track of transactions which return debErrors so they can be removed
-	env.tcount = 0
-	env.jtcount = 0
+	env.count = 0
 	w.current = env
 	return nil
 }
@@ -741,7 +735,7 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
-func (w *worker) commitTransaction(tx types.Transaction, coinbase common.Address) ([]*types.Log, error) {
+func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
 
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
@@ -750,8 +744,11 @@ func (w *worker) commitTransaction(tx types.Transaction, coinbase common.Address
 		return nil, err
 	}
 
-	if genTx, ok := tx.(*txType.GenTransaction); ok {
-		w.current.txs.Gen = append(w.current.txs.Gen, genTx)
+	switch tx.TransactionId() {
+	case types.GeneralTx:
+		w.current.txs.Gen = append(w.current.txs.Gen, tx)
+	case types.JoinTx:
+		w.current.txs.Join = append(w.current.txs.Join, tx)
 	}
 
 	w.current.receipts = append(w.current.receipts, receipt)
@@ -811,12 +808,11 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// phase, start ignoring the sender until we do.
 		if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
 			log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
-
 			txs.Pop()
 			continue
 		}
 		// Start executing the transaction
-		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
+		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.count)
 
 		logs, err := w.commitTransaction(tx, coinbase)
 		switch err {
@@ -825,7 +821,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			log.Trace("Gas limit exceeded for current block", "sender", from)
 			txs.Pop()
 
-		case txpool.ErrNonceTooLow:
+		case core.ErrNonceTooLow:
 			// New head notification data race between the transaction pool and miner, shift
 			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
@@ -838,8 +834,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		case nil:
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
-			w.current.tcount++
-			w.current.jtcount++
+			w.current.count++
 			txs.Shift()
 
 		default:
@@ -902,14 +897,14 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() && w.fairclient.Running && w.fairclient.GetUsingOtprnWithSig() != nil {
 		if w.coinbase == (common.Address{}) {
-			log.Error("Refusing to mine without etherbase")
+			log.Error("Refusing to mine without coinbase")
 			return
 		}
 
 		header.Coinbase = w.coinbase
 
 		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			header.Extra = w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn().Bytes()
+			header.Extra = w.fairclient.GetUsingOtprnWithSig().HashOtprn().Bytes()
 			// 엔진에 서명키 셋팅
 			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
 		}
@@ -951,14 +946,20 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 
 		// Fill the block with all available pending transactions.
-		pending, err := w.eth.TxPool().Pending()
+		pending, pendingJoinTx, err := w.eth.TxPool().Pending()
 		if err != nil {
 			log.Error("Failed to fetch pending transactions", "err", err)
 			return
 		}
 		// Short circuit if there is no available pending transactions
+		if len(pending) == 0 && len(pendingJoinTx) == 0 {
+			w.updateSnapshot()
+			return
+		}
 
-		if len(pending) == 0 {
+		// miner's join transaction is empty
+		if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+			log.Error("miner's join transaction is empty")
 			w.updateSnapshot()
 			return
 		}
@@ -971,6 +972,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
+
 		if len(localTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
@@ -1007,29 +1009,27 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		if interval != nil {
 			interval()
 		}
-
-		// finalblock joinTx 여부 확인
-		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			err := debEngine.ValidationBlockWidthJoinTx(w.chain.Config().ChainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
-			if err != nil {
-				log.Error("Commit new mining work", "number", block.Number(), "mag", err.Error())
-				return err
-			}
-		}
+		//
+		//// finalblock joinTx 여부 확인
+		//if debEngine, ok := w.engine.(*deb.Deb); ok {
+		//	err := debEngine.ValidationBlockWidthJoinTx(w.chain.Config().ChainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
+		//	if err != nil {
+		//		log.Error("Commit new mining work", "number", block.Number(), "mag", err.Error())
+		//		return err
+		//	}
+		//}
 
 		select {
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
 
 			feesWei := new(big.Int)
+			// general transaction fee
 			for i, tx := range block.Transactions().Gen {
-				genTx, _ := tx.(*txType.GenTransaction)
-				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), genTx.GasPrice()))
+				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
 			}
 			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Daon)))
-
-			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"joinTxs", w.current.jtcount, "txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
+			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()), "txs", w.current.count, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:
 			log.Info("Worker has exited")

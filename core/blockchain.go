@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -729,7 +728,7 @@ func (bc *BlockChain) Rollback(chain []common.Hash) {
 
 // SetReceiptsData computes all the non-consensus fields of the receipts
 func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts types.Receipts) error {
-	signer := txType.MakeSigner(config, block.Number())
+	signer := types.MakeSigner(config, block.Number())
 
 	transactions, logIndex := block.Transactions(), uint(0)
 	if transactions.Len() != len(receipts) {
@@ -1167,7 +1166,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
-		// TODO : andus >> 스테이트 처리... joinNonce
+
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {

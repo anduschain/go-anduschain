@@ -19,18 +19,16 @@ package types
 
 import (
 	"encoding/binary"
-	tx "github.com/anduschain/go-anduschain/core/transaction"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/crypto/sha3"
+	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"math/big"
 	"sort"
 	"sync/atomic"
 	"time"
 	"unsafe"
-
-	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
-	"github.com/anduschain/go-anduschain/rlp"
 )
 
 var (
@@ -279,7 +277,7 @@ func (b *StorageBlock) DecodeRLP(s *rlp.Stream) error {
 
 func (b *Block) Transactions() *TransactionsSet { return b.transactions }
 
-func (b *Block) Transaction(hash common.Hash) tx.Transactioner {
+func (b *Block) Transaction(hash common.Hash) *Transaction {
 	for _, transaction := range b.transactions.All() {
 		if transaction.Hash() == hash {
 			return transaction

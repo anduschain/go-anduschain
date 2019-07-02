@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package transaction
+package types
 
 import (
 	"math/big"
@@ -30,12 +30,12 @@ func TestEIP155Signing(t *testing.T) {
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
 	signer := NewEIP155Signer(big.NewInt(18))
-	tx, err := SignTx(NewGenTransaction(0, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
+	tx, err := SignTx(NewTransaction(0, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	from, err := tx.Sender(signer)
+	from, err := Sender(signer, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestEIP155ChainId(t *testing.T) {
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
 	signer := NewEIP155Signer(big.NewInt(18))
-	tx, err := SignTx(NewGenTransaction(0, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
+	tx, err := SignTx(NewTransaction(0, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestEIP155ChainId(t *testing.T) {
 		t.Error("expected chainId to be", signer.chainId, "got", tx.ChainId())
 	}
 
-	tx = NewGenTransaction(0, addr, new(big.Int), 0, new(big.Int), nil)
+	tx = NewTransaction(0, addr, new(big.Int), 0, new(big.Int), nil)
 	tx, err = SignTx(tx, HomesteadSigner{}, key)
 	if err != nil {
 		t.Fatal(err)
@@ -94,14 +94,14 @@ func TestEIP155SigningVitalik(t *testing.T) {
 	} {
 		signer := NewEIP155Signer(big.NewInt(1))
 
-		var tx *GenTransaction
+		var tx *Transaction
 		err := rlp.DecodeBytes(common.Hex2Bytes(test.txRlp), &tx)
 		if err != nil {
 			t.Errorf("%d: %v", i, err)
 			continue
 		}
 
-		from, err := tx.Sender(signer)
+		from, err := Sender(signer, tx)
 		if err != nil {
 			t.Errorf("%d: %v", i, err)
 			continue
@@ -118,20 +118,20 @@ func TestEIP155SigningVitalik(t *testing.T) {
 func TestChainId(t *testing.T) {
 	key, _ := defaultTestKey()
 
-	gtx := NewGenTransaction(0, common.Address{}, new(big.Int), 0, new(big.Int), nil)
+	tx := NewTransaction(0, common.Address{}, new(big.Int), 0, new(big.Int), nil)
 
 	var err error
-	tx, err := SignTx(gtx, NewEIP155Signer(big.NewInt(1)), key)
+	tx, err = SignTx(tx, NewEIP155Signer(big.NewInt(1)), key)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = tx.Sender(NewEIP155Signer(big.NewInt(2)))
+	_, err = Sender(NewEIP155Signer(big.NewInt(2)), tx)
 	if err != ErrInvalidChainId {
 		t.Error("expected error:", ErrInvalidChainId)
 	}
 
-	_, err = tx.Sender(NewEIP155Signer(big.NewInt(1)))
+	_, err = Sender(NewEIP155Signer(big.NewInt(1)), tx)
 	if err != nil {
 		t.Error("expected no error")
 	}

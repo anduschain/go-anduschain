@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package txpool
+package core
 
 import (
 	"errors"
+	"io"
+	"os"
+
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
-	"io"
-	"os"
 )
 
 // errNoActiveJournal is returned if a transaction is attempted to be inserted
@@ -55,7 +56,7 @@ func newTxJournal(path string) *txJournal {
 
 // load parses a transaction journal dump from disk, loading its contents into
 // the specified pool.
-func (journal *txJournal) load(add func([]types.Transaction) []error) error {
+func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
 	// Skip the parsing if the journal file doesn't exist at all
 	if _, err := os.Stat(journal.path); os.IsNotExist(err) {
 		return nil
@@ -92,7 +93,7 @@ func (journal *txJournal) load(add func([]types.Transaction) []error) error {
 	)
 	for {
 		// Parse the next transaction and terminate on error
-		var tx types.Transaction
+		tx := new(types.Transaction)
 		if err = stream.Decode(tx); err != nil {
 			if err != io.EOF {
 				failure = err
@@ -116,7 +117,7 @@ func (journal *txJournal) load(add func([]types.Transaction) []error) error {
 }
 
 // insert adds the specified transaction to the local disk journal.
-func (journal *txJournal) insert(tx types.Transaction) error {
+func (journal *txJournal) insert(tx *types.Transaction) error {
 	if journal.writer == nil {
 		return errNoActiveJournal
 	}

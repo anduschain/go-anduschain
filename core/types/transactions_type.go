@@ -1,21 +1,40 @@
-package transaction
+// Copyright 2014 The go-ethereum Authors
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
+package types
 
 import (
 	"container/heap"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
-	"math/big"
+)
+
+const (
+	GeneralTx uint64 = iota
+	JoinTx
 )
 
 // Transactions is a Transaction slice type for basic sorting.
-type Transactions []Transactioner
+type Transactions []*Transaction
 
 // Len returns the length of s.
 func (s Transactions) Len() int { return len(s) }
 
 // Swap swaps the i'th and the j'th element in s.
-func (s Transactions) Swap(i, j int, t string) { s[i], s[j] = s[j], s[i] }
+func (s Transactions) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 // GetRlp implements Rlpable and returns the i'th element of s in rlp.
 func (s Transactions) GetRlp(i int) []byte {
@@ -23,16 +42,43 @@ func (s Transactions) GetRlp(i int) []byte {
 	return enc
 }
 
+// TxDifference returns a new set which is the difference between a and b.
+func TxDifference(a, b Transactions) Transactions {
+	keep := make(Transactions, 0, len(a))
+
+	remove := make(map[common.Hash]struct{})
+	for _, tx := range b {
+		remove[tx.Hash()] = struct{}{}
+	}
+
+	for _, tx := range a {
+		if _, ok := remove[tx.Hash()]; !ok {
+			keep = append(keep, tx)
+		}
+	}
+
+	return keep
+}
+
+// TxByNonce implements the sort interface to allow sorting a list of transactions
+// by their nonces. This is usually only useful for sorting transactions from a
+// single account, otherwise a nonce comparison doesn't make much sense.
+type TxByNonce Transactions
+
+func (s TxByNonce) Len() int           { return len(s) }
+func (s TxByNonce) Less(i, j int) bool { return s[i].data.AccountNonce < s[j].data.AccountNonce }
+func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 // TxByPrice implements both the sort and the heap interface, making it useful
 // for all at once sorting as well as individually adding and removing elements.
 type TxByPrice Transactions
 
 func (s TxByPrice) Len() int           { return len(s) }
-func (s TxByPrice) Less(i, j int) bool { return s[i].Price().Cmp(s[j].Price()) > 0 }
+func (s TxByPrice) Less(i, j int) bool { return s[i].data.Price.Cmp(s[j].data.Price) > 0 }
 func (s TxByPrice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (s *TxByPrice) Push(x interface{}) {
-	*s = append(*s, x.(Transactioner))
+	*s = append(*s, x.(*Transaction))
 }
 
 func (s *TxByPrice) Pop() interface{} {
@@ -43,7 +89,7 @@ func (s *TxByPrice) Pop() interface{} {
 	return x
 }
 
-// TransactionsByPriceAndNonce represents a set of GenTransactions that can return
+// TransactionsByPriceAndNonce represents a set of transactions that can return
 // transactions in a profit-maximizing sorted order, while supporting removing
 // entire batches of transactions for non-executable accounts.
 type TransactionsByPriceAndNonce struct {
@@ -81,7 +127,7 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 }
 
 // Peek returns the next transaction by price.
-func (t *TransactionsByPriceAndNonce) Peek() Transactioner {
+func (t *TransactionsByPriceAndNonce) Peek() *Transaction {
 	if len(t.heads) == 0 {
 		return nil
 	}
@@ -106,80 +152,22 @@ func (t *TransactionsByPriceAndNonce) Pop() {
 	heap.Pop(&t.heads)
 }
 
-type WriteCounter common.StorageSize
-
-func (c *WriteCounter) Write(b []byte) (int, error) {
-	*c += WriteCounter(len(b))
-	return len(b), nil
+type TransactionsSet struct {
+	Join []*Transaction
+	Gen  []*Transaction
 }
 
-type Signature struct {
-	V *big.Int
-	R *big.Int
-	S *big.Int
+func (ts TransactionsSet) All() Transactions {
+	var allTx Transactions
+	allTx = append(allTx, ts.Join...)
+	allTx = append(allTx, ts.Gen...)
+	return allTx
 }
 
-// deriveChainId derives the chain id from the given v parameter
-func DeriveChainId(v *big.Int) *big.Int {
-	if v.BitLen() <= 64 {
-		v := v.Uint64()
-		if v == 27 || v == 28 {
-			return new(big.Int)
-		}
-		return new(big.Int).SetUint64((v - 35) / 2)
-	}
-	v = new(big.Int).Sub(v, big.NewInt(35))
-	return v.Div(v, big.NewInt(2))
+func (ts TransactionsSet) Len() int {
+	return len(ts.Gen) + len(ts.Join)
 }
 
-func RlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
+func (ts TransactionsSet) Empty() bool {
+	return ts.Len() == 0
 }
-
-func isProtectedV(V *big.Int) bool {
-	if V.BitLen() <= 8 {
-		v := V.Uint64()
-		return v != 27 && v != 28
-	}
-	// anything not 27 or 28 is considered protected
-	return true
-}
-
-// Message is a fully derived transaction and implements core.Message
-//
-// NOTE: In a future PR this will be removed.
-type Message struct {
-	to         *common.Address
-	from       common.Address
-	nonce      uint64
-	amount     *big.Int
-	gasLimit   uint64
-	gasPrice   *big.Int
-	data       []byte
-	checkNonce bool
-}
-
-func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, checkNonce bool) Message {
-	return Message{
-		from:       from,
-		to:         to,
-		nonce:      nonce,
-		amount:     amount,
-		gasLimit:   gasLimit,
-		gasPrice:   gasPrice,
-		data:       data,
-		checkNonce: checkNonce,
-	}
-}
-
-func (m Message) From() common.Address { return m.from }
-func (m Message) To() *common.Address  { return m.to }
-func (m Message) GasPrice() *big.Int   { return m.gasPrice }
-func (m Message) Value() *big.Int      { return m.amount }
-func (m Message) Gas() uint64          { return m.gasLimit }
-func (m Message) Nonce() uint64        { return m.nonce }
-func (m Message) Data() []byte         { return m.data }
-func (m Message) CheckNonce() bool     { return m.checkNonce }

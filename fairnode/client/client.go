@@ -9,8 +9,6 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
-	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
@@ -35,7 +33,7 @@ type FairnodeClient struct {
 	Services           map[string]_interface.ServiceFunc
 	Srv                *p2p.Server
 	CoinBasePrivateKey ecdsa.PrivateKey
-	txPool             *txpool.TxPool
+	txPool             *core.TxPool
 	BlockChain         *core.BlockChain
 	Coinbase           common.Address
 	keystore           *keystore.KeyStore
@@ -52,14 +50,14 @@ type FairnodeClient struct {
 	WinningBlockVoteStartCh chan struct{} //  투표 시작 채널
 
 	chans  fairtypes.Channals
-	Signer txType.EIP155Signer
+	Signer types.EIP155Signer
 
 	mux sync.Mutex
 
 	wBlocks     map[common.Hash]map[common.Hash]*types.Block // 위닝 블록 임시 저장
 	IsBlockMine bool
 
-	UsingOtprn *types.OtprnWithSig
+	UsingOtprn *types.Otprn
 	OtprnQueue *queue.Queue
 
 	realAddr *net.UDPAddr
@@ -67,7 +65,7 @@ type FairnodeClient struct {
 	nat      nat.Interface
 }
 
-func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *txpool.TxPool) *FairnodeClient {
+func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *core.TxPool) *FairnodeClient {
 
 	fc := &FairnodeClient{
 		chans:                   chans,
@@ -80,7 +78,7 @@ func New(chans fairtypes.Channals, blockChain *core.BlockChain, tp *txpool.TxPoo
 		StartCh:                 make(chan struct{}),
 		WinningBlockVoteStartCh: make(chan struct{}),
 		Services:                make(map[string]_interface.ServiceFunc),
-		Signer:                  txType.NewEIP155Signer(blockChain.Config().ChainID),
+		Signer:                  types.NewEIP155Signer(blockChain.Config().ChainID),
 		wBlocks:                 make(map[common.Hash]map[common.Hash]*types.Block),
 		IsBlockMine:             false,
 		OtprnQueue:              queue.NewQueue(1),
@@ -166,7 +164,7 @@ func (fc *FairnodeClient) Stop() {
 func (fc *FairnodeClient) StoreOtprnWidthSig(otprn *types.Otprn, sig []byte) {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
-	fc.OtprnQueue.Push(&types.OtprnWithSig{otprn, sig})
+	fc.OtprnQueue.Push(otprn)
 }
 
 func (fc *FairnodeClient) GetStoreOtprnWidthSig() *types.Otprn {
@@ -175,9 +173,7 @@ func (fc *FairnodeClient) GetStoreOtprnWidthSig() *types.Otprn {
 
 	item := fc.OtprnQueue.Pop()
 	if item != nil {
-		otprnSig := item.(*types.OtprnWithSig)
-		fc.UsingOtprn = otprnSig
-		return otprnSig.Otprn
+		return item.(*types.Otprn)
 	}
 	return nil
 }
@@ -190,27 +186,27 @@ func (fc *FairnodeClient) DeleteStoreOtprnWidthSig() {
 	}
 }
 
-func (fc *FairnodeClient) GetUsingOtprnWithSig() *types.OtprnWithSig { return fc.UsingOtprn }
+func (fc *FairnodeClient) GetUsingOtprnWithSig() *types.Otprn { return fc.UsingOtprn }
 func (fc *FairnodeClient) GetSavedOtprnHashs() []common.Hash {
 	fc.mux.Lock()
 	defer fc.mux.Unlock()
 	var hashs []common.Hash
 	if fc.OtprnQueue.Len() > 0 {
 		for i := range fc.OtprnQueue.All() {
-			if otprnWithSig, ok := fc.OtprnQueue.All()[i].(*types.OtprnWithSig); ok {
-				hashs = append(hashs, otprnWithSig.Otprn.HashOtprn())
+			if otprn, ok := fc.OtprnQueue.All()[i].(*types.Otprn); ok {
+				hashs = append(hashs, otprn.HashOtprn())
 			}
 		}
 	}
 
 	return hashs
 }
-func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *types.OtprnWithSig {
+func (fc *FairnodeClient) FindOtprn(otprnHash common.Hash) *types.Otprn {
 	if fc.OtprnQueue.Len() > 0 {
 		for i := range fc.OtprnQueue.All() {
-			otprnWithSig := fc.OtprnQueue.All()[i].(*types.OtprnWithSig)
-			if otprnWithSig.Otprn.HashOtprn() == otprnHash {
-				return otprnWithSig
+			otprn := fc.OtprnQueue.All()[i].(*types.Otprn)
+			if otprn.HashOtprn() == otprnHash {
+				return otprn
 			}
 		}
 	}
@@ -228,13 +224,13 @@ func (fc *FairnodeClient) GetBlockMine() bool       { return fc.IsBlockMine }
 func (fc *FairnodeClient) GetP2PServer() *p2p.Server   { return fc.Srv }
 func (fc *FairnodeClient) GetCoinbase() common.Address { return fc.Coinbase }
 
-func (fc *FairnodeClient) GetTxpool() *txpool.TxPool             { return fc.txPool }
+func (fc *FairnodeClient) GetTxpool() *core.TxPool               { return fc.txPool }
 func (fc *FairnodeClient) GetBlockChain() *core.BlockChain       { return fc.BlockChain }
 func (fc *FairnodeClient) GetCoinbsePrivKey() *ecdsa.PrivateKey  { return &fc.CoinBasePrivateKey }
 func (fc *FairnodeClient) BlockMakeStart() chan struct{}         { return fc.StartCh }
 func (fc *FairnodeClient) VoteBlock() chan *fairtypes.Vote       { return fc.chans.GetWinningBlockCh() }
 func (fc *FairnodeClient) FinalBlock() chan fairtypes.FinalBlock { return fc.chans.GetFinalBlockCh() }
-func (fc *FairnodeClient) GetSigner() txType.Signer              { return fc.Signer }
+func (fc *FairnodeClient) GetSigner() types.Signer               { return fc.Signer }
 
 func (fc *FairnodeClient) GetCurrentJoinNonce() uint64 {
 

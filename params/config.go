@@ -109,8 +109,6 @@ type ChainConfig struct {
 	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
-	//Ethash *EthashConfig `json:"ethash,omitempty"` // TODO(hakuna) : deprecated
-	//Clique *CliqueConfig `json:"clique,omitempty"` // TODO(hakuna) : deprecated
 	Deb *DebConfig `json:"deb,omitempty"`
 }
 
@@ -124,37 +122,10 @@ func (c *DebConfig) String() string {
 	return "deb"
 }
 
-// TODO(hakuna) : deprecated
-// EthashConfig is the consensus engine configs for proof-of-work based sealing.
-//type EthashConfig struct{}
-
-// TODO(hakuna) : deprecated
-// String implements the stringer interface, returning the consensus engine details.
-//func (c *EthashConfig) String() string {
-//	return "ethash"
-//}
-
-// TODO(hakuna) : deprecated
-// CliqueConfig is the consensus engine configs for proof-of-authority based sealing.
-//type CliqueConfig struct {
-//	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
-//	Epoch  uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
-//}
-
-// TODO(hakuna) : deprecated
-// String implements the stringer interface, returning the consensus engine details.
-//func (c *CliqueConfig) String() string {
-//	return "clique"
-//}
-
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
 	var engine interface{}
 	switch {
-	//case c.Ethash != nil:
-	//	engine = c.Ethash
-	//case c.Clique != nil:
-	//	engine = c.Clique
 	case c.Deb != nil:
 		engine = c.Deb
 	default:

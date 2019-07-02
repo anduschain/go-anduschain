@@ -21,7 +21,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core/state"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -94,8 +93,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
-func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	msg, err := tx.AsMessage(txType.MakeSigner(config, header.Number))
+func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -109,10 +108,12 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	var gas uint64
 	var failed bool
 
-	_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
-
-	if err != nil {
-		return nil, 0, err
+	// join transaction ApplyMessage bypass
+	if tx.TransactionId() != types.JoinTx {
+		_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	// Update the state with pending changes

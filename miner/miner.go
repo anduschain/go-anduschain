@@ -20,12 +20,6 @@ package miner
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/core/txpool"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"sync/atomic"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core"
@@ -33,14 +27,18 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
+	"sync/atomic"
+	"time"
 )
 
 // Backend wraps all methods required for mining.
 type Backend interface {
 	BlockChain() *core.BlockChain
-	TxPool() *txpool.TxPool
+	TxPool() *core.TxPool
 }
 
 // TODO : andus >> DebBackend interface type 추가 ( andus deb 전용 인터페이스 )
