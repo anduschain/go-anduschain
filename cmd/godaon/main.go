@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	clientIdentifier = "geth" // Client identifier to advertise over the network
+	clientIdentifier = "godaon" // Client identifier to advertise over the network
 )
 
 var (
@@ -66,14 +66,6 @@ var (
 		utils.DashboardAddrFlag,
 		utils.DashboardPortFlag,
 		utils.DashboardRefreshFlag,
-		// --> fixme : deprecated
-		//utils.EthashCacheDirFlag,
-		//utils.EthashCachesInMemoryFlag,
-		//utils.EthashCachesOnDiskFlag,
-		//utils.EthashDatasetDirFlag,
-		//utils.EthashDatasetsInMemoryFlag,
-		//utils.EthashDatasetsOnDiskFlag,
-		// <-- fixme : deprecated
 		utils.TxPoolLocalsFlag,
 		utils.TxPoolNoLocalsFlag,
 		utils.TxPoolJournalFlag,
