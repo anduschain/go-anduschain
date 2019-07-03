@@ -94,9 +94,9 @@ type peer struct {
 	knownTxs     mapset.Set // Set of transaction hashes known to be known by this peer
 	knownJoinTxs mapset.Set // Set of join transaction hashes known to be known by this peer  // TODO(hakuna) : add
 
-	knownBlocks   mapset.Set               // Set of block hashes known to be known by this peer
-	queuedTxs     chan []types.Transaction // Queue of transactions to broadcast to the peer
-	queuedJoinTxs chan []types.Transaction // Queue of transactions to broadcast to the peer
+	knownBlocks   mapset.Set                // Set of block hashes known to be known by this peer
+	queuedTxs     chan []*types.Transaction // Queue of transactions to broadcast to the peer
+	queuedJoinTxs chan []*types.Transaction // Queue of transactions to broadcast to the peer
 
 	queuedProps chan *propEvent   // Queue of blocks to broadcast to the peer
 	queuedAnns  chan *types.Block // Queue of blocks to announce to the peer
@@ -112,8 +112,8 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		knownTxs:      mapset.NewSet(),
 		knownJoinTxs:  mapset.NewSet(),
 		knownBlocks:   mapset.NewSet(),
-		queuedTxs:     make(chan []types.Transaction, maxQueuedTxs),
-		queuedJoinTxs: make(chan []types.Transaction, maxQueuedJoinTxs),
+		queuedTxs:     make(chan []*types.Transaction, maxQueuedTxs),
+		queuedJoinTxs: make(chan []*types.Transaction, maxQueuedJoinTxs),
 		queuedProps:   make(chan *propEvent, maxQueuedProps),
 		queuedAnns:    make(chan *types.Block, maxQueuedAnns),
 		term:          make(chan struct{}),
@@ -232,7 +232,7 @@ func (p *peer) SendJoinTransactions(jtxs types.Transactions) error {
 
 // AsyncSendTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped.
-func (p *peer) AsyncSendTransactions(txs []types.Transaction) {
+func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 	select {
 	case p.queuedTxs <- txs:
 		for _, tx := range txs {
@@ -245,7 +245,7 @@ func (p *peer) AsyncSendTransactions(txs []types.Transaction) {
 
 // AsyncSendJoinTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped. // TODO : add - for join transaction
-func (p *peer) AsyncSendJoinTransactions(jtxs []types.Transaction) {
+func (p *peer) AsyncSendJoinTransactions(jtxs []*types.Transaction) {
 	select {
 	case p.queuedJoinTxs <- jtxs:
 		for _, jtx := range jtxs {

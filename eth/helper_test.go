@@ -39,8 +39,6 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 var (
@@ -51,7 +49,7 @@ var (
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
 // channels for different events.
-func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []txType.Transaction) (*ProtocolManager, *ethdb.MemDatabase, error) {
+func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, *ethdb.MemDatabase, error) {
 	var (
 		evmux  = new(event.TypeMux)
 		engine = deb.NewFaker()
@@ -80,7 +78,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 // with the given number of blocks already known, and potential notification
 // channels for different events. In case of an error, the constructor force-
 // fails the test.
-func newTestProtocolManagerMust(t *testing.T, mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []txType.Transaction) (*ProtocolManager, *ethdb.MemDatabase) {
+func newTestProtocolManagerMust(t *testing.T, mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, *ethdb.MemDatabase) {
 	pm, db, err := newTestProtocolManager(mode, blocks, generator, newtx)
 	if err != nil {
 		t.Fatalf("Failed to create protocol manager: %v", err)
@@ -91,15 +89,15 @@ func newTestProtocolManagerMust(t *testing.T, mode downloader.SyncMode, blocks i
 // testTxPool is a fake, helper transaction pool for testing purposes
 type testTxPool struct {
 	txFeed event.Feed
-	pool   []txType.Transaction        // Collection of all transactions
-	added  chan<- []txType.Transaction // Notification channel for new transactions
+	pool   []*types.Transaction        // Collection of all transactions
+	added  chan<- []*types.Transaction // Notification channel for new transactions
 
 	lock sync.RWMutex // Protects the transaction pool
 }
 
 // AddRemotes appends a batch of transactions to the pool, and notifies any
 // listeners if the addition channel is non nil
-func (p *testTxPool) AddRemotes(txs []txType.Transaction) []error {
+func (p *testTxPool) AddRemotes(txs []*types.Transaction) []error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -111,19 +109,19 @@ func (p *testTxPool) AddRemotes(txs []txType.Transaction) []error {
 }
 
 // Pending returns all the transactions known to the pool
-func (p *testTxPool) Pending() (map[common.Address]txType.Transactions, error) {
+func (p *testTxPool) Pending() (map[common.Address]types.Transactions, map[common.Address]types.Transactions, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	batches := make(map[common.Address]txType.Transactions)
+	batches := make(map[common.Address]types.Transactions)
 	for _, tx := range p.pool {
-		from, _ := tx.Sender(txType.HomesteadSigner{})
+		from, _ := tx.Sender(types.HomesteadSigner{})
 		batches[from] = append(batches[from], tx)
 	}
 	for _, batch := range batches {
-		sort.Sort(txType.TxByNonce(batch))
+		sort.Sort(types.TxByNonce(batch))
 	}
-	return batches, nil
+	return batches, nil, nil
 }
 
 func (p *testTxPool) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Subscription {
@@ -131,9 +129,9 @@ func (p *testTxPool) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Sub
 }
 
 // newTestTransaction create a new dummy transaction.
-func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) txType.Transaction {
-	gentx := txType.NewGenTransaction(nonce, common.Address{}, big.NewInt(0), 100000, big.NewInt(0), make([]byte, datasize))
-	tx, _ := txType.SignTx(gentx, txType.HomesteadSigner{}, from)
+func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *types.Transaction {
+	gentx := types.NewTransaction(nonce, common.Address{}, big.NewInt(0), 100000, big.NewInt(0), make([]byte, datasize))
+	tx, _ := types.SignTx(gentx, types.HomesteadSigner{}, from)
 	return tx
 }
 

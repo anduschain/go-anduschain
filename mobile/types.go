@@ -24,7 +24,6 @@ import (
 	"fmt"
 
 	"github.com/anduschain/go-anduschain/common"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/rlp"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
@@ -198,12 +197,12 @@ func (b *Block) GetTransaction(hash *Hash) *Transaction {
 
 // Transaction represents a single Ethereum transaction.
 type Transaction struct {
-	tx types.Transaction
+	tx *types.Transaction
 }
 
 // NewTransaction creates a new transaction with the given properties.
 func NewTransaction(nonce int64, to *Address, amount *BigInt, gasLimit int64, gasPrice *BigInt, data []byte) *Transaction {
-	return &Transaction{txType.NewGenTransaction(uint64(nonce), to.address, amount.bigint, uint64(gasLimit), gasPrice.bigint, common.CopyBytes(data))}
+	return &Transaction{types.NewTransaction(uint64(nonce), to.address, amount.bigint, uint64(gasLimit), gasPrice.bigint, common.CopyBytes(data))}
 }
 
 // NewTransactionFromRLP parses a transaction from an RLP data dump.
@@ -237,7 +236,7 @@ func (tx *Transaction) EncodeJSON() (string, error) {
 
 func (tx *Transaction) GetData() []byte      { return tx.tx.Data() }
 func (tx *Transaction) GetGas() int64        { return int64(tx.tx.Gas()) }
-func (tx *Transaction) GetGasPrice() *BigInt { return &BigInt{tx.tx.Price()} }
+func (tx *Transaction) GetGasPrice() *BigInt { return &BigInt{tx.tx.GasPrice()} }
 func (tx *Transaction) GetValue() *BigInt    { return &BigInt{tx.tx.Value()} }
 func (tx *Transaction) GetNonce() int64      { return int64(tx.tx.Nonce()) }
 
@@ -245,13 +244,13 @@ func (tx *Transaction) GetHash() *Hash   { return &Hash{tx.tx.Hash()} }
 func (tx *Transaction) GetCost() *BigInt { return &BigInt{tx.tx.Cost()} }
 
 // Deprecated: GetSigHash cannot know which signer to use.
-func (tx *Transaction) GetSigHash() *Hash { return &Hash{txType.HomesteadSigner{}.Hash(tx.tx)} }
+func (tx *Transaction) GetSigHash() *Hash { return &Hash{types.HomesteadSigner{}.Hash(tx.tx)} }
 
 // Deprecated: use EthereumClient.TransactionSender
 func (tx *Transaction) GetFrom(chainID *BigInt) (address *Address, _ error) {
-	var signer txType.Signer = txType.HomesteadSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	if chainID != nil {
-		signer = txType.NewEIP155Signer(chainID.bigint)
+		signer = types.NewEIP155Signer(chainID.bigint)
 	}
 	from, err := tx.tx.Sender(signer)
 	return &Address{from}, err
@@ -265,9 +264,9 @@ func (tx *Transaction) GetTo() *Address {
 }
 
 func (tx *Transaction) WithSignature(sig []byte, chainID *BigInt) (signedTx *Transaction, _ error) {
-	var signer txType.Signer = txType.HomesteadSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	if chainID != nil {
-		signer = txType.NewEIP155Signer(chainID.bigint)
+		signer = types.NewEIP155Signer(chainID.bigint)
 	}
 	rawTx, err := tx.tx.WithSignature(signer, common.CopyBytes(sig))
 	return &Transaction{rawTx}, err

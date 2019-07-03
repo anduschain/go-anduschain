@@ -19,12 +19,8 @@ package light
 import (
 	"context"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/txpool"
-	"sync"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -33,8 +29,8 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"sync"
+	"time"
 )
 
 const (
@@ -53,7 +49,7 @@ var txPermanent = uint64(500)
 // created.
 type TxPool struct {
 	config       *params.ChainConfig
-	signer       txType.Signer
+	signer       types.Signer
 	quit         chan bool
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
@@ -65,10 +61,10 @@ type TxPool struct {
 	chainDb      ethdb.Database
 	relay        TxRelayBackend
 	head         common.Hash
-	nonce        map[common.Address]uint64           // "pending" nonce
-	pending      map[common.Hash]types.Transactions  // pending transactions by tx hash
-	mined        map[common.Hash][]types.Transaction // mined transactions by block hash
-	clearIdx     uint64                              // earliest block nr that can contain mined tx info
+	nonce        map[common.Address]uint64            // "pending" nonce
+	pending      map[common.Hash]types.Transactions   // pending transactions by tx hash
+	mined        map[common.Hash][]*types.Transaction // mined transactions by block hash
+	clearIdx     uint64                               // earliest block nr that can contain mined tx info
 
 	homestead bool
 }
@@ -92,10 +88,10 @@ type TxRelayBackend interface {
 func NewTxPool(config *params.ChainConfig, chain *LightChain, relay TxRelayBackend) *TxPool {
 	pool := &TxPool{
 		config:      config,
-		signer:      txType.NewEIP155Signer(config.ChainID),
+		signer:      types.NewEIP155Signer(config.ChainID),
 		nonce:       make(map[common.Address]uint64),
 		pending:     make(map[common.Hash]types.Transactions),
-		mined:       make(map[common.Hash][]types.Transaction),
+		mined:       make(map[common.Hash][]*types.Transaction),
 		quit:        make(chan bool),
 		chainHeadCh: make(chan types.ChainHeadEvent, chainHeadChanSize),
 		chain:       chain,
@@ -313,7 +309,7 @@ func (pool *TxPool) setNewHead(head *types.Header) {
 	m, r := txc.getLists()
 	pool.relay.NewHead(pool.head, m, r)
 	pool.homestead = pool.config.IsHomestead(head.Number)
-	pool.signer = txType.MakeSigner(pool.config, head.Number)
+	pool.signer = types.MakeSigner(pool.config, head.Number)
 }
 
 // Stop stops the light transaction pool
@@ -342,7 +338,7 @@ func (pool *TxPool) Stats() (pending int) {
 }
 
 // validateTx checks whether a transaction is valid according to the consensus rules.
-func (pool *TxPool) validateTx(ctx context.Context, tx types.Transaction) error {
+func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error {
 	// Validate sender
 	var (
 		from common.Address
@@ -352,32 +348,32 @@ func (pool *TxPool) validateTx(ctx context.Context, tx types.Transaction) error 
 	// Validate the transaction sender and it's sig. Throw
 	// if the from fields is invalid.
 	if from, err = tx.Sender(pool.signer); err != nil {
-		return txpool.ErrInvalidSender
+		return core.ErrInvalidSender
 	}
 	// Last but not least check for nonce errors
 	currentState := pool.currentState(ctx)
 	if n := currentState.GetNonce(from); n > tx.Nonce() {
-		return txpool.ErrNonceTooLow
+		return core.ErrNonceTooLow
 	}
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
 	header := pool.chain.GetHeaderByHash(pool.head)
 	if header.GasLimit < tx.Gas() {
-		return txpool.ErrGasLimit
+		return core.ErrGasLimit
 	}
 
 	// Transactions can't be negative. This may never happen
 	// using RLP decoded transactions but may occur if you create
 	// a transaction using the RPC for example.
 	if tx.Value().Sign() < 0 {
-		return txpool.ErrNegativeValue
+		return core.ErrNegativeValue
 	}
 
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if b := currentState.GetBalance(from); b.Cmp(tx.Cost()) < 0 {
-		return txpool.ErrInsufficientFunds
+		return core.ErrInsufficientFunds
 	}
 
 	// Should supply enough intrinsic gas
@@ -386,14 +382,14 @@ func (pool *TxPool) validateTx(ctx context.Context, tx types.Transaction) error 
 		return err
 	}
 	if tx.Gas() < gas {
-		return txpool.ErrIntrinsicGas
+		return core.ErrIntrinsicGas
 	}
 	return currentState.Error()
 }
 
 // add validates a new transaction and sets its state pending if processable.
 // It also updates the locally stored nonce if necessary.
-func (self *TxPool) add(ctx context.Context, tx types.Transaction) error {
+func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 	hash := tx.Hash()
 
 	if self.pending[hash] != nil {
@@ -425,7 +421,7 @@ func (self *TxPool) add(ctx context.Context, tx types.Transaction) error {
 
 // Add adds a transaction to the pool if valid and passes it to the tx relay
 // backend
-func (self *TxPool) Add(ctx context.Context, tx types.Transaction) error {
+func (self *TxPool) Add(ctx context.Context, tx *types.Transaction) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
@@ -446,7 +442,7 @@ func (self *TxPool) Add(ctx context.Context, tx types.Transaction) error {
 
 // AddTransactions adds all valid transactions to the pool and passes them to
 // the tx relay backend
-func (self *TxPool) AddBatch(ctx context.Context, txs []types.Transaction) {
+func (self *TxPool) AddBatch(ctx context.Context, txs []*types.Transaction) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	var sendTx types.Transactions
@@ -463,7 +459,7 @@ func (self *TxPool) AddBatch(ctx context.Context, txs []types.Transaction) {
 
 // GetTransaction returns a transaction if it is contained in the pool
 // and nil otherwise.
-func (tp *TxPool) GetTransaction(hash common.Hash) types.Transaction {
+func (tp *TxPool) GetTransaction(hash common.Hash) *types.Transaction {
 	// check the txs first
 	if tx, ok := tp.pending[hash]; ok {
 		return tx[0]
@@ -504,7 +500,7 @@ func (self *TxPool) Content() (map[common.Address]types.Transactions, map[common
 }
 
 // RemoveTransactions removes all given transactions from the pool.
-func (self *TxPool) RemoveTransactions(txs txType.Transactions) {
+func (self *TxPool) RemoveTransactions(txs types.Transactions) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 

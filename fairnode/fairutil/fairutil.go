@@ -11,11 +11,14 @@ import (
 // OS 영향 받지 않게 rand값을 추출 하기 위해서 "math/rand" 사용
 func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
-	if otprn.Mminer > 0 {
-		div := uint64(otprn.Cminer / otprn.Mminer)
-		source := mrand.NewSource(makeSeed(otprn.Rand, addr))
+
+	rand, mMiner, cMiner := otprn.GetValue()
+
+	if mMiner > 0 {
+		div := uint64(cMiner / mMiner)
+		source := mrand.NewSource(makeSeed(rand, addr))
 		rnd := mrand.New(source)
-		rand := rnd.Int()%int(otprn.Cminer) + 1
+		rand := rnd.Int()%int(cMiner) + 1
 
 		// TODO : andus >> Mminer > Cminer
 		if div > 0 {

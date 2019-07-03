@@ -9,7 +9,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/txpool"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 )
@@ -38,7 +37,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		MinerGasPrice           *big.Int
 		MinerRecommit           time.Duration
 		MinerNoverify           bool
-		TxPool                  txpool.TxPoolConfig
+		TxPool                  core.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
 		DocRoot                 string `toml:"-"`
@@ -92,7 +91,7 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		MinerGasPrice           *big.Int
 		MinerRecommit           *time.Duration
 		MinerNoverify           *bool
-		TxPool                  *txpool.TxPoolConfig
+		TxPool                  *core.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
 		DocRoot                 *string `toml:"-"`

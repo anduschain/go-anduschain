@@ -34,8 +34,6 @@ import (
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/golang/protobuf/proto"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // ErrTrezorPINNeeded is returned if opening the trezor requires a PIN code. In
@@ -154,7 +152,7 @@ func (w *trezorDriver) Derive(path accounts.DerivationPath) (common.Address, err
 
 // SignTx implements usbwallet.driver, sending the transaction to the Trezor and
 // waiting for the user to confirm or deny the transaction.
-func (w *trezorDriver) SignTx(path accounts.DerivationPath, tx types.Transaction, chainID *big.Int) (common.Address, types.Transaction, error) {
+func (w *trezorDriver) SignTx(path accounts.DerivationPath, tx *types.Transaction, chainID *big.Int) (common.Address, *types.Transaction, error) {
 	if w.device == nil {
 		return common.Address{}, nil, accounts.ErrWalletClosed
 	}
@@ -173,7 +171,7 @@ func (w *trezorDriver) trezorDerive(derivationPath []uint32) (common.Address, er
 
 // trezorSign sends the transaction to the Trezor wallet, and waits for the user
 // to confirm or deny the transaction.
-func (w *trezorDriver) trezorSign(derivationPath []uint32, tx types.Transaction, chainID *big.Int) (common.Address, types.Transaction, error) {
+func (w *trezorDriver) trezorSign(derivationPath []uint32, tx *types.Transaction, chainID *big.Int) (common.Address, *types.Transaction, error) {
 	// Create the transaction initiation message
 	data := tx.Data()
 	length := uint32(len(data))
@@ -181,7 +179,7 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx types.Transaction,
 	request := &trezor.EthereumSignTx{
 		AddressN:   derivationPath,
 		Nonce:      new(big.Int).SetUint64(tx.Nonce()).Bytes(),
-		GasPrice:   tx.Price().Bytes(),
+		GasPrice:   tx.GasPrice().Bytes(),
 		GasLimit:   new(big.Int).SetUint64(tx.Gas()).Bytes(),
 		Value:      tx.Value().Bytes(),
 		DataLength: &length,
@@ -218,11 +216,11 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx types.Transaction,
 	signature := append(append(response.GetSignatureR(), response.GetSignatureS()...), byte(response.GetSignatureV()))
 
 	// Create the correct signer and signature transform based on the chain ID
-	var signer txType.Signer
+	var signer types.Signer
 	if chainID == nil {
-		signer = new(txType.HomesteadSigner)
+		signer = new(types.HomesteadSigner)
 	} else {
-		signer = txType.NewEIP155Signer(chainID)
+		signer = types.NewEIP155Signer(chainID)
 		signature[64] = signature[64] - byte(chainID.Uint64()*2+35)
 	}
 	// Inject the final signature into the transaction and sanity check the sender

@@ -18,8 +18,6 @@ import (
 	"net"
 	"strings"
 	"time"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 const DBNAME = "AndusChain"
@@ -38,7 +36,7 @@ type FairNodeDB struct {
 
 	Transactions *mgo.Collection
 
-	signer txType.Signer
+	signer types.Signer
 	logger log.Logger
 	config *config.Config
 }
@@ -48,7 +46,7 @@ var (
 )
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-func New(signer txType.Signer) (*FairNodeDB, error) {
+func New(signer types.Signer) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 
 	fnb.logger = log.New("fairnode", "mongodb")
@@ -310,7 +308,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 			From:         from.String(),
 			To:           to,
 			AccountNonce: int64(tx.Nonce()),
-			Price:        tx.Price().String(),
+			Price:        tx.GasPrice().String(),
 			Amount:       tx.Value().String(),
 			Payload:      tx.Data(),
 		})

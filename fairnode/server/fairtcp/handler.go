@@ -69,7 +69,8 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 				// TODO : 1. 채굴자 저장 ( key otprn num, Enode의 ID를 저장....)
 
 				_, n, _ := ft.leaguePool.GetLeagueList(pool.OtprnHash(otprnHash))
-				if tsf.Otprn.Mminer > n {
+				_, mMiner, _ := tsf.Otprn.GetValue()
+				if mMiner > n {
 					ft.logger.Debug("리그 참여 가능자 저장됨", "coinbase", tsf.Coinbase.String())
 					ft.leaguePool.InsertCh <- pool.PoolIn{
 						Hash: pool.OtprnHash(otprnHash),

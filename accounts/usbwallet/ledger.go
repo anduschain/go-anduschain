@@ -25,17 +25,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/types"
-	"io"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"io"
+	"math/big"
 )
 
 // ledgerOpcode is an enumeration encoding the supported Ledger opcodes.
@@ -157,7 +154,7 @@ func (w *ledgerDriver) Derive(path accounts.DerivationPath) (common.Address, err
 // Note, if the version of the Ethereum application running on the Ledger wallet is
 // too old to sign EIP-155 transactions, but such is requested nonetheless, an error
 // will be returned opposed to silently signing in Homestead mode.
-func (w *ledgerDriver) SignTx(path accounts.DerivationPath, tx types.Transaction, chainID *big.Int) (common.Address, types.Transaction, error) {
+func (w *ledgerDriver) SignTx(path accounts.DerivationPath, tx *types.Transaction, chainID *big.Int) (common.Address, *types.Transaction, error) {
 	// If the Ethereum app doesn't run, abort
 	if w.offline() {
 		return common.Address{}, nil, accounts.ErrWalletClosed
@@ -297,7 +294,7 @@ func (w *ledgerDriver) ledgerDerive(derivationPath []uint32) (common.Address, er
 //   signature V | 1 byte
 //   signature R | 32 bytes
 //   signature S | 32 bytes
-func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx types.Transaction, chainID *big.Int) (common.Address, types.Transaction, error) {
+func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx *types.Transaction, chainID *big.Int) (common.Address, *types.Transaction, error) {
 	// Flatten the derivation path into the Ledger request
 	path := make([]byte, 1+4*len(derivationPath))
 	path[0] = byte(len(derivationPath))
@@ -310,11 +307,11 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx types.Transaction,
 		err   error
 	)
 	if chainID == nil {
-		if txrlp, err = rlp.EncodeToBytes([]interface{}{tx.Nonce(), tx.Price(), tx.Gas(), tx.To(), tx.Value(), tx.Data()}); err != nil {
+		if txrlp, err = rlp.EncodeToBytes([]interface{}{tx.Nonce(), tx.GasPrice(), tx.Gas(), tx.To(), tx.Value(), tx.Data()}); err != nil {
 			return common.Address{}, nil, err
 		}
 	} else {
-		if txrlp, err = rlp.EncodeToBytes([]interface{}{tx.Nonce(), tx.Price(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), chainID, big.NewInt(0), big.NewInt(0)}); err != nil {
+		if txrlp, err = rlp.EncodeToBytes([]interface{}{tx.Nonce(), tx.GasPrice(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), chainID, big.NewInt(0), big.NewInt(0)}); err != nil {
 			return common.Address{}, nil, err
 		}
 	}
@@ -347,11 +344,11 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx types.Transaction,
 	signature := append(reply[1:], reply[0])
 
 	// Create the correct signer and signature transform based on the chain ID
-	var signer txType.Signer
+	var signer types.Signer
 	if chainID == nil {
-		signer = new(txType.HomesteadSigner)
+		signer = new(types.HomesteadSigner)
 	} else {
-		signer = txType.NewEIP155Signer(chainID)
+		signer = types.NewEIP155Signer(chainID)
 		signature[64] = signature[64] - byte(chainID.Uint64()*2+35)
 	}
 	signed, err := tx.WithSignature(signer, signature)

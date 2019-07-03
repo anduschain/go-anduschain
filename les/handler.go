@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/txpool"
+	"github.com/anduschain/go-anduschain/core"
 	"math/big"
 	"net"
 	"sync"
@@ -84,8 +84,8 @@ type BlockChain interface {
 }
 
 type txPool interface {
-	AddRemotes(txs []types.Transaction) []error
-	Status(hashes []common.Hash) []txpool.TxStatus
+	AddRemotes(txs []*types.Transaction) []error
+	Status(hashes []common.Hash) []core.TxStatus
 }
 
 type ProtocolManager struct {
@@ -1014,7 +1014,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrRequestRejected, "")
 		}
 		// Transactions arrived, parse all of them and deliver to the pool
-		var txs []types.Transaction
+		var txs []*types.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -1034,7 +1034,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Transactions arrived, parse all of them and deliver to the pool
 		var req struct {
 			ReqID uint64
-			Txs   []types.Transaction
+			Txs   []*types.Transaction
 		}
 		if err := msg.Decode(&req); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
@@ -1050,8 +1050,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		stats := pm.txStatus(hashes)
 		for i, stat := range stats {
-			if stat.Status == txpool.TxStatusUnknown {
-				if errs := pm.txpool.AddRemotes([]types.Transaction{req.Txs[i]}); errs[0] != nil {
+			if stat.Status == core.TxStatusUnknown {
+				if errs := pm.txpool.AddRemotes([]*types.Transaction{req.Txs[i]}); errs[0] != nil {
 					stats[i].Error = errs[0].Error()
 					continue
 				}
@@ -1166,9 +1166,9 @@ func (pm *ProtocolManager) txStatus(hashes []common.Hash) []txStatus {
 		stats[i].Status = stat
 
 		// If the transaction is unknown to the pool, try looking it up locally
-		if stat == txpool.TxStatusUnknown {
+		if stat == core.TxStatusUnknown {
 			if block, number, index := rawdb.ReadTxLookupEntry(pm.chainDb, hashes[i]); block != (common.Hash{}) {
-				stats[i].Status = txpool.TxStatusIncluded
+				stats[i].Status = core.TxStatusIncluded
 				stats[i].Lookup = &rawdb.TxLookupEntry{BlockHash: block, BlockIndex: number, Index: index}
 			}
 		}

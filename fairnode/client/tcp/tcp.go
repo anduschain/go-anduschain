@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	gethTypes "github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
@@ -104,7 +103,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 		t.logger.Debug("TcpLoop Killed")
 	}()
 
-	if ok, _ := t.checkBalance(otprnWithSig.Otprn); !ok {
+	if ok, _ := t.checkBalance(otprnWithSig); !ok {
 		t.logger.Error("Tcp connect error", "msg", errorLeakCoin.Error())
 		return
 	}
@@ -134,7 +133,7 @@ func (t *Tcp) tcpLoop(exit chan struct{}, v interface{}) {
 	//참가 여부 확인
 	if err := transport.Send(tsp, transport.ReqLeagueJoinOK,
 		fairtypes.TransferCheck{
-			Otprn:    *otprnWithSig.Otprn,
+			Otprn:    *otprnWithSig,
 			Coinbase: t.manger.GetCoinbase(),
 			Enode:    node.String(),
 			Version:  params.Version,
@@ -179,7 +178,7 @@ Exit:
 	}
 }
 
-func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethTypes.OtprnWithSig) error {
+func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethTypes.Otprn) error {
 	msg, err := rw.ReadMsg()
 	if err != nil {
 		return err
@@ -226,7 +225,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
 		t.logger.Debug("TCP Message arrived", "mgs", "Join Tx 생성 메시지 도착")
-		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
+		if m.OtprnHash != leagueOtprnwithsig.HashOtprn() {
 			t.manger.SetBlockMine(false)
 			return errors.New("otprn이 다릅니다")
 		}
@@ -237,7 +236,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 			return nil
 		}
 
-		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig.Otprn, leagueOtprnwithsig.Sig)
+		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig, leagueOtprnwithsig.Signature())
 		if err != nil {
 			t.logger.Error("MakeJoinTx", "error", err)
 			return err
@@ -246,7 +245,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 		var m fairtypes.BlockMakeMessage
 		msg.Decode(&m)
 		t.logger.Debug("TCP Message arrived", "mgs", "블록 생성 메시지 도착")
-		if m.OtprnHash != leagueOtprnwithsig.Otprn.HashOtprn() {
+		if m.OtprnHash != leagueOtprnwithsig.HashOtprn() {
 			t.manger.SetBlockMine(false)
 			return errors.New("otprn이 다릅니다")
 		}
@@ -271,11 +270,11 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 	case transport.FinishLeague:
 		var otprnhash common.Hash
 		msg.Decode(&otprnhash)
-		if otprnhash == leagueOtprnwithsig.Otprn.HashOtprn() {
+		if otprnhash == leagueOtprnwithsig.HashOtprn() {
 			//otprn 교체 및 저장된 블록 제거
 			t.manger.SetBlockMine(false)
 			t.manger.GetStoreOtprnWidthSig()
-			t.manger.DelWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn())
+			t.manger.DelWinningBlock(leagueOtprnwithsig.HashOtprn())
 
 			// static node 제거
 			for index := range t.leagueList {
@@ -295,11 +294,11 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 		if t.manger.GetBlockMine() {
 			var headerHash common.Hash
 			msg.Decode(&headerHash)
-			block := t.manger.GetWinningBlock(leagueOtprnwithsig.Otprn.HashOtprn(), headerHash)
+			block := t.manger.GetWinningBlock(leagueOtprnwithsig.HashOtprn(), headerHash)
 			if block == nil {
 				return nil
 			}
-			fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.Otprn.HashOtprn()}
+			fr := &fairtypes.ResWinningBlock{Block: block, OtprnHash: leagueOtprnwithsig.HashOtprn()}
 			transport.Send(rw, transport.SendWinningBlock, fr.GetTsResWinningBlock())
 		}
 	case transport.WinningBlockVote:
@@ -317,10 +316,10 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 
 func (t *Tcp) checkBalance(otprn *gethTypes.Otprn) (bool, *big.Int) {
 	currentBalance := t.manger.GetCurrentBalance()
-	epoch := big.NewInt(int64(otprn.Epoch))
+	epoch := big.NewInt(int64(otprn.Epoch()))
 
 	// balance will be more then ticket price multiplex epoch.
-	price := config.DefaultConfig.SetFee(int64(otprn.Fee))
+	price := config.DefaultConfig.SetFee(int64(otprn.Fee()))
 	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
 
 	return currentBalance.Cmp(totalPrice) > 0, price
@@ -344,8 +343,8 @@ func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *gethTypes.Otprn, sig []byte) er
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
 
 		// joinNonce Fairnode에게 보내는 Tx
-		tx, err := txType.SignTx(
-			txType.NewGenTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+		tx, err := gethTypes.SignTx(
+			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}

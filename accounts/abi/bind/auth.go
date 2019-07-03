@@ -19,15 +19,12 @@ package bind
 import (
 	"crypto/ecdsa"
 	"errors"
-	"github.com/anduschain/go-anduschain/core/types"
-	"io"
-	"io/ioutil"
-
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
+	"io"
+	"io/ioutil"
 )
 
 // NewTransactor is a utility method to easily create a transaction signer from
@@ -50,7 +47,7 @@ func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
 	return &TransactOpts{
 		From: keyAddr,
-		Signer: func(signer txType.Signer, address common.Address, tx types.Transaction) (types.Transaction, error) {
+		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			if address != keyAddr {
 				return nil, errors.New("not authorized to sign this account")
 			}

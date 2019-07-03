@@ -719,7 +719,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []types.Transaction
+		var txs []*types.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -747,7 +747,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []types.Transaction
+		var txs []*types.Transaction
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -870,7 +870,7 @@ func (pm *ProtocolManager) joinTxBroadcastLoop() {
 	for {
 		select {
 		case event := <-pm.joinTxsCh:
-			pm.BroadcastJoinTxs(event.JoinTxs)
+			pm.BroadcastJoinTxs(event.Txs)
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err(): // FIXME(hakuna) : join tx pool

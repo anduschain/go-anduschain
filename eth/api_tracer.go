@@ -31,7 +31,6 @@ import (
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/eth/tracers"
@@ -193,7 +192,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 
 			// Fetch and execute the next block trace tasks
 			for task := range tasks {
-				signer := txType.MakeSigner(api.config, task.block.Number())
+				signer := types.MakeSigner(api.config, task.block.Number())
 
 				// Trace all the transactions contained within
 				for i, tx := range task.block.Transactions().All() {
@@ -414,7 +413,7 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 	}
 	// Execute all the transaction contained within the block concurrently
 	var (
-		signer = txType.MakeSigner(api.config, block.Number())
+		signer = types.MakeSigner(api.config, block.Number())
 
 		txs     = block.Transactions().All()
 		results = make([]*txTraceResult, len(txs))
@@ -639,7 +638,7 @@ func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int, ree
 		return nil, vm.Context{}, nil, err
 	}
 	// Recompute transactions up to the target index.
-	signer := txType.MakeSigner(api.config, block.Number())
+	signer := types.MakeSigner(api.config, block.Number())
 
 	for idx, tx := range block.Transactions().All() {
 		// Assemble the transaction call message and return if the requested offset

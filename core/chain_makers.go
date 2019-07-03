@@ -75,7 +75,7 @@ func (b *BlockGen) SetExtra(data []byte) {
 // further limitations on the content of transactions that can be
 // added. Notably, contract code relying on the BLOCKHASH instruction
 // will panic during execution.
-func (b *BlockGen) AddTx(tx types.Transaction) {
+func (b *BlockGen) AddTx(tx *types.Transaction) {
 	b.AddTxWithChain(nil, tx)
 }
 
@@ -87,7 +87,7 @@ func (b *BlockGen) AddTx(tx types.Transaction) {
 // further limitations on the content of transactions that can be
 // added. If contract code relies on the BLOCKHASH instruction,
 // the block in chain will be returned.
-func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx types.Transaction) {
+func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
 	}
@@ -98,9 +98,9 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx types.Transaction) {
 	}
 
 	switch tx.TransactionId() {
-	case "general":
+	case types.GeneralTx:
 		b.txs.Gen = append(b.txs.Gen, tx)
-	case "join":
+	case types.JoinTx:
 		b.txs.Join = append(b.txs.Join, tx)
 	}
 

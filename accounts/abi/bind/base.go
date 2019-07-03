@@ -25,7 +25,6 @@ import (
 	"github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/accounts/abi"
 	"github.com/anduschain/go-anduschain/common"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/event"
@@ -33,7 +32,7 @@ import (
 
 // SignerFn is a signer function callback when a contract requires a method to
 // sign the transaction before submission.
-type SignerFn func(txType.Signer, common.Address, types.Transaction) (types.Transaction, error)
+type SignerFn func(types.Signer, common.Address, *types.Transaction) (*types.Transaction, error)
 
 // CallOpts is the collection of options to fine tune a contract call request.
 type CallOpts struct {
@@ -98,7 +97,7 @@ func NewBoundContract(address common.Address, abi abi.ABI, caller ContractCaller
 
 // DeployContract deploys a contract onto the Ethereum blockchain and binds the
 // deployment address with a Go wrapper.
-func DeployContract(opts *TransactOpts, abi abi.ABI, bytecode []byte, backend ContractBackend, params ...interface{}) (common.Address, types.Transaction, *BoundContract, error) {
+func DeployContract(opts *TransactOpts, abi abi.ABI, bytecode []byte, backend ContractBackend, params ...interface{}) (common.Address, *types.Transaction, *BoundContract, error) {
 	// Otherwise try to deploy the contract
 	c := NewBoundContract(common.Address{}, abi, backend, backend, backend)
 
@@ -166,7 +165,7 @@ func (c *BoundContract) Call(opts *CallOpts, result interface{}, method string, 
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (c *BoundContract) Transact(opts *TransactOpts, method string, params ...interface{}) (types.Transaction, error) {
+func (c *BoundContract) Transact(opts *TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	// Otherwise pack up the parameters and invoke the contract
 	input, err := c.abi.Pack(method, params...)
 	if err != nil {
@@ -177,13 +176,13 @@ func (c *BoundContract) Transact(opts *TransactOpts, method string, params ...in
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (c *BoundContract) Transfer(opts *TransactOpts) (types.Transaction, error) {
+func (c *BoundContract) Transfer(opts *TransactOpts) (*types.Transaction, error) {
 	return c.transact(opts, &c.address, nil)
 }
 
 // transact executes an actual transaction invocation, first deriving any missing
 // authorization fields, and then scheduling the transaction for execution.
-func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, input []byte) (types.Transaction, error) {
+func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, input []byte) (*types.Transaction, error) {
 	var err error
 
 	// Ensure a valid value field and resolve the account nonce
@@ -226,16 +225,16 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		}
 	}
 	// Create the transaction, sign it and schedule it for execution
-	var rawTx types.Transaction
+	var rawTx *types.Transaction
 	if contract == nil {
-		rawTx = txType.NewContractCreation(nonce, value, gasLimit, gasPrice, input)
+		rawTx = types.NewContractCreation(nonce, value, gasLimit, gasPrice, input)
 	} else {
-		rawTx = txType.NewGenTransaction(nonce, c.address, value, gasLimit, gasPrice, input)
+		rawTx = types.NewTransaction(nonce, c.address, value, gasLimit, gasPrice, input)
 	}
 	if opts.Signer == nil {
 		return nil, errors.New("no signer to authorize the transaction with")
 	}
-	signedTx, err := opts.Signer(txType.HomesteadSigner{}, opts.From, rawTx)
+	signedTx, err := opts.Signer(types.HomesteadSigner{}, opts.From, rawTx)
 	if err != nil {
 		return nil, err
 	}

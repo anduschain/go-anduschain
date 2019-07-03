@@ -29,7 +29,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/eth/filters"
@@ -293,11 +292,11 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 
 // SendTransaction updates the pending block to include the given transaction.
 // It panics if the transaction is invalid.
-func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx types.Transaction) error {
+func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	sender, err := tx.Sender(txType.HomesteadSigner{})
+	sender, err := tx.Sender(types.HomesteadSigner{})
 	if err != nil {
 		panic(fmt.Errorf("invalid transaction: %v", err))
 	}

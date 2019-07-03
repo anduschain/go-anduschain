@@ -20,20 +20,12 @@ package eth
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/core/txpool"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"math/big"
-	"runtime"
-	"sync"
-	"sync/atomic"
-
 	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
@@ -44,6 +36,8 @@ import (
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/client"
+	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/miner"
@@ -52,6 +46,10 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
+	"math/big"
+	"runtime"
+	"sync"
+	"sync/atomic"
 )
 
 type LesServer interface {
@@ -70,7 +68,7 @@ type Ethereum struct {
 	shutdownChan chan bool // Channel for shutting down the Ethereum
 
 	// Handlers
-	txPool          *txpool.TxPool
+	txPool          *core.TxPool
 	blockchain      *core.BlockChain
 	protocolManager *ProtocolManager
 	lesServer       LesServer
@@ -191,7 +189,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
 
-	eth.txPool = txpool.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
+	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth); err != nil {
 		return nil, err
@@ -480,7 +478,7 @@ func (s *Ethereum) Miner() *miner.Miner { return s.miner }
 
 func (s *Ethereum) AccountManager() *accounts.Manager  { return s.accountManager }
 func (s *Ethereum) BlockChain() *core.BlockChain       { return s.blockchain }
-func (s *Ethereum) TxPool() *txpool.TxPool             { return s.txPool }
+func (s *Ethereum) TxPool() *core.TxPool               { return s.txPool }
 func (s *Ethereum) EventMux() *event.TypeMux           { return s.eventMux }
 func (s *Ethereum) Engine() consensus.Engine           { return s.engine }
 func (s *Ethereum) ChainDb() ethdb.Database            { return s.chainDb }

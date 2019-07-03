@@ -59,9 +59,9 @@ type Backend interface {
 	SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription
 
 	// TxPool API
-	SendTx(ctx context.Context, signedTx types.Transaction) error
+	SendTx(ctx context.Context, signedTx *types.Transaction) error
 	GetPoolTransactions() (types.Transactions, error)
-	GetPoolTransaction(txHash common.Hash) types.Transaction
+	GetPoolTransaction(txHash common.Hash) *types.Transaction
 	GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error)
 	Stats() (pending int, queued int)
 	TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions)

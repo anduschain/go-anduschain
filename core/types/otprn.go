@@ -45,6 +45,10 @@ func New(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
 	}
 }
 
+func (otp *Otprn) GetValue() (rand [20]byte, cMiner uint64, mMiner uint64) {
+	return otp.rand, otp.cMiner, otp.mMiner
+}
+
 func (otp *Otprn) Epoch() uint64 {
 	return otp.epoch
 }

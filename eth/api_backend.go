@@ -169,12 +169,12 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 	return b.eth.BlockChain().SubscribeLogsEvent(ch)
 }
 
-func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx types.Transaction) error {
+func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
 	return b.eth.txPool.AddLocal(signedTx)
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
-	pending, err := b.eth.txPool.Pending()
+	pending, _, err := b.eth.txPool.Pending()
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 	return txs, nil
 }
 
-func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) types.Transaction {
+func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction {
 	return b.eth.txPool.Get(hash)
 }
 

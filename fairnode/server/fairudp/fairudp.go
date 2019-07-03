@@ -314,21 +314,22 @@ func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, err
 	cfg := fu.db.GetChainConfig()
 	fu.manager.SetEpoch(cfg.Epoch)
 	otp := types.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
-	sig, err := otp.SignOtprn(fu.manager.GetServerKey().SeverPiveKey)
+	err := otp.SignOtprn(fu.manager.GetServerKey().SeverPiveKey)
 	if err != nil {
 		return fairtypes.TransferOtprn{}, err
 	}
 
 	tsOtp := fairtypes.TransferOtprn{
 		Otp:  *otp,
-		Sig:  sig,
 		Hash: otp.HashOtprn(),
 	}
+
+	_, mMiner, _ := otp.GetValue()
 
 	// OTPRN DB 저장
 	fu.db.SaveOtprn(tsOtp)
 
-	fu.logger.Debug("OTPRN 전송", "hash", otp.HashOtprn(), "miner", otp.Mminer, "epoch", otp.Epoch, "fee", otp.Fee)
+	fu.logger.Debug("OTPRN 전송", "hash", otp.HashOtprn(), "miner", mMiner, "epoch", otp.Epoch(), "fee", otp.Fee())
 
 	return tsOtp, nil
 }

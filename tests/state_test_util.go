@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
 	"strings"
 
@@ -34,8 +35,6 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
-
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 )
 
 // StateTest checks transaction processing without block context.
@@ -244,7 +243,7 @@ func (tx *stTransaction) toMessage(ps stPostState) (core.Message, error) {
 		return nil, fmt.Errorf("invalid tx data %q", dataHex)
 	}
 
-	msg := txType.NewMessage(from, to, tx.Nonce, value, gasLimit, tx.GasPrice, data, true)
+	msg := types.NewMessage(from, to, tx.Nonce, value, gasLimit, tx.GasPrice, data, true)
 	return msg, nil
 }
 

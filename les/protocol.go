@@ -23,7 +23,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/txpool"
+	"github.com/anduschain/go-anduschain/core"
 	"io"
 	"math/big"
 
@@ -223,7 +223,7 @@ type CodeData []struct {
 type proofsData [][]rlp.RawValue
 
 type txStatus struct {
-	Status txpool.TxStatus
+	Status core.TxStatus
 	Lookup *rawdb.TxLookupEntry `rlp:"nil"`
 	Error  string
 }

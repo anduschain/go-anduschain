@@ -17,7 +17,6 @@
 package eth
 
 import (
-	"github.com/anduschain/go-anduschain/core/txpool"
 	"math/big"
 	"os"
 	"os/user"
@@ -47,7 +46,7 @@ var DefaultConfig = Config{
 	MinerGasPrice: big.NewInt(params.GWei),
 	MinerRecommit: 3 * time.Second,
 
-	TxPool: txpool.DefaultTxPoolConfig,
+	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{
 		Blocks:     20,
 		Percentile: 60,
@@ -107,7 +106,7 @@ type Config struct {
 	//Ethash ethash.Config //TODO : deprecated ethash
 
 	// Transaction pool options
-	TxPool txpool.TxPoolConfig
+	TxPool core.TxPoolConfig
 
 	// Gas Price Oracle options
 	GPO gasprice.Config

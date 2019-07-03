@@ -26,7 +26,6 @@ type EnodeCoinbase struct {
 
 type TransferOtprn struct {
 	Otp  types.Otprn
-	Sig  []byte
 	Hash common.Hash
 }
 
