@@ -182,14 +182,14 @@ func (c *Deb) CompareBlock(myBlock, receivedBlock *fairtypes.VoteBlock) *fairtyp
 }
 
 func (c *Deb) SendMiningBlockAndVoting(chain consensus.ChainReader, tsfBlock *fairtypes.VoteBlock, isVoting *bool) {
-	c.logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
+	logger.Debug("SendMiningBlockAndVoting Run", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
 	winningBlock := tsfBlock
 	prevHash := tsfBlock.Block.Hash()
 	//t := time.NewTicker(VotingWaitTime * time.Second)
 
 	defer func() {
 		*isVoting = false
-		c.logger.Debug("SendMiningBlockAndVoting Closed", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
+		logger.Debug("SendMiningBlockAndVoting Closed", "otprnHash", tsfBlock.OtprnHash.String(), "blockNum", tsfBlock.Block.Number())
 	}()
 
 Exit:
@@ -198,23 +198,23 @@ Exit:
 		case recevedBlock := <-c.chans.GetReceiveBlockCh():
 			// TODO : andus >> 블록 검증
 			// TODO : andus >> 1. 받은 블록이 채굴리그 참여자가 생성했는지 여부를 확인
-			c.logger.Debug("전파 블록 수신", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
+			logger.Debug("전파 블록 수신", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
 			if err, errType := c.FairNodeSigCheck(recevedBlock.Block, recevedBlock.Sig); err != nil {
 				switch errType {
 				case ErrNonFairNodeSig:
 					// TODO : andus >> 2. RAND 값 서명 검증
 					err := c.ValidationVoteBlock(chain, recevedBlock.Block)
 					if err != nil {
-						c.logger.Error("리그 전파 블록 유효성 검증 실패", "msg", err)
+						logger.Error("리그 전파 블록 유효성 검증 실패", "msg", err)
 						continue
 					}
 
 					if !c.ValidationVoteBlockSign(recevedBlock) {
-						c.logger.Error("리그 전파 블록 서명이 올바르지 않음", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
+						logger.Error("리그 전파 블록 서명이 올바르지 않음", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
 						continue
 					}
 
-					c.logger.Debug("리그 전파 블록 도착", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
+					logger.Debug("리그 전파 블록 도착", "blockNum", recevedBlock.Block.Number(), "hash", recevedBlock.Block.Header().Hash().String())
 
 					// winningblock을 선정하고, 우선순위가 높은 블록을 다시 재배포
 					winningBlock = c.CompareBlock(winningBlock, recevedBlock)
@@ -223,7 +223,7 @@ Exit:
 						block := winningBlock.Block
 						sig, err := c.SignBlockHeader(block.Header().Hash().Bytes())
 						if err != nil {
-							c.logger.Error("Boradcasting Block found but fail signature", "number", block.Number(), "hash", block.Hash())
+							logger.Error("Boradcasting Block found but fail signature", "number", block.Number(), "hash", block.Hash())
 							continue
 						}
 
@@ -240,21 +240,21 @@ Exit:
 				}
 			}
 		case _, ok := <-c.chans.GetWinningBlockVoteStartCh():
-			c.logger.Debug("블록 투표 채널 호출", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash(), "status", ok)
+			logger.Debug("블록 투표 채널 호출", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash(), "status", ok)
 			wb := winningBlock
 			if wb == nil {
-				c.logger.Error("블록투표 실패", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+				logger.Error("블록투표 실패", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
 				break Exit
 			}
 
 			if chain.CurrentHeader().Number.Cmp(wb.Block.Number()) >= 0 {
-				c.logger.Error("투표 블록 번호가 맞지 않음", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+				logger.Error("투표 블록 번호가 맞지 않음", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
 				break Exit
 			}
 			// 위닝블록 전송
 			mySig, err := c.SignBlockHeader(wb.Block.Header().Hash().Bytes())
 			if err != nil {
-				c.logger.Error("블록투표 서명 실패", "msg", err)
+				logger.Error("블록투표 서명 실패", "msg", err)
 				break Exit
 			}
 
@@ -268,10 +268,10 @@ Exit:
 			}
 
 			c.client.SaveWiningBlock(wb.OtprnHash, wb.Block)
-			c.logger.Debug("블록투표 ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
+			logger.Debug("블록투표 ", "blockNum", wb.Block.Header().Number, "hash", wb.Block.Header().Hash())
 			break Exit
 		case <-time.After(VotingWaitTime * time.Second):
-			c.logger.Debug("Vote goroutine end of time", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
+			logger.Debug("Vote goroutine end of time", "blockNum", tsfBlock.Block.Header().Number, "hash", tsfBlock.Block.Header().Hash())
 			break Exit
 		}
 	}

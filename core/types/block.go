@@ -32,7 +32,9 @@ import (
 )
 
 var (
-	EmptyRootHash = DeriveSha(Transactions{})
+	EmptyRootHash    = DeriveSha(TransactionsSet{})
+	EmptyReceiptHash = DeriveSha(Receipts{})
+	EmptyVoteHash    = DeriveSha(Voters{})
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
@@ -116,6 +118,7 @@ func (h *Header) Hash() common.Hash {
 		h.Extra,
 		h.Nonce,
 	})
+
 }
 
 // Size returns the approximate memory used by all internal contents. It is used
@@ -193,23 +196,29 @@ type storageblock struct {
 // The values of TxHash, UncleHash, ReceiptHash and Bloom in header
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
-func NewBlock(header *Header, txs *TransactionsSet, receipts []*Receipt) *Block {
+func NewBlock(header *Header, txs *TransactionsSet, receipts []*Receipt, voters []*Voter) *Block {
 	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
-	if txs != nil && receipts != nil {
-		if txs.Len() != len(receipts) {
-			panic("not equal txs and receipts")
-		}
-
-		b.header.TxHash = DeriveSha(txs.All())
+	if txs == nil {
+		b.header.TxHash = EmptyRootHash
+		b.transactions = new(TransactionsSet)
+	} else {
+		b.header.TxHash = DeriveSha(txs)
 		b.transactions = txs
-		//copy(b.transactions, totalTxs)
+	}
 
+	if len(receipts) == 0 {
+		b.header.ReceiptHash = EmptyReceiptHash
+	} else {
 		b.header.ReceiptHash = DeriveSha(Receipts(receipts))
 		b.header.Bloom = CreateBloom(receipts)
+	}
+
+	if len(voters) == 0 {
+		b.header.VoteHash = EmptyVoteHash
 	} else {
-		b.header.TxHash = EmptyRootHash
-		b.header.ReceiptHash = EmptyRootHash
+		b.header.VoteHash = DeriveSha(Voters(voters))
+		b.voters = voters
 	}
 
 	return b

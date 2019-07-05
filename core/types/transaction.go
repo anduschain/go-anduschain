@@ -76,12 +76,30 @@ func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit u
 	return newTransaction(nonce, &to, amount, gasLimit, gasPrice, data)
 }
 
-func NewJoinTransaction() *Transaction {
-	return &Transaction{}
-}
-
 func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
+}
+
+func NewJoinTransaction(nonce uint64, data []byte) *Transaction {
+	if len(data) > 0 {
+		data = common.CopyBytes(data)
+	} else {
+		return nil
+	}
+	to := common.HexToAddress(JoinTxToAddr)
+	d := txdata{
+		Type:         JoinTx,
+		AccountNonce: nonce,
+		Recipient:    &to,
+		Payload:      data,
+		Amount:       new(big.Int),
+		GasLimit:     0,
+		Price:        new(big.Int),
+		V:            new(big.Int),
+		R:            new(big.Int),
+		S:            new(big.Int),
+	}
+	return &Transaction{data: d}
 }
 
 func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {

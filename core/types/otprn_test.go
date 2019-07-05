@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestOtprn_DecodeOtprn(t *testing.T) {
-	otp := New(100, 100, 100, 20)
+	otp := NewOtprn(100, 100, 100, 20)
 	byte, err := otp.EncodeOtprn()
 	if err != nil {
 		t.Error("OTPRN ENCODE", err)

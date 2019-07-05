@@ -61,7 +61,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Header validity is known at this point, check the uncles and transactions
 	header := block.Header()
 
-	if hash := types.DeriveSha(block.Transactions().All()); hash != header.TxHash {
+	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
 	}
 	return nil

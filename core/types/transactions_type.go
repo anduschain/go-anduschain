@@ -25,6 +25,7 @@ import (
 const (
 	GeneralTx uint64 = iota
 	JoinTx
+	JoinTxToAddr = "0x000000000000000000000000000000000000da07"
 )
 
 // Transactions is a Transaction slice type for basic sorting.
@@ -170,4 +171,13 @@ func (ts TransactionsSet) Len() int {
 
 func (ts TransactionsSet) Empty() bool {
 	return ts.Len() == 0
+}
+
+// GetRlp returns the RLP encoding of one receipt from the list.
+func (ts TransactionsSet) GetRlp(i int) []byte {
+	bytes, err := rlp.EncodeToBytes(ts)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
 }

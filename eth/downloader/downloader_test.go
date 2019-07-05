@@ -28,7 +28,6 @@ import (
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	txType "github.com/anduschain/go-anduschain/core/transaction"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/ethdb"
@@ -117,8 +116,8 @@ func (dl *downloadTester) makeChain(n int, seed byte, parent *types.Block, paren
 		}
 		// If the block number is multiple of 3, send a bonus transaction to the miner
 		if parent == dl.genesis && i%3 == 0 {
-			signer := txType.MakeSigner(params.TestChainConfig, block.Number())
-			tx, err := txType.SignTx(txType.NewGenTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), params.TxGas, nil, nil), signer, testKey)
+			signer := types.MakeSigner(params.TestChainConfig, block.Number())
+			tx, err := types.SignTx(types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), params.TxGas, nil, nil), signer, testKey)
 			if err != nil {
 				panic(err)
 			}
@@ -546,7 +545,7 @@ func (dlp *downloadTesterPeer) RequestBodies(hashes []common.Hash) error {
 
 	blocks := dlp.dl.peerBlocks[dlp.id]
 
-	transactions := make([]*types.Transactions, 0, len(hashes))
+	transactions := make([]*types.TransactionsSet, 0, len(hashes))
 	//uncles := make([][]*types.Header, 0, len(hashes))
 	voters := make([][]*types.Voter, 0, len(hashes))
 
@@ -926,7 +925,7 @@ func TestInactiveDownloader62(t *testing.T) {
 	if err := tester.downloader.DeliverHeaders("bad peer", []*types.Header{}); err != errNoSyncActive {
 		t.Errorf("error mismatch: have %v, want %v", err, errNoSyncActive)
 	}
-	if err := tester.downloader.DeliverBodies("bad peer", []*types.Transactions{}, [][]*types.Voter{}); err != errNoSyncActive {
+	if err := tester.downloader.DeliverBodies("bad peer", []*types.TransactionsSet{}, [][]*types.Voter{}); err != errNoSyncActive {
 		t.Errorf("error mismatch: have %v, want %v", err, errNoSyncActive)
 	}
 }
@@ -943,7 +942,7 @@ func TestInactiveDownloader63(t *testing.T) {
 	if err := tester.downloader.DeliverHeaders("bad peer", []*types.Header{}); err != errNoSyncActive {
 		t.Errorf("error mismatch: have %v, want %v", err, errNoSyncActive)
 	}
-	if err := tester.downloader.DeliverBodies("bad peer", []*types.Transactions{}, [][]*types.Voter{}); err != errNoSyncActive {
+	if err := tester.downloader.DeliverBodies("bad peer", []*types.TransactionsSet{}, [][]*types.Voter{}); err != errNoSyncActive {
 		t.Errorf("error mismatch: have %v, want %v", err, errNoSyncActive)
 	}
 	if err := tester.downloader.DeliverReceipts("bad peer", [][]*types.Receipt{}); err != errNoSyncActive {

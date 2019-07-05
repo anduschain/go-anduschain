@@ -20,13 +20,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"io"
-	"math/big"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/mclock"
 	"github.com/anduschain/go-anduschain/common/prque"
@@ -44,6 +37,12 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/trie"
 	"github.com/hashicorp/golang-lru"
+	"io"
+	"math/big"
+	mrand "math/rand"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 var (
@@ -170,6 +169,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if err != nil {
 		return nil, err
 	}
+
 	bc.genesisBlock = bc.GetBlockByNumber(0)
 	if bc.genesisBlock == nil {
 		return nil, ErrNoGenesis
@@ -873,13 +873,14 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
+	// FIXME(hakuna) : 패어 노드 서명 부분 처리해야함
 	// AndusChain, Check Fairnode signature
-	if deb, ok := bc.engine.(*deb.Deb); ok {
-		err, _ := deb.FairNodeSigCheck(block, block.FairNodeSig())
-		if err != nil {
-			return NonStatTy, err
-		}
-	}
+	//if deb, ok := bc.engine.(*deb.Deb); ok {
+	//	err, _ := deb.FairNodeSigCheck(block, block.FairNodeSig())
+	//	if err != nil {
+	//		return NonStatTy, err
+	//	}
+	//}
 
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
@@ -962,15 +963,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-	//reorg := externTd.Cmp(localTd) > 0
-	//currentBlock = bc.CurrentBlock()
-	//if !reorg && externTd.Cmp(localTd) == 0 {
-	//	// Split same-difficulty blocks by number, then at random
-	//	//reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64() && mrand.Float64() < 0.5)
-	//	reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64())
-	//}
-
-	reorg := true
+	reorg := externTd.Cmp(localTd) > 0
+	currentBlock = bc.CurrentBlock()
+	if !reorg && externTd.Cmp(localTd) == 0 {
+		// Split same-difficulty blocks by number, then at random
+		reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64() && mrand.Float64() < 0.5)
+	}
 
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
@@ -1022,16 +1020,17 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 
-		if _, ok := bc.engine.(*deb.Deb); ok {
-			// TODO : andus >> 블록의 페어노드 서명이 있는 것만 처리하도록
-			if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig(), bc.chainConfig.Deb.FairAddr) {
-				log.Error("Non fairnode signature block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
-					"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
-
-				return 0, nil, nil, fmt.Errorf("페어노드 서명이 없음 : item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
-					chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
-			}
-		}
+		// FIXME(hakuna) : 페어노드 서명 관련 부분 처리
+		//if _, ok := bc.engine.(*deb.Deb); ok {
+		//	// TODO : andus >> 블록의 페어노드 서명이 있는 것만 처리하도록
+		//	if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig(), bc.chainConfig.Deb.FairAddr) {
+		//		log.Error("Non fairnode signature block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
+		//			"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
+		//
+		//		return 0, nil, nil, fmt.Errorf("페어노드 서명이 없음 : item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
+		//			chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
+		//	}
+		//}
 
 		if chain[i].NumberU64() != chain[i-1].NumberU64()+1 || chain[i].ParentHash() != chain[i-1].Hash() {
 			// Chain broke ancestry, log a message (programming error) and skip insertion
@@ -1070,7 +1069,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
-	//txpool.SenderCacher.RecoverFromBlocks(txType.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
+	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
 
 	//
 	// Iterate over the blocks and insert when the verifier permits
@@ -1173,6 +1172,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
+
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		if err != nil {

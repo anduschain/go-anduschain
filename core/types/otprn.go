@@ -26,7 +26,7 @@ type Otprn struct {
 	fairFee  float64        // to give fairnode account, unit is percent
 }
 
-func New(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
+func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
 
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
@@ -93,7 +93,7 @@ func (otprn *Otprn) EncodeOtprn() ([]byte, error) {
 func (otprn *Otprn) ValidateSignature() error {
 	fpKey, err := crypto.SigToPub(otprn.HashOtprn().Bytes(), otprn.sig)
 	if err != nil {
-		return errors.New(fmt.Sprintf("ValidationFairSignature SigToPub", "msg", err))
+		return errors.New(fmt.Sprintf("ValidationFairSignature SigToPub %v", err))
 	}
 
 	addr := crypto.PubkeyToAddress(*fpKey)
@@ -101,7 +101,7 @@ func (otprn *Otprn) ValidateSignature() error {
 		return nil
 	}
 
-	return errors.New(fmt.Sprintf("ValidationFairSignature PubkeyToAddress", "addr", addr, "fairaddr", otprn.fairAddr))
+	return errors.New(fmt.Sprintf("ValidationFairSignature PubkeyToAddress addr : %v  fairaddr : %v", addr, otprn.fairAddr))
 }
 
 func DecodeOtprn(otpByte []byte) (*Otprn, error) {

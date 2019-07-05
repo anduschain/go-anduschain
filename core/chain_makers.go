@@ -44,6 +44,7 @@ type BlockGen struct {
 
 	txs      *types.TransactionsSet
 	receipts []*types.Receipt
+	voters   []*types.Voter
 
 	config *params.ChainConfig
 	engine consensus.Engine
@@ -105,23 +106,15 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	}
 
 	b.receipts = append(b.receipts, receipt)
+
+	fmt.Println("==========> Txhash", tx.Hash().String())
+	fmt.Println("==========>", "/receiptsLen", len(b.receipts), "/txsLen", b.txs.Len())
 }
 
 // Number returns the block number of the block being generated.
 func (b *BlockGen) Number() *big.Int {
 	return new(big.Int).Set(b.header.Number)
 }
-
-// AddUncheckedReceipt forcefully adds a receipts to the block without a
-// backing transaction.
-//
-// AddUncheckedReceipt will cause consensus failures when used during real
-// chain processing. This is best used in conjunction with raw block insertion.
-
-// TODO : deprecated
-//func (b *BlockGen) AddUncheckedReceipt(receipt *types.Receipt) {
-//	b.receipts = append(b.receipts, receipt)
-//}
 
 // TxNonce returns the next valid transaction nonce for the
 // account at addr. It panics if the account does not exist.
@@ -140,12 +133,6 @@ func (b *BlockGen) JoinNonce(addr common.Address) uint64 {
 	}
 	return b.statedb.GetJoinNonce(addr)
 }
-
-// AddUncle adds an uncle header to the generated block.
-// TODO : deprecated
-//func (b *BlockGen) AddUncle(h *types.Header) {
-//	b.uncles = append(b.uncles, h)
-//}
 
 // PrevBlock returns a previously generated block by number. It panics if
 // num is greater or equal to the number of the block being generated.
@@ -187,14 +174,18 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 	if config == nil {
 		config = params.TestChainConfig
 	}
-	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
-	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts) {
-		// TODO(karalabe): This is needed for clique, which depends on multiple blocks.
-		// It's nonetheless ugly to spin up a blockchain here. Get rid of this somehow.
-		blockchain, _ := NewBlockChain(db, nil, config, engine, vm.Config{})
-		defer blockchain.Stop()
 
-		b := &BlockGen{i: i, parent: parent, chain: blocks, chainReader: blockchain, statedb: statedb, config: config, engine: engine}
+	blocks, receipts, voters := make(types.Blocks, n), make([]types.Receipts, n), make([]types.Voters, n)
+	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts, types.Voters) {
+
+		// It's nonetheless ugly to spin up a blockchain here. Get rid of this somehow.
+		blockchain, err := NewBlockChain(db, nil, config, engine, vm.Config{})
+		if err != nil {
+			panic(fmt.Sprintf("new block chain error: %v", err))
+		}
+
+		defer blockchain.Stop()
+		b := &BlockGen{i: i, parent: parent, chain: blocks, chainReader: blockchain, statedb: statedb, config: config, engine: engine, txs: new(types.TransactionsSet)}
 		b.header = makeHeader(b.chainReader, parent, statedb, b.engine)
 
 		// Mutate the state and block according to any hard-fork specs
@@ -215,7 +206,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		}
 
 		if b.engine != nil {
-			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.receipts)
+			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.receipts, b.voters)
 			// Write state changes to db
 			root, err := statedb.Commit(config.IsEIP158(b.header.Number))
 			if err != nil {
@@ -224,18 +215,20 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
 				panic(fmt.Sprintf("trie write error: %v", err))
 			}
-			return block, b.receipts
+			return block, b.receipts, b.voters
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
+
 	for i := 0; i < n; i++ {
 		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
 		if err != nil {
 			panic(err)
 		}
-		block, receipt := genblock(i, parent, statedb)
+		block, receipt, voter := genblock(i, parent, statedb)
 		blocks[i] = block
 		receipts[i] = receipt
+		voters[i] = voter
 		parent = block
 	}
 	return blocks, receipts
@@ -257,7 +250,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 			Number:     parent.Number(),
 			Time:       new(big.Int).Sub(time, big.NewInt(10)),
 			Difficulty: parent.Difficulty(),
-			//UncleHash:  parent.UncleHash(),
+			Coinbase:   parent.Coinbase(),
 		}),
 		GasLimit: CalcGasLimit(parent, parent.GasLimit(), parent.GasLimit()),
 		Number:   new(big.Int).Add(parent.Number(), common.Big1),

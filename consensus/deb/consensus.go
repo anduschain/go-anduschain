@@ -11,7 +11,6 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -89,18 +88,22 @@ type client interface {
 
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
-	config     *params.DebConfig // Consensus engine configuration parameters
-	db         ethdb.Database    // Database to store and retrieve snapshot checkpoints
-	joinNonce  uint64
-	privKey    *ecdsa.PrivateKey
-	otprnHash  common.Hash
-	coinbase   common.Address
-	chans      fairtypes.Channals
-	client     client
-	logger     log.Logger
+	config *params.DebConfig // Consensus engine configuration parameters
+	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	//joinNonce  uint64
+	privKey   *ecdsa.PrivateKey
+	otprnHash common.Hash
+	coinbase  common.Address
+	chans     fairtypes.Channals
+	client    client
+	//logger     log.Logger
 	fairAddr   common.Address
 	difficulty string
 }
+
+var (
+	logger = log.New("consensus", "Deb")
+)
 
 // New creates a andusChain proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
@@ -108,7 +111,6 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	deb := &Deb{
 		config:   config,
 		db:       db,
-		logger:   log.New("consensus", "Deb"),
 		fairAddr: config.FairAddr,
 	}
 
@@ -213,19 +215,8 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		}
 	}
 
-	// Ensure that the mix digest is zero as we don't have fork protection currently
-	//if header.MixDigest != (common.Hash{}) {
-	//	return errInvalidMixDigest
-	//}  // TODO : deprecated
-	// Ensure that the block doesn't contain any uncles which are meaningless in PoA
-	//if header.UncleHash != uncleHash {
-	//	return errInvalidUncleHash
-	//}  // TODO : deprecated
-	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
-		rand := MakeRand(header.Nonce.Uint64(), common.BytesToHash(header.Extra), header.Coinbase, header.ParentHash)
-		diff := big.NewInt(rand)
-
+		diff := CalcDifficulty(header.Nonce.Uint64(), header.Extra, header.Coinbase, header.ParentHash)
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
 			return errInvalidDifficulty
 		}
@@ -250,6 +241,7 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 	if number == 0 {
 		return nil
 	}
+
 	// Ensure that the block's timestamp isn't too close to it's parent
 	var parent *types.Header
 	if len(parents) > 0 {
@@ -298,11 +290,7 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 // header for running the transactions on top.
 func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
-
 	number := header.Number.Uint64()
-
-	// Mix digest is reserved for now, set to empty
-	//header.MixDigest = common.Hash{}  // TODO : deprecated
 
 	// Ensure the timestamp has the correct delay
 	parent := chain.GetHeader(header.ParentHash, number-1)
@@ -312,29 +300,29 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	current, err := chain.StateAt(parent.Root)
 	if err != nil {
-		c.logger.Error("Prepare State", "error", err)
+		logger.Error("Prepare State", "error", err)
 		return errGetState
 	}
 
-	c.joinNonce = current.GetJoinNonce(header.Coinbase)
+	//c.joinNonce = current.GetJoinNonce(header.Coinbase)
 	c.otprnHash = common.BytesToHash(header.Extra)
 	c.coinbase = header.Coinbase
 	// nonce => joinNonce
-	header.Nonce = types.EncodeNonce(c.joinNonce)
+
+	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase))
 	// difficulty => RAND값
-	rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
-
+	//rand := MakeRand(header.Nonce.Uint64(), c.otprnHash, header.Coinbase, header.ParentHash)
 	//diff 검즘용
-	c.difficulty = strconv.FormatInt(rand, 10)
+	//c.difficulty = strconv.FormatInt(rand, 10)
 
-	header.Difficulty = big.NewInt(rand)
+	//header.Difficulty = big.NewInt(rand)
 	header.Time = big.NewInt(time.Now().Unix())
 	return nil
 }
 
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
-func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs *types.TransactionsSet, receipts []*types.Receipt) (*types.Block, error) {
+func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs *types.TransactionsSet, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
 	// [1] miner's join transaction 포함 여부 확인
@@ -346,39 +334,40 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 
 	chainID := chain.Config().ChainID
 	//c.ValidationBlockWidthJoinTx(chainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
-
-	c.ChangeJoinNonceAndReword(chainID, state, Txs.Join, header.Coinbase)
+	c.ChangeJoinNonceAndReword(chainID, state, Txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-
-	block := types.NewBlock(header, Txs, receipts)
+	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Extra, header.Coinbase, header.ParentHash)
+	block := types.NewBlock(header, Txs, receipts, voters)
 
 	// Assemble and return the final block for sealing
 	return block, nil
 }
 
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
-func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, Txs []*types.Transaction, coinbase common.Address) {
+func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs *types.TransactionsSet, coinbase common.Address) {
+	if txs == nil {
+		return
+	}
 	signer := types.NewEIP155Signer(chainid)
-	for i := range Txs {
-		tx := Txs[i]
+	for _, tx := range txs.All() {
 		if tx.To() != nil {
 			if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
 				from, _ := tx.Sender(signer)
 				state.AddJoinNonce(from)
-				c.logger.Debug("Add JOIN_NONCE", "addr", from.String())
+				logger.Debug("Add JOIN_NONCE", "addr", from.String())
 
 				//채굴자 보상
 				state.AddBalance(coinbase, tx.Value())
-				c.logger.Debug("Add Reword", "addr", coinbase.String())
+				logger.Debug("Add Reword", "addr", coinbase.String())
 
 				//패어 노드 차감
 				state.SubBalance(c.fairAddr, tx.Value())
-				c.logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
+				logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
 			}
 		}
 	}
 	state.ResetJoinNonce(coinbase)
-	c.logger.Debug("RESET JOIN_NONCE", "addr", coinbase.String())
+	logger.Debug("RESET JOIN_NONCE", "addr", coinbase.String())
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using
@@ -398,7 +387,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 			return
 		case results <- block.WithSeal(header):
 		default:
-			c.logger.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
+			logger.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
 		}
 
 	}()
@@ -410,9 +399,15 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // that a new block should have based on the previous blocks in the chain and the
 // current signer.
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	rand := MakeRand(c.joinNonce, c.otprnHash, c.coinbase, parent.Hash())
+	cHeader := chain.CurrentHeader()
+	if cHeader.Number.Uint64() > 0 {
+		return CalcDifficulty(cHeader.Nonce.Uint64(), cHeader.Extra, cHeader.Coinbase, parent.Hash())
+	}
+	return big.NewInt(0)
+}
 
-	return big.NewInt(rand)
+func CalcDifficulty(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
+	return big.NewInt(MakeRand(joinNonce, common.BytesToHash(otprn), coinbase, parentHash) + 1)
 }
 
 // SealHash returns the hash of a block prior to it being sealed.

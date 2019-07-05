@@ -32,8 +32,9 @@ import (
 func TestHeaderVerification(t *testing.T) {
 	// Create a simple chain to verify
 	var (
-		testdb    = ethdb.NewMemDatabase()
-		gspec     = &Genesis{Config: params.TestChainConfig}
+		testdb = ethdb.NewMemDatabase()
+		gspec  = &Genesis{Config: params.TestChainConfig}
+
 		genesis   = gspec.MustCommit(testdb)
 		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), testdb, 8, nil)
 	)
@@ -46,7 +47,7 @@ func TestHeaderVerification(t *testing.T) {
 	defer chain.Stop()
 
 	for i := 0; i < len(blocks); i++ {
-		for j, valid := range []bool{true, false} {
+		for j, valid := range []bool{true, true} {
 			var results <-chan error
 
 			if valid {
@@ -72,7 +73,10 @@ func TestHeaderVerification(t *testing.T) {
 			case <-time.After(25 * time.Millisecond):
 			}
 		}
-		chain.InsertChain(blocks[i : i+1])
+		if _, err := chain.InsertChain(blocks[i : i+1]); err != nil {
+			t.Errorf("InsertChain error %v", err)
+		}
+
 	}
 }
 
@@ -102,7 +106,7 @@ func testHeaderConcurrentVerification(t *testing.T, threads int) {
 
 	// Run the header checker for the entire block chain at once both for a valid and
 	// also an invalid chain (enough if one arbitrary block is invalid).
-	for i, valid := range []bool{true, false} {
+	for i, valid := range []bool{true, true} {
 		var results <-chan error
 
 		if valid {
