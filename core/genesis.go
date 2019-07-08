@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/big"
 	"strings"
 
@@ -160,8 +161,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 	if (stored == common.Hash{}) {
 		if genesis == nil {
 			log.Info("Writing default main-net genesis block")
-			// andus Testnet
-			genesis = DefaultAndsuChainTestnetGenesisBlock()
+			genesis = DefaultGenesisBlock()
 		} else {
 			log.Info("Writing custom genesis block")
 		}
@@ -298,26 +298,22 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 	return g.MustCommit(db)
 }
 
-// DefaultGenesisBlock returns the AndusChain main net genesis block.
+// DefaultGenesisBlock returns the AndusChain mainnet genesis block.
 func DefaultGenesisBlock() *Genesis {
 	config := params.MainnetChainConfig
-	config.Deb.FairAddr = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
-
 	return &Genesis{
 		Config:     config,
 		Nonce:      0,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
-		ExtraData:  []byte("anduschain-testnet"),
+		ExtraData:  []byte("anduschain-mainnet"),
 	}
 }
 
-// DefaultAndusChainTestNetGenesisBlock returns the AndusChain Test net genesis block.
+// DefaultAndusChainTestNetGenesisBlock returns the AndusChain Testnet genesis block.
 func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 	config := params.TestnetChainConfig
-	config.Deb.FairAddr = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
-
 	return &Genesis{
 		Config:     config,
 		Nonce:      0,
@@ -330,9 +326,10 @@ func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 
 // DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
 // be seeded with the
-func DeveloperGenesisBlock(devaddr, fairaddr common.Address) *Genesis {
+func DeveloperGenesisBlock(devaddr common.Address) *Genesis {
 	config := params.DebChainConfig
-	config.Deb.FairAddr = fairaddr
+	key, _ := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	config.Deb.FairPubKey = common.Bytes2Hex(crypto.CompressPubkey(&key.PublicKey))
 
 	// Assemble and return the genesis with the precompiles and faucet pre-funded
 	return &Genesis{

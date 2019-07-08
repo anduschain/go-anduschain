@@ -25,18 +25,23 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
-	TestnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
+	MainnetGenesisHash = common.HexToHash("0x851246e107c9fa8f0b0954066cc1a69ecaee616cec7f3bbcac9f7cb1bd74d913")
+	TestnetGenesisHash = common.HexToHash("0x45ba54287c71d0a90897930cef95e7bf494be2f2aafbbe6b7c79d27d0a75c821")
 
-	MainNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
-	TestNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
+	//FIXME(hakuna) : this is sample, you must modify is public key.
+	MainNetPubKey = "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138" // from fairnode
+	TestNetPubKey = "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"
 )
+
+// chainID rule = 0xdao700 -> to dec 14288640 // mainnet
+// chainID rule = 0xdao701 -> to dec 14288641 // testnet
+// chainID rule = 0xdao702 -> to dec 14288640 // ...
 
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1315), // now Same
+		ChainID:             big.NewInt(14288640), // now Same
 		HomesteadBlock:      nil,
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -46,12 +51,12 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{MainNetFairAddress},
+		Deb:                 &DebConfig{FairPubKey: MainNetPubKey},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1315),
+		ChainID:             big.NewInt(14288641),
 		HomesteadBlock:      nil,
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -61,10 +66,11 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{TestNetFairAddress},
+		Deb:                 &DebConfig{FairPubKey: TestNetPubKey},
 	}
 
 	// TODO : andus >> consensus 추가
+	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
 	DebChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(3356),
 		HomesteadBlock:      nil,
@@ -76,13 +82,16 @@ var (
 		EIP158Block:         nil,
 		ByzantiumBlock:      nil,
 		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{},
+		Deb:                 &DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"},
 	}
 
-	TestChainConfig = &ChainConfig{big.NewInt(335589), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, &DebConfig{}}
-	TestRules       = TestChainConfig.Rules(new(big.Int))
+	TestChainConfig = &ChainConfig{
+		big.NewInt(3357), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil,
+		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
 
-	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, &DebConfig{}}
+	AllDebProtocolChanges = &ChainConfig{
+		big.NewInt(3358), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil,
+		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -112,10 +121,8 @@ type ChainConfig struct {
 	Deb *DebConfig `json:"deb,omitempty"`
 }
 
-// TODO : andus >> consensus 추가
 type DebConfig struct {
-	//Epoch    uint64         `json:"epoch"`
-	FairAddr common.Address `json:"fairnode_address"`
+	FairPubKey string `json:"fairPubKey"`
 }
 
 func (c *DebConfig) String() string {

@@ -25,5 +25,5 @@ func (api *API) GetJoinNonce() uint64 {
 }
 
 func (api *API) GetFairnodeAddress() string {
-	return api.deb.config.FairAddr.String()
+	return api.deb.config.FairPubKey
 }

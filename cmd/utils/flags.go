@@ -1224,7 +1224,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 			Fatalf("Failed to setting dev anduschain : %v", errors.New("fail to read fairnode address"))
 		}
 
-		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address, *fairAddr)
+		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address)
 		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
 			cfg.MinerGasPrice = big.NewInt(1)
 		}

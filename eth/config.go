@@ -102,9 +102,6 @@ type Config struct {
 	MinerRecommit  time.Duration
 	MinerNoverify  bool
 
-	// Ethash options
-	//Ethash ethash.Config //TODO : deprecated ethash
-
 	// Transaction pool options
 	TxPool core.TxPoolConfig
 

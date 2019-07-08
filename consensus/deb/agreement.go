@@ -6,7 +6,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"math/big"
 	"time"
 )
@@ -17,21 +16,24 @@ const (
 
 func (c *Deb) FairNodeSigCheck(recivedBlock *types.Block, rSig []byte) (error, ErrorType) {
 	// TODO : andus >> FairNode의 서명이 있는지 확인 하고 검증
-	sig := rSig
+	// FIXME(hakuna) : fairnode signature check
+	//sig := rSig
 
 	if _, ok := recivedBlock.GetFairNodeSig(); ok {
 
-		fpKey, err := crypto.SigToPub(recivedBlock.Header().Hash().Bytes(), sig)
-		if err != nil {
-			return errGetPubKeyError, ErrGetPubKeyError
-		}
+		//fpKey, err := crypto.SigToPub(recivedBlock.Header().Hash().Bytes(), sig)
+		//if err != nil {
+		//	return errGetPubKeyError, ErrGetPubKeyError
+		//}
 
-		addr := crypto.PubkeyToAddress(*fpKey)
-		if fairutil.CmpAddress(addr, c.fairAddr) {
-			return nil, -1
-		} else {
-			return errNotMatchFairAddress, ErrNotMatchFairAddress
-		}
+		//addr := crypto.PubkeyToAddress(*fpKey)
+		//if fairutil.CmpAddress(addr, c.fairAddr) {
+		//	return nil, -1
+		//} else {
+		//	return errNotMatchFairAddress, ErrNotMatchFairAddress
+		//}
+
+		return errNotMatchFairAddress, ErrNotMatchFairAddress
 
 	} else {
 		return errNonFairNodeSig, ErrNonFairNodeSig

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
@@ -97,7 +96,7 @@ type Deb struct {
 	chans     fairtypes.Channals
 	client    client
 	//logger     log.Logger
-	fairAddr   common.Address
+	fairAddr   string
 	difficulty string
 }
 
@@ -111,7 +110,7 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	deb := &Deb{
 		config:   config,
 		db:       db,
-		fairAddr: config.FairAddr,
+		fairAddr: config.FairPubKey,
 	}
 
 	return deb
@@ -348,22 +347,22 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	if txs == nil {
 		return
 	}
-	signer := types.NewEIP155Signer(chainid)
+	//signer := types.NewEIP155Signer(chainid)
 	for _, tx := range txs.All() {
 		if tx.To() != nil {
-			if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
-				from, _ := tx.Sender(signer)
-				state.AddJoinNonce(from)
-				logger.Debug("Add JOIN_NONCE", "addr", from.String())
-
-				//채굴자 보상
-				state.AddBalance(coinbase, tx.Value())
-				logger.Debug("Add Reword", "addr", coinbase.String())
-
-				//패어 노드 차감
-				state.SubBalance(c.fairAddr, tx.Value())
-				logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
-			}
+			//if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
+			//	from, _ := tx.Sender(signer)
+			//	state.AddJoinNonce(from)
+			//	logger.Debug("Add JOIN_NONCE", "addr", from.String())
+			//
+			//	//채굴자 보상
+			//	state.AddBalance(coinbase, tx.Value())
+			//	logger.Debug("Add Reword", "addr", coinbase.String())
+			//
+			//	//패어 노드 차감
+			//	state.SubBalance(c.fairAddr, tx.Value())
+			//	logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
+			//}
 		}
 	}
 	state.ResetJoinNonce(coinbase)

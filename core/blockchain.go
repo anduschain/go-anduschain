@@ -964,6 +964,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
 	reorg := externTd.Cmp(localTd) > 0
+
 	currentBlock = bc.CurrentBlock()
 	if !reorg && externTd.Cmp(localTd) == 0 {
 		// Split same-difficulty blocks by number, then at random
@@ -973,15 +974,17 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != currentBlock.Hash() {
-			if err := bc.reorg(currentBlock, block); err != nil {
-				return NonStatTy, err
-			}
-		}
-		// Write the positional metadata for transaction/receipt lookups and preimages
-		rawdb.WriteTxLookupEntries(batch, block)
-		rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages())
+			status = SideStatTy
+			//if err := bc.reorg(currentBlock, block); err != nil {
+			//	return NonStatTy, err
+			//}
+		} else {
+			// Write the positional metadata for transaction/receipt lookups and preimages
+			rawdb.WriteTxLookupEntries(batch, block)
+			rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages())
 
-		status = CanonStatTy
+			status = CanonStatTy
+		}
 	} else {
 		status = SideStatTy
 	}
@@ -1186,6 +1189,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
+
 		switch status {
 		case CanonStatTy:
 			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(),
@@ -1216,6 +1220,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
 		events = append(events, types.ChainHeadEvent{lastCanon})
 	}
+
 	return 0, events, coalescedLogs, nil
 }
 

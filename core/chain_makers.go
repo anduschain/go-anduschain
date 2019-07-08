@@ -106,9 +106,6 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	}
 
 	b.receipts = append(b.receipts, receipt)
-
-	fmt.Println("==========> Txhash", tx.Hash().String())
-	fmt.Println("==========>", "/receiptsLen", len(b.receipts), "/txsLen", b.txs.Len())
 }
 
 // Number returns the block number of the block being generated.
