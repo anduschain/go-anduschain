@@ -549,7 +549,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver them all to the downloader for queuing
-		transactions := make([]*types.TransactionsSet, len(request))
+		transactions := make([][]*types.Transaction, len(request))
 		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {

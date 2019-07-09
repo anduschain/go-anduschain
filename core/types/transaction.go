@@ -17,6 +17,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"errors"
 	"io"
 	"math/big"
@@ -80,18 +81,23 @@ func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPric
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
 }
 
-func NewJoinTransaction(nonce uint64, otprn []byte) *Transaction {
+func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
 	if len(otprn) > 0 {
 		otprn = common.CopyBytes(otprn)
 	} else {
 		return nil
 	}
 	to := common.HexToAddress(JoinTxToAddr)
+
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, joinNonce)
+	payload := append(otprn, b...)
+
 	d := txdata{
 		Type:         JoinTx,
 		AccountNonce: nonce,
 		Recipient:    &to,
-		Payload:      otprn,
+		Payload:      payload,
 		Amount:       new(big.Int),
 		GasLimit:     0,
 		Price:        new(big.Int),
@@ -130,6 +136,24 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 
 func (tx *Transaction) TransactionId() uint64 {
 	return tx.data.Type
+}
+
+// for join transaction
+func (tx *Transaction) JoinNonce() (uint64, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return binary.LittleEndian.Uint64(payload[len(payload)-9:]), nil
+	}
+	return 0, errors.New("not join transaction")
+}
+
+// for join transaction
+func (tx *Transaction) Otprn() ([]byte, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return payload[:len(payload)-9], nil
+	}
+	return nil, errors.New("not join transaction")
 }
 
 // ChainId returns which chain id this transaction was signed for (if at all)

@@ -91,7 +91,7 @@ type environment struct {
 	gasPool *core.GasPool // available gas used to pack transactions
 
 	header   *types.Header
-	txs      *types.TransactionsSet
+	txs      []*types.Transaction
 	receipts []*types.Receipt
 }
 
@@ -730,6 +730,7 @@ func (w *worker) updateSnapshot() {
 		w.current.header,
 		w.current.txs,
 		w.current.receipts,
+		[]*types.Voter{},
 	)
 
 	w.snapshotState = w.current.state.Copy()
@@ -744,12 +745,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 		return nil, err
 	}
 
-	switch tx.TransactionId() {
-	case types.GeneralTx:
-		w.current.txs.Gen = append(w.current.txs.Gen, tx)
-	case types.JoinTx:
-		w.current.txs.Join = append(w.current.txs.Join, tx)
-	}
+	w.current.txs = append(w.current.txs, tx)
 
 	w.current.receipts = append(w.current.receipts, receipt)
 
@@ -1001,7 +997,7 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		*receipts[i] = *l
 	}
 	s := w.current.state.Copy()
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.receipts)
+	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.receipts, []*types.Voter{})
 	if err != nil {
 		return err
 	}
@@ -1025,7 +1021,7 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 
 			feesWei := new(big.Int)
 			// general transaction fee
-			for i, tx := range block.Transactions().Gen {
+			for i, tx := range block.Transactions() {
 				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
 			}
 			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Daon)))

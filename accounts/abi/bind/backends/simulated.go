@@ -306,7 +306,7 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	}
 
 	blocks, _ := core.GenerateChain(b.config, b.blockchain.CurrentBlock(), deb.NewFaker(), b.database, 1, func(number int, block *core.BlockGen) {
-		for _, tx := range b.pendingBlock.Transactions().All() {
+		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTxWithChain(b.blockchain, tx)
 		}
 		block.AddTxWithChain(b.blockchain, tx)
@@ -391,7 +391,7 @@ func (b *SimulatedBackend) AdjustTime(adjustment time.Duration) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	blocks, _ := core.GenerateChain(b.config, b.blockchain.CurrentBlock(), deb.NewFaker(), b.database, 1, func(number int, block *core.BlockGen) {
-		for _, tx := range b.pendingBlock.Transactions().All() {
+		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTx(tx)
 		}
 		block.OffsetTime(int64(adjustment.Seconds()))

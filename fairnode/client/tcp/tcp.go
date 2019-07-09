@@ -13,11 +13,9 @@ import (
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"math/big"
 	"net"
-	"time"
 )
 
 var (
@@ -327,28 +325,21 @@ func (t *Tcp) checkBalance(otprn *gethTypes.Otprn) (bool, *big.Int) {
 
 func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *gethTypes.Otprn, sig []byte) error {
 	// TODO : andus >> JoinTx 생성 ( fairnode를 수신자로 하는 tx, 참가비 보냄...)
-	if ok, price := t.checkBalance(otprn); ok {
+	if ok, _ := t.checkBalance(otprn); ok {
 		currentJoinNonce := t.manger.GetCurrentJoinNonce()
-		data := types.JoinTxData{
-			JoinNonce:    currentJoinNonce,
-			Otprn:        otprn,
-			FairNodeSig:  sig,
-			TimeStamp:    time.Now(),
-			NextBlockNum: t.manger.GetBlockChain().CurrentBlock().Header().Number.Uint64() + 1,
-		}
-		joinTxData, err := rlp.EncodeToBytes(&data)
-		if err != nil {
-			t.logger.Error("makeJoinTx EncodeToBytes", "error", err)
-		}
 		txNonce := t.manger.GetTxpool().State().GetNonce(t.manger.GetCoinbase())
+		byteOtprn, err := otprn.EncodeOtprn()
+		if err != nil {
+			t.logger.Error("EncodeOtprn", "error", err)
+		}
 
 		// joinNonce Fairnode에게 보내는 Tx
-		tx, err := gethTypes.SignTx(
-			gethTypes.NewTransaction(txNonce, t.manger.GetBlockChain().Config().Deb.FairAddr, price, 90000, big.NewInt(0), joinTxData), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
+		tx, err := gethTypes.SignTx(gethTypes.NewJoinTransaction(txNonce, currentJoinNonce, byteOtprn), t.manger.GetSigner(), t.manger.GetCoinbsePrivKey())
 		if err != nil {
 			return errorMakeJoinTx
 		}
-		t.logger.Info("Maked JoinTx", "blockNum", data.NextBlockNum, "joinNonce", data.JoinNonce, "txHash", tx.Hash(), "fee", price)
+
+		t.logger.Info("Maked JoinTx", "blockNum", t.manger.GetBlockChain().CurrentHeader().Number, "joinNonce", currentJoinNonce, "txHash", tx.Hash())
 
 		//add To txPool
 		if err := t.manger.GetTxpool().AddLocal(tx); err != nil {

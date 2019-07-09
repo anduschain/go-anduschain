@@ -59,7 +59,7 @@ type fetchResult struct {
 
 	Header *types.Header
 
-	Transactions *types.TransactionsSet
+	Transactions types.Transactions
 	Receipts     types.Receipts
 
 	Voters types.Voters
@@ -392,12 +392,9 @@ func (q *queue) Results(block bool) []*fetchResult {
 				size += receipt.Size()
 			}
 
-			for _, tx := range result.Transactions.All() {
+			for _, tx := range result.Transactions {
 				size += tx.Size()
 			}
-
-			//anduschain
-			//size += common.StorageSize(len(result.FairNodeSig))
 
 			for _, voter := range result.Voters {
 				size += voter.Size()
@@ -772,12 +769,12 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 // DeliverBodies injects a block body retrieval response into the results queue.
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
-func (q *queue) DeliverBodies(id string, txLists []*types.TransactionsSet, voters [][]*types.Voter) (int, error) {
+func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, voters [][]*types.Voter) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(txLists[index].All()) != header.TxHash {
+		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash {
 			return errInvalidBody
 		}
 

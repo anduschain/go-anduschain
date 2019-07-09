@@ -171,7 +171,6 @@ func (b *Block) EncodeJSON() (string, error) {
 
 func (b *Block) GetParentHash() *Hash { return &Hash{b.block.ParentHash()} }
 
-//func (b *Block) GetUncleHash() *Hash            { return &Hash{b.block.UncleHash()} }  // TODO : deprecated
 func (b *Block) GetCoinbase() *Address  { return &Address{b.block.Coinbase()} }
 func (b *Block) GetRoot() *Hash         { return &Hash{b.block.Root()} }
 func (b *Block) GetTxHash() *Hash       { return &Hash{b.block.TxHash()} }
@@ -184,13 +183,11 @@ func (b *Block) GetGasUsed() int64      { return int64(b.block.GasUsed()) }
 func (b *Block) GetTime() int64         { return b.block.Time().Int64() }
 func (b *Block) GetExtra() []byte       { return b.block.Extra() }
 
-//func (b *Block) GetMixDigest() *Hash            { return &Hash{b.block.MixDigest()} }  // TODO : deprecated
 func (b *Block) GetNonce() int64    { return int64(b.block.Nonce()) }
 func (b *Block) GetHash() *Hash     { return &Hash{b.block.Hash()} }
 func (b *Block) GetHeader() *Header { return &Header{b.block.Header()} }
 
-//func (b *Block) GetUncles() *Headers            { return &Headers{b.block.Uncles()} } // TODO : deprecated
-func (b *Block) GetTransactions() *Transactions { return &Transactions{b.block.Transactions().All()} }
+func (b *Block) GetTransactions() *Transactions { return &Transactions{b.block.Transactions()} }
 func (b *Block) GetTransaction(hash *Hash) *Transaction {
 	return &Transaction{b.block.Transaction(hash.hash)}
 }

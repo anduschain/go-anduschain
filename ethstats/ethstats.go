@@ -535,10 +535,10 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		td = s.eth.BlockChain().GetTd(header.Hash(), header.Number.Uint64())
 
 		txs = make([]txStats, block.Transactions().Len())
-		for i, tx := range block.Transactions().All() {
+		for i, tx := range block.Transactions() {
 			txs[i].Hash = tx.Hash()
 		}
-		//uncles = block.Uncles() // TODO : deprecated uncle
+
 	} else {
 		// Light nodes would need on-demand lookups for transactions/uncles, skip
 		if block != nil {

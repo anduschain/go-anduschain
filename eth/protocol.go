@@ -180,7 +180,7 @@ type newBlockData struct {
 // blockBody represents the data content of a single block.
 type blockBody struct {
 	Voter        []*types.Voter
-	Transactions *types.TransactionsSet // Transactions contained within a block
+	Transactions []*types.Transaction // Transactions contained within a block
 }
 
 // blockBodiesData is the network packet for block content distribution.

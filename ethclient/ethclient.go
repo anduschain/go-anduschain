@@ -102,15 +102,6 @@ func (ec *Client) getBlock(ctx context.Context, method string, args ...interface
 		return nil, err
 	}
 
-	// TODO : deprecated uncle
-	// Quick-verify transaction and uncle lists. This mostly helps with debugging the server.
-	//if head.UncleHash == types.EmptyUncleHash && len(body.UncleHashes) > 0 {
-	//	return nil, fmt.Errorf("server returned non-empty uncle list but block header indicates no uncles")
-	//}
-	//if head.UncleHash != types.EmptyUncleHash && len(body.UncleHashes) == 0 {
-	//	return nil, fmt.Errorf("server returned empty uncle list but block header indicates uncles")
-	//}
-
 	if head.TxHash == types.EmptyRootHash && len(body.Transactions) > 0 {
 		return nil, fmt.Errorf("server returned non-empty transaction list but block header indicates no transactions")
 	}
@@ -118,47 +109,16 @@ func (ec *Client) getBlock(ctx context.Context, method string, args ...interface
 		return nil, fmt.Errorf("server returned empty transaction list but block header indicates transactions")
 	}
 
-	// TODO : deprecated uncle
-	// Load uncles because they are not included in the block response.
-	//var uncles []*types.Header
-	//if len(body.UncleHashes) > 0 {
-	//	uncles = make([]*types.Header, len(body.UncleHashes))
-	//	reqs := make([]rpc.BatchElem, len(body.UncleHashes))
-	//	for i := range reqs {
-	//		reqs[i] = rpc.BatchElem{
-	//			Method: "eth_getUncleByBlockHashAndIndex",
-	//			Args:   []interface{}{body.Hash, hexutil.EncodeUint64(uint64(i))},
-	//			Result: &uncles[i],
-	//		}
-	//	}
-	//	if err := ec.c.BatchCallContext(ctx, reqs); err != nil {
-	//		return nil, err
-	//	}
-	//	for i := range reqs {
-	//		if reqs[i].Error != nil {
-	//			return nil, reqs[i].Error
-	//		}
-	//		if uncles[i] == nil {
-	//			return nil, fmt.Errorf("got null header for uncle %d of block %x", i, body.Hash[:])
-	//		}
-	//	}
-	//}
-
 	// Fill the sender cache of transactions in the block.
-	var txs types.TransactionsSet
+	var txs []*types.Transaction
 	for _, tx := range body.Transactions {
 		if tx.From != nil {
 			setSenderFromServer(tx.tx, *tx.From, body.Hash)
 		}
 
-		switch tx.tx.TransactionId() {
-		case types.GeneralTx:
-			txs.Gen = append(txs.Gen, tx.tx)
-		case types.JoinTx:
-			txs.Join = append(txs.Join, tx.tx)
-		}
+		txs = append(txs, tx.tx)
 	}
-	return types.NewBlockWithHeader(head).WithBody(&txs, nil), nil
+	return types.NewBlockWithHeader(head).WithBody(txs, nil), nil
 }
 
 // HeaderByHash returns the block header with the given hash.

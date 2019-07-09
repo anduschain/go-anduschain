@@ -172,7 +172,7 @@ func (pool *TxPool) checkMinedTxs(ctx context.Context, hash common.Hash, number 
 	}
 	// Gather all the local transaction mined in this block
 	list := pool.mined[hash]
-	for _, tx := range block.Transactions().All() {
+	for _, tx := range block.Transactions() {
 		if _, ok := pool.pending[tx.Hash()]; ok {
 			list = append(list, tx)
 		}

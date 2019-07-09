@@ -313,7 +313,7 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, error) {
 	cfg := fu.db.GetChainConfig()
 	fu.manager.SetEpoch(cfg.Epoch)
-	otp := types.New(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
+	otp := types.NewOtprn(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee))
 	err := otp.SignOtprn(fu.manager.GetServerKey().SeverPiveKey)
 	if err != nil {
 		return fairtypes.TransferOtprn{}, err

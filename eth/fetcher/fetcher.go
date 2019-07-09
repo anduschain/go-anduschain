@@ -91,10 +91,10 @@ type headerFilterTask struct {
 // bodyFilterTask represents a batch of block bodies (transactions and uncles)
 // needing fetcher filtering.
 type bodyFilterTask struct {
-	peer         string                   // The source peer of block bodies
-	transactions []*types.TransactionsSet // Collection of general transactions per block bodies
-	time         time.Time                // Arrival time of the blocks' contents
-	voters       [][]*types.Voter         // Collection of voters per block bodies
+	peer         string                 // The source peer of block bodies
+	transactions [][]*types.Transaction // Collection of general transactions per block bodies
+	time         time.Time              // Arrival time of the blocks' contents
+	voters       [][]*types.Voter       // Collection of voters per block bodies
 }
 
 // inject represents a schedules import operation.
@@ -248,7 +248,7 @@ func (f *Fetcher) FilterHeaders(peer string, headers []*types.Header, time time.
 
 // FilterBodies extracts all the block bodies that were explicitly requested by
 // the fetcher, returning those that should be handled differently. // return gen, join, voter
-func (f *Fetcher) FilterBodies(peer string, transactions []*types.TransactionsSet, voters [][]*types.Voter, time time.Time) ([]*types.TransactionsSet, [][]*types.Voter) {
+func (f *Fetcher) FilterBodies(peer string, transactions [][]*types.Transaction, voters [][]*types.Voter, time time.Time) ([][]*types.Transaction, [][]*types.Voter) {
 	log.Trace("Filtering bodies", "peer", peer, "genTxs", len(transactions))
 
 	// Send the filter channel to the fetcher
@@ -460,7 +460,7 @@ func (f *Fetcher) loop() {
 						announce.time = task.time
 
 						// If the block is empty (header only), short circuit into the final import queue
-						if header.TxHash == types.DeriveSha(types.TransactionsSet{}.All()) {
+						if header.TxHash == types.DeriveSha(types.Transactions{}) {
 							log.Trace("Block empty, skipping body retrieval", "peer", announce.origin, "number", header.Number, "hash", header.Hash())
 
 							block := types.NewBlockWithHeader(header)
@@ -524,7 +524,7 @@ func (f *Fetcher) loop() {
 
 				for hash, announce := range f.completing {
 					if f.queued[hash] == nil {
-						txnHash := types.DeriveSha(task.transactions[i].All())
+						txnHash := types.DeriveSha(types.Transactions(task.transactions[i]))
 
 						if txnHash == announce.header.TxHash && announce.origin == task.peer {
 							// Mark the body matched, reassemble if still unknown

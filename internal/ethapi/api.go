@@ -807,7 +807,7 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 				return newRPCTransactionFromBlockHash(b, tx.Hash()), nil
 			}
 		}
-		txs := b.Transactions().All()
+		txs := b.Transactions()
 		transactions := make([]interface{}, len(txs))
 		var err error
 		for i, tx := range txs {
@@ -888,7 +888,7 @@ func newRPCPendingTransaction(tx *types.Transaction) *RPCTransaction {
 
 // newRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
 func newRPCTransactionFromBlockIndex(b *types.Block, index uint64) *RPCTransaction {
-	txs := b.Transactions().All()
+	txs := b.Transactions()
 	if index >= uint64(len(txs)) {
 		return nil
 	}
@@ -897,7 +897,7 @@ func newRPCTransactionFromBlockIndex(b *types.Block, index uint64) *RPCTransacti
 
 // newRPCRawTransactionFromBlockIndex returns the bytes of a transaction given a block and a transaction index.
 func newRPCRawTransactionFromBlockIndex(b *types.Block, index uint64) hexutil.Bytes {
-	txs := b.Transactions().All()
+	txs := b.Transactions()
 	if index >= uint64(len(txs)) {
 		return nil
 	}
@@ -907,7 +907,7 @@ func newRPCRawTransactionFromBlockIndex(b *types.Block, index uint64) hexutil.By
 
 // newRPCTransactionFromBlockHash returns a transaction that will serialize to the RPC representation.
 func newRPCTransactionFromBlockHash(b *types.Block, hash common.Hash) *RPCTransaction {
-	for idx, tx := range b.Transactions().All() {
+	for idx, tx := range b.Transactions() {
 		if tx.Hash() == hash {
 			return newRPCTransactionFromBlockIndex(b, uint64(idx))
 		}

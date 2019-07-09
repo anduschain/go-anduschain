@@ -195,7 +195,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 				signer := types.MakeSigner(api.config, task.block.Number())
 
 				// Trace all the transactions contained within
-				for i, tx := range task.block.Transactions().All() {
+				for i, tx := range task.block.Transactions() {
 					msg, _ := tx.AsMessage(signer)
 					vmctx := core.NewEVMContext(msg, task.block.Header(), api.eth.blockchain, nil)
 
@@ -269,7 +269,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 			}
 			// Send the block over to the concurrent tracers (if not in the fast-forward phase)
 			if number > origin {
-				txs := block.Transactions().All()
+				txs := block.Transactions()
 
 				select {
 				case tasks <- &blockTraceTask{statedb: statedb.Copy(), block: block, rootref: proot, results: make([]*txTraceResult, len(txs))}:
@@ -415,7 +415,7 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 	var (
 		signer = types.MakeSigner(api.config, block.Number())
 
-		txs     = block.Transactions().All()
+		txs     = block.Transactions()
 		results = make([]*txTraceResult, len(txs))
 
 		pend = new(sync.WaitGroup)
@@ -640,7 +640,7 @@ func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int, ree
 	// Recompute transactions up to the target index.
 	signer := types.MakeSigner(api.config, block.Number())
 
-	for idx, tx := range block.Transactions().All() {
+	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message and return if the requested offset
 		msg, _ := tx.AsMessage(signer)
 		context := core.NewEVMContext(msg, block.Header(), api.eth.blockchain, nil)
