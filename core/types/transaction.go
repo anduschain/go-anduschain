@@ -142,7 +142,7 @@ func (tx *Transaction) TransactionId() uint64 {
 func (tx *Transaction) JoinNonce() (uint64, error) {
 	if tx.data.Type == JoinTx {
 		payload := tx.data.Payload
-		return binary.LittleEndian.Uint64(payload[len(payload)-9:]), nil
+		return binary.LittleEndian.Uint64(payload[len(payload)-8:]), nil
 	}
 	return 0, errors.New("not join transaction")
 }
@@ -151,7 +151,7 @@ func (tx *Transaction) JoinNonce() (uint64, error) {
 func (tx *Transaction) Otprn() ([]byte, error) {
 	if tx.data.Type == JoinTx {
 		payload := tx.data.Payload
-		return payload[:len(payload)-9], nil
+		return payload[:len(payload)-8], nil
 	}
 	return nil, errors.New("not join transaction")
 }

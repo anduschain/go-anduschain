@@ -119,6 +119,7 @@ func (h *Header) Hash() common.Hash {
 		h.Time,
 		h.Extra,
 		h.Nonce,
+		h.Otprn,
 	})
 
 }

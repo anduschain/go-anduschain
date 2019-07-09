@@ -58,13 +58,35 @@ func TestNewJoinTransaction(t *testing.T) {
 	}
 	signer := NewEIP155Signer(common.Big1)
 
-	otprn := NewOtprn(100, 100, 100, 20)
+	otprn := NewOtprn(100, 100, 100, 20, fairaddress, 10)
+	t.Log("origin otprn", otprn.HashOtprn().String())
+
 	bOtrpn, err := otprn.EncodeOtprn()
 	if err != nil {
 		t.Error("otprn encode err", err)
 	}
+
 	jtx := NewJoinTransaction(0, 0, bOtrpn)
 	t.Log("Join transaction", jtx.Hash().String())
+
+	jnonce, err := jtx.JoinNonce()
+	if err != nil {
+		t.Error("join transaction jnonce", err)
+	}
+
+	t.Log("join nonce", jnonce)
+
+	totprn, err := jtx.Otprn()
+	if err != nil {
+		t.Error("join transaction jnonce", err)
+	}
+
+	dotp, err := DecodeOtprn(totprn)
+	if err != nil {
+		t.Error("join transaction DecodeOtprn", err)
+	}
+
+	t.Log("join transaction otprn", dotp.HashOtprn().String())
 
 	t.Log("++++++++++++++++++++++++++++++++++")
 
@@ -107,7 +129,7 @@ func TestTransaction_MarshalJSON(t *testing.T) {
 	}
 	signer := NewEIP155Signer(common.Big1)
 
-	otprn := NewOtprn(100, 100, 100, 20)
+	otprn := NewOtprn(100, 100, 100, 20, fairaddress, 10)
 	bOtrpn, err := otprn.EncodeOtprn()
 	if err != nil {
 		t.Error("otprn encode err", err)

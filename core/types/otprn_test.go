@@ -3,8 +3,14 @@ package types
 import (
 	crand "crypto/rand"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
 	mrand "math/rand"
 	"testing"
+)
+
+var (
+	fairkey, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	fairaddress = crypto.PubkeyToAddress(fairkey.PublicKey)
 )
 
 func TestNew(t *testing.T) {
@@ -23,7 +29,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestOtprn_DecodeOtprn(t *testing.T) {
-	otp := NewOtprn(100, 100, 100, 20)
+	otp := NewOtprn(100, 100, 100, 20, fairaddress, 10)
 	byte, err := otp.EncodeOtprn()
 	if err != nil {
 		t.Error("OTPRN ENCODE", err)
@@ -38,5 +44,18 @@ func TestOtprn_DecodeOtprn(t *testing.T) {
 	} else {
 		t.Log(false)
 	}
+}
 
+func TestOtprn_SignOtprn(t *testing.T) {
+	otp := NewOtprn(100, 100, 100, 20, fairaddress, 10)
+	t.Log("otprn hash", otp.HashOtprn().String())
+	if err := otp.SignOtprn(fairkey); err != nil {
+		t.Error("otprn SignOtprn", "msg", err)
+	}
+
+	t.Log("signed otprn hash", otp.HashOtprn().String())
+
+	if err := otp.ValidateSignature(); err != nil {
+		t.Error("otprn ValidateSignature", "msg", err)
+	}
 }

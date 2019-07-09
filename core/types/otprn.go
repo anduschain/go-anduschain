@@ -26,7 +26,7 @@ type Otprn struct {
 	fairFee  float64        // to give fairnode account, unit is percent
 }
 
-func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
+func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64, fairAddr common.Address, fairfee float64) *Otprn {
 
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
@@ -36,12 +36,14 @@ func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64) *Otprn {
 	}
 
 	return &Otprn{
-		mMiner: Miner,
-		cMiner: Cminer,
-		rand:   rand,
-		epoch:  Epoch,
-		fee:    Fee,
-		sig:    []byte{},
+		mMiner:   Miner,
+		cMiner:   Cminer,
+		rand:     rand,
+		epoch:    Epoch,
+		fee:      Fee,
+		fairAddr: fairAddr,
+		fairFee:  fairfee,
+		sig:      []byte{},
 	}
 }
 
@@ -105,7 +107,7 @@ func (otprn *Otprn) ValidateSignature() error {
 }
 
 func DecodeOtprn(otpByte []byte) (*Otprn, error) {
-	otp := &Otprn{}
+	otp := new(Otprn)
 	err := rlp.DecodeBytes(otpByte, otp)
 	if err != nil {
 		log.Error("OTPRN DECODE", "msg", err)
