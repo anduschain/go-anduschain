@@ -737,13 +737,13 @@ func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts ty
 
 	for j := 0; j < len(receipts); j++ {
 		// The transaction hash can be retrieved from the transaction itself
-		receipts[j].TxHash = transactions.All()[j].Hash()
+		receipts[j].TxHash = transactions[j].Hash()
 
 		// The contract address can be derived from the transaction itself
-		if transactions.All()[j].To() == nil {
+		if transactions[j].To() == nil {
 			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := transactions.All()[j].Sender(signer)
-			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions.All()[j].Nonce())
+			from, _ := transactions[j].Sender(signer)
+			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
 		}
 		// The used gas can be calculated based on previous receipts
 		if j == 0 {
@@ -1309,7 +1309,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// reduce old chain
 		for ; oldBlock != nil && oldBlock.NumberU64() != newBlock.NumberU64(); oldBlock = bc.GetBlock(oldBlock.ParentHash(), oldBlock.NumberU64()-1) {
 			oldChain = append(oldChain, oldBlock)
-			deletedTxs = append(deletedTxs, oldBlock.Transactions().All()...)
+			deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 
 			collectLogs(oldBlock.Hash())
 		}
@@ -1334,7 +1334,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 
 		oldChain = append(oldChain, oldBlock)
 		newChain = append(newChain, newBlock)
-		deletedTxs = append(deletedTxs, oldBlock.Transactions().All()...)
+		deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 		collectLogs(oldBlock.Hash())
 
 		oldBlock, newBlock = bc.GetBlock(oldBlock.ParentHash(), oldBlock.NumberU64()-1), bc.GetBlock(newBlock.ParentHash(), newBlock.NumberU64()-1)
@@ -1363,7 +1363,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		bc.insert(newChain[i])
 		// write lookup entries for hash based transaction/receipt searches
 		rawdb.WriteTxLookupEntries(bc.db, newChain[i])
-		addedTxs = append(addedTxs, newChain[i].Transactions().All()...)
+		addedTxs = append(addedTxs, newChain[i].Transactions()...)
 	}
 	// calculate the difference between deleted and added transactions
 	diff := types.TxDifference(deletedTxs, addedTxs)

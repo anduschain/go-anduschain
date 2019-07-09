@@ -41,7 +41,7 @@ func ReadTxLookupEntry(db DatabaseReader, hash common.Hash) (common.Hash, uint64
 // WriteTxLookupEntries stores a positional metadata for every transaction from
 // a block, enabling hash based transaction and receipt lookups.
 func WriteTxLookupEntries(db DatabaseWriter, block *types.Block) {
-	for i, tx := range block.Transactions().All() {
+	for i, tx := range block.Transactions() {
 		entry := TxLookupEntry{
 			BlockHash:  block.Hash(),
 			BlockIndex: block.NumberU64(),
@@ -70,11 +70,11 @@ func ReadTransaction(db DatabaseReader, hash common.Hash) (*types.Transaction, c
 		return nil, common.Hash{}, 0, 0
 	}
 	body := ReadBody(db, blockHash, blockNumber)
-	if body == nil || body.Transactions.Len() <= int(txIndex) {
+	if body == nil || len(body.Transactions) <= int(txIndex) {
 		log.Error("Transaction referenced missing", "number", blockNumber, "hash", blockHash, "index", txIndex)
 		return nil, common.Hash{}, 0, 0
 	}
-	return body.Transactions.All()[txIndex], blockHash, blockNumber, txIndex
+	return body.Transactions[txIndex], blockHash, blockNumber, txIndex
 }
 
 // ReadReceipt retrieves a specific transaction receipt from the database, along with

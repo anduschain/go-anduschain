@@ -99,7 +99,7 @@ func (cacher *txSenderCacher) recoverFromBlocks(signer types.Signer, blocks []*t
 	}
 	txs := make([]*types.Transaction, 0, count)
 	for _, block := range blocks {
-		txs = append(txs, block.Transactions().All()...)
+		txs = append(txs, block.Transactions()...)
 	}
 	cacher.recover(signer, txs)
 }

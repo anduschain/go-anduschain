@@ -255,16 +255,6 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 	return c.verifySeal(chain, header, parents)
 }
 
-// TODO : deprecated
-// VerifyUncles implements consensus.Engine, always returning an error for any
-// uncles as this consensus mechanism doesn't permit uncles.
-//func (c *Deb) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-//	//if len(block.Uncles()) > 0 {
-//	//	return errors.New("uncles not allowed")
-//	//}
-//	return nil
-//}
-
 // VerifySeal implements consensus.Engine, checking whether the signature contained
 // in the header satisfies the consensus protocol requirements.
 func (c *Deb) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
@@ -321,7 +311,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
-func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs *types.TransactionsSet, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
+func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
 	// [1] miner's join transaction 포함 여부 확인
@@ -343,27 +333,36 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 }
 
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
-func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs *types.TransactionsSet, coinbase common.Address) {
+func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
 	if txs == nil {
 		return
 	}
-	//signer := types.NewEIP155Signer(chainid)
-	for _, tx := range txs.All() {
-		if tx.To() != nil {
-			//if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
-			//	from, _ := tx.Sender(signer)
-			//	state.AddJoinNonce(from)
-			//	logger.Debug("Add JOIN_NONCE", "addr", from.String())
-			//
-			//	//채굴자 보상
-			//	state.AddBalance(coinbase, tx.Value())
-			//	logger.Debug("Add Reword", "addr", coinbase.String())
-			//
-			//	//패어 노드 차감
-			//	state.SubBalance(c.fairAddr, tx.Value())
-			//	logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
-			//}
+
+	signer := types.NewEIP155Signer(chainid)
+
+	for _, tx := range txs {
+		//if tx.To() != nil {
+		//if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
+		//	from, _ := tx.Sender(signer)
+		//	state.AddJoinNonce(from)
+		//	logger.Debug("Add JOIN_NONCE", "addr", from.String())
+		//
+		//	//채굴자 보상
+		//	state.AddBalance(coinbase, tx.Value())
+		//	logger.Debug("Add Reword", "addr", coinbase.String())
+		//
+		//	//패어 노드 차감
+		//	state.SubBalance(c.fairAddr, tx.Value())
+		//	logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
+		//}
+		//}
+
+		if tx.TransactionId() == types.JoinTx {
+			from, _ := tx.Sender(signer)
+			state.AddJoinNonce(from)
+			logger.Debug("Add JOIN_NONCE", "addr", from.String())
 		}
+
 	}
 	state.ResetJoinNonce(coinbase)
 	logger.Debug("RESET JOIN_NONCE", "addr", coinbase.String())

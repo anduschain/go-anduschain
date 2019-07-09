@@ -343,6 +343,21 @@ func DeveloperGenesisBlock(devaddr common.Address) *Genesis {
 	}
 }
 
+func DefaultGenesisForTesting() *Genesis {
+	config := params.TestChainConfig
+	key, _ := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	config.Deb.FairPubKey = common.Bytes2Hex(crypto.CompressPubkey(&key.PublicKey))
+
+	// Assemble and return the genesis with the precompiles and faucet pre-funded
+	return &Genesis{
+		Config:     config,
+		Nonce:      0,
+		GasLimit:   0x47b760,
+		Difficulty: big.NewInt(1),
+		Alloc:      make(GenesisAlloc),
+	}
+}
+
 // DeveloperGenesisBlock returns the 'geth --dev' genesis block. Note, this must
 // be seeded with the
 //func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {

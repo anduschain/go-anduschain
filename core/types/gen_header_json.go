@@ -30,6 +30,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Time        *hexutil.Big   `json:"timestamp"        gencodec:"required"`
 		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 		Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+		Otprn       []byte         `json:"otprn"            gencodec:"required"`
 		FairNodeSig []byte         `json:"fairnodeSig"            gencodec:"required"`
 		Hash        common.Hash    `json:"hash"`
 	}
@@ -48,6 +49,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Time = (*hexutil.Big)(h.Time)
 	enc.Extra = h.Extra
 	enc.Nonce = h.Nonce
+	enc.Otprn = h.Otprn
 	enc.FairNodeSig = h.FairNodeSig
 	enc.Hash = h.Hash()
 	return json.Marshal(&enc)
@@ -70,6 +72,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Time        *hexutil.Big    `json:"timestamp"        gencodec:"required"`
 		Extra       *hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 		Nonce       *BlockNonce     `json:"nonce"            gencodec:"required"`
+		Otprn       []byte          `json:"otprn"            gencodec:"required"`
 		FairNodeSig []byte          `json:"fairnodeSig"            gencodec:"required"`
 	}
 	var dec Header
@@ -132,6 +135,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'nonce' for Header")
 	}
 	h.Nonce = *dec.Nonce
+	if dec.Otprn == nil {
+		return errors.New("missing required field 'otprn' for Header")
+	}
+	h.Otprn = dec.Otprn
 	if dec.FairNodeSig == nil {
 		return errors.New("missing required field 'fairnodeSig' for Header")
 	}

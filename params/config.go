@@ -42,30 +42,30 @@ var (
 
 	MainnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(14288640), // now Same
-		HomesteadBlock:      nil,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
-		EIP150Block:         nil,
+		EIP150Block:         big.NewInt(0),
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
 		Deb:                 &DebConfig{FairPubKey: MainNetPubKey},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(14288641),
-		HomesteadBlock:      nil,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
-		EIP150Block:         nil,
+		EIP150Block:         big.NewInt(0),
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
 		Deb:                 &DebConfig{FairPubKey: TestNetPubKey},
 	}
 
@@ -73,24 +73,26 @@ var (
 	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
 	DebChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(3356),
-		HomesteadBlock:      nil,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
 		EIP150Block:         nil,
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
 		Deb:                 &DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"},
 	}
 
 	TestChainConfig = &ChainConfig{
-		big.NewInt(3357), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil,
+		big.NewInt(3357), big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
 
 	AllDebProtocolChanges = &ChainConfig{
-		big.NewInt(3358), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil,
+		big.NewInt(3358), big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
 )
 

@@ -39,34 +39,45 @@ func ExampleGenerateChain() {
 		db      = ethdb.NewMemDatabase()
 	)
 
-	// Ensure that key1 has some funds in the genesis block.
-	gspec := &Genesis{
-		Config: &params.ChainConfig{HomesteadBlock: new(big.Int)},
-		Alloc:  GenesisAlloc{addr1: {Balance: big.NewInt(1000000)}},
+	gspec := DefaultGenesisForTesting()
+	gspec.Alloc = GenesisAlloc{
+		addr1: {Balance: big.NewInt(1000000)},
+		addr2: {Balance: big.NewInt(1000000)},
+		addr3: {Balance: big.NewInt(100)},
 	}
+
 	genesis := gspec.MustCommit(db)
 
 	// This call generates a chain of 5 blocks. The function runs for
 	// each block and adds different features to gen based on the
 	// block index.
-	signer := types.HomesteadSigner{}
+	signer := types.NewEIP155Signer(gspec.Config.ChainID)
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
+			gen.SetCoinbase(addr2)
 			// In block 1, addr1 sends addr2 some ether.
 			tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), params.TxGas, nil, nil), signer, key1)
+			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), []byte("otprn")), signer, key2)
 			gen.AddTx(tx)
+			gen.AddTx(jtx)
 		case 1:
 			// In block 2, addr1 sends some more ether to addr2.
 			// addr2 passes it on to addr3.
+			gen.SetCoinbase(addr3)
 			tx1, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), params.TxGas, nil, nil), signer, key1)
 			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
+
+			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), []byte("otprn")), signer, key3)
+			jtx2, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), []byte("otprn")), signer, key2)
 			gen.AddTx(tx1)
 			gen.AddTx(tx2)
+			gen.AddTx(jtx)
+			gen.AddTx(jtx2) // joinnonce == 1
 		case 2:
 			// Block 3 is empty but was mined by addr3.
-			gen.SetCoinbase(addr3)
-			gen.SetExtra([]byte("yeehaw"))
+			//gen.SetCoinbase(addr3)
+			//gen.SetExtra([]byte("yeehaw"))
 		case 3:
 			// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
 			//b2 := gen.PrevBlock(1).Header()
@@ -92,9 +103,17 @@ func ExampleGenerateChain() {
 	fmt.Println("balance of addr1:", state.GetBalance(addr1))
 	fmt.Println("balance of addr2:", state.GetBalance(addr2))
 	fmt.Println("balance of addr3:", state.GetBalance(addr3))
+
+	fmt.Println("joinNonce of addr1:", state.GetJoinNonce(addr1))
+	fmt.Println("joinNonce of addr2:", state.GetJoinNonce(addr2))
+	fmt.Println("joinNonce of addr3:", state.GetJoinNonce(addr3))
+
 	// Output:
 	// last block: #5
 	// balance of addr1: 989000
-	// balance of addr2: 10000
-	// balance of addr3: 19687500000000001000
+	// balance of addr2: 1010000
+	// balance of addr3: 1100
+	// joinNonce of addr1: 0
+	// joinNonce of addr2: 1
+	// joinNonce of addr3: 0
 }

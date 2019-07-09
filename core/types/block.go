@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	EmptyRootHash    = DeriveSha(TransactionsSet{})
+	EmptyRootHash    = DeriveSha(Transactions{})
 	EmptyReceiptHash = DeriveSha(Receipts{})
 	EmptyVoteHash    = DeriveSha(Voters{})
 )
@@ -86,7 +86,9 @@ type Header struct {
 	Extra       []byte      `json:"extraData"        gencodec:"required"`
 
 	Nonce       BlockNonce `json:"nonce"            gencodec:"required"`
-	FairNodeSig []byte     `json:"fairnodeSig"            gencodec:"required"` // TODO : add - fairnode signature, not import header hash - from fairnode
+	Otprn       []byte     `json:"otprn"            gencodec:"required"`       //  otprn with fairnode signature
+	FairNodeSig []byte     `json:"fairnodeSig"            gencodec:"required"` //  fairnode signature, not import header hash - from fairnode
+
 }
 
 // field type overrides for gencodec
@@ -137,14 +139,14 @@ func rlpHash(x interface{}) (h common.Hash) {
 // Body is a simple (mutable, non-safe) data container for storing and moving
 // a block's data contents (transactions and uncles) together.
 type Body struct {
-	Transactions *TransactionsSet //transactions
+	Transactions []*Transaction //transactions
 	Voters       []*Voter
 }
 
 // Block represents an entire block in the Anduschain blockchain.
 type Block struct {
 	header       *Header
-	transactions *TransactionsSet
+	transactions Transactions
 
 	// caches
 	hash atomic.Value
@@ -177,7 +179,7 @@ type StorageBlock Block
 // "external" block encoding. used for eth protocol, etc.
 type extblock struct {
 	Header *Header
-	Txs    *TransactionsSet
+	Txs    Transactions
 	Voters Voters
 }
 
@@ -185,7 +187,7 @@ type extblock struct {
 // "storage" block encoding. used for database.
 type storageblock struct {
 	Header *Header
-	Txs    *TransactionsSet
+	Txs    Transactions
 	TD     *big.Int
 }
 
@@ -196,15 +198,15 @@ type storageblock struct {
 // The values of TxHash, UncleHash, ReceiptHash and Bloom in header
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
-func NewBlock(header *Header, txs *TransactionsSet, receipts []*Receipt, voters []*Voter) *Block {
+func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []*Voter) *Block {
 	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
-	if txs == nil {
+	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
-		b.transactions = new(TransactionsSet)
 	} else {
-		b.header.TxHash = DeriveSha(txs)
-		b.transactions = txs
+		b.header.TxHash = DeriveSha(Transactions(txs))
+		b.transactions = make(Transactions, len(txs))
+		copy(b.transactions, txs)
 	}
 
 	if len(receipts) == 0 {
@@ -218,7 +220,8 @@ func NewBlock(header *Header, txs *TransactionsSet, receipts []*Receipt, voters 
 		b.header.VoteHash = EmptyVoteHash
 	} else {
 		b.header.VoteHash = DeriveSha(Voters(voters))
-		b.voters = voters
+		b.voters = make(Voters, len(voters))
+		copy(b.voters, voters)
 	}
 
 	return b
@@ -284,10 +287,10 @@ func (b *StorageBlock) DecodeRLP(s *rlp.Stream) error {
 	return nil
 }
 
-func (b *Block) Transactions() *TransactionsSet { return b.transactions }
+func (b *Block) Transactions() Transactions { return b.transactions }
 
 func (b *Block) Transaction(hash common.Hash) *Transaction {
-	for _, transaction := range b.transactions.All() {
+	for _, transaction := range b.transactions {
 		if transaction.Hash() == hash {
 			return transaction
 		}
@@ -351,11 +354,6 @@ func (c *writeCounter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// TODO : deprecated
-//func CalcUncleHash(uncles []*Header) common.Hash {
-//	return rlpHash(uncles)
-//}
-
 // WithSeal returns a new block with the data from b but the header replaced with
 // the sealed one.
 func (b *Block) WithSeal(header *Header) *Block {
@@ -382,14 +380,15 @@ func (b *Block) WithSealFairnode(voters Voters, fairnodeSig []byte) *Block {
 }
 
 // WithBody returns a new block with the given transaction and uncle contents.
-func (b *Block) WithBody(txs *TransactionsSet, voters []*Voter) *Block {
+func (b *Block) WithBody(txs []*Transaction, voters []*Voter) *Block {
 	block := &Block{
 		header:       CopyHeader(b.header),
-		transactions: txs,
+		transactions: make([]*Transaction, len(txs)),
 		voters:       make([]*Voter, len(voters)),
 	}
 
-	copy(block.voters, voters) // TODO : add - voters copy
+	copy(block.transactions, txs) // transaction copy
+	copy(block.voters, voters)    // voters copy
 	return block
 }
 

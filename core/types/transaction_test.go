@@ -100,6 +100,54 @@ func TestNewJoinTransaction(t *testing.T) {
 
 }
 
+func TestTransaction_MarshalJSON(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf("could not generate key: %v", err)
+	}
+	signer := NewEIP155Signer(common.Big1)
+
+	otprn := NewOtprn(100, 100, 100, 20)
+	bOtrpn, err := otprn.EncodeOtprn()
+	if err != nil {
+		t.Error("otprn encode err", err)
+	}
+	jtx := NewJoinTransaction(0, bOtrpn)
+	sjtx, err := SignTx(jtx, signer, key)
+	if err != nil {
+		t.Error("join transaction SignTx", err)
+	}
+	t.Log("Join transaction", sjtx.Hash().String())
+	jsonJtx, err := sjtx.MarshalJSON()
+	if err != nil {
+		t.Error("join transaction MarshalJSON", err)
+	}
+	newTx := new(Transaction)
+	err = newTx.UnmarshalJSON(jsonJtx)
+	if err != nil {
+		t.Error("join transaction UnmarshalJSON", err)
+	}
+	t.Log("Join UnmarshalJSON transaction", newTx.Hash().String())
+
+	t.Log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	gentx := NewTransaction(1, common.HexToAddress("b94f5374fce5edbc8e2a8697c15331677e6ebf0b"), big.NewInt(10), 2000, big.NewInt(1), common.FromHex("5544"))
+	signedGentx, err := SignTx(gentx, signer, key)
+	if err != nil {
+		t.Error("gentx signedGentx", err)
+	}
+	t.Log("rightvrsTx transaction", signedGentx.Hash().String())
+	btx, err := signedGentx.MarshalJSON()
+	if err != nil {
+		t.Error("signedGentx transaction MarshalJSON", err)
+	}
+	newTx2 := new(Transaction)
+	err = newTx2.UnmarshalJSON(btx)
+	if err != nil {
+		t.Error("signedGentx transaction UnmarshalJSON", err)
+	}
+	t.Log("signedGentx UnmarshalJSON transaction", newTx2.Hash().String())
+}
+
 func TestTransactionSigHash(t *testing.T) {
 	var homestead HomesteadSigner
 	if homestead.Hash(emptyTx) != common.HexToHash("c775b99e7ad12f50d819fcd602390467e28141316969f4b57f0626f74fe3b386") {

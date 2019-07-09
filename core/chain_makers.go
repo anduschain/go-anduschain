@@ -42,7 +42,7 @@ type BlockGen struct {
 
 	gasPool *GasPool
 
-	txs      *types.TransactionsSet
+	txs      []*types.Transaction
 	receipts []*types.Receipt
 	voters   []*types.Voter
 
@@ -54,7 +54,7 @@ type BlockGen struct {
 // It can be called at most once.
 func (b *BlockGen) SetCoinbase(addr common.Address) {
 	if b.gasPool != nil {
-		if len(b.txs.All()) > 0 {
+		if len(b.txs) > 0 {
 			panic("coinbase must be set before adding transactions")
 		}
 		panic("coinbase can only be set once")
@@ -92,19 +92,13 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
 	}
-	b.statedb.Prepare(tx.Hash(), common.Hash{}, b.txs.Len())
+	b.statedb.Prepare(tx.Hash(), common.Hash{}, len(b.txs))
 	receipt, _, err := ApplyTransaction(b.config, bc, &b.header.Coinbase, b.gasPool, b.statedb, b.header, tx, &b.header.GasUsed, vm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	switch tx.TransactionId() {
-	case types.GeneralTx:
-		b.txs.Gen = append(b.txs.Gen, tx)
-	case types.JoinTx:
-		b.txs.Join = append(b.txs.Join, tx)
-	}
-
+	b.txs = append(b.txs, tx)
 	b.receipts = append(b.receipts, receipt)
 }
 
@@ -182,7 +176,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		}
 
 		defer blockchain.Stop()
-		b := &BlockGen{i: i, parent: parent, chain: blocks, chainReader: blockchain, statedb: statedb, config: config, engine: engine, txs: new(types.TransactionsSet)}
+		b := &BlockGen{i: i, parent: parent, chain: blocks, chainReader: blockchain, statedb: statedb, config: config, engine: engine}
 		b.header = makeHeader(b.chainReader, parent, statedb, b.engine)
 
 		// Mutate the state and block according to any hard-fork specs
@@ -228,6 +222,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		voters[i] = voter
 		parent = block
 	}
+
 	return blocks, receipts
 }
 

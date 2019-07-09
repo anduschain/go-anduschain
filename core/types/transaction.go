@@ -80,9 +80,9 @@ func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPric
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
 }
 
-func NewJoinTransaction(nonce uint64, data []byte) *Transaction {
-	if len(data) > 0 {
-		data = common.CopyBytes(data)
+func NewJoinTransaction(nonce uint64, otprn []byte) *Transaction {
+	if len(otprn) > 0 {
+		otprn = common.CopyBytes(otprn)
 	} else {
 		return nil
 	}
@@ -91,7 +91,7 @@ func NewJoinTransaction(nonce uint64, data []byte) *Transaction {
 		Type:         JoinTx,
 		AccountNonce: nonce,
 		Recipient:    &to,
-		Payload:      data,
+		Payload:      otprn,
 		Amount:       new(big.Int),
 		GasLimit:     0,
 		Price:        new(big.Int),

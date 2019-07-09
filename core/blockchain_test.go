@@ -668,7 +668,7 @@ func TestFastVsFullChains(t *testing.T) {
 		}
 		if fblock, ablock := fast.GetBlockByHash(hash), archive.GetBlockByHash(hash); fblock.Hash() != ablock.Hash() {
 			t.Errorf("block #%d [%x]: block mismatch: have %v, want %v", num, hash, fblock, ablock)
-		} else if types.DeriveSha(fblock.Transactions().All()) != types.DeriveSha(ablock.Transactions().All()) {
+		} else if types.DeriveSha(fblock.Transactions()) != types.DeriveSha(ablock.Transactions()) {
 			t.Errorf("block #%d [%x]: transactions mismatch: have %v, want %v", num, hash, fblock.Transactions(), ablock.Transactions())
 		}
 
@@ -1131,15 +1131,15 @@ func TestEIP155Transition(t *testing.T) {
 		t.Fatal(err)
 	}
 	block := blockchain.GetBlockByNumber(1)
-	if block.Transactions().All()[0].Protected() {
+	if block.Transactions()[0].Protected() {
 		t.Error("Expected block[0].txs[0] to not be replay protected")
 	}
 
 	block = blockchain.GetBlockByNumber(3)
-	if block.Transactions().All()[0].Protected() {
+	if block.Transactions()[0].Protected() {
 		t.Error("Expected block[3].txs[0] to not be replay protected")
 	}
-	if !block.Transactions().All()[1].Protected() {
+	if !block.Transactions()[1].Protected() {
 		t.Error("Expected block[3].txs[1] to be replay protected")
 	}
 	if _, err := blockchain.InsertChain(blocks[4:]); err != nil {
