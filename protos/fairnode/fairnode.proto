@@ -1,0 +1,11 @@
+syntax = "proto3";
+option go_package = "github.com/anduschain/go-anduschain/protos/fairnode";
+
+package fairnode;
+
+import "common/common.proto";
+import "google/protobuf/empty.proto";
+
+service FairnodeService {
+    rpc ProcessController(google.protobuf.Empty) returns (stream common.SampleMessage) {}
+}
