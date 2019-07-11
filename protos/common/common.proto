@@ -1,0 +1,9 @@
+syntax = "proto3";
+option go_package = "github.com/anduschain/go-anduschain/protos/common";
+
+package common;
+
+message SampleMessage {
+    int64 code = 1;
+    string message = 2;
+}

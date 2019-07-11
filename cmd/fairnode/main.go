@@ -20,7 +20,6 @@ var keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
 func init() {
 	var w sync.WaitGroup
 
-	// TODO : andus >> cli 프로그램에서 환경변수 및 운영변수를 세팅 할 수 있도록 구성...
 	app = cli.NewApp()
 	app.Name = "fairnode"
 	app.Usage = "Fairnode for AndUsChain networks"
@@ -74,6 +73,10 @@ func init() {
 			Name:  "syslog",
 			Usage: "default is false, if true, saving to system log",
 		},
+		cli.BoolFlag{
+			Name:  "fake",
+			Usage: "default is false, if true, running fakemode fairnode",
+		},
 	}
 
 	app.Commands = []cli.Command{
@@ -124,7 +127,6 @@ func init() {
 
 		go func() {
 			sigc := make(chan os.Signal, 1)
-			//signal.Ignore(syscall.SIGTERM)
 			signal.Notify(sigc, syscall.SIGHUP)
 			defer signal.Stop(sigc)
 			<-sigc

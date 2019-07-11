@@ -7,7 +7,7 @@
 .PHONY: geth-linux-arm geth-linux-arm-5 geth-linux-arm-6 geth-linux-arm-7 geth-linux-arm64
 .PHONY: geth-darwin geth-darwin-386 geth-darwin-amd64
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
-.PHONY: fairnode loadtest bootnode-linux-amd64
+.PHONY: fairnode loadtest bootnode-linux-amd64 proto
 
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
@@ -47,6 +47,10 @@ test: all
 
 lint: ## Run linters.
 	build/env.sh go run build/ci.go lint
+
+proto:
+	build/proto_build.sh
+	@echo "Done building proto file."
 
 clean:
 	./build/clean_go_build_cache.sh

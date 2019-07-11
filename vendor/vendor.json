@@ -892,6 +892,12 @@
 			"revisionTime": "2016-11-04T18:56:24Z"
 		},
 		{
+			"checksumSHA1": "9t16kTAftwgYpfrzn84ulJlskpY=",
+			"path": "google.golang.org/grpc",
+			"revision": "8e511dc15f5c38684364a25d5ca5ac9d2f5d17cb",
+			"revisionTime": "2019-07-08T23:47:29Z"
+		},
+		{
 			"checksumSHA1": "CEFTYXtWmgSh+3Ik1NmDaJcz4E0=",
 			"path": "gopkg.in/check.v1",
 			"revision": "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec",
