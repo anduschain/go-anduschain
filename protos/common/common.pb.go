@@ -20,68 +20,784 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type SampleMessage struct {
-	Code                 int64    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Message              string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+type Status int32
+
+const (
+	Status_SUCCESS Status = 0
+	Status_FAIL    Status = 1
+)
+
+var Status_name = map[int32]string{
+	0: "SUCCESS",
+	1: "FAIL",
+}
+
+var Status_value = map[string]int32{
+	"SUCCESS": 0,
+	"FAIL":    1,
+}
+
+func (x Status) String() string {
+	return proto.EnumName(Status_name, int32(x))
+}
+
+func (Status) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{0}
+}
+
+type ProcessStatus int32
+
+const (
+	ProcessStatus_WAIT          ProcessStatus = 0
+	ProcessStatus_MAKE_JOIN_TX  ProcessStatus = 1
+	ProcessStatus_MAKE_BLOCK    ProcessStatus = 2
+	ProcessStatus_VOTE_START    ProcessStatus = 3
+	ProcessStatus_VOTE_COMPLETE ProcessStatus = 4
+	ProcessStatus_REJECT        ProcessStatus = 5
+)
+
+var ProcessStatus_name = map[int32]string{
+	0: "WAIT",
+	1: "MAKE_JOIN_TX",
+	2: "MAKE_BLOCK",
+	3: "VOTE_START",
+	4: "VOTE_COMPLETE",
+	5: "REJECT",
+}
+
+var ProcessStatus_value = map[string]int32{
+	"WAIT":          0,
+	"MAKE_JOIN_TX":  1,
+	"MAKE_BLOCK":    2,
+	"VOTE_START":    3,
+	"VOTE_COMPLETE": 4,
+	"REJECT":        5,
+}
+
+func (x ProcessStatus) String() string {
+	return proto.EnumName(ProcessStatus_name, int32(x))
+}
+
+func (ProcessStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{1}
+}
+
+type SealConfirmStatus int32
+
+const (
+	SealConfirmStatus_PENDING    SealConfirmStatus = 0
+	SealConfirmStatus_SEND_BLOCK SealConfirmStatus = 1
+	SealConfirmStatus_SEAL_FAIL  SealConfirmStatus = 2
+	SealConfirmStatus_COMPLETE   SealConfirmStatus = 3
+)
+
+var SealConfirmStatus_name = map[int32]string{
+	0: "PENDING",
+	1: "SEND_BLOCK",
+	2: "SEAL_FAIL",
+	3: "COMPLETE",
+}
+
+var SealConfirmStatus_value = map[string]int32{
+	"PENDING":    0,
+	"SEND_BLOCK": 1,
+	"SEAL_FAIL":  2,
+	"COMPLETE":   3,
+}
+
+func (x SealConfirmStatus) String() string {
+	return proto.EnumName(SealConfirmStatus_name, int32(x))
+}
+
+func (SealConfirmStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{2}
+}
+
+type HeartBeat struct {
+	Enode                string   `protobuf:"bytes,1,opt,name=enode,proto3" json:"enode,omitempty"`
+	MinerAddress         string   `protobuf:"bytes,2,opt,name=minerAddress,proto3" json:"minerAddress,omitempty"`
+	ChainID              string   `protobuf:"bytes,3,opt,name=chainID,proto3" json:"chainID,omitempty"`
+	NodeVersion          string   `protobuf:"bytes,4,opt,name=nodeVersion,proto3" json:"nodeVersion,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SampleMessage) Reset()         { *m = SampleMessage{} }
-func (m *SampleMessage) String() string { return proto.CompactTextString(m) }
-func (*SampleMessage) ProtoMessage()    {}
-func (*SampleMessage) Descriptor() ([]byte, []int) {
+func (m *HeartBeat) Reset()         { *m = HeartBeat{} }
+func (m *HeartBeat) String() string { return proto.CompactTextString(m) }
+func (*HeartBeat) ProtoMessage()    {}
+func (*HeartBeat) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f954d82c0b891f6, []int{0}
 }
 
-func (m *SampleMessage) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SampleMessage.Unmarshal(m, b)
+func (m *HeartBeat) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_HeartBeat.Unmarshal(m, b)
 }
-func (m *SampleMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SampleMessage.Marshal(b, m, deterministic)
+func (m *HeartBeat) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_HeartBeat.Marshal(b, m, deterministic)
 }
-func (m *SampleMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SampleMessage.Merge(m, src)
+func (m *HeartBeat) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HeartBeat.Merge(m, src)
 }
-func (m *SampleMessage) XXX_Size() int {
-	return xxx_messageInfo_SampleMessage.Size(m)
+func (m *HeartBeat) XXX_Size() int {
+	return xxx_messageInfo_HeartBeat.Size(m)
 }
-func (m *SampleMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_SampleMessage.DiscardUnknown(m)
+func (m *HeartBeat) XXX_DiscardUnknown() {
+	xxx_messageInfo_HeartBeat.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SampleMessage proto.InternalMessageInfo
+var xxx_messageInfo_HeartBeat proto.InternalMessageInfo
 
-func (m *SampleMessage) GetCode() int64 {
+func (m *HeartBeat) GetEnode() string {
 	if m != nil {
-		return m.Code
-	}
-	return 0
-}
-
-func (m *SampleMessage) GetMessage() string {
-	if m != nil {
-		return m.Message
+		return m.Enode
 	}
 	return ""
 }
 
+func (m *HeartBeat) GetMinerAddress() string {
+	if m != nil {
+		return m.MinerAddress
+	}
+	return ""
+}
+
+func (m *HeartBeat) GetChainID() string {
+	if m != nil {
+		return m.ChainID
+	}
+	return ""
+}
+
+func (m *HeartBeat) GetNodeVersion() string {
+	if m != nil {
+		return m.NodeVersion
+	}
+	return ""
+}
+
+type Participate struct {
+	OtprnHash            []byte   `protobuf:"bytes,1,opt,name=otprnHash,proto3" json:"otprnHash,omitempty"`
+	Enode                string   `protobuf:"bytes,2,opt,name=enode,proto3" json:"enode,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Participate) Reset()         { *m = Participate{} }
+func (m *Participate) String() string { return proto.CompactTextString(m) }
+func (*Participate) ProtoMessage()    {}
+func (*Participate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{1}
+}
+
+func (m *Participate) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Participate.Unmarshal(m, b)
+}
+func (m *Participate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Participate.Marshal(b, m, deterministic)
+}
+func (m *Participate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Participate.Merge(m, src)
+}
+func (m *Participate) XXX_Size() int {
+	return xxx_messageInfo_Participate.Size(m)
+}
+func (m *Participate) XXX_DiscardUnknown() {
+	xxx_messageInfo_Participate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Participate proto.InternalMessageInfo
+
+func (m *Participate) GetOtprnHash() []byte {
+	if m != nil {
+		return m.OtprnHash
+	}
+	return nil
+}
+
+func (m *Participate) GetEnode() string {
+	if m != nil {
+		return m.Enode
+	}
+	return ""
+}
+
+type ProcessMessage struct {
+	Code                 ProcessStatus `protobuf:"varint,1,opt,name=code,proto3,enum=common.ProcessStatus" json:"code,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
+}
+
+func (m *ProcessMessage) Reset()         { *m = ProcessMessage{} }
+func (m *ProcessMessage) String() string { return proto.CompactTextString(m) }
+func (*ProcessMessage) ProtoMessage()    {}
+func (*ProcessMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{2}
+}
+
+func (m *ProcessMessage) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ProcessMessage.Unmarshal(m, b)
+}
+func (m *ProcessMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ProcessMessage.Marshal(b, m, deterministic)
+}
+func (m *ProcessMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProcessMessage.Merge(m, src)
+}
+func (m *ProcessMessage) XXX_Size() int {
+	return xxx_messageInfo_ProcessMessage.Size(m)
+}
+func (m *ProcessMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_ProcessMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ProcessMessage proto.InternalMessageInfo
+
+func (m *ProcessMessage) GetCode() ProcessStatus {
+	if m != nil {
+		return m.Code
+	}
+	return ProcessStatus_WAIT
+}
+
+// OTRPN 요청
+type ReqOtprn struct {
+	Enode                string   `protobuf:"bytes,1,opt,name=enode,proto3" json:"enode,omitempty"`
+	MinerAddress         string   `protobuf:"bytes,2,opt,name=minerAddress,proto3" json:"minerAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReqOtprn) Reset()         { *m = ReqOtprn{} }
+func (m *ReqOtprn) String() string { return proto.CompactTextString(m) }
+func (*ReqOtprn) ProtoMessage()    {}
+func (*ReqOtprn) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{3}
+}
+
+func (m *ReqOtprn) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReqOtprn.Unmarshal(m, b)
+}
+func (m *ReqOtprn) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReqOtprn.Marshal(b, m, deterministic)
+}
+func (m *ReqOtprn) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReqOtprn.Merge(m, src)
+}
+func (m *ReqOtprn) XXX_Size() int {
+	return xxx_messageInfo_ReqOtprn.Size(m)
+}
+func (m *ReqOtprn) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReqOtprn.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReqOtprn proto.InternalMessageInfo
+
+func (m *ReqOtprn) GetEnode() string {
+	if m != nil {
+		return m.Enode
+	}
+	return ""
+}
+
+func (m *ReqOtprn) GetMinerAddress() string {
+	if m != nil {
+		return m.MinerAddress
+	}
+	return ""
+}
+
+type ResOtprn struct {
+	Result               Status   `protobuf:"varint,1,opt,name=result,proto3,enum=common.Status" json:"result,omitempty"`
+	Otprn                []byte   `protobuf:"bytes,2,opt,name=otprn,proto3" json:"otprn,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResOtprn) Reset()         { *m = ResOtprn{} }
+func (m *ResOtprn) String() string { return proto.CompactTextString(m) }
+func (*ResOtprn) ProtoMessage()    {}
+func (*ResOtprn) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{4}
+}
+
+func (m *ResOtprn) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResOtprn.Unmarshal(m, b)
+}
+func (m *ResOtprn) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResOtprn.Marshal(b, m, deterministic)
+}
+func (m *ResOtprn) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResOtprn.Merge(m, src)
+}
+func (m *ResOtprn) XXX_Size() int {
+	return xxx_messageInfo_ResOtprn.Size(m)
+}
+func (m *ResOtprn) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResOtprn.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResOtprn proto.InternalMessageInfo
+
+func (m *ResOtprn) GetResult() Status {
+	if m != nil {
+		return m.Result
+	}
+	return Status_SUCCESS
+}
+
+func (m *ResOtprn) GetOtprn() []byte {
+	if m != nil {
+		return m.Otprn
+	}
+	return nil
+}
+
+// 투표
+type Vote struct {
+	Header               []byte   `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	VoterAddress         string   `protobuf:"bytes,2,opt,name=voterAddress,proto3" json:"voterAddress,omitempty"`
+	VoterSign            []byte   `protobuf:"bytes,3,opt,name=voterSign,proto3" json:"voterSign,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Vote) Reset()         { *m = Vote{} }
+func (m *Vote) String() string { return proto.CompactTextString(m) }
+func (*Vote) ProtoMessage()    {}
+func (*Vote) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{5}
+}
+
+func (m *Vote) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Vote.Unmarshal(m, b)
+}
+func (m *Vote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Vote.Marshal(b, m, deterministic)
+}
+func (m *Vote) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Vote.Merge(m, src)
+}
+func (m *Vote) XXX_Size() int {
+	return xxx_messageInfo_Vote.Size(m)
+}
+func (m *Vote) XXX_DiscardUnknown() {
+	xxx_messageInfo_Vote.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Vote proto.InternalMessageInfo
+
+func (m *Vote) GetHeader() []byte {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
+func (m *Vote) GetVoterAddress() string {
+	if m != nil {
+		return m.VoterAddress
+	}
+	return ""
+}
+
+func (m *Vote) GetVoterSign() []byte {
+	if m != nil {
+		return m.VoterSign
+	}
+	return nil
+}
+
+// 투표 결과 요청
+type ReqVoteResult struct {
+	OtprnHash            []byte   `protobuf:"bytes,1,opt,name=otprnHash,proto3" json:"otprnHash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReqVoteResult) Reset()         { *m = ReqVoteResult{} }
+func (m *ReqVoteResult) String() string { return proto.CompactTextString(m) }
+func (*ReqVoteResult) ProtoMessage()    {}
+func (*ReqVoteResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{6}
+}
+
+func (m *ReqVoteResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReqVoteResult.Unmarshal(m, b)
+}
+func (m *ReqVoteResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReqVoteResult.Marshal(b, m, deterministic)
+}
+func (m *ReqVoteResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReqVoteResult.Merge(m, src)
+}
+func (m *ReqVoteResult) XXX_Size() int {
+	return xxx_messageInfo_ReqVoteResult.Size(m)
+}
+func (m *ReqVoteResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReqVoteResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReqVoteResult proto.InternalMessageInfo
+
+func (m *ReqVoteResult) GetOtprnHash() []byte {
+	if m != nil {
+		return m.OtprnHash
+	}
+	return nil
+}
+
+type ResVoteResult struct {
+	Result               Status   `protobuf:"varint,1,opt,name=result,proto3,enum=common.Status" json:"result,omitempty"`
+	BlockHash            string   `protobuf:"bytes,2,opt,name=blockHash,proto3" json:"blockHash,omitempty"`
+	Voters               []byte   `protobuf:"bytes,3,opt,name=voters,proto3" json:"voters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResVoteResult) Reset()         { *m = ResVoteResult{} }
+func (m *ResVoteResult) String() string { return proto.CompactTextString(m) }
+func (*ResVoteResult) ProtoMessage()    {}
+func (*ResVoteResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{7}
+}
+
+func (m *ResVoteResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResVoteResult.Unmarshal(m, b)
+}
+func (m *ResVoteResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResVoteResult.Marshal(b, m, deterministic)
+}
+func (m *ResVoteResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResVoteResult.Merge(m, src)
+}
+func (m *ResVoteResult) XXX_Size() int {
+	return xxx_messageInfo_ResVoteResult.Size(m)
+}
+func (m *ResVoteResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResVoteResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResVoteResult proto.InternalMessageInfo
+
+func (m *ResVoteResult) GetResult() Status {
+	if m != nil {
+		return m.Result
+	}
+	return Status_SUCCESS
+}
+
+func (m *ResVoteResult) GetBlockHash() string {
+	if m != nil {
+		return m.BlockHash
+	}
+	return ""
+}
+
+func (m *ResVoteResult) GetVoters() []byte {
+	if m != nil {
+		return m.Voters
+	}
+	return nil
+}
+
+// 블록 실링 확인 요청
+type ReqConfirmSeal struct {
+	Enode                string   `protobuf:"bytes,1,opt,name=enode,proto3" json:"enode,omitempty"`
+	BlockHash            []byte   `protobuf:"bytes,2,opt,name=blockHash,proto3" json:"blockHash,omitempty"`
+	VoteHash             []byte   `protobuf:"bytes,3,opt,name=voteHash,proto3" json:"voteHash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReqConfirmSeal) Reset()         { *m = ReqConfirmSeal{} }
+func (m *ReqConfirmSeal) String() string { return proto.CompactTextString(m) }
+func (*ReqConfirmSeal) ProtoMessage()    {}
+func (*ReqConfirmSeal) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{8}
+}
+
+func (m *ReqConfirmSeal) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReqConfirmSeal.Unmarshal(m, b)
+}
+func (m *ReqConfirmSeal) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReqConfirmSeal.Marshal(b, m, deterministic)
+}
+func (m *ReqConfirmSeal) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReqConfirmSeal.Merge(m, src)
+}
+func (m *ReqConfirmSeal) XXX_Size() int {
+	return xxx_messageInfo_ReqConfirmSeal.Size(m)
+}
+func (m *ReqConfirmSeal) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReqConfirmSeal.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReqConfirmSeal proto.InternalMessageInfo
+
+func (m *ReqConfirmSeal) GetEnode() string {
+	if m != nil {
+		return m.Enode
+	}
+	return ""
+}
+
+func (m *ReqConfirmSeal) GetBlockHash() []byte {
+	if m != nil {
+		return m.BlockHash
+	}
+	return nil
+}
+
+func (m *ReqConfirmSeal) GetVoteHash() []byte {
+	if m != nil {
+		return m.VoteHash
+	}
+	return nil
+}
+
+type ResConfirmSeal struct {
+	Code                 SealConfirmStatus `protobuf:"varint,1,opt,name=code,proto3,enum=common.SealConfirmStatus" json:"code,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *ResConfirmSeal) Reset()         { *m = ResConfirmSeal{} }
+func (m *ResConfirmSeal) String() string { return proto.CompactTextString(m) }
+func (*ResConfirmSeal) ProtoMessage()    {}
+func (*ResConfirmSeal) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{9}
+}
+
+func (m *ResConfirmSeal) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResConfirmSeal.Unmarshal(m, b)
+}
+func (m *ResConfirmSeal) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResConfirmSeal.Marshal(b, m, deterministic)
+}
+func (m *ResConfirmSeal) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResConfirmSeal.Merge(m, src)
+}
+func (m *ResConfirmSeal) XXX_Size() int {
+	return xxx_messageInfo_ResConfirmSeal.Size(m)
+}
+func (m *ResConfirmSeal) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResConfirmSeal.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResConfirmSeal proto.InternalMessageInfo
+
+func (m *ResConfirmSeal) GetCode() SealConfirmStatus {
+	if m != nil {
+		return m.Code
+	}
+	return SealConfirmStatus_PENDING
+}
+
+// 블록 요청
+type ReqBlock struct {
+	Enode                string   `protobuf:"bytes,1,opt,name=enode,proto3" json:"enode,omitempty"`
+	Block                []byte   `protobuf:"bytes,2,opt,name=block,proto3" json:"block,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReqBlock) Reset()         { *m = ReqBlock{} }
+func (m *ReqBlock) String() string { return proto.CompactTextString(m) }
+func (*ReqBlock) ProtoMessage()    {}
+func (*ReqBlock) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{10}
+}
+
+func (m *ReqBlock) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReqBlock.Unmarshal(m, b)
+}
+func (m *ReqBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReqBlock.Marshal(b, m, deterministic)
+}
+func (m *ReqBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReqBlock.Merge(m, src)
+}
+func (m *ReqBlock) XXX_Size() int {
+	return xxx_messageInfo_ReqBlock.Size(m)
+}
+func (m *ReqBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReqBlock.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReqBlock proto.InternalMessageInfo
+
+func (m *ReqBlock) GetEnode() string {
+	if m != nil {
+		return m.Enode
+	}
+	return ""
+}
+
+func (m *ReqBlock) GetBlock() []byte {
+	if m != nil {
+		return m.Block
+	}
+	return nil
+}
+
+// 블록 서명 요청
+type ReqFairnodeSign struct {
+	BlockHash            []byte   `protobuf:"bytes,1,opt,name=blockHash,proto3" json:"blockHash,omitempty"`
+	VoteHash             []byte   `protobuf:"bytes,2,opt,name=voteHash,proto3" json:"voteHash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReqFairnodeSign) Reset()         { *m = ReqFairnodeSign{} }
+func (m *ReqFairnodeSign) String() string { return proto.CompactTextString(m) }
+func (*ReqFairnodeSign) ProtoMessage()    {}
+func (*ReqFairnodeSign) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{11}
+}
+
+func (m *ReqFairnodeSign) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReqFairnodeSign.Unmarshal(m, b)
+}
+func (m *ReqFairnodeSign) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReqFairnodeSign.Marshal(b, m, deterministic)
+}
+func (m *ReqFairnodeSign) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReqFairnodeSign.Merge(m, src)
+}
+func (m *ReqFairnodeSign) XXX_Size() int {
+	return xxx_messageInfo_ReqFairnodeSign.Size(m)
+}
+func (m *ReqFairnodeSign) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReqFairnodeSign.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReqFairnodeSign proto.InternalMessageInfo
+
+func (m *ReqFairnodeSign) GetBlockHash() []byte {
+	if m != nil {
+		return m.BlockHash
+	}
+	return nil
+}
+
+func (m *ReqFairnodeSign) GetVoteHash() []byte {
+	if m != nil {
+		return m.VoteHash
+	}
+	return nil
+}
+
+type ResFairnodeSign struct {
+	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResFairnodeSign) Reset()         { *m = ResFairnodeSign{} }
+func (m *ResFairnodeSign) String() string { return proto.CompactTextString(m) }
+func (*ResFairnodeSign) ProtoMessage()    {}
+func (*ResFairnodeSign) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f954d82c0b891f6, []int{12}
+}
+
+func (m *ResFairnodeSign) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResFairnodeSign.Unmarshal(m, b)
+}
+func (m *ResFairnodeSign) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResFairnodeSign.Marshal(b, m, deterministic)
+}
+func (m *ResFairnodeSign) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResFairnodeSign.Merge(m, src)
+}
+func (m *ResFairnodeSign) XXX_Size() int {
+	return xxx_messageInfo_ResFairnodeSign.Size(m)
+}
+func (m *ResFairnodeSign) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResFairnodeSign.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResFairnodeSign proto.InternalMessageInfo
+
+func (m *ResFairnodeSign) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
 func init() {
-	proto.RegisterType((*SampleMessage)(nil), "common.SampleMessage")
+	proto.RegisterEnum("common.Status", Status_name, Status_value)
+	proto.RegisterEnum("common.ProcessStatus", ProcessStatus_name, ProcessStatus_value)
+	proto.RegisterEnum("common.SealConfirmStatus", SealConfirmStatus_name, SealConfirmStatus_value)
+	proto.RegisterType((*HeartBeat)(nil), "common.HeartBeat")
+	proto.RegisterType((*Participate)(nil), "common.Participate")
+	proto.RegisterType((*ProcessMessage)(nil), "common.ProcessMessage")
+	proto.RegisterType((*ReqOtprn)(nil), "common.ReqOtprn")
+	proto.RegisterType((*ResOtprn)(nil), "common.ResOtprn")
+	proto.RegisterType((*Vote)(nil), "common.Vote")
+	proto.RegisterType((*ReqVoteResult)(nil), "common.ReqVoteResult")
+	proto.RegisterType((*ResVoteResult)(nil), "common.ResVoteResult")
+	proto.RegisterType((*ReqConfirmSeal)(nil), "common.ReqConfirmSeal")
+	proto.RegisterType((*ResConfirmSeal)(nil), "common.ResConfirmSeal")
+	proto.RegisterType((*ReqBlock)(nil), "common.ReqBlock")
+	proto.RegisterType((*ReqFairnodeSign)(nil), "common.ReqFairnodeSign")
+	proto.RegisterType((*ResFairnodeSign)(nil), "common.ResFairnodeSign")
 }
 
 func init() { proto.RegisterFile("common/common.proto", fileDescriptor_8f954d82c0b891f6) }
 
 var fileDescriptor_8f954d82c0b891f6 = []byte{
-	// 135 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x4e, 0xce, 0xcf, 0xcd,
-	0xcd, 0xcf, 0xd3, 0x87, 0x50, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42, 0x6c, 0x10, 0x9e, 0x92,
-	0x2d, 0x17, 0x6f, 0x70, 0x62, 0x6e, 0x41, 0x4e, 0xaa, 0x6f, 0x6a, 0x71, 0x71, 0x62, 0x7a, 0xaa,
-	0x90, 0x10, 0x17, 0x4b, 0x72, 0x7e, 0x4a, 0xaa, 0x04, 0xa3, 0x02, 0xa3, 0x06, 0x73, 0x10, 0x98,
-	0x2d, 0x24, 0xc1, 0xc5, 0x9e, 0x0b, 0x91, 0x96, 0x60, 0x52, 0x60, 0xd4, 0xe0, 0x0c, 0x82, 0x71,
-	0x9d, 0x8c, 0xa3, 0x0c, 0xd3, 0x33, 0x4b, 0x32, 0x4a, 0x93, 0xf4, 0x92, 0xf3, 0x73, 0xf5, 0x13,
-	0xf3, 0x52, 0x4a, 0x8b, 0x93, 0x33, 0x12, 0x33, 0xf3, 0xf4, 0xd3, 0xf3, 0x75, 0x91, 0x78, 0x60,
-	0x3b, 0x8b, 0xa1, 0x2e, 0x48, 0x62, 0x03, 0x73, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0xe7,
-	0x78, 0x10, 0xdf, 0x99, 0x00, 0x00, 0x00,
+	// 617 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x54, 0xcd, 0x6f, 0x12, 0x41,
+	0x14, 0xef, 0x52, 0x4a, 0xe1, 0x75, 0xc1, 0xed, 0x58, 0x0d, 0x9a, 0x26, 0x36, 0x73, 0x30, 0xda,
+	0xa4, 0x25, 0xda, 0xc4, 0x8b, 0x07, 0xb3, 0xc0, 0xd6, 0xd2, 0xf2, 0x95, 0xd9, 0xb5, 0x1a, 0x2f,
+	0x74, 0x0a, 0x23, 0xac, 0xc2, 0x4e, 0x99, 0x19, 0xbc, 0xfb, 0x9f, 0x9b, 0x99, 0xdd, 0x85, 0xa5,
+	0xa4, 0x8d, 0xf1, 0x44, 0x7e, 0xef, 0xbd, 0xfc, 0x3e, 0xde, 0x5b, 0x06, 0x9e, 0x0e, 0xf9, 0x6c,
+	0xc6, 0xa3, 0x5a, 0xfc, 0x73, 0x7a, 0x27, 0xb8, 0xe2, 0xa8, 0x10, 0x23, 0xfc, 0xc7, 0x82, 0xd2,
+	0x05, 0xa3, 0x42, 0xd5, 0x19, 0x55, 0xe8, 0x00, 0x76, 0x58, 0xc4, 0x47, 0xac, 0x6a, 0x1d, 0x59,
+	0x6f, 0x4a, 0x24, 0x06, 0x08, 0x83, 0x3d, 0x0b, 0x23, 0x26, 0xdc, 0xd1, 0x48, 0x30, 0x29, 0xab,
+	0x39, 0xd3, 0x5c, 0xab, 0xa1, 0x2a, 0xec, 0x0e, 0x27, 0x34, 0x8c, 0x5a, 0xcd, 0xea, 0xb6, 0x69,
+	0xa7, 0x10, 0x1d, 0xc1, 0x9e, 0x66, 0xb9, 0x66, 0x42, 0x86, 0x3c, 0xaa, 0xe6, 0x4d, 0x37, 0x5b,
+	0xc2, 0x2e, 0xec, 0xf5, 0xa9, 0x50, 0xe1, 0x30, 0xbc, 0xa3, 0x8a, 0xa1, 0x43, 0x28, 0x71, 0x75,
+	0x27, 0xa2, 0x0b, 0x2a, 0x27, 0xc6, 0x88, 0x4d, 0x56, 0x85, 0x95, 0xc5, 0x5c, 0xc6, 0x22, 0xfe,
+	0x08, 0x95, 0xbe, 0xe0, 0x43, 0x26, 0x65, 0x87, 0x49, 0x49, 0xc7, 0x0c, 0xbd, 0x85, 0xfc, 0x30,
+	0x4d, 0x52, 0x79, 0xff, 0xec, 0x34, 0x49, 0x9f, 0x4c, 0xf9, 0x8a, 0xaa, 0x85, 0x24, 0x66, 0x04,
+	0x37, 0xa1, 0x48, 0xd8, 0xbc, 0xa7, 0x25, 0xfe, 0x7f, 0x03, 0xf8, 0x42, 0xb3, 0xc8, 0x98, 0xe5,
+	0x35, 0x14, 0x04, 0x93, 0x8b, 0xa9, 0x4a, 0xe4, 0x2b, 0xa9, 0x7c, 0xa2, 0x9b, 0x74, 0xb5, 0x9a,
+	0x49, 0x66, 0x08, 0x6d, 0x12, 0x03, 0x7c, 0x03, 0xf9, 0x6b, 0xae, 0x18, 0x7a, 0x0e, 0x85, 0x09,
+	0xa3, 0x23, 0x26, 0x92, 0x2d, 0x24, 0x48, 0xbb, 0xf9, 0xcd, 0xd5, 0x86, 0x9b, 0x6c, 0x4d, 0x2f,
+	0xd1, 0x60, 0x3f, 0x1c, 0x47, 0xe6, 0x22, 0x36, 0x59, 0x15, 0xf0, 0x09, 0x94, 0x09, 0x9b, 0x6b,
+	0x11, 0x12, 0x1b, 0x79, 0x74, 0xe7, 0x78, 0xa6, 0xc7, 0x65, 0x66, 0xfc, 0x5f, 0xf3, 0x1d, 0x42,
+	0xe9, 0x76, 0xca, 0x87, 0xbf, 0x0c, 0x6d, 0x6c, 0x73, 0x55, 0xd0, 0xf9, 0x8c, 0x25, 0x99, 0x18,
+	0x4c, 0x10, 0xbe, 0x81, 0x0a, 0x61, 0xf3, 0x06, 0x8f, 0x7e, 0x84, 0x62, 0xe6, 0x33, 0x3a, 0x7d,
+	0xe0, 0x2a, 0x1b, 0xec, 0x76, 0x96, 0xfd, 0x25, 0x14, 0x35, 0x9f, 0x69, 0xc6, 0xfc, 0x4b, 0x8c,
+	0x3f, 0x69, 0x05, 0x99, 0x55, 0x38, 0x59, 0xfb, 0x5c, 0x5e, 0x2c, 0xf3, 0x30, 0x3a, 0x4d, 0xc7,
+	0xb2, 0x9f, 0xcc, 0x07, 0xf3, 0xc9, 0xd4, 0xb5, 0xd8, 0x03, 0xe6, 0x0e, 0x60, 0xc7, 0x78, 0x49,
+	0x4f, 0x6b, 0x00, 0xbe, 0x82, 0x27, 0x84, 0xcd, 0xcf, 0x69, 0x28, 0xf4, 0x90, 0xbe, 0xc5, 0x7a,
+	0x0a, 0xeb, 0xb1, 0x14, 0xb9, 0x7b, 0x29, 0x6a, 0x9a, 0x4c, 0xde, 0x27, 0x93, 0xe1, 0x38, 0xa2,
+	0x6a, 0x21, 0x58, 0x4a, 0xb6, 0x2c, 0x1c, 0xbf, 0x82, 0x42, 0x9c, 0x02, 0xed, 0xc1, 0xae, 0xff,
+	0xa5, 0xd1, 0xf0, 0x7c, 0xdf, 0xd9, 0x42, 0x45, 0xc8, 0x9f, 0xbb, 0xad, 0xb6, 0x63, 0x1d, 0xff,
+	0x84, 0xf2, 0xda, 0x1f, 0x44, 0xb7, 0xbe, 0xba, 0xad, 0xc0, 0xd9, 0x42, 0x0e, 0xd8, 0x1d, 0xf7,
+	0xca, 0x1b, 0x5c, 0xf6, 0x5a, 0xdd, 0x41, 0xf0, 0xcd, 0xb1, 0x50, 0x05, 0xc0, 0x54, 0xea, 0xed,
+	0x5e, 0xe3, 0xca, 0xc9, 0x69, 0x7c, 0xdd, 0x0b, 0xbc, 0x81, 0x1f, 0xb8, 0x24, 0x70, 0xb6, 0xd1,
+	0x3e, 0x94, 0x0d, 0x6e, 0xf4, 0x3a, 0xfd, 0xb6, 0x17, 0x78, 0x4e, 0x1e, 0x01, 0x14, 0x88, 0x77,
+	0xe9, 0x35, 0x02, 0x67, 0xe7, 0xb8, 0x03, 0xfb, 0x1b, 0xdb, 0xd5, 0xbe, 0xfa, 0x5e, 0xb7, 0xd9,
+	0xea, 0x7e, 0x76, 0xb6, 0x34, 0xa1, 0xef, 0x75, 0x9b, 0x89, 0x80, 0x85, 0xca, 0x50, 0xf2, 0x3d,
+	0xb7, 0x3d, 0x30, 0x66, 0x73, 0xc8, 0x86, 0xe2, 0x92, 0x7a, 0xbb, 0x7e, 0xf6, 0xfd, 0xdd, 0x38,
+	0x54, 0x93, 0xc5, 0xad, 0x3e, 0x5d, 0x8d, 0x46, 0xa3, 0x85, 0x34, 0x2f, 0x50, 0x6d, 0xcc, 0x4f,
+	0x32, 0xc8, 0xbc, 0x7e, 0x32, 0x79, 0x0b, 0x6f, 0x0b, 0x06, 0x9e, 0xfd, 0x0d, 0x00, 0x00, 0xff,
+	0xff, 0xe5, 0xda, 0xcd, 0xf2, 0x23, 0x05, 0x00, 0x00,
 }

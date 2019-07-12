@@ -1,7 +1,5 @@
 package fairnodeclient
 
-// TODO : andus >> Geth - FairNode 사이에 연결 되는 부분..
-
 import (
 	"crypto/ecdsa"
 	"errors"

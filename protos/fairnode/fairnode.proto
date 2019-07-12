@@ -7,5 +7,12 @@ import "common/common.proto";
 import "google/protobuf/empty.proto";
 
 service FairnodeService {
-    rpc ProcessController(google.protobuf.Empty) returns (stream common.SampleMessage) {}
+    rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
+    rpc RequestOtprn(common.ReqOtprn) returns(common.ResOtprn) {}
+    rpc ProcessController(common.Participate) returns (stream common.ProcessMessage) {}
+    rpc Vote(common.Vote) returns (google.protobuf.Empty) {}
+    rpc RequestVoteResult(common.ReqVoteResult) returns (common.ResVoteResult) {}
+    rpc SealConfirm(common.ReqConfirmSeal) returns (stream common.ResConfirmSeal) {}
+    rpc SendBlock(common.ReqBlock) returns (google.protobuf.Empty) {}
+    rpc RequestFairnodeSign(common.ReqFairnodeSign) returns (common.ResFairnodeSign) {}
 }

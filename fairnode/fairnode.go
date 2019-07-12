@@ -2,21 +2,10 @@ package fairnode
 
 import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
-	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 )
-
-// fairnode rpc method implemented
-type server struct{}
-
-func newServer() *server {
-	return &server{}
-}
-func (s *server) ProcessController(empty *empty.Empty, stream fairnode.FairnodeService_ProcessControllerServer) error {
-	return nil
-}
 
 const (
 	port = ":50051"

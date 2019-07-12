@@ -29,19 +29,29 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 func init() { proto.RegisterFile("fairnode/fairnode.proto", fileDescriptor_be599e5d5fddfca2) }
 
 var fileDescriptor_be599e5d5fddfca2 = []byte{
-	// 187 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x8f, 0xb1, 0x0a, 0xc2, 0x30,
-	0x10, 0x86, 0x75, 0x11, 0xe9, 0x22, 0x56, 0x54, 0xa8, 0x9b, 0xbb, 0x89, 0x58, 0x7c, 0x01, 0xc5,
-	0x6e, 0x82, 0xd0, 0x49, 0xb7, 0x34, 0xbd, 0xa6, 0x81, 0x24, 0x57, 0x92, 0x54, 0xf0, 0xed, 0xa5,
-	0x4d, 0x2b, 0x4e, 0xc9, 0x77, 0xff, 0xdd, 0x77, 0x5c, 0xb4, 0xad, 0x98, 0xb4, 0x06, 0x4b, 0xa0,
-	0xe3, 0x87, 0x34, 0x16, 0x3d, 0xc6, 0xf3, 0x91, 0x93, 0x15, 0x47, 0xad, 0xd1, 0xd0, 0xf0, 0x84,
-	0x38, 0xd9, 0x09, 0x44, 0xa1, 0x80, 0xf6, 0x54, 0xb4, 0x15, 0x05, 0xdd, 0xf8, 0x4f, 0x08, 0x4f,
-	0xcf, 0x68, 0x91, 0x0d, 0xd3, 0x39, 0xd8, 0xb7, 0xe4, 0x10, 0x67, 0xd1, 0xf2, 0x61, 0x91, 0x83,
-	0x73, 0x57, 0x34, 0xde, 0xa2, 0x52, 0x60, 0xe3, 0x0d, 0x09, 0x16, 0x32, 0x5a, 0xc8, 0xad, 0xb3,
-	0x24, 0x6b, 0x32, 0xec, 0xca, 0x99, 0x6e, 0x14, 0xdc, 0xc1, 0x39, 0x26, 0x60, 0x3f, 0x39, 0x4e,
-	0x2f, 0xe7, 0x57, 0x2a, 0xa4, 0xaf, 0xdb, 0xa2, 0x6b, 0xa1, 0xcc, 0x94, 0xad, 0xe3, 0x35, 0x93,
-	0x86, 0x0a, 0x3c, 0xfc, 0x51, 0x2f, 0x74, 0xbf, 0x9b, 0x8a, 0x59, 0x5f, 0x48, 0xbf, 0x01, 0x00,
-	0x00, 0xff, 0xff, 0x42, 0xf5, 0x31, 0xb6, 0xef, 0x00, 0x00, 0x00,
+	// 345 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0x4f, 0x4f, 0xe3, 0x30,
+	0x10, 0xc5, 0xb3, 0x52, 0xb5, 0xda, 0x7a, 0x2b, 0xed, 0x76, 0x2a, 0x5a, 0xc9, 0xdc, 0x72, 0x27,
+	0x41, 0x14, 0x04, 0x57, 0x5a, 0x40, 0x70, 0x40, 0x54, 0xad, 0xc4, 0x81, 0x9b, 0x9b, 0x4e, 0x53,
+	0x8b, 0xc4, 0x93, 0xda, 0x0e, 0x12, 0x67, 0xbe, 0x38, 0x8a, 0xf3, 0xa7, 0xe6, 0xd2, 0x53, 0x32,
+	0xbf, 0xf7, 0xe6, 0xe9, 0x39, 0x31, 0x9b, 0x6c, 0x85, 0xd4, 0x8a, 0x36, 0x18, 0xb7, 0x2f, 0x51,
+	0xa1, 0xc9, 0x12, 0xfc, 0x69, 0x67, 0x3e, 0x4a, 0x28, 0xcf, 0x49, 0xc5, 0xf5, 0xa3, 0x96, 0xf9,
+	0x69, 0x4a, 0x94, 0x66, 0x18, 0xbb, 0x69, 0x5d, 0x6e, 0x63, 0xcc, 0x0b, 0xfb, 0x59, 0x8b, 0x17,
+	0x5f, 0x3d, 0xf6, 0xef, 0xa1, 0x59, 0x5f, 0xa1, 0xfe, 0x90, 0x09, 0xc2, 0x0d, 0xeb, 0x3f, 0xa2,
+	0xd0, 0x76, 0x86, 0xc2, 0xc2, 0x30, 0x6a, 0xc2, 0x3a, 0xc4, 0xc7, 0x51, 0x9d, 0x18, 0xb5, 0x89,
+	0xd1, 0x7d, 0x95, 0x18, 0x06, 0x70, 0xc9, 0x06, 0x4b, 0xdc, 0x97, 0x68, 0xec, 0x8b, 0x2d, 0xb4,
+	0x82, 0xff, 0xed, 0xf2, 0x12, 0xf7, 0x8e, 0x70, 0x8f, 0x18, 0x47, 0xc2, 0x00, 0xee, 0xd8, 0x70,
+	0xa1, 0x29, 0x41, 0x63, 0xe6, 0xa4, 0xac, 0xa6, 0x2c, 0x43, 0x0d, 0xa3, 0xd6, 0xb8, 0x10, 0xda,
+	0xca, 0x44, 0x16, 0xc2, 0x22, 0x1f, 0x77, 0xb0, 0xf6, 0x3f, 0xa3, 0x31, 0x22, 0xc5, 0x30, 0x38,
+	0xff, 0x05, 0x11, 0xeb, 0xbd, 0x92, 0x45, 0x18, 0xb4, 0x9e, 0x6a, 0x3a, 0xd2, 0x75, 0xce, 0x86,
+	0x4d, 0xd7, 0xca, 0xb8, 0x44, 0x53, 0x66, 0x16, 0x4e, 0xbc, 0xc2, 0x07, 0xcc, 0x3d, 0x6c, 0x0e,
+	0x38, 0x0c, 0xe0, 0x96, 0xfd, 0x5d, 0xa1, 0xc8, 0xe6, 0xa4, 0xb6, 0x52, 0xe7, 0x30, 0xf6, 0xd6,
+	0x1b, 0x56, 0xc9, 0xdc, 0xe3, 0xc6, 0xe3, 0xae, 0xf7, 0x35, 0xeb, 0xaf, 0x50, 0x6d, 0x66, 0x19,
+	0x25, 0xef, 0x3f, 0x3e, 0x98, 0x23, 0x47, 0x0e, 0xf0, 0xc4, 0x46, 0xcd, 0x01, 0xba, 0x1f, 0x28,
+	0x53, 0x05, 0x13, 0x2f, 0xc2, 0x17, 0xb8, 0x27, 0x18, 0x5f, 0x08, 0x83, 0xd9, 0xd5, 0xdb, 0x34,
+	0x95, 0x76, 0x57, 0xae, 0x2b, 0x4b, 0x2c, 0xd4, 0xa6, 0x34, 0xc9, 0x4e, 0x48, 0x15, 0xa7, 0x74,
+	0xe6, 0x4d, 0xae, 0x82, 0xe9, 0xae, 0xdf, 0xfa, 0xb7, 0x03, 0xd3, 0xef, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0x36, 0x28, 0x07, 0x07, 0x9a, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -56,7 +66,14 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type FairnodeServiceClient interface {
-	ProcessController(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (FairnodeService_ProcessControllerClient, error)
+	HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*empty.Empty, error)
+	RequestOtprn(ctx context.Context, in *common.ReqOtprn, opts ...grpc.CallOption) (*common.ResOtprn, error)
+	ProcessController(ctx context.Context, in *common.Participate, opts ...grpc.CallOption) (FairnodeService_ProcessControllerClient, error)
+	Vote(ctx context.Context, in *common.Vote, opts ...grpc.CallOption) (*empty.Empty, error)
+	RequestVoteResult(ctx context.Context, in *common.ReqVoteResult, opts ...grpc.CallOption) (*common.ResVoteResult, error)
+	SealConfirm(ctx context.Context, in *common.ReqConfirmSeal, opts ...grpc.CallOption) (FairnodeService_SealConfirmClient, error)
+	SendBlock(ctx context.Context, in *common.ReqBlock, opts ...grpc.CallOption) (*empty.Empty, error)
+	RequestFairnodeSign(ctx context.Context, in *common.ReqFairnodeSign, opts ...grpc.CallOption) (*common.ResFairnodeSign, error)
 }
 
 type fairnodeServiceClient struct {
@@ -67,7 +84,25 @@ func NewFairnodeServiceClient(cc *grpc.ClientConn) FairnodeServiceClient {
 	return &fairnodeServiceClient{cc}
 }
 
-func (c *fairnodeServiceClient) ProcessController(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (FairnodeService_ProcessControllerClient, error) {
+func (c *fairnodeServiceClient) HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/HeartBeat", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fairnodeServiceClient) RequestOtprn(ctx context.Context, in *common.ReqOtprn, opts ...grpc.CallOption) (*common.ResOtprn, error) {
+	out := new(common.ResOtprn)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/RequestOtprn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fairnodeServiceClient) ProcessController(ctx context.Context, in *common.Participate, opts ...grpc.CallOption) (FairnodeService_ProcessControllerClient, error) {
 	stream, err := c.cc.NewStream(ctx, &_FairnodeService_serviceDesc.Streams[0], "/fairnode.FairnodeService/ProcessController", opts...)
 	if err != nil {
 		return nil, err
@@ -83,7 +118,7 @@ func (c *fairnodeServiceClient) ProcessController(ctx context.Context, in *empty
 }
 
 type FairnodeService_ProcessControllerClient interface {
-	Recv() (*common.SampleMessage, error)
+	Recv() (*common.ProcessMessage, error)
 	grpc.ClientStream
 }
 
@@ -91,33 +126,165 @@ type fairnodeServiceProcessControllerClient struct {
 	grpc.ClientStream
 }
 
-func (x *fairnodeServiceProcessControllerClient) Recv() (*common.SampleMessage, error) {
-	m := new(common.SampleMessage)
+func (x *fairnodeServiceProcessControllerClient) Recv() (*common.ProcessMessage, error) {
+	m := new(common.ProcessMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
+func (c *fairnodeServiceClient) Vote(ctx context.Context, in *common.Vote, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/Vote", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fairnodeServiceClient) RequestVoteResult(ctx context.Context, in *common.ReqVoteResult, opts ...grpc.CallOption) (*common.ResVoteResult, error) {
+	out := new(common.ResVoteResult)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/RequestVoteResult", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fairnodeServiceClient) SealConfirm(ctx context.Context, in *common.ReqConfirmSeal, opts ...grpc.CallOption) (FairnodeService_SealConfirmClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_FairnodeService_serviceDesc.Streams[1], "/fairnode.FairnodeService/SealConfirm", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &fairnodeServiceSealConfirmClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type FairnodeService_SealConfirmClient interface {
+	Recv() (*common.ResConfirmSeal, error)
+	grpc.ClientStream
+}
+
+type fairnodeServiceSealConfirmClient struct {
+	grpc.ClientStream
+}
+
+func (x *fairnodeServiceSealConfirmClient) Recv() (*common.ResConfirmSeal, error) {
+	m := new(common.ResConfirmSeal)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *fairnodeServiceClient) SendBlock(ctx context.Context, in *common.ReqBlock, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/SendBlock", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fairnodeServiceClient) RequestFairnodeSign(ctx context.Context, in *common.ReqFairnodeSign, opts ...grpc.CallOption) (*common.ResFairnodeSign, error) {
+	out := new(common.ResFairnodeSign)
+	err := c.cc.Invoke(ctx, "/fairnode.FairnodeService/RequestFairnodeSign", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FairnodeServiceServer is the server API for FairnodeService service.
 type FairnodeServiceServer interface {
-	ProcessController(*empty.Empty, FairnodeService_ProcessControllerServer) error
+	HeartBeat(context.Context, *common.HeartBeat) (*empty.Empty, error)
+	RequestOtprn(context.Context, *common.ReqOtprn) (*common.ResOtprn, error)
+	ProcessController(*common.Participate, FairnodeService_ProcessControllerServer) error
+	Vote(context.Context, *common.Vote) (*empty.Empty, error)
+	RequestVoteResult(context.Context, *common.ReqVoteResult) (*common.ResVoteResult, error)
+	SealConfirm(*common.ReqConfirmSeal, FairnodeService_SealConfirmServer) error
+	SendBlock(context.Context, *common.ReqBlock) (*empty.Empty, error)
+	RequestFairnodeSign(context.Context, *common.ReqFairnodeSign) (*common.ResFairnodeSign, error)
 }
 
 // UnimplementedFairnodeServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedFairnodeServiceServer struct {
 }
 
-func (*UnimplementedFairnodeServiceServer) ProcessController(req *empty.Empty, srv FairnodeService_ProcessControllerServer) error {
+func (*UnimplementedFairnodeServiceServer) HeartBeat(ctx context.Context, req *common.HeartBeat) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HeartBeat not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) RequestOtprn(ctx context.Context, req *common.ReqOtprn) (*common.ResOtprn, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestOtprn not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) ProcessController(req *common.Participate, srv FairnodeService_ProcessControllerServer) error {
 	return status.Errorf(codes.Unimplemented, "method ProcessController not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) Vote(ctx context.Context, req *common.Vote) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Vote not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) RequestVoteResult(ctx context.Context, req *common.ReqVoteResult) (*common.ResVoteResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestVoteResult not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) SealConfirm(req *common.ReqConfirmSeal, srv FairnodeService_SealConfirmServer) error {
+	return status.Errorf(codes.Unimplemented, "method SealConfirm not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) SendBlock(ctx context.Context, req *common.ReqBlock) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendBlock not implemented")
+}
+func (*UnimplementedFairnodeServiceServer) RequestFairnodeSign(ctx context.Context, req *common.ReqFairnodeSign) (*common.ResFairnodeSign, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestFairnodeSign not implemented")
 }
 
 func RegisterFairnodeServiceServer(s *grpc.Server, srv FairnodeServiceServer) {
 	s.RegisterService(&_FairnodeService_serviceDesc, srv)
 }
 
+func _FairnodeService_HeartBeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.HeartBeat)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).HeartBeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/HeartBeat",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).HeartBeat(ctx, req.(*common.HeartBeat))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FairnodeService_RequestOtprn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.ReqOtprn)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).RequestOtprn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/RequestOtprn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).RequestOtprn(ctx, req.(*common.ReqOtprn))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FairnodeService_ProcessController_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(empty.Empty)
+	m := new(common.Participate)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -125,7 +292,7 @@ func _FairnodeService_ProcessController_Handler(srv interface{}, stream grpc.Ser
 }
 
 type FairnodeService_ProcessControllerServer interface {
-	Send(*common.SampleMessage) error
+	Send(*common.ProcessMessage) error
 	grpc.ServerStream
 }
 
@@ -133,18 +300,141 @@ type fairnodeServiceProcessControllerServer struct {
 	grpc.ServerStream
 }
 
-func (x *fairnodeServiceProcessControllerServer) Send(m *common.SampleMessage) error {
+func (x *fairnodeServiceProcessControllerServer) Send(m *common.ProcessMessage) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _FairnodeService_Vote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.Vote)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).Vote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/Vote",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).Vote(ctx, req.(*common.Vote))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FairnodeService_RequestVoteResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.ReqVoteResult)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).RequestVoteResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/RequestVoteResult",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).RequestVoteResult(ctx, req.(*common.ReqVoteResult))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FairnodeService_SealConfirm_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(common.ReqConfirmSeal)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(FairnodeServiceServer).SealConfirm(m, &fairnodeServiceSealConfirmServer{stream})
+}
+
+type FairnodeService_SealConfirmServer interface {
+	Send(*common.ResConfirmSeal) error
+	grpc.ServerStream
+}
+
+type fairnodeServiceSealConfirmServer struct {
+	grpc.ServerStream
+}
+
+func (x *fairnodeServiceSealConfirmServer) Send(m *common.ResConfirmSeal) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _FairnodeService_SendBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.ReqBlock)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).SendBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/SendBlock",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).SendBlock(ctx, req.(*common.ReqBlock))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FairnodeService_RequestFairnodeSign_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.ReqFairnodeSign)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FairnodeServiceServer).RequestFairnodeSign(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/fairnode.FairnodeService/RequestFairnodeSign",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FairnodeServiceServer).RequestFairnodeSign(ctx, req.(*common.ReqFairnodeSign))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _FairnodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "fairnode.FairnodeService",
 	HandlerType: (*FairnodeServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "HeartBeat",
+			Handler:    _FairnodeService_HeartBeat_Handler,
+		},
+		{
+			MethodName: "RequestOtprn",
+			Handler:    _FairnodeService_RequestOtprn_Handler,
+		},
+		{
+			MethodName: "Vote",
+			Handler:    _FairnodeService_Vote_Handler,
+		},
+		{
+			MethodName: "RequestVoteResult",
+			Handler:    _FairnodeService_RequestVoteResult_Handler,
+		},
+		{
+			MethodName: "SendBlock",
+			Handler:    _FairnodeService_SendBlock_Handler,
+		},
+		{
+			MethodName: "RequestFairnodeSign",
+			Handler:    _FairnodeService_RequestFairnodeSign_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ProcessController",
 			Handler:       _FairnodeService_ProcessController_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SealConfirm",
+			Handler:       _FairnodeService_SealConfirm_Handler,
 			ServerStreams: true,
 		},
 	},

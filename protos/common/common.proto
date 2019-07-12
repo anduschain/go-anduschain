@@ -3,7 +3,95 @@ option go_package = "github.com/anduschain/go-anduschain/protos/common";
 
 package common;
 
-message SampleMessage {
-    int64 code = 1;
-    string message = 2;
+enum Status {
+    SUCCESS = 0;
+    FAIL = 1;
+}
+
+message HeartBeat {
+    string enode = 1;
+    string minerAddress = 2;
+    string chainID = 3;
+    string nodeVersion = 4;
+}
+
+enum ProcessStatus {
+    WAIT = 0;
+    MAKE_JOIN_TX = 1;
+    MAKE_BLOCK = 2;
+    VOTE_START = 3;
+    VOTE_COMPLETE = 4;
+    REJECT = 5;
+}
+
+message Participate {
+    bytes otprnHash = 1;
+    string enode = 2;
+}
+
+message ProcessMessage {
+    ProcessStatus code = 1;
+}
+
+// OTRPN 요청
+message ReqOtprn {
+    string enode = 1;
+    string minerAddress = 2;
+}
+
+message ResOtprn {
+    Status result = 1;
+    bytes otprn = 2;
+}
+
+// 투표
+message Vote {
+    bytes header = 1; // rlp encoded
+    string voterAddress = 2;
+    bytes voterSign = 3;
+}
+
+// 투표 결과 요청
+message ReqVoteResult {
+    bytes otprnHash = 1;
+}
+
+message ResVoteResult {
+    Status result = 1;
+    string blockHash = 2;
+    bytes voters = 3; // rlp encoded
+}
+
+enum SealConfirmStatus {
+    PENDING = 0;
+    SEND_BLOCK = 1;
+    SEAL_FAIL = 2; // 블록 폐기, method terminate
+    COMPLETE = 3; // 서명 요청해, method terminate
+}
+
+// 블록 실링 확인 요청
+message ReqConfirmSeal {
+    string enode = 1;
+    bytes blockHash = 2;
+    bytes voteHash = 3;
+}
+
+message ResConfirmSeal {
+    SealConfirmStatus code = 1;
+}
+
+// 블록 요청
+message ReqBlock {
+    string enode = 1;
+    bytes block = 2; // rlp encoded
+}
+
+// 블록 서명 요청
+message ReqFairnodeSign {
+    bytes blockHash = 1;
+    bytes voteHash = 2;
+}
+
+message ResFairnodeSign {
+    bytes signature = 1;
 }
