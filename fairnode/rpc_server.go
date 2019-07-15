@@ -11,6 +11,7 @@ import (
 type rpcServer struct{}
 
 func newServer() *rpcServer {
+	logger.Info("==========================")
 	return &rpcServer{}
 }
 

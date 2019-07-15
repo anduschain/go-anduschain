@@ -16,7 +16,7 @@ import (
 var (
 	app     *cli.App
 	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
-	logger  = log.New("fairnode cmd")
+	logger  = log.New("fairnode", "cmd")
 )
 
 func init() {
@@ -57,12 +57,6 @@ func init() {
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
-		// deprecated
-		//cli.StringFlag{
-		//	Name:  "nat",
-		//	Value: "none",
-		//	Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
-		//},
 		cli.Uint64Flag{
 			Name:  "chainID",
 			Value: 3355,
@@ -71,10 +65,6 @@ func init() {
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "default is false, if true, you will see logs in terminal",
-		},
-		cli.BoolFlag{
-			Name:  "syslog",
-			Usage: "default is false, if true, saving to system log",
 		},
 		cli.BoolFlag{
 			Name:  "fake",
@@ -100,13 +90,13 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
-		var keypass, dbpass string
+		var dbpass string
+
+		fmt.Println("Input fairnode keystore password")
+		keypass := promptPassphrase(false)
 
 		if !c.GlobalBool("fake") {
-			fmt.Println("패어노드 서명키 암호를 입력해 주세요")
-			keypass = promptPassphrase(false)
-
-			fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
+			fmt.Println("Input fairnode database password")
 			dbpass = promptPassphrase(false)
 		}
 
@@ -115,30 +105,28 @@ func init() {
 
 		fn, err := fairnode.NewFairnode()
 		if err != nil {
-			logger.Error("Fairnode running", "error", err)
+			logger.Error("new fairnode", "msg", err)
 			return err
 		}
 
-		if err := fn.Start(); err == nil {
-			logger.Info("퍠어노드 정상적으로 시작됨")
-		} else {
-			log.Error("퍠어노드 시작 에러", "error", err)
+		if err := fn.Start(); err != nil {
+			logger.Error("failed starting fairnode", "msg", err)
 			w.Done()
 			return err
 		}
 
 		defer fn.Stop()
 
-		w.Wait()
-
 		go func() {
 			sigc := make(chan os.Signal, 1)
-			signal.Notify(sigc, syscall.SIGHUP)
+			signal.Notify(sigc, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Warn("Got sigterm, shutting fairnode down...")
+			logger.Warn("Got sigterm, shutting fairnode down...")
 			w.Done()
 		}()
+
+		w.Wait()
 
 		return nil
 	}
@@ -149,7 +137,8 @@ func main() {
 	// TODO(hakuna) : 배포할때 주석 풀것
 	//signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
-		logger.Error("App Run", "error", os.Stderr, "error", err)
+		logger.Error("App Run error", "msg", err.Error())
 		os.Exit(1)
 	}
+
 }

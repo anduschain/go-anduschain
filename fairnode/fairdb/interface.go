@@ -7,7 +7,7 @@ import (
 	"math/big"
 )
 
-var logger = log.New("fairnode database")
+var logger = log.New("fairnode", "database")
 
 type FairnodeDB interface {
 	Start() error
