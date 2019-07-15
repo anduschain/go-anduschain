@@ -13,8 +13,11 @@ import (
 	"syscall"
 )
 
-var app *cli.App
-var keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
+var (
+	app     *cli.App
+	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
+	logger  = log.New("fairnode cmd")
+)
 
 func init() {
 	var w sync.WaitGroup
@@ -112,12 +115,12 @@ func init() {
 
 		fn, err := fairnode.NewFairnode()
 		if err != nil {
-			log.Error("Fairnode running", "error", err)
+			logger.Error("Fairnode running", "error", err)
 			return err
 		}
 
 		if err := fn.Start(); err == nil {
-			log.Info("퍠어노드 정상적으로 시작됨")
+			logger.Info("퍠어노드 정상적으로 시작됨")
 		} else {
 			log.Error("퍠어노드 시작 에러", "error", err)
 			w.Done()
@@ -146,7 +149,7 @@ func main() {
 	// TODO(hakuna) : 배포할때 주석 풀것
 	//signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
-		log.Error("App Run", "error", os.Stderr, "error", err)
+		logger.Error("App Run", "error", os.Stderr, "error", err)
 		os.Exit(1)
 	}
 }
