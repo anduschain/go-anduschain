@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/ecdsa"
+	"github.com/anduschain/go-anduschain/crypto"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"os/user"
@@ -23,6 +25,8 @@ type Config struct {
 	KeyPath string
 	KeyPass string
 
+	PrivKey *ecdsa.PrivateKey
+
 	Port    string // 네트워크 포트
 	NAT     string
 	ChainID uint64
@@ -36,7 +40,9 @@ type Config struct {
 	Fee         int64
 }
 
-var DefaultConfig *Config
+var (
+	DefaultConfig *Config
+)
 
 func init() {
 	DefaultConfig = NewConfig()
@@ -87,20 +93,27 @@ func (c *Config) SetMiningConf(miner, epoch, fee int64, version string) {
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
-	DefaultConfig.DBhost = ctx.GlobalString("dbhost")
-	DefaultConfig.DBport = ctx.GlobalString("dbport")
-	DefaultConfig.DBuser = ctx.GlobalString("dbuser")
+	if ctx.GlobalBool("fake") {
+		// for fake mode
+		key, _ := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		DefaultConfig.PrivKey = key
+	} else {
+		DefaultConfig.DBhost = ctx.GlobalString("dbhost")
+		DefaultConfig.DBport = ctx.GlobalString("dbport")
+		DefaultConfig.DBuser = ctx.GlobalString("dbuser")
 
-	DefaultConfig.SSL_path = ctx.GlobalString("dbCertPath")
+		DefaultConfig.SSL_path = ctx.GlobalString("dbCertPath")
 
-	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
-	DefaultConfig.Port = ctx.GlobalString("port")
-	DefaultConfig.NAT = ctx.GlobalString("nat")
-	DefaultConfig.ChainID = ctx.GlobalUint64("chainID")
+		DefaultConfig.KeyPath = ctx.GlobalString("keypath")
+		DefaultConfig.Port = ctx.GlobalString("port")
+		DefaultConfig.NAT = ctx.GlobalString("nat")
+		DefaultConfig.ChainID = ctx.GlobalUint64("chainID")
 
-	DefaultConfig.Debug = ctx.GlobalBool("debug")
-	DefaultConfig.SysLog = ctx.GlobalBool("syslog")
+		DefaultConfig.Debug = ctx.GlobalBool("debug")
+		DefaultConfig.SysLog = ctx.GlobalBool("syslog")
 
-	DefaultConfig.KeyPass = keypass
-	DefaultConfig.DBpass = dbpass
+		DefaultConfig.KeyPass = keypass
+		DefaultConfig.DBpass = dbpass
+	}
+
 }

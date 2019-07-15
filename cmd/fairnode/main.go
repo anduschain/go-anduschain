@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/server"
-	"github.com/anduschain/go-anduschain/fairnode/server/config"
+	"github.com/anduschain/go-anduschain/fairnode"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -23,7 +22,7 @@ func init() {
 	app = cli.NewApp()
 	app.Name = "fairnode"
 	app.Usage = "Fairnode for AndUsChain networks"
-	app.Version = config.DefaultConfig.Version
+	app.Version = fairnode.DefaultConfig.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "dbhost",
@@ -55,11 +54,12 @@ func init() {
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
-		cli.StringFlag{
-			Name:  "nat",
-			Value: "none",
-			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
-		},
+		// deprecated
+		//cli.StringFlag{
+		//	Name:  "nat",
+		//	Value: "none",
+		//	Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
+		//},
 		cli.Uint64Flag{
 			Name:  "chainID",
 			Value: 3355,
@@ -97,17 +97,20 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
+		var keypass, dbpass string
 
-		fmt.Println("패어노드 서명키 암호를 입력해 주세요")
-		keypass := promptPassphrase(false)
+		if !c.GlobalBool("fake") {
+			fmt.Println("패어노드 서명키 암호를 입력해 주세요")
+			keypass = promptPassphrase(false)
 
-		fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
-		dbpass := promptPassphrase(false)
+			fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
+			dbpass = promptPassphrase(false)
+		}
 
 		// Config Setting
-		config.SetFairConfig(c, keypass, dbpass)
+		fairnode.SetFairConfig(c, keypass, dbpass)
 
-		fn, err := server.New()
+		fn, err := fairnode.NewFairnode()
 		if err != nil {
 			log.Error("Fairnode running", "error", err)
 			return err
@@ -140,7 +143,8 @@ func init() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
+	// TODO(hakuna) : 배포할때 주석 풀것
+	//signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
 		log.Error("App Run", "error", os.Stderr, "error", err)
 		os.Exit(1)

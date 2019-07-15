@@ -316,7 +316,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	var voters []vote
 	for i := range block.Voters() {
 		voter := block.Voters()[i]
-		voters = append(voters, vote{voter.Addr.String(), voter.Sig, voter.Difficulty})
+		voters = append(voters, vote{voter.Voter.String(), voter.VoteSign, voter.Difficulty.String()})
 	}
 
 	b := StoredBlock{

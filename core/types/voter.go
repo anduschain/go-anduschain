@@ -2,19 +2,30 @@ package types
 
 import (
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
+	"math/big"
 )
 
+//go:generate gencodec -type Voter -field-override votertMarshaling -out gen_voter_json.go
+
 type Voter struct {
-	Addr       common.Address
-	Sig        []byte
-	Difficulty string
+	HeaderHash common.Hash    `json:"blockHash" gencodec:"required"`
+	Difficulty *big.Int       `json:"difficulty" gencodec:"required"`
+	Voter      common.Address `json:"voter" gencodec:"required"`
+	VoteSign   []byte         `json:"voterSign" gencodec:"required"`
 }
 
 func (v *Voter) Size() common.StorageSize {
 	c := writeCounter(0)
 	rlp.Encode(&c, &v)
 	return common.StorageSize(c)
+}
+
+type votertMarshaling struct {
+	HeaderHash common.Hash `json:"blockHash"`
+	Difficulty *hexutil.Big
+	VoteSign   hexutil.Bytes
 }
 
 type Voters []*Voter

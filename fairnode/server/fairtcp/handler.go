@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/fairutil"
 	"github.com/anduschain/go-anduschain/fairnode/server/config"
@@ -127,9 +126,9 @@ func (ft *FairTcp) handelMsg(rw transport.Transport, otprnHash common.Hash) erro
 			return errors.New("서명이 일치하지 않는다")
 		}
 
-		ft.manager.GetVotePool().InsertCh <- pool.Vote{
-			pool.OtprnHash(vote.OtprnHash), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig, vote.Difficulty},
-		}
+		//ft.manager.GetVotePool().InsertCh <- pool.Vote{
+		//	pool.OtprnHash(vote.OtprnHash), vote.HeaderHash, types.Voter{vote.Voter, vote.Sig, vote.Difficulty},
+		//}
 
 		ft.logger.Debug("블록 투표 됨", "blockNum", vote.BlockNum.String(), "blockHash", vote.HeaderHash.String(), "voter", vote.Voter.String())
 
