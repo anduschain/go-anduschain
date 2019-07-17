@@ -30,7 +30,7 @@ func NewConfig() *Config {
 	return &Config{
 		FairServerHost: "localhost",
 		FairServerPort: "60002",
-		//ClientPort:     "50002",
+		//ClientPort:     "50002", // TODO(hakuna) : deprecated
 		Price: CalPirce(100),
 	}
 }

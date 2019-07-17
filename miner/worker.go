@@ -18,18 +18,16 @@ package miner
 
 import (
 	"bytes"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/event"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/deckarep/golang-set"
@@ -178,14 +176,16 @@ type worker struct {
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
 
-	// TODO : andus >> keystore
-	ks         *keystore.KeyStore
-	fairclient *fairnodeclient.FairnodeClient
-	chans      fairtypes.Channals
-	isVoting   *bool
+	// TODO(hakuna) : added new version
+	scope              event.SubscriptionScope
+	newLeagueBlockFeed event.Feed
+
+	debClient          *client.DebClient
+	FairnodeStatusCh   chan types.FairnodeStatusEvent
+	FairnodeStatusdSub event.Subscription
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, chans fairtypes.Channals) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
 	worker := &worker{
 		config:             config,
 		engine:             engine,
@@ -208,20 +208,16 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 
-		chans:    chans,
-		isVoting: new(bool),
+		// TODO(hakuna) : new version miner process
+		debClient:        client.NewDebClient(types.Network(config.NetworkType())), // new deb client
+		FairnodeStatusCh: make(chan types.FairnodeStatusEvent),                     // non async channel
 	}
-
-	*worker.isVoting = false
 
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 	// Subscribe events for blockchain
 	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
 	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
-
-	worker.ks = debBackend.GetKeystore()
-	worker.fairclient = debBackend.GetFairClient()
 
 	// Sanitize recommit interval if the user-specified one is too short.
 	if recommit < minRecommitInterval {
@@ -234,10 +230,18 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
+	// TODO(hakuna) : new version miner process, event receiver
+	worker.FairnodeStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.FairnodeStatusCh)
+
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
 
 	return worker
+}
+
+// leauge new block subscribe
+func (w *worker) SubscribeNewLeagueBlockEvent(ch chan<- types.NewLeagueBlockEvent) event.Subscription {
+	return w.scope.Track(w.newLeagueBlockFeed.Subscribe(ch))
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -280,13 +284,19 @@ func (w *worker) pendingBlock() *types.Block {
 
 // start sets the running status as 1 and triggers new work submitting.
 func (w *worker) start() {
-	atomic.StoreInt32(&w.running, 1)
-	w.startCh <- struct{}{}
+	if err := w.debClient.Start(w.eth); err == nil {
+		atomic.StoreInt32(&w.running, 1)
+		w.startCh <- struct{}{}
+	} else {
+		log.Error("deb client start", "msg", err)
+		return
+	}
 }
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
+	w.debClient.Stop()
 }
 
 // isRunning returns an indicator whether worker is running or not.
@@ -355,13 +365,10 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 	for {
 		select {
-		case _, ok := <-w.fairclient.StartCh:
-			log.Debug("블록 생성 시작 채널 호출", "status", ok)
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
-
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
@@ -546,22 +553,6 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			//var (
-			//	receipts = make([]*types.Receipt, len(task.receipts))
-			//	logs     []*types.Log
-			//)
-			//for i, receipt := range task.receipts {
-			//	receipts[i] = new(types.Receipt)
-			//	*receipts[i] = *receipt
-			//	// Update the block hash in all logs since it is now available and not when the
-			//	// receipt/log of individual transactions were created.
-			//	for _, log := range receipt.Logs {
-			//		log.BlockHash = hash
-			//	}
-			//	logs = append(logs, receipt.Logs...)
-			//}
-
 			// 블록 투표
 
 			debEngine, ok := w.engine.(*deb.Deb)
@@ -570,7 +561,7 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
+			_, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes()) // FIXME(hakuna) : 서명... 처리해야함
 			if err != nil {
 				log.Error("Block found but fail signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
@@ -581,29 +572,32 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
 				continue
 			}
+			// FIXME(hakuna) : modify channel
 
-			vb := fairtypes.VoteBlock{
-				Block:      block,
-				HeaderHash: block.Header().Hash(),
-				Sig:        sig,
-				OtprnHash:  w.fairclient.GetUsingOtprnWithSig().HashOtprn(),
-				Voter:      w.coinbase,
-				//Receipts:   receipts,
-			}
+			w.newLeagueBlockFeed.Send(block) // league block broadcasting
 
-			// 블록 투표 ( 블록 해시, 블록 번호, otprnhash, sign, address )
+			//vb := fairtypes.VoteBlock{
+			//	Block:      block,
+			//	HeaderHash: block.Header().Hash(),
+			//	Sig:        sig,
+			//	OtprnHash:  w.fairclient.GetUsingOtprnWithSig().HashOtprn(),
+			//	Voter:      w.coinbase,
+			//	//Receipts:   receipts,
+			//}
+			//
+			//// 블록 투표 ( 블록 해시, 블록 번호, otprnhash, sign, address )
+			//
+			//// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+			//w.chans.GetLeagueBlockBroadcastCh() <- &vb // FIXME(hakuna) : 로직 교체 해야함
+			//log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
+			//
+			//// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표 // FIXME(hakuna) : 로직 교체 해야함
+			//if !*w.isVoting {
+			//	*w.isVoting = true
+			//	go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
+			//}
 
-			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-			w.chans.GetLeagueBlockBroadcastCh() <- &vb
-			log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
-
-			// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-			if !*w.isVoting {
-				*w.isVoting = true
-				go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
-			}
-
-		case finalBlock := <-w.chans.GetFinalBlockCh():
+		case finalBlock := <-w.chans.GetFinalBlockCh(): // TODO(hakuna) : fix new client channel
 			block := finalBlock.Block
 
 			debEngine, ok := w.engine.(*deb.Deb)
@@ -891,19 +885,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() && w.fairclient.Running && w.fairclient.GetUsingOtprnWithSig() != nil {
+	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without coinbase")
 			return
 		}
 
 		header.Coinbase = w.coinbase
-
-		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			header.Extra = w.fairclient.GetUsingOtprnWithSig().HashOtprn().Bytes()
-			// 엔진에 서명키 셋팅
-			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
-		}
 
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
@@ -1005,15 +993,6 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		if interval != nil {
 			interval()
 		}
-		//
-		//// finalblock joinTx 여부 확인
-		//if debEngine, ok := w.engine.(*deb.Deb); ok {
-		//	err := debEngine.ValidationBlockWidthJoinTx(w.chain.Config().ChainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
-		//	if err != nil {
-		//		log.Error("Commit new mining work", "number", block.Number(), "mag", err.Error())
-		//		return err
-		//	}
-		//}
 
 		select {
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:

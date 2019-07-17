@@ -13,6 +13,7 @@ message HeartBeat {
     string minerAddress = 2;
     string chainID = 3;
     string nodeVersion = 4;
+    string head = 5;
 }
 
 enum ProcessStatus {

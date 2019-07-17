@@ -287,14 +287,6 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 	// Unlock any account specifically requested
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
-
-	// TODO : andus >> keystore eth에 추가
-	for key, _ := range stack.GetServices() {
-		if eth, ok := stack.GetServices()[key].(*eth.Ethereum); ok {
-			eth.Keystore = ks
-		}
-	}
-
 	passwords := utils.MakePasswordList(ctx)
 	unlocks := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
 	for i, account := range unlocks {
@@ -353,7 +345,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 		var ethereum *eth.Ethereum
 		if err := stack.Service(&ethereum); err != nil {
-			utils.Fatalf("Ethereum service not running: %v", err)
+			utils.Fatalf("Anduschaion service not running: %v", err)
 		}
 		// Set the gas price to the limits from the CLI and start mining
 		gasprice := utils.GlobalBig(ctx, utils.MinerLegacyGasPriceFlag.Name)

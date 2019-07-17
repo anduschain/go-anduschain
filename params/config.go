@@ -38,10 +38,15 @@ var (
 // chainID rule = 0xdao702 -> to dec 14288640 // ...
 
 var (
+	MAIN_NETWORK = big.NewInt(14288640)
+	TEST_NETWORK = big.NewInt(14288641)
+)
+
+var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(14288640), // now Same
+		ChainID:             MAIN_NETWORK,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -56,7 +61,7 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(14288641),
+		ChainID:             TEST_NETWORK,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -152,6 +157,17 @@ func (c *ChainConfig) String() string {
 		c.ConstantinopleBlock,
 		engine,
 	)
+}
+
+// return newtork type
+func (c *ChainConfig) NetworkType() uint64 {
+	if c.ChainID.Cmp(MAIN_NETWORK) == 0 {
+		return 0
+	}
+	if c.ChainID.Cmp(TEST_NETWORK) == 0 {
+		return 1
+	}
+	return 2
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.

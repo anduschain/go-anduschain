@@ -10,9 +10,14 @@ import (
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"net"
+	"time"
 )
 
 // crypto.HexToECDSA("09bfa4fac90f9daade1722027f6350518c0c2a69728793f8753b2d166ada1a9c") - for test private key
+// 0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD - for test addresss
+const (
+	CLEAN_OLD_NODE_TERM = 3
+)
 
 var (
 	logger = log.New("fairnode", "main")
@@ -21,7 +26,7 @@ var (
 type Fairnode struct {
 	tcpListener net.Listener
 	gRpcServer  *grpc.Server
-	piveKey     *ecdsa.PrivateKey
+	privKey     *ecdsa.PrivateKey
 	db          fairdb.FairnodeDB
 	errCh       chan error
 }
@@ -42,7 +47,7 @@ func NewFairnode() (*Fairnode, error) {
 		tcpListener: lis,
 		gRpcServer:  grpc.NewServer(),
 		errCh:       make(chan error),
-		piveKey:     pKey,
+		privKey:     pKey,
 	}, nil
 }
 
@@ -57,7 +62,10 @@ func (fn *Fairnode) Start() error {
 		return err
 	}
 
+	fn.db.InitActiveNode() // fairnode init Active node reset
+
 	go fn.severLoop()
+	go fn.cleanOldNode()
 
 	select {
 	case err := <-fn.errCh:
@@ -69,7 +77,7 @@ func (fn *Fairnode) Start() error {
 }
 
 func (fn *Fairnode) severLoop() {
-	fairnode.RegisterFairnodeServiceServer(fn.gRpcServer, newServer())
+	fairnode.RegisterFairnodeServiceServer(fn.gRpcServer, newServer(fn.db))
 	if err := fn.gRpcServer.Serve(fn.tcpListener); err != nil {
 		logger.Error("failed to serve: %v", err)
 		fn.errCh <- err
@@ -86,9 +94,32 @@ func (fn *Fairnode) Stop() {
 }
 
 func (fn *Fairnode) GetAddress() common.Address {
-	return crypto.PubkeyToAddress(fn.piveKey.PublicKey)
+	return crypto.PubkeyToAddress(fn.privKey.PublicKey)
 }
 
 func (fn *Fairnode) GetPublicKey() ecdsa.PublicKey {
-	return fn.piveKey.PublicKey
+	return fn.privKey.PublicKey
+}
+
+// 3분에 한번씩 3분간 heartbeat를 보내지 않은 노드 삭제
+func (fn *Fairnode) cleanOldNode() {
+	defer logger.Warn("clean old node was dead")
+	t := time.NewTicker(CLEAN_OLD_NODE_TERM * time.Minute)
+	for {
+		select {
+		case <-t.C:
+			now := time.Now().Unix()
+			// 3분이상 들어오지 않은 node clean
+			nodes := fn.db.GetActiveNode()
+			count := 0
+			for _, node := range nodes {
+				t := node.Time.Int64()
+				if (now - t) > (CLEAN_OLD_NODE_TERM * 60) {
+					fn.db.RemoveActiveNode(node.Enode)
+					count++
+				}
+			}
+			logger.Info("clean old node", "count", count)
+		}
+	}
 }

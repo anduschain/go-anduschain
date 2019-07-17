@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/miner"
 	"math"
 	"math/big"
 	"sync"
@@ -37,7 +38,6 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
-	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
@@ -52,7 +52,8 @@ const (
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
 
-	joinTxChanSize = 4096 // TODO(hakuna) : add
+	joinTxChanSize         = 4096 // TODO(hakuna) : add
+	newLeagueBlockChanSize = 1024 // TODO(hakuna) : added new version
 )
 
 var (
@@ -90,7 +91,7 @@ type ProtocolManager struct {
 	txsCh    chan types.NewTxsEvent
 	txsSub   event.Subscription
 
-	joinTxsCh chan types.NewJoinTxsEvent
+	joinTxsCh chan types.NewJoinTxsEvent //TODO(hakuna) : new version added
 
 	minedBlockSub *event.TypeMuxSubscription
 
@@ -100,19 +101,19 @@ type ProtocolManager struct {
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
-	// TODO : andus >> 채굴리그에서 수신된 블록
-	chans fairtypes.Channals
-
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
 
-	logger logger.Logger
+	//TODO(hakuna) : new version added
+	newLeagueBlockCh  chan types.NewLeagueBlockEvent
+	newLeagueBlockSub event.Subscription
+	miner             *miner.Miner
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, chans fairtypes.Channals) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, miner *miner.Miner) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -125,9 +126,8 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
-		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
-		chans:  chans,
-		logger: logger.New("CORE", "ProtocolManager"),
+
+		miner: miner,
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -237,23 +237,28 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.syncer()
 	go pm.txsyncLoop()
 
-	// TODO : andus >> 리그들에게 블록 브로드 케스팅 루프
+	// FIXME(hakuna) : 리그들에게 블록 브로드 케스팅 루프, new protocal 로 변경
+	pm.newLeagueBlockCh = make(chan types.NewLeagueBlockEvent, newLeagueBlockChanSize)
+	pm.newLeagueBlockSub = pm.miner.Worker().SubscribeNewLeagueBlockEvent(pm.newLeagueBlockCh)
 	go pm.leagueBroadCast()
 }
 
-// TODO : andus >> 리그들에게 블록 브로드 케스팅
+// FIXME(hakuna) : 리그들에게 블록 브로드 케스팅, new protocal 로 변경, 보내는 노드 서명 후 전송....
 func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
-		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
-			pm.logger.Debug("리그 브로드 캐스팅", "연결된 피어 수", len(pm.peers.peers))
+		case <-pm.newLeagueBlockCh: // FIXME(hakuna)
+			log.Debug("리그 브로드 캐스팅", "연결된 피어 수", len(pm.peers.peers))
 			for _, peer := range pm.peers.peers {
-				pm.logger.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
-				err := peer.SendMakeLeagueBlock(*block)
-				if err != nil {
-					pm.logger.Error("sendvoteblock err!!", err)
-				}
+				log.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
+
+				//err := peer.SendMakeLeagueBlock(*event.Block)
+				//if err != nil {
+				//	log.Error("sendvoteblock err!!", err)
+				//}
 			}
+		case <-pm.newLeagueBlockSub.Err():
+			return
 		}
 	}
 }
@@ -263,6 +268,8 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
+
+	pm.newLeagueBlockSub.Unsubscribe() // quits leaguebroadcastloop
 
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
@@ -738,9 +745,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		if pm.chans.IsLeagueRunning() {
-			pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
-		}
+		// FIXME(hakuna) : 브로드 케스팅 수신부 수정
+		//if pm.chans.IsLeagueRunning() {
+		//	pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
+		//}
 
 	case msg.Code == JoinTxMsg:
 		if atomic.LoadUint32(&pm.acceptJoinTxs) == 0 {

@@ -34,7 +34,7 @@ import (
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
 
-	NetworkId:     102,
+	NetworkId:     params.MAIN_NETWORK.Uint64(),
 	LightPeers:    100,
 	DatabaseCache: 768,
 	TrieCache:     256,

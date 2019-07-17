@@ -50,6 +50,8 @@ func (m *MemDatabase) CurrentOtprn() *types.Otprn {
 	return &m.OtprnList[len(m.OtprnList)-1] // current Otprn
 }
 
+func (m *MemDatabase) InitActiveNode() {}
+
 func (m *MemDatabase) SaveActiveNode(node types.HeartBeat) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -64,6 +66,14 @@ func (m *MemDatabase) GetActiveNode() []types.HeartBeat {
 		res = append(res, node)
 	}
 	return res
+}
+
+func (m *MemDatabase) RemoveActiveNode(enode string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if node, ok := m.NodeList[enode]; ok {
+		delete(m.NodeList, node.Enode)
+	}
 }
 
 func (m *MemDatabase) SaveOtprn(otprn types.Otprn) {

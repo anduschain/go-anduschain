@@ -26,6 +26,8 @@ github.com/fjl/memsize
 github.com/gizak/termui
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
+# github.com/golang/mock v1.3.1-0.20190508161146-9fa652df1129
+github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/protoc-gen-go/descriptor
@@ -197,6 +199,7 @@ golang.org/x/tools/go/internal/gcimporter
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.22.0
 google.golang.org/grpc
+google.golang.org/grpc/metadata
 google.golang.org/grpc/codes
 google.golang.org/grpc/status
 google.golang.org/grpc/balancer
@@ -216,7 +219,6 @@ google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/keepalive
-google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver

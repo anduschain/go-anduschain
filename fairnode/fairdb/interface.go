@@ -16,8 +16,10 @@ type FairnodeDB interface {
 	CurrentBlock() *types.Block
 	CurrentOtprn() *types.Otprn
 
+	InitActiveNode()
 	SaveActiveNode(node types.HeartBeat)
 	GetActiveNode() []types.HeartBeat
+	RemoveActiveNode(enode string)
 
 	SaveOtprn(otprn types.Otprn)
 	GetOtprn(otprnHash common.Hash) *types.Otprn
