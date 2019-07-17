@@ -51,7 +51,11 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		return nil, errorEmpty("head")
 	}
 
-	//TODO(hakuna) : head 정보를 받아서 최신 블록이 아닐경우, 거절
+	if block := rs.db.CurrentBlock(); block != nil {
+		if block.Hash().String() != nodeInfo.GetHead() {
+			return nil, errors.New("head is mismatch")
+		}
+	}
 
 	rs.db.SaveActiveNode(types.HeartBeat{
 		Enode:        nodeInfo.GetEnode(),

@@ -232,11 +232,23 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 	// TODO(hakuna) : new version miner process, event receiver
 	worker.FairnodeStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.FairnodeStatusCh)
+	go worker.leagueStatusLoop() // for league status message
 
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
 
 	return worker
+}
+
+func (w *worker) leagueStatusLoop() {
+	for {
+		select {
+		case ev := <-w.FairnodeStatusCh:
+			log.Debug("=======>FairnodeStatusCh", ev.Status)
+		case <-w.FairnodeStatusdSub.Err():
+			return
+		}
+	}
 }
 
 // leauge new block subscribe
@@ -597,8 +609,8 @@ func (w *worker) resultLoop() {
 			//	go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
 			//}
 
-		case finalBlock := <-w.chans.GetFinalBlockCh(): // TODO(hakuna) : fix new client channel
-			block := finalBlock.Block
+		case <-w.resultCh: // TODO(hakuna) : fix new client channel
+			block := new(types.Block) // TODO(hakuna) : fix new client channel
 
 			debEngine, ok := w.engine.(*deb.Deb)
 			if !ok {
