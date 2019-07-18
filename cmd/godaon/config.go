@@ -81,7 +81,7 @@ type gethConfig struct {
 	Node      node.Config
 	Ethstats  ethstatsConfig
 	Dashboard dashboard.Config
-	// andus >> FairNode add
+	// TODO(hakuna) : deprecated
 	FairNode fairconfig.Config
 }
 
@@ -106,7 +106,7 @@ func defaultNodeConfig() node.Config {
 	cfg.Version = params.VersionWithCommit(gitCommit)
 	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "shh")
 	cfg.WSModules = append(cfg.WSModules, "eth", "shh")
-	cfg.IPCPath = "geth.ipc"
+	cfg.IPCPath = "godaon.ipc"
 	return cfg
 }
 

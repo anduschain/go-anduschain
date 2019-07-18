@@ -48,6 +48,8 @@ type DebClient struct {
 	miner *Miner
 	otprn *types.Otprn
 
+	wallet accounts.Wallet
+
 	scope      event.SubscriptionScope
 	statusFeed event.Feed // process status feed
 
@@ -63,13 +65,6 @@ func NewDebClient(network types.Network) *DebClient {
 
 func (dc *DebClient) Start(backend Backend) error {
 	var err error
-	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure())
-	if err != nil {
-		log.Error("did not connect: %v", err)
-		return err
-	}
-
-	dc.rpc = fairnode.NewFairnodeServiceClient(dc.grpcConn)
 
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{
@@ -82,6 +77,19 @@ func (dc *DebClient) Start(backend Backend) error {
 		Coinbase: backend.Coinbase(),
 		Accounts: backend.AccountManager(),
 	}
+
+	dc.wallet, err = dc.miner.Accounts.Find(accounts.Account{Address: backend.Coinbase()})
+	if err != nil {
+		return err
+	}
+
+	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure())
+	if err != nil {
+		log.Error("did not connect: %v", err)
+		return err
+	}
+
+	dc.rpc = fairnode.NewFairnodeServiceClient(dc.grpcConn)
 
 	go dc.heartBeat()
 

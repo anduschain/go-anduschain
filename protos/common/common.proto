@@ -14,6 +14,7 @@ message HeartBeat {
     string chainID = 3;
     string nodeVersion = 4;
     string head = 5;
+    bytes sign = 6;
 }
 
 enum ProcessStatus {

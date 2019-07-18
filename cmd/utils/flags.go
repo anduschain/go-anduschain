@@ -578,7 +578,7 @@ var (
 		Value: "localhost",
 	}
 
-	// andus >> FairclientFlag, UDP, TCP port
+	// andus >> FairclientFlag, UDP, TCP port // TODO(hakuna) : deprecated
 	FairclientPort = cli.StringFlag{
 		Name:  "clientPort",
 		Usage: "fairnode port",
@@ -1266,7 +1266,7 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 	cfg.Refresh = ctx.GlobalDuration(DashboardRefreshFlag.Name)
 }
 
-// andus >> SetFairNodeConfig 추가
+// TODO(hakuna) : deprecated, will modified
 func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
 	if ctx.GlobalBool(TestnetFlag.Name) {
 		// Testnet fairnode Addr
