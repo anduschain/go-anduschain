@@ -14,6 +14,7 @@ import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,7 +28,7 @@ var (
 
 type Miner struct {
 	Node     proto.HeartBeat
-	Coinbase common.Address
+	Miner    accounts.Account
 	Accounts *accounts.Manager
 }
 
@@ -40,6 +41,7 @@ type Backend interface {
 
 type DebClient struct {
 	mu         sync.Mutex
+	running    int32
 	ctx        context.Context
 	fnEndpoint string
 	grpcConn   *grpc.ClientConn
@@ -74,11 +76,17 @@ func (dc *DebClient) Start(backend Backend) error {
 			MinerAddress: backend.Coinbase().String(),
 			Head:         backend.BlockChain().CurrentHeader().Hash().String(),
 		},
-		Coinbase: backend.Coinbase(),
+		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),
 	}
 
-	dc.wallet, err = dc.miner.Accounts.Find(accounts.Account{Address: backend.Coinbase()})
+	acc := dc.miner.Miner
+	dc.wallet, err = dc.miner.Accounts.Find(acc)
+	if err != nil {
+		return err
+	}
+	// check for unlock account
+	_, err = dc.wallet.SignHash(acc, common.Hash{}.Bytes())
 	if err != nil {
 		return err
 	}
@@ -92,15 +100,18 @@ func (dc *DebClient) Start(backend Backend) error {
 	dc.rpc = fairnode.NewFairnodeServiceClient(dc.grpcConn)
 
 	go dc.heartBeat()
-
+	atomic.StoreInt32(&dc.running, 1)
 	log.Info("start deb client")
 	return nil
 }
 
 func (dc *DebClient) Stop() {
-	dc.scope.Close()    // event channel close
-	dc.grpcConn.Close() // grpc connection close
-	log.Warn("grpc connection was closed")
+	if atomic.LoadInt32(&dc.running) == 1 {
+		dc.scope.Close()    // event channel close
+		dc.grpcConn.Close() // grpc connection close
+		atomic.StoreInt32(&dc.running, 0)
+		log.Warn("grpc connection was closed")
+	}
 }
 
 // fairnode process status event
