@@ -31,4 +31,15 @@ type ChainConfig struct {
 	FnFee       *big.Float
 	Cminer      uint64 // max node in league
 	Epoch       uint64 // league change term
+	Sign        []byte
+}
+
+func (cf *ChainConfig) Hash() common.Hash {
+	return rlpHash([]interface{}{
+		cf.BlockNumber,
+		cf.JoinTxPrice,
+		cf.FnFee,
+		cf.Cminer,
+		cf.Epoch,
+	})
 }

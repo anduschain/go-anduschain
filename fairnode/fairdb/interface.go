@@ -13,7 +13,8 @@ type FairnodeDB interface {
 	Start() error
 	Stop()
 
-	GetChainConfig() types.ChainConfig
+	GetChainConfig() *types.ChainConfig
+	SaveChainConfig(config *types.ChainConfig) error
 
 	CurrentBlock() *types.Block
 	CurrentOtprn() *types.Otprn

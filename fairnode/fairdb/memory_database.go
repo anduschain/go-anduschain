@@ -1,6 +1,8 @@
 package fairdb
 
 import (
+	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
@@ -12,6 +14,8 @@ type MemDatabase struct {
 
 	CurBlock *types.Block
 	CurOtprn *types.Otprn
+
+	ConfigList map[common.Hash]types.ChainConfig
 
 	NodeList   map[string]types.HeartBeat
 	OtprnList  []types.Otprn
@@ -25,6 +29,7 @@ func NewMemDatabase() *MemDatabase {
 		NodeList:   make(map[string]types.HeartBeat),
 		LeagueList: make(map[common.Hash][]types.HeartBeat),
 		VoteList:   make(map[common.Hash][]types.Voter),
+		ConfigList: make(map[common.Hash]types.ChainConfig),
 	}
 }
 
@@ -36,14 +41,28 @@ func (m *MemDatabase) Stop() {
 	logger.Debug("Stop fairnode memory database")
 }
 
-func (m *MemDatabase) GetChainConfig() types.ChainConfig {
+func (m *MemDatabase) GetChainConfig() *types.ChainConfig {
 	// sample
-	return types.ChainConfig{
+	return &types.ChainConfig{
 		BlockNumber: big.NewInt(1),
 		FnFee:       big.NewFloat(1.0),
 		JoinTxPrice: big.NewInt(6),
 		Cminer:      100,
 		Epoch:       100,
+	}
+}
+
+func (m *MemDatabase) SaveChainConfig(config *types.ChainConfig) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if config == nil {
+		return errors.New("config is nil")
+	}
+	if _, ok := m.ConfigList[config.Hash()]; ok {
+		return errors.New(fmt.Sprintf("config exsist Hash = %s", config.Hash().String()))
+	} else {
+		m.ConfigList[config.Hash()] = *config
+		return nil
 	}
 }
 

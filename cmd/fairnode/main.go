@@ -86,6 +86,23 @@ func init() {
 				},
 			},
 		},
+		{
+			Name:      "addChainConfig",
+			Usage:     "add chain config",
+			ArgsUsage: "[ <keyfile> ]",
+			Action:    addChainConfig,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "fakemode",
+					Usage: "for testing fakemode",
+				},
+				cli.StringFlag{
+					Name:  "keypath",
+					Value: os.Getenv("HOME") + "/.fairnode/key",
+					Usage: "file containing a raw private key to encrypt",
+				},
+			},
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
