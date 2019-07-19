@@ -36,6 +36,17 @@ func (m *MemDatabase) Stop() {
 	logger.Debug("Stop fairnode memory database")
 }
 
+func (m *MemDatabase) GetChainConfig() types.ChainConfig {
+	// sample
+	return types.ChainConfig{
+		BlockNumber: big.NewInt(1),
+		FnFee:       big.NewFloat(1.0),
+		JoinTxPrice: big.NewInt(6),
+		Cminer:      100,
+		Epoch:       100,
+	}
+}
+
 func (m *MemDatabase) CurrentBlock() *types.Block {
 	if len(m.BlockChain) == 0 {
 		return nil

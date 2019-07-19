@@ -15,21 +15,32 @@ import (
 	"google.golang.org/grpc"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 const (
-	HEART_BEAT_TERM = 3
+	HEART_BEAT_TERM = 3 // per min
+	REQ_OTPRN_TERM  = 1 // per min
 )
 
 var (
-	log = logger.New("deb", "deb client")
+	emptyByte []byte
+	log       = logger.New("deb", "deb client")
 )
 
 type Miner struct {
 	Node     proto.HeartBeat
 	Miner    accounts.Account
 	Accounts *accounts.Manager
+}
+
+func (m *Miner) Hash() common.Hash {
+	return rlpHash([]interface{}{
+		m.Node.Enode,
+		m.Node.NodeVersion,
+		m.Node.ChainID,
+		m.Node.MinerAddress,
+		m.Node.Head,
+	})
 }
 
 type Backend interface {
@@ -48,12 +59,13 @@ type DebClient struct {
 	rpc        fairnode.FairnodeServiceClient
 
 	miner *Miner
-	otprn *types.Otprn
+	otprn map[common.Hash]*types.Otprn
 
 	wallet accounts.Wallet
 
-	scope      event.SubscriptionScope
-	statusFeed event.Feed // process status feed
+	scope       event.SubscriptionScope
+	statusFeed  event.Feed // process status feed
+	closeClient event.Feed
 
 	// FIXME(hakuna) : add to process status
 }
@@ -62,6 +74,7 @@ func NewDebClient(network types.Network) *DebClient {
 	return &DebClient{
 		fnEndpoint: DefaultConfig.FairnodeEndpoint(network),
 		ctx:        context.Background(),
+		otprn:      make(map[common.Hash]*types.Otprn),
 	}
 }
 
@@ -86,7 +99,7 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 	// check for unlock account
-	_, err = dc.wallet.SignHash(acc, common.Hash{}.Bytes())
+	_, err = dc.wallet.SignHash(acc, emptyByte)
 	if err != nil {
 		return err
 	}
@@ -100,6 +113,7 @@ func (dc *DebClient) Start(backend Backend) error {
 	dc.rpc = fairnode.NewFairnodeServiceClient(dc.grpcConn)
 
 	go dc.heartBeat()
+
 	atomic.StoreInt32(&dc.running, 1)
 	log.Info("start deb client")
 	return nil
@@ -107,11 +121,16 @@ func (dc *DebClient) Start(backend Backend) error {
 
 func (dc *DebClient) Stop() {
 	if atomic.LoadInt32(&dc.running) == 1 {
-		dc.scope.Close()    // event channel close
-		dc.grpcConn.Close() // grpc connection close
-		atomic.StoreInt32(&dc.running, 0)
+		dc.close()
 		log.Warn("grpc connection was closed")
 	}
+}
+
+func (dc *DebClient) close() {
+	dc.scope.Close()    // event channel close
+	dc.grpcConn.Close() // grpc connection close
+	dc.closeClient.Send(types.ClientClose{})
+	atomic.StoreInt32(&dc.running, 0)
 }
 
 // fairnode process status event
@@ -119,25 +138,7 @@ func (dc *DebClient) SubscribeFairnodeStatusEvent(ch chan<- types.FairnodeStatus
 	return dc.scope.Track(dc.statusFeed.Subscribe(ch))
 }
 
-// active miner heart beat
-func (dc *DebClient) heartBeat() {
-	defer logger.Warn("heart beat loop was dead")
-	t := time.NewTicker(HEART_BEAT_TERM * time.Minute)
-
-	submit := func() {
-		_, err := dc.rpc.HeartBeat(dc.ctx, &dc.miner.Node)
-		if err != nil {
-			logger.Error("heart beat call", "msg", err)
-		}
-	}
-
-	submit() // init call
-
-	for {
-		select {
-		case <-t.C:
-			submit()
-			log.Info("heart beat call", "msg", dc.miner.Node.String())
-		}
-	}
+// client process close event
+func (dc *DebClient) SubscribeClientCloseEvent(ch chan<- types.ClientClose) event.Subscription {
+	return dc.scope.Track(dc.closeClient.Subscribe(ch))
 }

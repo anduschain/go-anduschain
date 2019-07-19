@@ -3,7 +3,6 @@ package fairudp
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/fairnode/server/backend"
@@ -314,7 +313,8 @@ func (fu *FairUdp) sendUdpAll(msgcode uint32, data interface{}) {
 func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, error) {
 	cfg := fu.db.GetChainConfig()
 	fu.manager.SetEpoch(cfg.Epoch)
-	otp := types.NewOtprn(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee), common.Address{}, float64(cfg.Fee))
+	//otp := types.NewOtprn(activeNodeNum, uint64(cfg.Miner), uint64(cfg.Epoch), uint64(cfg.Fee), common.Address{}, float64(cfg.Fee)) // TODO(hakuna) : deprecated
+	otp := new(types.Otprn)
 	err := otp.SignOtprn(fu.manager.GetServerKey().SeverPiveKey)
 	if err != nil {
 		return fairtypes.TransferOtprn{}, err
@@ -330,7 +330,7 @@ func (fu *FairUdp) makeOTPRN(activeNodeNum uint64) (fairtypes.TransferOtprn, err
 	// OTPRN DB 저장
 	fu.db.SaveOtprn(tsOtp)
 
-	fu.logger.Debug("OTPRN 전송", "hash", otp.HashOtprn(), "miner", mMiner, "epoch", otp.Epoch(), "fee", otp.Fee())
+	fu.logger.Debug("OTPRN 전송", "hash", otp.HashOtprn(), "miner", mMiner, "epoch", otp.Data.Epoch, "fee", otp.Data.JoinTxPrice)
 
 	return tsOtp, nil
 }

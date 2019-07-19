@@ -199,20 +199,20 @@ func (u *Udp) receiveOtprn(exit chan struct{}, v interface{}) {
 					var tsOtprn fairtypes.TransferOtprn
 					fromFairnodeMsg.Decode(&tsOtprn)
 					_, Mminer, _ := tsOtprn.Otp.GetValue()
-					u.logger.Info("OTPRN 수신됨", "hash", tsOtprn.Hash, "miner", Mminer, "epoch", tsOtprn.Otp.Epoch(), "fee", tsOtprn.Otp.Fee())
+					u.logger.Info("OTPRN 수신됨", "hash", tsOtprn.Hash, "miner", Mminer, "epoch", tsOtprn.Otp.Data.Epoch, "fee", tsOtprn.Otp.Data.JoinTxPrice)
 
 					//TODO : andus >> 2. OTRRN 검증
-					fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Otp.Signature())
+					fairPubKey, err := crypto.SigToPub(tsOtprn.Hash.Bytes(), tsOtprn.Otp.Sign)
 					if err != nil {
 						u.logger.Error("OTPRN 공개키 로드 에러", "error", err)
 					}
 
-					if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Otp.Signature()[:64]) {
+					if crypto.VerifySignature(crypto.FromECDSAPub(fairPubKey), tsOtprn.Hash.Bytes(), tsOtprn.Otp.Sign[:64]) {
 						otprnHash := tsOtprn.Otp.HashOtprn()
 						if otprnHash == tsOtprn.Hash {
 
 							// TODO: andus >> 검증완료, Otprn 저장
-							u.manger.StoreOtprnWidthSig(&tsOtprn.Otp, tsOtprn.Otp.Signature())
+							u.manger.StoreOtprnWidthSig(&tsOtprn.Otp, tsOtprn.Otp.Sign)
 
 							if !u.manger.GetBlockMine() {
 								//큐에 있는 이전 otprn을 없애기

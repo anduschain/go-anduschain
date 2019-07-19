@@ -180,9 +180,11 @@ type worker struct {
 	scope              event.SubscriptionScope
 	newLeagueBlockFeed event.Feed
 
-	debClient          *client.DebClient
-	FairnodeStatusCh   chan types.FairnodeStatusEvent
-	FairnodeStatusdSub event.Subscription
+	debClient        *client.DebClient
+	fnStatusCh       chan types.FairnodeStatusEvent
+	fnStatusdSub     event.Subscription
+	fnClientCloseCh  chan types.ClientClose
+	fnClientCLoseSub event.Subscription
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -209,8 +211,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 
 		// TODO(hakuna) : new version miner process
-		debClient:        client.NewDebClient(types.Network(config.NetworkType())), // new deb client
-		FairnodeStatusCh: make(chan types.FairnodeStatusEvent),                     // non async channel
+		debClient:       client.NewDebClient(types.Network(config.NetworkType())), // new deb client
+		fnStatusCh:      make(chan types.FairnodeStatusEvent),                     // non async channel
+		fnClientCloseCh: make(chan types.ClientClose),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -231,7 +234,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.taskLoop()
 
 	// TODO(hakuna) : new version miner process, event receiver
-	worker.FairnodeStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.FairnodeStatusCh)
+	worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
+	worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
+	go worker.clientStatusLoop() // client close check and mininig canceled
 	go worker.leagueStatusLoop() // for league status message
 
 	// Submit first work to initialize pending state.
@@ -243,9 +248,30 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 func (w *worker) leagueStatusLoop() {
 	for {
 		select {
-		case ev := <-w.FairnodeStatusCh:
-			log.Debug("=======>FairnodeStatusCh", ev.Status)
-		case <-w.FairnodeStatusdSub.Err():
+		case ev := <-w.fnStatusCh:
+			log.Info("=======>FairnodeStatusCh", ev.Status)
+		case <-w.fnStatusdSub.Err():
+			return
+		}
+	}
+}
+
+func (w *worker) clientStatusLoop() {
+	defer log.Warn("fair client was dead and worker exited")
+
+	closeWorker := func() {
+		w.exitCh <- struct{}{}
+		w.close()
+		w.stop()
+	}
+
+	for {
+		select {
+		case <-w.fnClientCloseCh:
+			closeWorker()
+			return
+		case <-w.fnClientCLoseSub.Err():
+			closeWorker()
 			return
 		}
 	}

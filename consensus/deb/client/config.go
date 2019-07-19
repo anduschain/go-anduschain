@@ -9,7 +9,8 @@ import (
 
 const (
 	MainnetFairHost = "mainfair.anduschain.io"
-	TestnetFairHost = "testfair.anduschain.io"
+	//TestnetFairHost = "testfair.anduschain.io"
+	TestnetFairHost = "localhost:60002"
 )
 
 type Config struct {

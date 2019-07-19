@@ -1,6 +1,7 @@
 package fairnode
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -11,7 +12,12 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"math/big"
+	"strings"
 	"time"
+)
+
+var (
+	emptyByte []byte
 )
 
 func errorEmpty(key string) error {
@@ -40,7 +46,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 	}
 
 	if nodeInfo.GetMinerAddress() == "" {
-		return nil, errorEmpty("miner address")
+		return nil, errorEmpty("miner's address")
 	}
 
 	if nodeInfo.GetNodeVersion() == "" {
@@ -49,6 +55,23 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 
 	if nodeInfo.GetHead() == "" {
 		return nil, errorEmpty("head")
+	}
+
+	if bytes.Compare(nodeInfo.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		nodeInfo.GetEnode(),
+		nodeInfo.GetNodeVersion(),
+		nodeInfo.GetChainID(),
+		nodeInfo.GetMinerAddress(),
+		nodeInfo.GetHead(),
+	})
+
+	err := ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
 	if block := rs.db.CurrentBlock(); block != nil {
@@ -66,12 +89,74 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		Time:         big.NewInt(time.Now().Unix()),
 	})
 
+	defer logger.Info("HeartBeat received", "enode", nodeInfo.Enode)
 	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn) (*proto.ResOtprn, error) {
-	// otprn 전달
-	return nil, nil
+	if nodeInfo.GetEnode() == "" {
+		return nil, errorEmpty("enode")
+	}
+
+	if nodeInfo.GetMinerAddress() == "" {
+		return nil, errorEmpty("miner's address")
+	}
+
+	if bytes.Compare(nodeInfo.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		nodeInfo.GetEnode(),
+		nodeInfo.GetMinerAddress(),
+	})
+
+	addr := common.HexToAddress(nodeInfo.GetMinerAddress())
+
+	err := ValidationSignHash(nodeInfo.GetSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	// heart beat 리스트에 있는지 확인
+	IsExist := false
+	for _, node := range rs.db.GetActiveNode() {
+		if strings.Compare(node.Enode, nodeInfo.GetEnode()) == 0 {
+			IsExist = true
+			break
+		}
+	}
+
+	if !IsExist {
+		return nil, errors.New(fmt.Sprintf("does not exist in active node list addr = %s", nodeInfo.GetEnode()))
+	}
+
+	if otprn := rs.db.CurrentOtprn(); otprn != nil {
+		err := otprn.ValidateSignature()
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("otprn validation failed msg=%s", err.Error()))
+		}
+
+		// 참가 대상 확인
+		if IsJoinOK(otprn, addr) {
+			// OTPRN 전송
+			bOtprn, err := otprn.EncodeOtprn()
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("otprn EncodeOtprn failed msg=%s", err.Error()))
+			}
+			logger.Info("otprn submitted", "otrpn", otprn.HashOtprn().String())
+			return &proto.ResOtprn{
+				Result: proto.Status_SUCCESS,
+				Otprn:  bOtprn,
+			}, nil
+		} else {
+			return &proto.ResOtprn{
+				Result: proto.Status_SUCCESS,
+			}, nil
+		}
+	} else {
+		return nil, errors.New("otprn is not exist")
+	}
 }
 
 func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairnode.FairnodeService_ProcessControllerServer) error {

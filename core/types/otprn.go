@@ -11,22 +11,15 @@ import (
 	log "gopkg.in/inconshreveable/log15.v2"
 )
 
-var (
-	OtprnNum = new(uint64)
-)
-
 type Otprn struct {
-	rand     [20]byte
-	cMiner   uint64
-	mMiner   uint64
-	epoch    uint64
-	fee      uint64 // join tx fee for participating league.
-	sig      []byte
-	fairAddr common.Address // fairnode address
-	fairFee  float64        // to give fairnode account, unit is percent
+	Rand   [20]byte
+	FnAddr common.Address
+	Mminer uint64
+	Data   ChainConfig
+	Sign   []byte
 }
 
-func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64, fairAddr common.Address, fairfee float64) *Otprn {
+func NewOtprn(mMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
 
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
@@ -36,55 +29,32 @@ func NewOtprn(Cminer uint64, Miner uint64, Epoch uint64, Fee uint64, fairAddr co
 	}
 
 	return &Otprn{
-		mMiner:   Miner,
-		cMiner:   Cminer,
-		rand:     rand,
-		epoch:    Epoch,
-		fee:      Fee,
-		fairAddr: fairAddr,
-		fairFee:  fairfee,
-		sig:      []byte{},
+		Mminer: mMiner,
+		Rand:   rand,
+		FnAddr: fnAddr,
+		Data:   data,
 	}
 }
 
-func (otp *Otprn) GetValue() (rand [20]byte, cMiner uint64, mMiner uint64) {
-	return otp.rand, otp.cMiner, otp.mMiner
-}
-
-func (otp *Otprn) Epoch() uint64 {
-	return otp.epoch
-}
-
-func (otp *Otprn) Fee() uint64 {
-	return otp.fee
-}
-
-func (otp *Otprn) FairFee() float64 {
-	return otp.fairFee
-}
-
-func (otp *Otprn) Signature() []byte {
-	return otp.sig
+func (otprn *Otprn) GetValue() (mMiner uint64, cMiner uint64, rand [20]byte) {
+	return otprn.Mminer, otprn.Data.Cminer, otprn.Rand
 }
 
 func (otprn *Otprn) SignOtprn(prv *ecdsa.PrivateKey) error {
-	sig, err := crypto.Sign(otprn.HashOtprn().Bytes(), prv)
+	sign, err := crypto.Sign(otprn.HashOtprn().Bytes(), prv)
 	if err != nil {
 		return err
 	}
-	otprn.sig = sig
+	otprn.Sign = sign
 	return nil
 }
 
 func (otprn *Otprn) HashOtprn() common.Hash {
 	return rlpHash([]interface{}{
-		otprn.fairAddr,
-		otprn.fee,
-		otprn.fairFee,
-		otprn.cMiner,
-		otprn.mMiner,
-		otprn.epoch,
-		otprn.rand,
+		otprn.Rand,
+		otprn.Mminer,
+		otprn.Data,
+		otprn.FnAddr,
 	})
 }
 
@@ -93,17 +63,17 @@ func (otprn *Otprn) EncodeOtprn() ([]byte, error) {
 }
 
 func (otprn *Otprn) ValidateSignature() error {
-	fpKey, err := crypto.SigToPub(otprn.HashOtprn().Bytes(), otprn.sig)
+	fpKey, err := crypto.SigToPub(otprn.HashOtprn().Bytes(), otprn.Sign)
 	if err != nil {
 		return errors.New(fmt.Sprintf("ValidationFairSignature SigToPub %v", err))
 	}
 
 	addr := crypto.PubkeyToAddress(*fpKey)
-	if addr == otprn.fairAddr {
+	if addr == otprn.FnAddr {
 		return nil
 	}
 
-	return errors.New(fmt.Sprintf("ValidationFairSignature PubkeyToAddress addr : %v  fairaddr : %v", addr, otprn.fairAddr))
+	return errors.New(fmt.Sprintf("ValidationFairSignature PubkeyToAddress addr : %v  fairaddr : %v", addr, otprn.FnAddr))
 }
 
 func DecodeOtprn(otpByte []byte) (*Otprn, error) {

@@ -12,7 +12,7 @@ import (
 func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
 	//TODO : andus >> 참여자 여부 계산
 
-	rand, mMiner, cMiner := otprn.GetValue()
+	mMiner, cMiner, rand := otprn.GetValue()
 
 	if mMiner > 0 {
 		div := uint64(cMiner / mMiner)

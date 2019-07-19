@@ -39,6 +39,7 @@ message ProcessMessage {
 message ReqOtprn {
     string enode = 1;
     string minerAddress = 2;
+    bytes sign = 3;
 }
 
 message ResOtprn {

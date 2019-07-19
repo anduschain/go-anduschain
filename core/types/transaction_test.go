@@ -58,7 +58,7 @@ func TestNewJoinTransaction(t *testing.T) {
 	}
 	signer := NewEIP155Signer(common.Big1)
 
-	otprn := NewOtprn(100, 100, 100, 20, fairaddress, 10)
+	otprn := NewOtprn(100, fairaddress, chainConfig)
 	t.Log("origin otprn", otprn.HashOtprn().String())
 
 	bOtrpn, err := otprn.EncodeOtprn()
@@ -129,7 +129,7 @@ func TestTransaction_MarshalJSON(t *testing.T) {
 	}
 	signer := NewEIP155Signer(common.Big1)
 
-	otprn := NewOtprn(100, 100, 100, 20, fairaddress, 10)
+	otprn := NewOtprn(100, fairaddress, chainConfig)
 	bOtrpn, err := otprn.EncodeOtprn()
 	if err != nil {
 		t.Error("otprn encode err", err)

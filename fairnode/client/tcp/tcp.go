@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	gethTypes "github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/fairnode/client/interface"
 	"github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
@@ -234,7 +233,7 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 			return nil
 		}
 
-		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig, leagueOtprnwithsig.Signature())
+		err := t.makeJoinTx(t.manger.GetBlockChain().Config().ChainID, leagueOtprnwithsig, leagueOtprnwithsig.Sign)
 		if err != nil {
 			t.logger.Error("MakeJoinTx", "error", err)
 			return err
@@ -312,15 +311,18 @@ func (t *Tcp) handleMsg(rw transport.MsgReadWriter, leagueOtprnwithsig *gethType
 	return nil
 }
 
+// TODO(hakuna) : deprecated
 func (t *Tcp) checkBalance(otprn *gethTypes.Otprn) (bool, *big.Int) {
-	currentBalance := t.manger.GetCurrentBalance()
-	epoch := big.NewInt(int64(otprn.Epoch()))
+	//currentBalance := t.manger.GetCurrentBalance()
+	//epoch := big.NewInt(int64(otprn.Epoch()))
+	//
+	//// balance will be more then ticket price multiplex epoch.
+	//price := config.DefaultConfig.SetFee(int64(otprn.Fee()))
+	//totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
 
-	// balance will be more then ticket price multiplex epoch.
-	price := config.DefaultConfig.SetFee(int64(otprn.Fee()))
-	totalPrice := big.NewInt(int64(epoch.Uint64() * price.Uint64()))
+	//return currentBalance.Cmp(totalPrice) > 0, price
 
-	return currentBalance.Cmp(totalPrice) > 0, price
+	return true, new(big.Int)
 }
 
 func (t *Tcp) makeJoinTx(chanID *big.Int, otprn *gethTypes.Otprn, sig []byte) error {

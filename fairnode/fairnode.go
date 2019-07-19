@@ -16,7 +16,14 @@ import (
 // crypto.HexToECDSA("09bfa4fac90f9daade1722027f6350518c0c2a69728793f8753b2d166ada1a9c") - for test private key
 // 0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD - for test addresss
 const (
-	CLEAN_OLD_NODE_TERM = 3
+	CLEAN_OLD_NODE_TERM = 3 // per min
+)
+
+type fnType uint64
+
+const (
+	FN_LEADER fnType = iota
+	FN_FOLLOWER
 )
 
 var (
@@ -29,6 +36,7 @@ type Fairnode struct {
 	privKey     *ecdsa.PrivateKey
 	db          fairdb.FairnodeDB
 	errCh       chan error
+	role        fnType
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -66,6 +74,11 @@ func (fn *Fairnode) Start() error {
 
 	go fn.severLoop()
 	go fn.cleanOldNode()
+
+	if fn.role == FN_LEADER {
+		logger.Info("I'm Leader in faionode group")
+		go fn.makeOtprn()
+	}
 
 	select {
 	case err := <-fn.errCh:
@@ -122,4 +135,11 @@ func (fn *Fairnode) cleanOldNode() {
 			logger.Info("clean old node", "count", count)
 		}
 	}
+}
+
+func (fn *Fairnode) makeOtprn() {
+	// 체인 관련 설정값 읽어옴
+	//fn.db.Get
+	// OTPRN생성후, db에 저장
+	//otprn := types.NewOtprn()
 }
