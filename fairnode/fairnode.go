@@ -7,6 +7,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"net"
@@ -68,6 +69,10 @@ func (fn *Fairnode) Start() error {
 	if err := fn.db.Start(); err != nil {
 		logger.Error("fail to db start", "msg", err)
 		return err
+	}
+
+	if config := fn.db.GetChainConfig(); config == nil {
+		return errors.New("chain config is nil, please run addChainConfig")
 	}
 
 	fn.db.InitActiveNode() // fairnode init Active node reset
