@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
@@ -17,7 +18,8 @@ import (
 // crypto.HexToECDSA("09bfa4fac90f9daade1722027f6350518c0c2a69728793f8753b2d166ada1a9c") - for test private key
 // 0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD - for test addresss
 const (
-	CLEAN_OLD_NODE_TERM = 3 // per min
+	CLEAN_OLD_NODE_TERM    = 3 // per min
+	CHECK_ACTIVE_NODE_TERM = 3 // per sec
 )
 
 type fnType uint64
@@ -27,9 +29,40 @@ const (
 	FN_FOLLOWER
 )
 
+type fnStatus uint64
+
+const (
+	PENDING fnStatus = iota
+	SAVE_OTPRN
+	MAKE_JOINTX
+)
+
+type league struct {
+	Otprn    *types.Otprn
+	Status   fnStatus
+	StatusCh chan fnStatus
+}
+
 var (
 	logger = log.New("fairnode", "main")
 )
+
+type leagueSet struct {
+	Running *league
+	Pending *league
+}
+
+func newLagueSet() *leagueSet {
+	ls := leagueSet{
+		Running: new(league),
+		Pending: new(league),
+	}
+
+	ls.Running.StatusCh = make(chan fnStatus)
+	ls.Pending.StatusCh = make(chan fnStatus)
+
+	return &ls
+}
 
 type Fairnode struct {
 	tcpListener net.Listener
@@ -38,6 +71,8 @@ type Fairnode struct {
 	db          fairdb.FairnodeDB
 	errCh       chan error
 	role        fnType
+
+	leagues *leagueSet
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -57,6 +92,7 @@ func NewFairnode() (*Fairnode, error) {
 		gRpcServer:  grpc.NewServer(),
 		errCh:       make(chan error),
 		privKey:     pKey,
+		leagues:     newLagueSet(),
 	}, nil
 }
 
@@ -79,11 +115,8 @@ func (fn *Fairnode) Start() error {
 
 	go fn.severLoop()
 	go fn.cleanOldNode()
-
-	if fn.role == FN_LEADER {
-		logger.Info("I'm Leader in faionode group")
-		go fn.makeOtprn()
-	}
+	go fn.roleCheck()
+	go fn.statusLoop()
 
 	select {
 	case err := <-fn.errCh:
@@ -95,7 +128,7 @@ func (fn *Fairnode) Start() error {
 }
 
 func (fn *Fairnode) severLoop() {
-	fairnode.RegisterFairnodeServiceServer(fn.gRpcServer, newServer(fn.db))
+	fairnode.RegisterFairnodeServiceServer(fn.gRpcServer, newServer(fn))
 	if err := fn.gRpcServer.Serve(fn.tcpListener); err != nil {
 		logger.Error("failed to serve: %v", err)
 		fn.errCh <- err
@@ -117,6 +150,50 @@ func (fn *Fairnode) GetAddress() common.Address {
 
 func (fn *Fairnode) GetPublicKey() ecdsa.PublicKey {
 	return fn.privKey.PublicKey
+}
+
+func (fn *Fairnode) SignHash(hash []byte) ([]byte, error) {
+	return crypto.Sign(hash, fn.privKey)
+}
+
+func (fn *Fairnode) Database() fairdb.FairnodeDB {
+	return fn.db
+}
+
+func (fn *Fairnode) LeagueSet() *leagueSet {
+	return fn.leagues
+}
+
+// role에 따른 작업 구분
+func (fn *Fairnode) roleCheck() {
+	defer logger.Warn("role check was dead")
+	if fn.role == FN_LEADER {
+		logger.Info("I'm Leader in fairnode group")
+		go fn.makeOtprn()
+	}
+}
+
+func (fn *Fairnode) statusLoop() {
+	defer logger.Warn("status loop was dead")
+	for {
+		select {
+		case status := <-fn.leagues.Running.StatusCh:
+			//controller running league
+			switch status {
+			case SAVE_OTPRN:
+			case MAKE_JOINTX:
+				fn.leagues.Running.Status = status
+			}
+		case status := <-fn.leagues.Pending.StatusCh:
+			//controller pending league
+			switch status {
+			case SAVE_OTPRN:
+			case MAKE_JOINTX:
+				fn.leagues.Pending.Status = status
+			}
+		}
+	}
+
 }
 
 // 3분에 한번씩 3분간 heartbeat를 보내지 않은 노드 삭제
@@ -143,8 +220,57 @@ func (fn *Fairnode) cleanOldNode() {
 }
 
 func (fn *Fairnode) makeOtprn() {
-	// 체인 관련 설정값 읽어옴
-	//fn.db.Get
-	// OTPRN생성후, db에 저장
-	//otprn := types.NewOtprn()
+	defer logger.Warn("make otprn was dead")
+	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
+
+	newOtprn := func() error {
+		if nodes := fn.db.GetActiveNode(); len(nodes) > 0 {
+			// 체인 관련 설정값 읽어옴
+			config := fn.db.GetChainConfig()
+			// OTPRN생성
+			otprn := types.NewOtprn(uint64(len(nodes)), fn.GetAddress(), *config)
+			// otprn 서명
+			err := otprn.SignOtprn(fn.privKey)
+			if err != nil {
+				return err
+			}
+
+			if fn.leagues.Running.Status == PENDING {
+				// running league 가 있을 경우
+				fn.leagues.Running = &league{Otprn: otprn, Status: SAVE_OTPRN}
+				// otprn db 저장
+				fn.db.SaveOtprn(*otprn)
+				logger.Info("make otprn for runing league", "otprn", otprn.HashOtprn().String())
+				return nil
+			}
+
+			if fn.leagues.Pending.Status == PENDING {
+				// running league 가 없을 경우
+				fn.leagues.Pending = &league{Otprn: otprn, Status: SAVE_OTPRN}
+				// otprn db 저장
+				fn.db.SaveOtprn(*otprn)
+				logger.Info("make otprn for pending league", "otprn", otprn.HashOtprn().String())
+				return nil
+			}
+
+		} else {
+			return errors.New(fmt.Sprintf("not enough active node count = %d", len(nodes)))
+		}
+		return nil
+	}
+
+	if err := newOtprn(); err != nil {
+		logger.Error("new otprn error")
+	}
+
+	// league status를 체크해서 주기마다 otprn 생성
+	for {
+		select {
+		case <-t.C:
+			if err := newOtprn(); err != nil {
+				logger.Error("new otprn error")
+			}
+		}
+	}
+
 }

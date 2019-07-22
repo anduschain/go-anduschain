@@ -124,7 +124,7 @@ func addChainConfig(ctx *cli.Context) error {
 
 	config := &types.ChainConfig{
 		Epoch:       100,
-		Cminer:      100,
+		Mminer:      100,
 		JoinTxPrice: big.NewInt(6),
 		FnFee:       big.NewFloat(0.0),
 	}
@@ -140,8 +140,8 @@ func addChainConfig(ctx *cli.Context) error {
 
 	// 리그 최대 참여자 (Cminer)
 	fmt.Printf("Input max number for league participate in (default : 100) ")
-	if cMiner := w.readDefaultInt(100); cMiner > 0 {
-		config.Cminer = cMiner
+	if mMiner := w.readDefaultInt(100); mMiner > 0 {
+		config.Mminer = mMiner
 	} else {
 		log.Crit("input miner number was wrong")
 	}

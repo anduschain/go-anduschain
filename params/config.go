@@ -29,8 +29,8 @@ var (
 	TestnetGenesisHash = common.HexToHash("0x45ba54287c71d0a90897930cef95e7bf494be2f2aafbbe6b7c79d27d0a75c821")
 
 	//FIXME(hakuna) : this is sample, you must modify is public key.
-	MainNetPubKey = "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138" // from fairnode
-	TestNetPubKey = "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"
+	MainNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode
+	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"
 )
 
 // chainID rule = 0xdao700 -> to dec 14288640 // mainnet
@@ -87,18 +87,18 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"},
+		Deb:                 &DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"},
 	}
 
 	TestChainConfig = &ChainConfig{
 		big.NewInt(3357), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
+		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
 
 	AllDebProtocolChanges = &ChainConfig{
 		big.NewInt(3358), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{FairPubKey: "03ca634cae0d49acb401d8a4c6b6fe8c55b70d115bf400769cc1400f3258cd3138"}}
+		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.

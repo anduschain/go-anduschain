@@ -29,7 +29,7 @@ type ChainConfig struct {
 	BlockNumber *big.Int // applying rule starting block number
 	JoinTxPrice *big.Int
 	FnFee       *big.Float
-	Cminer      uint64 // max node in league
+	Mminer      uint64 // max node in league
 	Epoch       uint64 // league change term
 	Sign        []byte
 }
@@ -39,7 +39,7 @@ func (cf *ChainConfig) Hash() common.Hash {
 		cf.BlockNumber,
 		cf.JoinTxPrice,
 		cf.FnFee,
-		cf.Cminer,
+		cf.Mminer,
 		cf.Epoch,
 	})
 }

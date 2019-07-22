@@ -210,9 +210,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 
-		// TODO(hakuna) : new version miner process
-		debClient:       client.NewDebClient(types.Network(config.NetworkType())), // new deb client
-		fnStatusCh:      make(chan types.FairnodeStatusEvent),                     // non async channel
+		// for deb client
+		fnStatusCh:      make(chan types.FairnodeStatusEvent), // non async channel
 		fnClientCloseCh: make(chan types.ClientClose),
 	}
 
@@ -232,6 +231,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.newWorkLoop(recommit)
 	go worker.resultLoop()
 	go worker.taskLoop()
+
+	worker.debClient = client.NewDebClient(config)
 
 	// TODO(hakuna) : new version miner process, event receiver
 	worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)

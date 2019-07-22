@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/event"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
@@ -24,6 +26,7 @@ const (
 
 var (
 	emptyByte []byte
+	emptyHash = common.Hash{}
 	log       = logger.New("deb", "deb client")
 )
 
@@ -57,9 +60,11 @@ type DebClient struct {
 	fnEndpoint string
 	grpcConn   *grpc.ClientConn
 	rpc        fairnode.FairnodeServiceClient
+	fnPubKey   *ecdsa.PublicKey
+	config     *params.ChainConfig
 
 	miner *Miner
-	otprn map[common.Hash]*types.Otprn
+	otprn []*types.Otprn
 
 	wallet accounts.Wallet
 
@@ -70,16 +75,30 @@ type DebClient struct {
 	// FIXME(hakuna) : add to process status
 }
 
-func NewDebClient(network types.Network) *DebClient {
+func NewDebClient(config *params.ChainConfig) *DebClient {
 	return &DebClient{
-		fnEndpoint: DefaultConfig.FairnodeEndpoint(network),
+		fnEndpoint: DefaultConfig.FairnodeEndpoint(types.Network(config.NetworkType())),
 		ctx:        context.Background(),
-		otprn:      make(map[common.Hash]*types.Otprn),
+		config:     config,
 	}
+}
+
+func (dc *DebClient) FnAddress() common.Address {
+	return crypto.PubkeyToAddress(*dc.fnPubKey)
+}
+
+func (dc *DebClient) FnPubKeyToByte() []byte {
+	return crypto.FromECDSAPub(dc.fnPubKey)
 }
 
 func (dc *DebClient) Start(backend Backend) error {
 	var err error
+
+	dc.fnPubKey, err = crypto.DecompressPubkey(common.Hex2Bytes(dc.config.Deb.FairPubKey))
+	if err != nil {
+		log.Error("DecompressPubkey", "msg", err)
+		return err
+	}
 
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{
@@ -99,14 +118,14 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 	// check for unlock account
-	_, err = dc.wallet.SignHash(acc, emptyByte)
+	_, err = dc.wallet.SignHash(acc, emptyHash.Bytes())
 	if err != nil {
 		return err
 	}
 
 	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure())
 	if err != nil {
-		log.Error("did not connect: %v", err)
+		log.Error("did not connect", "msg", err)
 		return err
 	}
 

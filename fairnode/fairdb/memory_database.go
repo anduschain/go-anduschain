@@ -47,7 +47,7 @@ func (m *MemDatabase) GetChainConfig() *types.ChainConfig {
 		BlockNumber: big.NewInt(1),
 		FnFee:       big.NewFloat(1.0),
 		JoinTxPrice: big.NewInt(6),
-		Cminer:      100,
+		Mminer:      100,
 		Epoch:       100,
 	}
 }

@@ -29,10 +29,13 @@ enum ProcessStatus {
 message Participate {
     bytes otprnHash = 1;
     string enode = 2;
+    string minerAddress = 3;
+    bytes sign = 4;
 }
 
 message ProcessMessage {
     ProcessStatus code = 1;
+    bytes sign = 2;
 }
 
 // OTRPN 요청

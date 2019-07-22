@@ -11,16 +11,18 @@ import (
 	log "gopkg.in/inconshreveable/log15.v2"
 )
 
+// cMiner : currnet active user count
+// mMiner : max league participate in count
+
 type Otprn struct {
 	Rand   [20]byte
 	FnAddr common.Address
-	Mminer uint64
+	Cminer uint64
 	Data   ChainConfig
 	Sign   []byte
 }
 
-func NewOtprn(mMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
-
+func NewOtprn(cMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
 	var rand [20]byte
 	_, err := crand.Read(rand[:])
 	if err != nil {
@@ -29,15 +31,15 @@ func NewOtprn(mMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
 	}
 
 	return &Otprn{
-		Mminer: mMiner,
+		Cminer: cMiner,
 		Rand:   rand,
 		FnAddr: fnAddr,
 		Data:   data,
 	}
 }
 
-func (otprn *Otprn) GetValue() (mMiner uint64, cMiner uint64, rand [20]byte) {
-	return otprn.Mminer, otprn.Data.Cminer, otprn.Rand
+func (otprn *Otprn) GetValue() (cMiner uint64, mMiner uint64, rand [20]byte) {
+	return otprn.Cminer, otprn.Data.Mminer, otprn.Rand
 }
 
 func (otprn *Otprn) SignOtprn(prv *ecdsa.PrivateKey) error {
@@ -52,7 +54,7 @@ func (otprn *Otprn) SignOtprn(prv *ecdsa.PrivateKey) error {
 func (otprn *Otprn) HashOtprn() common.Hash {
 	return rlpHash([]interface{}{
 		otprn.Rand,
-		otprn.Mminer,
+		otprn.Cminer,
 		otprn.Data,
 		otprn.FnAddr,
 	})

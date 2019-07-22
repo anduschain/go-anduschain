@@ -60,7 +60,8 @@ func ValidationSignHash(sign []byte, hash common.Hash, sAddr common.Address) err
 
 // OS 영향 받지 않게 rand값을 추출 하기 위해서 "math/rand" 사용
 func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
-	mMiner, cMiner, rand := otprn.GetValue()
+	cMiner, mMiner, rand := otprn.GetValue()
+
 	if mMiner > 0 {
 		div := uint64(cMiner / mMiner)
 		source := mrand.NewSource(makeSeed(rand, addr))

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/crypto"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"time"
 )
@@ -50,7 +51,7 @@ func (dc *DebClient) heartBeat() {
 				return
 			}
 		case err := <-errCh:
-			log.Error("heartBeat loop was dead because", "msg", err)
+			log.Error("heartBeat loop was dead", "msg", err)
 			return
 		}
 	}
@@ -88,7 +89,8 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 			return err
 		}
 
-		if res.Result == proto.Status_SUCCESS {
+		switch res.Result {
+		case proto.Status_SUCCESS:
 			if bytes.Compare(res.Otprn, emptyByte) == 0 {
 				log.Warn("do not participate in this league")
 				return nil
@@ -99,11 +101,20 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 					return err
 				}
 
-				if _, ok := dc.otprn[otprn.HashOtprn()]; !ok {
-					dc.otprn[otprn.HashOtprn()] = otprn
+				for _, o := range dc.otprn {
+					if o.HashOtprn() == otprn.HashOtprn() {
+						return nil
+					}
 				}
+
+				dc.otprn = append(dc.otprn, otprn) // otprn save
+				go dc.receiveFairnodeStatusLoop(*otprn)
 			}
+		case proto.Status_FAIL:
+			log.Warn("otprn get fail")
+			return nil
 		}
+
 		return nil
 	}
 
@@ -119,5 +130,55 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 				return
 			}
 		}
+	}
+}
+
+func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
+	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
+	msg := proto.Participate{
+		Enode:        dc.miner.Node.Enode,
+		MinerAddress: dc.miner.Node.MinerAddress,
+		OtprnHash:    otprn.HashOtprn().Bytes(),
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.Enode,
+		msg.MinerAddress,
+		msg.OtprnHash,
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("Participate info signature", "msg", err)
+		return
+	}
+
+	msg.Sign = sign
+
+	stream, err := dc.rpc.ProcessController(dc.ctx, &msg)
+	if err != nil {
+		log.Error("ProcessController", "msg", err)
+		return
+	}
+
+	defer stream.CloseSend()
+
+	for {
+		in, err := stream.Recv()
+		if err != nil {
+			log.Error("ProcessController stream receive", "msg", err)
+			return
+		}
+
+		hash := rlpHash([]interface{}{
+			in.Code,
+		})
+
+		if crypto.VerifySignature(dc.FnPubKeyToByte(), hash.Bytes(), in.Sign) {
+			log.Info("Process status message drived", in.Code)
+		} else {
+			return
+		}
+
 	}
 }
