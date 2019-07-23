@@ -11,6 +11,7 @@ import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/peer"
 	"math/big"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ var (
 type fnNode interface {
 	SignHash(hash []byte) ([]byte, error)
 	Database() fairdb.FairnodeDB
-	LeagueSet() *leagueSet
+	LeagueSet() map[common.Hash]*league
 }
 
 func errorEmpty(key string) error {
@@ -34,7 +35,7 @@ func errorEmpty(key string) error {
 type rpcServer struct {
 	fn      fnNode
 	db      fairdb.FairnodeDB
-	leagues *leagueSet
+	leagues map[common.Hash]*league
 }
 
 func newServer(fn fnNode) *rpcServer {
@@ -47,6 +48,13 @@ func newServer(fn fnNode) *rpcServer {
 
 // Heart Beat : notify to fairnode, I'm alive.
 func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (*empty.Empty, error) {
+	p, _ := peer.FromContext(ctx)
+	ip, err := ParseIP(p.Addr.String())
+	if err != nil {
+		logger.Error("HeartBeat ParseIP", "msg", err)
+		return nil, err
+	}
+
 	if nodeInfo.GetEnode() == "" {
 		return nil, errorEmpty("enode")
 	}
@@ -57,6 +65,10 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 
 	if nodeInfo.GetMinerAddress() == "" {
 		return nil, errorEmpty("miner's address")
+	}
+
+	if nodeInfo.GetPort() < 1025 {
+		return nil, errors.New("invalid port number")
 	}
 
 	if nodeInfo.GetNodeVersion() == "" {
@@ -76,10 +88,11 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		nodeInfo.GetNodeVersion(),
 		nodeInfo.GetChainID(),
 		nodeInfo.GetMinerAddress(),
+		nodeInfo.GetPort(),
 		nodeInfo.GetHead(),
 	})
 
-	err := ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
+	err = ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
@@ -95,11 +108,13 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		NodeVersion:  nodeInfo.GetNodeVersion(),
 		ChainID:      nodeInfo.GetChainID(),
 		MinerAddress: nodeInfo.GetMinerAddress(),
+		Host:         ip,
+		Port:         nodeInfo.GetPort(),
 		Head:         common.HexToHash(nodeInfo.GetHead()),
 		Time:         big.NewInt(time.Now().Unix()),
 	})
 
-	defer logger.Info("HeartBeat received", "enode", nodeInfo.Enode)
+	defer logger.Info("HeartBeat received", "enode", reduceStr(nodeInfo.GetEnode()))
 	return &empty.Empty{}, nil
 }
 
@@ -138,7 +153,7 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 	}
 
 	if !IsExist {
-		return nil, errors.New(fmt.Sprintf("does not exist in active node list addr = %s", nodeInfo.GetEnode()))
+		return nil, errors.New(fmt.Sprintf("does not exist in active node list addr = %s", reduceStr(nodeInfo.GetEnode())))
 	}
 
 	if otprn := rs.db.CurrentOtprn(); otprn != nil {
@@ -154,13 +169,16 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("otprn EncodeOtprn failed msg=%s", err.Error()))
 			}
-			logger.Info("otprn submitted", "otrpn", otprn.HashOtprn().String(), "enode", nodeInfo.GetEnode())
+
+			rs.db.SaveLeague(otprn.HashOtprn(), nodeInfo.GetEnode()) // 리그 리스트에 저장
+
+			logger.Info("otprn submitted", "otrpn", otprn.HashOtprn().String(), "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,
 				Otprn:  bOtprn,
 			}, nil
 		} else {
-			logger.Warn("otprn not submitted", "msg", "Not eligible", "enode", nodeInfo.GetEnode())
+			logger.Warn("otprn not submitted", "msg", "Not eligible", "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,
 			}, nil
@@ -170,6 +188,64 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			Result: proto.Status_FAIL,
 		}, nil
 	}
+}
+
+func (rs *rpcServer) RequestLeague(ctx context.Context, nodeInfo *proto.ReqLeague) (*proto.ResLeague, error) {
+	if nodeInfo.GetEnode() == "" {
+		return nil, errorEmpty("enode")
+	}
+
+	if nodeInfo.GetMinerAddress() == "" {
+		return nil, errorEmpty("miner's address")
+	}
+
+	if bytes.Compare(nodeInfo.GetOtprnHash(), emptyByte) == 0 {
+		return nil, errorEmpty("otprn hash")
+	}
+
+	if bytes.Compare(nodeInfo.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		nodeInfo.GetEnode(),
+		nodeInfo.GetMinerAddress(),
+		nodeInfo.GetOtprnHash(),
+	})
+
+	addr := common.HexToAddress(nodeInfo.GetMinerAddress())
+
+	err := ValidationSignHash(nodeInfo.GetSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	otprn := common.BytesToHash(nodeInfo.GetOtprnHash())
+	nodes := rs.db.GetLeagueList(otprn)
+
+	var enodes []string
+	for _, node := range nodes {
+		enodes = append(enodes, node.EnodeUrl())
+	}
+
+	m := proto.ResLeague{
+		Result: proto.Status_SUCCESS,
+		Enodes: enodes,
+	}
+
+	hash = rlpHash([]interface{}{
+		m.GetResult(),
+		m.GetEnodes(),
+	})
+
+	sign, err := rs.fn.SignHash(hash.Bytes())
+	if err != nil {
+		logger.Error("RequestLeague signature message", "msg", err)
+		return nil, err
+	}
+
+	m.Sign = sign // add sign
+	return &m, nil
 }
 
 func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairnode.FairnodeService_ProcessControllerServer) error {
@@ -202,26 +278,26 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 	}
 
 	var status *fnStatus // 해당되는 리그의 상태
-	switch common.BytesToHash(nodeInfo.GetOtprnHash()) {
-	case rs.leagues.Running.Otprn.HashOtprn():
-		status = &rs.leagues.Running.Status
-	case rs.leagues.Pending.Otprn.HashOtprn():
-		status = &rs.leagues.Pending.Status
-	default:
+	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
+	if league, ok := rs.leagues[otprnHash]; ok {
+		status = &league.Status
+	} else {
 		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", nodeInfo.GetOtprnHash()))
 	}
 
-	makeMsg := func(status fnStatus) *proto.ProcessMessage {
+	makeMsg := func(status *fnStatus) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
-		switch status {
+		switch *status {
 		case SAVE_OTPRN:
 			msg.Code = proto.ProcessStatus_WAIT
+		case MAKE_LEAGUE:
+			msg.Code = proto.ProcessStatus_MAKE_LEAGUE
 		}
 		return &msg
 	}
 
 	for {
-		m := makeMsg(*status) // make message
+		m := makeMsg(status) // make message
 		hash := rlpHash([]interface{}{
 			m.Code,
 		})
@@ -238,7 +314,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			logger.Error("ProcessController send status message", "msg", err)
 			return err
 		}
-		logger.Info("ProcessController send status message", "enode", nodeInfo.GetEnode())
+		logger.Info("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
 		time.Sleep(1 * time.Second)
 	}
 }

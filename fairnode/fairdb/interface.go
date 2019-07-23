@@ -27,7 +27,7 @@ type FairnodeDB interface {
 	SaveOtprn(otprn types.Otprn)
 	GetOtprn(otprnHash common.Hash) *types.Otprn
 
-	SaveLeagueList(otprnHash common.Hash, lists []types.HeartBeat)
+	SaveLeague(otprnHash common.Hash, enode string)
 	GetLeagueList(otprnHash common.Hash) []types.HeartBeat
 
 	SaveVote(otprn common.Hash, blockNum *big.Int, vote types.Voter)

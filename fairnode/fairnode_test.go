@@ -23,3 +23,24 @@ func TestIsJoinOK(t *testing.T) {
 
 	t.Log("node join ok result", IsJoinOK(otprn, nodeAddr)) // true is normal
 }
+
+func TestParseIP(t *testing.T) {
+
+	test := []string{
+		"[::1]:5006",                   // true
+		"127.0.0.1:8080",               // true
+		"2001:4860:0:2001::68",         // true
+		"[2001:4860:0:2001::68]:50000", // true
+		//"192.168.121.1", // fail
+	}
+
+	for _, p := range test {
+		ip, err := ParseIP(p)
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log(p, "//", ip)
+	}
+
+}

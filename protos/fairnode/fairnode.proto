@@ -10,6 +10,7 @@ service FairnodeService {
     rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
     rpc RequestOtprn(common.ReqOtprn) returns(common.ResOtprn) {}
     rpc ProcessController(common.Participate) returns (stream common.ProcessMessage) {}
+    rpc RequestLeague(common.ReqLeague) returns (common.ResLeague) {}
     rpc Vote(common.Vote) returns (google.protobuf.Empty) {}
     rpc RequestVoteResult(common.ReqVoteResult) returns (common.ResVoteResult) {}
     rpc SealConfirm(common.ReqConfirmSeal) returns (stream common.ResConfirmSeal) {}

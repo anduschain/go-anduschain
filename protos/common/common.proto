@@ -14,16 +14,18 @@ message HeartBeat {
     string chainID = 3;
     string nodeVersion = 4;
     string head = 5;
-    bytes sign = 6;
+    int64 port=6;
+    bytes sign = 7;
 }
 
 enum ProcessStatus {
     WAIT = 0;
-    MAKE_JOIN_TX = 1;
-    MAKE_BLOCK = 2;
-    VOTE_START = 3;
-    VOTE_COMPLETE = 4;
-    REJECT = 5;
+    MAKE_LEAGUE = 1;
+    MAKE_JOIN_TX = 2;
+    MAKE_BLOCK = 3;
+    VOTE_START = 4;
+    VOTE_COMPLETE = 5;
+    REJECT = 6;
 }
 
 message Participate {
@@ -48,6 +50,20 @@ message ReqOtprn {
 message ResOtprn {
     Status result = 1;
     bytes otprn = 2;
+}
+
+// 리그 요청
+message ReqLeague {
+    bytes otprnHash = 1;
+    string enode = 2;
+    string minerAddress = 3;
+    bytes sign = 4;
+}
+
+message ResLeague {
+    Status result = 1;
+    repeated string enodes = 2;
+    bytes sign = 3;
 }
 
 // 투표

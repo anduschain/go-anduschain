@@ -19,7 +19,7 @@ type MemDatabase struct {
 
 	NodeList   map[string]types.HeartBeat
 	OtprnList  []types.Otprn
-	LeagueList map[common.Hash][]types.HeartBeat
+	LeagueList map[common.Hash]map[string]types.HeartBeat
 	VoteList   map[common.Hash][]types.Voter
 	BlockChain []types.Block
 }
@@ -27,7 +27,7 @@ type MemDatabase struct {
 func NewMemDatabase() *MemDatabase {
 	return &MemDatabase{
 		NodeList:   make(map[string]types.HeartBeat),
-		LeagueList: make(map[common.Hash][]types.HeartBeat),
+		LeagueList: make(map[common.Hash]map[string]types.HeartBeat),
 		VoteList:   make(map[common.Hash][]types.Voter),
 		ConfigList: make(map[common.Hash]types.ChainConfig),
 	}
@@ -123,19 +123,29 @@ func (m *MemDatabase) GetOtprn(otprnHash common.Hash) *types.Otprn {
 	return nil
 }
 
-func (m *MemDatabase) SaveLeagueList(otprnHash common.Hash, lists []types.HeartBeat) {
+func (m *MemDatabase) SaveLeague(otprnHash common.Hash, enode string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.LeagueList[otprnHash] = lists
+	if list, ok := m.LeagueList[otprnHash]; ok {
+		if _, ok := list[enode]; !ok {
+			m.LeagueList[otprnHash][enode] = m.NodeList[enode]
+		}
+	} else {
+		m.LeagueList[otprnHash] = make(map[string]types.HeartBeat)
+		m.LeagueList[otprnHash][enode] = m.NodeList[enode]
+	}
 }
 
 func (m *MemDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var leagues []types.HeartBeat
 	if list, ok := m.LeagueList[otprnHash]; ok {
-		return list
+		for _, node := range list {
+			leagues = append(leagues, node)
+		}
 	}
-	return nil
+	return leagues
 }
 
 func (m *MemDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote types.Voter) {

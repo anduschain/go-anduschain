@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"math/big"
 )
@@ -19,9 +20,15 @@ type HeartBeat struct {
 	MinerAddress string
 	ChainID      string
 	NodeVersion  string
+	Host         string
+	Port         int64
 	Time         *big.Int
 	Head         common.Hash
 	Sign         []byte
+}
+
+func (hb HeartBeat) EnodeUrl() string {
+	return fmt.Sprintf("enode://%s@%s:%d", hb.Enode, hb.Host, hb.Port)
 }
 
 // otprn data

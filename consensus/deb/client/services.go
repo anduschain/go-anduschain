@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"time"
 )
@@ -58,7 +58,7 @@ func (dc *DebClient) heartBeat() {
 }
 
 func (dc *DebClient) requestOtprn(errCh chan error) {
-	t := time.NewTicker(REQ_OTPRN_TERM * time.Minute)
+	t := time.NewTicker(REQ_OTPRN_TERM * time.Second)
 	defer func() {
 		errCh <- errors.New("request otprn error occurred")
 		log.Warn("request otprn loop was dead")
@@ -111,7 +111,7 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 				go dc.receiveFairnodeStatusLoop(*otprn)
 			}
 		case proto.Status_FAIL:
-			log.Warn("otprn get fail")
+			log.Warn("otprn got nil")
 			return nil
 		}
 
@@ -135,6 +135,7 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
+
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,
 		MinerAddress: dc.miner.Node.MinerAddress,
@@ -174,11 +175,26 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			in.Code,
 		})
 
-		if crypto.VerifySignature(dc.FnPubKeyToByte(), hash.Bytes(), in.Sign) {
-			log.Info("Process status message drived", in.Code)
-		} else {
+		if err := ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
+			log.Error("VerifySignature", "msg", err)
 			return
 		}
 
+		log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String())
+
+		switch in.GetCode() {
+		case proto.ProcessStatus_MAKE_LEAGUE:
+			enodes := dc.requestLeague()
+			for _, enode := range enodes {
+				dc.backend.Server().AddPeer(discover.MustParseNode(enode))
+				log.Info("make league status", "addPeer", enodes)
+			}
+		}
+
 	}
+}
+
+func (dc *DebClient) requestLeague() []string {
+	// 리그 받아와서 처리
+	return nil
 }

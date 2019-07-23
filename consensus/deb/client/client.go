@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	HEART_BEAT_TERM = 3 // per min
-	REQ_OTPRN_TERM  = 1 // per min
+	HEART_BEAT_TERM = 3  // per min
+	REQ_OTPRN_TERM  = 10 // per sec
 )
 
 var (
@@ -42,6 +42,7 @@ func (m *Miner) Hash() common.Hash {
 		m.Node.NodeVersion,
 		m.Node.ChainID,
 		m.Node.MinerAddress,
+		m.Node.Port,
 		m.Node.Head,
 	})
 }
@@ -63,8 +64,9 @@ type DebClient struct {
 	fnPubKey   *ecdsa.PublicKey
 	config     *params.ChainConfig
 
-	miner *Miner
-	otprn []*types.Otprn
+	backend Backend
+	miner   *Miner
+	otprn   []*types.Otprn
 
 	wallet accounts.Wallet
 
@@ -87,10 +89,6 @@ func (dc *DebClient) FnAddress() common.Address {
 	return crypto.PubkeyToAddress(*dc.fnPubKey)
 }
 
-func (dc *DebClient) FnPubKeyToByte() []byte {
-	return crypto.FromECDSAPub(dc.fnPubKey)
-}
-
 func (dc *DebClient) Start(backend Backend) error {
 	var err error
 
@@ -106,11 +104,14 @@ func (dc *DebClient) Start(backend Backend) error {
 			NodeVersion:  params.Version,
 			ChainID:      backend.BlockChain().Config().ChainID.String(),
 			MinerAddress: backend.Coinbase().String(),
+			Port:         int64(backend.Server().NodeInfo().Ports.Listener),
 			Head:         backend.BlockChain().CurrentHeader().Hash().String(),
 		},
 		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),
 	}
+
+	dc.backend = backend
 
 	acc := dc.miner.Miner
 	dc.wallet, err = dc.miner.Accounts.Find(acc)

@@ -34,35 +34,18 @@ type fnStatus uint64
 const (
 	PENDING fnStatus = iota
 	SAVE_OTPRN
-	MAKE_JOINTX
+	MAKE_LEAGUE
+	MAKE_PENDING_LEAGUE
 )
 
 type league struct {
-	Otprn    *types.Otprn
-	Status   fnStatus
-	StatusCh chan fnStatus
+	Otprn  *types.Otprn
+	Status fnStatus
 }
 
 var (
 	logger = log.New("fairnode", "main")
 )
-
-type leagueSet struct {
-	Running *league
-	Pending *league
-}
-
-func newLagueSet() *leagueSet {
-	ls := leagueSet{
-		Running: new(league),
-		Pending: new(league),
-	}
-
-	ls.Running.StatusCh = make(chan fnStatus)
-	ls.Pending.StatusCh = make(chan fnStatus)
-
-	return &ls
-}
 
 type Fairnode struct {
 	tcpListener net.Listener
@@ -72,7 +55,8 @@ type Fairnode struct {
 	errCh       chan error
 	role        fnType
 
-	leagues *leagueSet
+	currentLeague common.Hash
+	leagues       map[common.Hash]*league
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -88,11 +72,12 @@ func NewFairnode() (*Fairnode, error) {
 	}
 
 	return &Fairnode{
-		tcpListener: lis,
-		gRpcServer:  grpc.NewServer(),
-		errCh:       make(chan error),
-		privKey:     pKey,
-		leagues:     newLagueSet(),
+		tcpListener:   lis,
+		gRpcServer:    grpc.NewServer(),
+		errCh:         make(chan error),
+		privKey:       pKey,
+		currentLeague: common.Hash{},
+		leagues:       make(map[common.Hash]*league),
 	}, nil
 }
 
@@ -117,6 +102,7 @@ func (fn *Fairnode) Start() error {
 	go fn.cleanOldNode()
 	go fn.roleCheck()
 	go fn.statusLoop()
+	go fn.processManageLoop()
 
 	select {
 	case err := <-fn.errCh:
@@ -160,7 +146,7 @@ func (fn *Fairnode) Database() fairdb.FairnodeDB {
 	return fn.db
 }
 
-func (fn *Fairnode) LeagueSet() *leagueSet {
+func (fn *Fairnode) LeagueSet() map[common.Hash]*league {
 	return fn.leagues
 }
 
@@ -175,21 +161,12 @@ func (fn *Fairnode) roleCheck() {
 
 func (fn *Fairnode) statusLoop() {
 	defer logger.Warn("status loop was dead")
+	t := time.NewTicker(1 * time.Second)
 	for {
 		select {
-		case status := <-fn.leagues.Running.StatusCh:
-			//controller running league
-			switch status {
-			case SAVE_OTPRN:
-			case MAKE_JOINTX:
-				fn.leagues.Running.Status = status
-			}
-		case status := <-fn.leagues.Pending.StatusCh:
-			//controller pending league
-			switch status {
-			case SAVE_OTPRN:
-			case MAKE_JOINTX:
-				fn.leagues.Pending.Status = status
+		case <-t.C:
+			for id, league := range fn.leagues {
+				logger.Info("status", "otprn", id.String(), "code", league.Status)
 			}
 		}
 	}
@@ -219,6 +196,20 @@ func (fn *Fairnode) cleanOldNode() {
 	}
 }
 
+func (fn *Fairnode) processManageLoop() {
+	t := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case <-t.C:
+			// 현제 리그 접속자수 체크
+			nodes := fn.db.GetLeagueList(fn.currentLeague)
+			if len(nodes) > 0 {
+				fn.leagues[fn.currentLeague].Status = MAKE_LEAGUE
+			}
+		}
+	}
+}
+
 func (fn *Fairnode) makeOtprn() {
 	defer logger.Warn("make otprn was dead")
 	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
@@ -235,40 +226,39 @@ func (fn *Fairnode) makeOtprn() {
 				return err
 			}
 
-			if fn.leagues.Running.Status == PENDING {
-				// running league 가 있을 경우
-				fn.leagues.Running = &league{Otprn: otprn, Status: SAVE_OTPRN}
-				// otprn db 저장
+			if _, ok := fn.leagues[otprn.HashOtprn()]; !ok {
+				// make new league
+				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: PENDING}
 				fn.db.SaveOtprn(*otprn)
-				logger.Info("make otprn for runing league", "otprn", otprn.HashOtprn().String())
+				fn.currentLeague = otprn.HashOtprn()
+				logger.Info("make otprn for league", "otprn", otprn.HashOtprn().String())
 				return nil
+			} else {
+				return errors.New(fmt.Sprintf("league was exist otprn=%s", otprn.HashOtprn().String()))
 			}
-
-			if fn.leagues.Pending.Status == PENDING {
-				// running league 가 없을 경우
-				fn.leagues.Pending = &league{Otprn: otprn, Status: SAVE_OTPRN}
-				// otprn db 저장
-				fn.db.SaveOtprn(*otprn)
-				logger.Info("make otprn for pending league", "otprn", otprn.HashOtprn().String())
-				return nil
-			}
-
 		} else {
 			return errors.New(fmt.Sprintf("not enough active node count = %d", len(nodes)))
 		}
-		return nil
 	}
 
 	if err := newOtprn(); err != nil {
-		logger.Error("new otprn error")
+		logger.Error("new otprn error", "msg", err)
 	}
 
 	// league status를 체크해서 주기마다 otprn 생성
 	for {
 		select {
 		case <-t.C:
-			if err := newOtprn(); err != nil {
-				logger.Error("new otprn error")
+			if league, ok := fn.leagues[fn.currentLeague]; ok {
+				if league.Status == MAKE_PENDING_LEAGUE {
+					if err := newOtprn(); err != nil {
+						logger.Error("new otprn error", "msg", err)
+					}
+				}
+			} else {
+				if err := newOtprn(); err != nil {
+					logger.Error("new otprn error", "msg", err)
+				}
 			}
 		}
 	}

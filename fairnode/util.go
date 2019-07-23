@@ -12,6 +12,7 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"io/ioutil"
 	mrand "math/rand"
+	"net"
 	"os"
 	"path/filepath"
 )
@@ -82,6 +83,22 @@ func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
 	return false
 }
 
+func ParseIP(p string) (string, error) {
+	ip, _, err := net.SplitHostPort(p)
+	if err != nil {
+		if net.ParseIP(p).To4() == nil && net.ParseIP(p).To16() != nil {
+			return fmt.Sprintf("[%s]", p), nil
+		}
+		return "", err
+	}
+
+	if net.ParseIP(ip).To4() == nil {
+		ip = fmt.Sprintf("[%s]", ip)
+	}
+
+	return ip, nil
+}
+
 func makeSeed(rand [20]byte, addr [20]byte) int64 {
 	var seed int64
 	for i := range rand {
@@ -95,4 +112,15 @@ func rlpHash(x interface{}) (h common.Hash) {
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
+}
+
+func reduceStr(str string) string {
+	s := []rune(str)
+	if len(s) > 30 {
+		front := string(s[:10])
+		end := string(s[len(s)-11:])
+		return fmt.Sprintf("%s...%s", front, end)
+	} else {
+		return str
+	}
 }
