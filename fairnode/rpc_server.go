@@ -223,6 +223,7 @@ func (rs *rpcServer) RequestLeague(ctx context.Context, nodeInfo *proto.ReqLeagu
 	otprn := common.BytesToHash(nodeInfo.GetOtprnHash())
 	nodes := rs.db.GetLeagueList(otprn)
 
+	// TODO(hakuna) : self를 제외한 enodeurl 전송 구현 해야됨
 	var enodes []string
 	for _, node := range nodes {
 		enodes = append(enodes, node.EnodeUrl())
@@ -277,7 +278,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
-	var status *fnStatus // 해당되는 리그의 상태
+	var status *types.FnStatus // 해당되는 리그의 상태
 	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
 	if league, ok := rs.leagues[otprnHash]; ok {
 		status = &league.Status
@@ -285,13 +286,21 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", nodeInfo.GetOtprnHash()))
 	}
 
-	makeMsg := func(status *fnStatus) *proto.ProcessMessage {
+	makeMsg := func(status *types.FnStatus) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
 		switch *status {
-		case SAVE_OTPRN:
+		case types.SAVE_OTPRN:
 			msg.Code = proto.ProcessStatus_WAIT
-		case MAKE_LEAGUE:
+		case types.MAKE_LEAGUE:
 			msg.Code = proto.ProcessStatus_MAKE_LEAGUE
+		case types.MAKE_JOIN_TX:
+			msg.Code = proto.ProcessStatus_MAKE_JOIN_TX
+		case types.MAKE_BLOCK:
+			msg.Code = proto.ProcessStatus_MAKE_BLOCK
+		case types.VOTE_START:
+			msg.Code = proto.ProcessStatus_VOTE_START
+		case types.VOTE_COMPLETE:
+			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
 		}
 		return &msg
 	}

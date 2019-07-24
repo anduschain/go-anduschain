@@ -74,14 +74,33 @@ type DebClient struct {
 	statusFeed  event.Feed // process status feed
 	closeClient event.Feed
 
+	exitWoker chan struct{}
+
 	// FIXME(hakuna) : add to process status
 }
 
-func NewDebClient(config *params.ChainConfig) *DebClient {
-	return &DebClient{
+func NewDebClient(config *params.ChainConfig, exitWoker chan struct{}) *DebClient {
+	dc := DebClient{
 		fnEndpoint: DefaultConfig.FairnodeEndpoint(types.Network(config.NetworkType())),
 		ctx:        context.Background(),
 		config:     config,
+		exitWoker:  exitWoker,
+	}
+
+	go dc.workerCheckLoop()
+
+	return &dc
+}
+
+func (dc *DebClient) workerCheckLoop() {
+	for {
+		select {
+		case <-dc.exitWoker:
+			// system out
+			// worker was dead, and close channel.
+			dc.scope.Close()
+			return
+		}
 	}
 }
 
@@ -147,8 +166,8 @@ func (dc *DebClient) Stop() {
 }
 
 func (dc *DebClient) close() {
-	dc.scope.Close()    // event channel close
-	dc.grpcConn.Close() // grpc connection close
+	dc.otprn = dc.otprn[:0] // init otprn
+	dc.grpcConn.Close()     // grpc connection close
 	dc.closeClient.Send(types.ClientClose{})
 	atomic.StoreInt32(&dc.running, 0)
 }

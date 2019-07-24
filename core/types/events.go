@@ -51,5 +51,5 @@ type ChainHeadEvent struct{ Block *Block }
 
 // for deb consensus
 type NewLeagueBlockEvent struct{ Block *Block }
-type FairnodeStatusEvent struct{ Status string }
+type FairnodeStatusEvent struct{ Status FnStatus }
 type ClientClose struct{}

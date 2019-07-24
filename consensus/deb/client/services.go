@@ -164,6 +164,10 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 	defer stream.CloseSend()
 
+	var (
+		isReqLeague bool
+	)
+
 	for {
 		in, err := stream.Recv()
 		if err != nil {
@@ -184,17 +188,54 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 		switch in.GetCode() {
 		case proto.ProcessStatus_MAKE_LEAGUE:
-			enodes := dc.requestLeague()
-			for _, enode := range enodes {
-				dc.backend.Server().AddPeer(discover.MustParseNode(enode))
-				log.Info("make league status", "addPeer", enodes)
+			if !isReqLeague {
+				enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
+				for _, enode := range enodes {
+					dc.backend.Server().AddPeer(discover.MustParseNode(enode))
+					log.Info("make league status", "addPeer", enodes)
+				}
+				isReqLeague = true
 			}
+		case proto.ProcessStatus_MAKE_JOIN_TX:
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_JOIN_TX})
+		case proto.ProcessStatus_MAKE_BLOCK:
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK})
 		}
 
 	}
 }
 
-func (dc *DebClient) requestLeague() []string {
-	// 리그 받아와서 처리
-	return nil
+func (dc *DebClient) requestLeague(otprn types.Otprn) []string {
+	msg := proto.ReqLeague{
+		Enode:        dc.miner.Node.Enode,
+		MinerAddress: dc.miner.Node.MinerAddress,
+		OtprnHash:    otprn.HashOtprn().Bytes(),
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.Enode,
+		msg.MinerAddress,
+		msg.OtprnHash,
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("requestLeague info signature", "msg", err)
+		return nil
+	}
+
+	msg.Sign = sign
+
+	res, err := dc.rpc.RequestLeague(dc.ctx, &msg)
+	if err != nil {
+		log.Error("request league", "msg", err)
+		return nil
+	}
+
+	if res.GetResult() == proto.Status_SUCCESS {
+		log.Info("request league received", "count", len(res.GetEnodes()))
+		return res.GetEnodes()
+	} else {
+		return nil
+	}
 }

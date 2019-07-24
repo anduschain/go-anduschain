@@ -50,3 +50,39 @@ func (cf *ChainConfig) Hash() common.Hash {
 		cf.Epoch,
 	})
 }
+
+type FnStatus uint64
+
+func (f FnStatus) String() string {
+	switch f {
+	case PENDING:
+		return "PENDING"
+	case SAVE_OTPRN:
+		return "SAVE_OTPRN"
+	case MAKE_LEAGUE:
+		return "MAKE_LEAGUE"
+	case MAKE_JOIN_TX:
+		return "MAKE_JOIN_TX"
+	case MAKE_BLOCK:
+		return "MAKE_BLOCK"
+	case VOTE_START:
+		return "VOTE_START"
+	case VOTE_COMPLETE:
+		return "VOTE_COMPLETE"
+	case MAKE_PENDING_LEAGUE:
+		return "MAKE_PENDING_LEAGUE"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+const (
+	PENDING FnStatus = iota
+	SAVE_OTPRN
+	MAKE_LEAGUE
+	MAKE_JOIN_TX
+	MAKE_BLOCK
+	VOTE_START
+	VOTE_COMPLETE
+	MAKE_PENDING_LEAGUE
+)

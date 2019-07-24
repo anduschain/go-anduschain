@@ -29,18 +29,9 @@ const (
 	FN_FOLLOWER
 )
 
-type fnStatus uint64
-
-const (
-	PENDING fnStatus = iota
-	SAVE_OTPRN
-	MAKE_LEAGUE
-	MAKE_PENDING_LEAGUE
-)
-
 type league struct {
 	Otprn  *types.Otprn
-	Status fnStatus
+	Status types.FnStatus
 }
 
 var (
@@ -102,7 +93,6 @@ func (fn *Fairnode) Start() error {
 	go fn.cleanOldNode()
 	go fn.roleCheck()
 	go fn.statusLoop()
-	go fn.processManageLoop()
 
 	select {
 	case err := <-fn.errCh:
@@ -156,6 +146,7 @@ func (fn *Fairnode) roleCheck() {
 	if fn.role == FN_LEADER {
 		logger.Info("I'm Leader in fairnode group")
 		go fn.makeOtprn()
+		go fn.processManageLoop()
 	}
 }
 
@@ -201,10 +192,31 @@ func (fn *Fairnode) processManageLoop() {
 	for {
 		select {
 		case <-t.C:
-			// 현제 리그 접속자수 체크
-			nodes := fn.db.GetLeagueList(fn.currentLeague)
-			if len(nodes) > 0 {
-				fn.leagues[fn.currentLeague].Status = MAKE_LEAGUE
+			if l, ok := fn.leagues[fn.currentLeague]; ok {
+				status := l.Status
+				switch status {
+				case types.PENDING:
+					// now league connection count check
+					nodes := fn.db.GetLeagueList(fn.currentLeague)
+					if len(nodes) > 0 {
+						l.Status = types.MAKE_LEAGUE
+					}
+				case types.MAKE_LEAGUE:
+					time.Sleep(3 * time.Second)
+					l.Status = types.MAKE_JOIN_TX
+				case types.MAKE_JOIN_TX:
+					time.Sleep(3 * time.Second)
+					l.Status = types.MAKE_BLOCK
+				case types.MAKE_BLOCK:
+					time.Sleep(3 * time.Second)
+					l.Status = types.VOTE_START
+				case types.VOTE_START:
+					time.Sleep(3 * time.Second)
+					l.Status = types.VOTE_COMPLETE
+				case types.VOTE_COMPLETE:
+					time.Sleep(3 * time.Second)
+					l.Status = types.MAKE_JOIN_TX
+				}
 			}
 		}
 	}
@@ -228,9 +240,11 @@ func (fn *Fairnode) makeOtprn() {
 
 			if _, ok := fn.leagues[otprn.HashOtprn()]; !ok {
 				// make new league
-				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: PENDING}
+				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING}
 				fn.db.SaveOtprn(*otprn)
-				fn.currentLeague = otprn.HashOtprn()
+
+				fn.currentLeague = otprn.HashOtprn() // TODO(hakuna) : currnet <-> pending ... 처리
+
 				logger.Info("make otprn for league", "otprn", otprn.HashOtprn().String())
 				return nil
 			} else {
@@ -250,7 +264,7 @@ func (fn *Fairnode) makeOtprn() {
 		select {
 		case <-t.C:
 			if league, ok := fn.leagues[fn.currentLeague]; ok {
-				if league.Status == MAKE_PENDING_LEAGUE {
+				if league.Status == types.MAKE_PENDING_LEAGUE {
 					if err := newOtprn(); err != nil {
 						logger.Error("new otprn error", "msg", err)
 					}

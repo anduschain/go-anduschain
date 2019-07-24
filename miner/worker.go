@@ -185,6 +185,8 @@ type worker struct {
 	fnStatusdSub     event.Subscription
 	fnClientCloseCh  chan types.ClientClose
 	fnClientCLoseSub event.Subscription
+
+	fnStatus types.FnStatus
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -232,11 +234,11 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
-	worker.debClient = client.NewDebClient(config)
-
+	worker.debClient = client.NewDebClient(config, worker.exitCh)
 	// TODO(hakuna) : new version miner process, event receiver
 	worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
 	worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
+
 	go worker.clientStatusLoop() // client close check and mininig canceled
 	go worker.leagueStatusLoop() // for league status message
 
@@ -247,10 +249,14 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 }
 
 func (w *worker) leagueStatusLoop() {
+	defer log.Warn("leagueStatusLoop was dead")
+	defer w.fnStatusdSub.Unsubscribe()
+
 	for {
 		select {
 		case ev := <-w.fnStatusCh:
-			log.Info("=======>FairnodeStatusCh", ev.Status)
+			log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
+			w.fnStatus = ev.Status
 		case <-w.fnStatusdSub.Err():
 			return
 		}
@@ -259,20 +265,14 @@ func (w *worker) leagueStatusLoop() {
 
 func (w *worker) clientStatusLoop() {
 	defer log.Warn("fair client was dead and worker exited")
-
-	closeWorker := func() {
-		w.exitCh <- struct{}{}
-		w.close()
-		w.stop()
-	}
+	defer w.fnClientCLoseSub.Unsubscribe()
 
 	for {
 		select {
 		case <-w.fnClientCloseCh:
-			closeWorker()
-			return
+			log.Warn("deb client was close")
+			w.stop()
 		case <-w.fnClientCLoseSub.Err():
-			closeWorker()
 			return
 		}
 	}
