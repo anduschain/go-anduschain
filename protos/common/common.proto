@@ -37,7 +37,8 @@ message Participate {
 
 message ProcessMessage {
     ProcessStatus code = 1;
-    bytes sign = 2;
+    bytes currentBlockNum = 2;
+    bytes sign = 3;
 }
 
 // OTRPN 요청

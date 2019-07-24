@@ -6,6 +6,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	proto "github.com/anduschain/go-anduschain/protos/common"
+	"math/big"
 	"time"
 )
 
@@ -166,6 +167,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 	var (
 		isReqLeague bool
+		isJoinTx    bool
 	)
 
 	for {
@@ -197,11 +199,46 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				isReqLeague = true
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_JOIN_TX})
+			if isJoinTx {
+				continue
+			}
+
+			fnBlockNum := new(big.Int)
+			fnBlockNum.SetBytes(in.GetCurrentBlockNum())
+			current := dc.backend.BlockChain().CurrentHeader().Number
+			if current.Cmp(fnBlockNum) == 0 {
+				// make join transaction
+				state := dc.backend.TxPool().State()
+				coinbase := dc.miner.Miner.Address
+
+				nonce := state.GetNonce(coinbase)
+				jnonce := state.GetJoinNonce(coinbase)
+
+				bOtrpn, err := otprn.EncodeOtprn()
+				if err != nil {
+					log.Error("otprn encode err", "msg", err)
+					return
+				}
+
+				sTx, err := dc.wallet.SignTx(dc.miner.Miner, types.NewJoinTransaction(nonce, jnonce, bOtrpn), dc.config.ChainID)
+				if err != nil {
+					log.Error("signature join transaction", "msg", err)
+					return
+				}
+
+				if err := dc.backend.TxPool().AddLocal(sTx); err != nil {
+					log.Error("join transaction add local", "msg", err)
+					return
+				}
+
+				isJoinTx = true
+				log.Info("made join transaction", "hash", sTx.Hash())
+			} else {
+				log.Warn("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
+			}
 		case proto.ProcessStatus_MAKE_BLOCK:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK})
 		}
-
 	}
 }
 

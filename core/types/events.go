@@ -50,6 +50,11 @@ type ChainSideEvent struct {
 type ChainHeadEvent struct{ Block *Block }
 
 // for deb consensus
-type NewLeagueBlockEvent struct{ Block *Block }
+type NewLeagueBlockEvent struct {
+	Block   *Block
+	Address common.Address
+	Sign    []byte
+}
+
 type FairnodeStatusEvent struct{ Status FnStatus }
 type ClientClose struct{}

@@ -74,8 +74,6 @@ type ProtocolManager struct {
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
 
-	acceptJoinTxs uint32 // Flag whether we're considered synchronised (enables transaction processing) // TODO : add
-
 	txpool      txPool
 	blockchain  *core.BlockChain
 	chainconfig *params.ChainConfig
@@ -90,8 +88,6 @@ type ProtocolManager struct {
 	eventMux *event.TypeMux
 	txsCh    chan types.NewTxsEvent
 	txsSub   event.Subscription
-
-	joinTxsCh chan types.NewJoinTxsEvent //TODO(hakuna) : new version added
 
 	minedBlockSub *event.TypeMuxSubscription
 
@@ -224,10 +220,6 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.txsCh = make(chan types.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
-
-	pm.joinTxsCh = make(chan types.NewJoinTxsEvent, joinTxChanSize)
-	//pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh) // FIXME(hakuna) : join tx pool
-	go pm.joinTxBroadcastLoop()
 
 	// broadcast mined blocks
 	pm.minedBlockSub = pm.eventMux.Subscribe(types.NewMinedBlockEvent{})
@@ -750,24 +742,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		//	pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
 		//}
 
-	case msg.Code == JoinTxMsg:
-		if atomic.LoadUint32(&pm.acceptJoinTxs) == 0 {
-			break
-		}
-		// Transactions can be processed, parse all of them and deliver to the pool
-		var txs []*types.Transaction
-		if err := msg.Decode(&txs); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
-		}
-		for i, tx := range txs {
-			// Validate and mark the remote transaction
-			if tx == nil {
-				return errResp(ErrDecode, "join transaction %d is nil", i)
-			}
-			p.MarkTransaction(tx.Hash())
-		}
-
-		pm.txpool.AddRemotes(txs)
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
 	}
@@ -829,27 +803,6 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 	}
 }
 
-// BroadcastTxs will propagate a batch of transactions to all peers which are not known to
-// already have the given transaction.
-func (pm *ProtocolManager) BroadcastJoinTxs(jtsx types.Transactions) {
-	var jtxset = make(map[*peer]types.Transactions)
-
-	// Broadcast join transactions to a batch of peers not knowing about it
-	for _, jtx := range jtsx {
-		peers := pm.peers.PeersWithoutTx(jtx.Hash())
-		for _, peer := range peers {
-			jtxset[peer] = append(jtxset[peer], jtx)
-		}
-
-		log.Trace("Broadcast join transaction", "hash", jtx.Hash(), "recipients", len(peers))
-
-	}
-	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
-	for peer, txs := range jtxset {
-		peer.AsyncSendJoinTransactions(txs)
-	}
-}
-
 // Mined broadcast loop
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
@@ -869,19 +822,6 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
-			return
-		}
-	}
-}
-
-func (pm *ProtocolManager) joinTxBroadcastLoop() {
-	for {
-		select {
-		case event := <-pm.joinTxsCh:
-			pm.BroadcastJoinTxs(event.Txs)
-
-		// Err() channel will be closed when unsubscribing.
-		case <-pm.txsSub.Err(): // FIXME(hakuna) : join tx pool
 			return
 		}
 	}

@@ -279,14 +279,16 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 	}
 
 	var status *types.FnStatus // 해당되는 리그의 상태
+	var currnet *big.Int
 	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
 	if league, ok := rs.leagues[otprnHash]; ok {
 		status = &league.Status
+		currnet = league.Current
 	} else {
 		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", nodeInfo.GetOtprnHash()))
 	}
 
-	makeMsg := func(status *types.FnStatus) *proto.ProcessMessage {
+	makeMsg := func(status *types.FnStatus, currentNum []byte) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
 		switch *status {
 		case types.SAVE_OTPRN:
@@ -302,11 +304,13 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		case types.VOTE_COMPLETE:
 			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
 		}
+		msg.CurrentBlockNum = currentNum
 		return &msg
 	}
 
 	for {
-		m := makeMsg(status) // make message
+
+		m := makeMsg(status, currnet.Bytes()) // make message
 		hash := rlpHash([]interface{}{
 			m.Code,
 		})

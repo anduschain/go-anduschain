@@ -18,9 +18,10 @@ package miner
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
@@ -186,7 +187,8 @@ type worker struct {
 	fnClientCloseCh  chan types.ClientClose
 	fnClientCLoseSub event.Subscription
 
-	fnStatus types.FnStatus
+	fnStatus  types.FnStatus
+	makeBlock int32
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -257,6 +259,13 @@ func (w *worker) leagueStatusLoop() {
 		case ev := <-w.fnStatusCh:
 			log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
 			w.fnStatus = ev.Status
+			switch ev.Status {
+			case types.MAKE_BLOCK:
+				if atomic.LoadInt32(&w.makeBlock) == 0 {
+					atomic.StoreInt32(&w.makeBlock, 1)
+					w.startCh <- struct{}{}
+				}
+			}
 		case <-w.fnStatusdSub.Err():
 			return
 		}
@@ -335,6 +344,7 @@ func (w *worker) start() {
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
+	atomic.StoreInt32(&w.makeBlock, 0)
 	w.debClient.Stop()
 }
 
@@ -571,6 +581,11 @@ func (w *worker) resultLoop() {
 	for {
 		select {
 		case block := <-w.resultCh:
+			if w.fnStatus != types.MAKE_BLOCK {
+				// 블록 생성 상태가 아니면 pass
+				continue
+			}
+
 			// Short circuit when receiving empty result.
 			if block == nil {
 				continue
@@ -592,28 +607,22 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-			// 블록 투표
 
-			debEngine, ok := w.engine.(*deb.Deb)
-			if !ok {
-				// Deb engine check
-				continue
-			}
-
-			_, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes()) // FIXME(hakuna) : 서명... 처리해야함
+			bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+			acc := accounts.Account{Address: w.coinbase}
+			wallet, err := w.eth.AccountManager().Find(acc)
 			if err != nil {
-				log.Error("Block found but fail signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				log.Error("wallet not fount", "msg", err)
 				continue
 			}
 
-			err = debEngine.ValidationVoteBlock(w.chain, block)
+			sign, err := wallet.SignHash(acc, bHash.Bytes())
 			if err != nil {
-				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
+				log.Error("Block Sign Hash", "msg", err)
 				continue
 			}
-			// FIXME(hakuna) : modify channel
 
-			w.newLeagueBlockFeed.Send(block) // league block broadcasting
+			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
 
 			//vb := fairtypes.VoteBlock{
 			//	Block:      block,
@@ -636,87 +645,90 @@ func (w *worker) resultLoop() {
 			//	go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
 			//}
 
-		case <-w.resultCh: // TODO(hakuna) : fix new client channel
-			block := new(types.Block) // TODO(hakuna) : fix new client channel
+			fmt.Println("============resultCh=============", block.Hash().String())
+			atomic.StoreInt32(&w.makeBlock, 0)
 
-			debEngine, ok := w.engine.(*deb.Deb)
-			if !ok {
-				// Deb engine check
-				continue
-			}
-
-			var (
-				sealhash = w.engine.SealHash(block.Header())
-				hash     = block.Hash()
-			)
-
-			if w.current.header.Number.Cmp(block.Number()) != 0 {
-				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				continue
-			}
-
-			// AndusChain check fairnode signature
-			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig())
-			if err != nil {
-				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
-				continue
-			}
-
-			bstart := time.Now()
-
-			// finalblock 검증 및 commit block
-
-			var parent *types.Block
-			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
-
-			state, err := w.chain.StateAt(parent.Root())
-			if err != nil {
-				log.Error("Worker result StateNew Error", "err", err)
-			}
-
-			// Process block using the parent state as reference point.
-			receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
-			if err != nil {
-				log.Error("Worker result Processor Error", "err", err)
-			}
-
-			// Validate the state using the default validator
-			err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
-			if err != nil {
-				log.Error("Worker result ValidateState Error", "err", err)
-			}
-
-			//Commit block and state to database.
-			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
-			if err != nil {
-				log.Error("Failed writing block to chain", "err", err)
-				continue
-			}
-
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-				"elapsed", common.PrettyDuration(time.Since(bstart)))
-
-			// Broadcast the block and announce chain insertion event
-			w.mux.Post(types.NewMinedBlockEvent{Block: block})
-
-			var CanonStatTy, SideStatTy bool
-			var events []interface{}
-			switch stat {
-			case core.CanonStatTy:
-				CanonStatTy = true
-				events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, types.ChainHeadEvent{Block: block})
-			case core.SideStatTy:
-				SideStatTy = true
-				events = append(events, types.ChainSideEvent{Block: block})
-			}
-
-			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
-
-			w.chain.PostChainEvents(events, logs)
-
-			// Insert the block into the set of pending ones to resultLoop for confirmations
-			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+		//case <-w.resultCh: // TODO(hakuna) : fix new client channel, finalblock received
+		//	block := new(types.Block) // TODO(hakuna) : fix new client channel
+		//
+		//	debEngine, ok := w.engine.(*deb.Deb)
+		//	if !ok {
+		//		// Deb engine check
+		//		continue
+		//	}
+		//
+		//	var (
+		//		sealhash = w.engine.SealHash(block.Header())
+		//		hash     = block.Hash()
+		//	)
+		//
+		//	if w.current.header.Number.Cmp(block.Number()) != 0 {
+		//		log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+		//		continue
+		//	}
+		//
+		//	// AndusChain check fairnode signature
+		//	err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig())
+		//	if err != nil {
+		//		log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
+		//		continue
+		//	}
+		//
+		//	bstart := time.Now()
+		//
+		//	// finalblock 검증 및 commit block
+		//
+		//	var parent *types.Block
+		//	parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+		//
+		//	state, err := w.chain.StateAt(parent.Root())
+		//	if err != nil {
+		//		log.Error("Worker result StateNew Error", "err", err)
+		//	}
+		//
+		//	// Process block using the parent state as reference point.
+		//	receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
+		//	if err != nil {
+		//		log.Error("Worker result Processor Error", "err", err)
+		//	}
+		//
+		//	// Validate the state using the default validator
+		//	err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
+		//	if err != nil {
+		//		log.Error("Worker result ValidateState Error", "err", err)
+		//	}
+		//
+		//	//Commit block and state to database.
+		//	stat, err := w.chain.WriteBlockWithState(block, receipts, state)
+		//	if err != nil {
+		//		log.Error("Failed writing block to chain", "err", err)
+		//		continue
+		//	}
+		//
+		//	log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+		//		"elapsed", common.PrettyDuration(time.Since(bstart)))
+		//
+		//	// Broadcast the block and announce chain insertion event
+		//	w.mux.Post(types.NewMinedBlockEvent{Block: block})
+		//
+		//	var CanonStatTy, SideStatTy bool
+		//	var events []interface{}
+		//	switch stat {
+		//	case core.CanonStatTy:
+		//		CanonStatTy = true
+		//		events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+		//		events = append(events, types.ChainHeadEvent{Block: block})
+		//	case core.SideStatTy:
+		//		SideStatTy = true
+		//		events = append(events, types.ChainSideEvent{Block: block})
+		//	}
+		//
+		//	log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
+		//
+		//	w.chain.PostChainEvents(events, logs)
+		//
+		//	// Insert the block into the set of pending ones to resultLoop for confirmations
+		//	w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
 		case <-w.exitCh:
 			return
@@ -740,9 +752,6 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 
 	// when 08 is processed ancestors contain 07 (quick block)
 	for _, ancestor := range w.chain.GetBlocksFromHash(parent.Hash(), 7) {
-		//for _, uncle := range ancestor.Uncles() {
-		//	env.family.Add(uncle.Hash())
-		//}
 		env.family.Add(ancestor.Hash())
 		env.ancestors.Add(ancestor.Hash())
 	}
@@ -771,7 +780,6 @@ func (w *worker) updateSnapshot() {
 
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
-
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)

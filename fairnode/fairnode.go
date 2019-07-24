@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
+	"math/big"
 	"net"
 	"time"
 )
@@ -30,8 +31,9 @@ const (
 )
 
 type league struct {
-	Otprn  *types.Otprn
-	Status types.FnStatus
+	Otprn   *types.Otprn
+	Status  types.FnStatus
+	Current *big.Int
 }
 
 var (
@@ -206,6 +208,10 @@ func (fn *Fairnode) processManageLoop() {
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
 					time.Sleep(3 * time.Second)
+					// 생성할 블록 번호 조회
+					if block := fn.db.CurrentBlock(); block != nil {
+						l.Current = block.Number()
+					}
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
@@ -240,7 +246,7 @@ func (fn *Fairnode) makeOtprn() {
 
 			if _, ok := fn.leagues[otprn.HashOtprn()]; !ok {
 				// make new league
-				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING}
+				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)} // TODO(hakuna) : currnet block status
 				fn.db.SaveOtprn(*otprn)
 
 				fn.currentLeague = otprn.HashOtprn() // TODO(hakuna) : currnet <-> pending ... 처리

@@ -49,6 +49,7 @@ func (m *Miner) Hash() common.Hash {
 
 type Backend interface {
 	BlockChain() *core.BlockChain
+	TxPool() *core.TxPool
 	AccountManager() *accounts.Manager
 	Server() *p2p.Server
 	Coinbase() common.Address

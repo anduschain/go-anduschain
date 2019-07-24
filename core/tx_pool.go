@@ -19,12 +19,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"math"
-	"math/big"
-	"sort"
-	"sync"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/prque"
 	"github.com/anduschain/go-anduschain/core/state"
@@ -33,6 +27,11 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/params"
+	"math"
+	"math/big"
+	"sort"
+	"sync"
+	"time"
 )
 
 const (
@@ -77,11 +76,7 @@ var (
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
 
-	//ErrJoinNonceNotMmatch  = errors.New("JOIN NONCE 값이 올바르지 않습니다.")
-	//ErrBlockNumberNotMatch = errors.New("JOIN TX의 생성할 블록 넘버와 맞지 않습니다")
-	//ErrTicketPriceNotMatch = errors.New("JOIN TX의 참가비가 올바르지 않습니다.")
-	//ErrFairNodeSigNotMatch = errors.New("패어 노드의 서명이 올바르지 않습니다")
-	//ErrDecodeOtprn         = errors.New("OTPRN DECODING ERROR")
+	ErrJoinNonceNotMmatch = errors.New("JOIN NONCE not match current state")
 )
 
 var (
@@ -577,19 +572,6 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
-
-	//var joinTx bool
-	//var joinTxdata *clientType.JoinTxData
-	//
-	//if tx.To() != nil {
-	//	if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
-	//		joinTx = true
-	//		if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-	//			return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
-	//		}
-	//	}
-	//}
-
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
@@ -626,35 +608,27 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrUnderpriced
 	}
 
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
-	if err != nil {
-		return err
-	}
+	if tx.TransactionId() == types.JoinTx {
+		// joinnonde check
+		jnonce, err := tx.JoinNonce()
+		if err != nil {
+			return err
+		}
 
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
-	}
+		if pool.currentState.GetJoinNonce(from) != jnonce {
+			return ErrJoinNonceNotMmatch
+		}
 
-	//// JOINTX가 아닌 케이스
-	//if !joinTx {
-	//
-	//} else {
-	//	// JOINTX 맞는 케이스
-	//	// nonce가 joinNounc와 같은가?
-	//	if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
-	//		return ErrJoinNonceNotMmatch
-	//	}
-	//
-	//	// 참가비가 제대로 지정되어 있는가?
-	//	//if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
-	//	//	return ErrTicketPriceNotMatch
-	//	//}
-	//
-	//	// fairnode의 서명이 맞는가?
-	//	if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
-	//		return ErrFairNodeSigNotMatch
-	//	}
-	//}
+	} else {
+		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+		if err != nil {
+			return err
+		}
+
+		if tx.Gas() < intrGas {
+			return ErrIntrinsicGas
+		}
+	}
 
 	return nil
 }
