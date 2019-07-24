@@ -19,7 +19,6 @@ package eth
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
 	"sync"
 	"time"
@@ -45,11 +44,6 @@ const (
 	// dropping broadcasts. This is a sensitive number as a transaction list might
 	// contain a single transaction, or thousands.
 	maxQueuedTxs = 128
-
-	// maxQueuedTxs is the maximum number of transaction lists to queue up before
-	// dropping broadcasts. This is a sensitive number as a transaction list might
-	// contain a single transaction, or thousands.
-	maxQueuedJoinTxs = 128
 
 	// maxQueuedProps is the maximum number of block propagations to queue up before
 	// dropping broadcasts. There's not much point in queueing stale blocks, so a few
@@ -94,9 +88,8 @@ type peer struct {
 	knownTxs     mapset.Set // Set of transaction hashes known to be known by this peer
 	knownJoinTxs mapset.Set // Set of join transaction hashes known to be known by this peer  // TODO(hakuna) : add
 
-	knownBlocks   mapset.Set                // Set of block hashes known to be known by this peer
-	queuedTxs     chan []*types.Transaction // Queue of transactions to broadcast to the peer
-	queuedJoinTxs chan []*types.Transaction // Queue of transactions to broadcast to the peer
+	knownBlocks mapset.Set                // Set of block hashes known to be known by this peer
+	queuedTxs   chan []*types.Transaction // Queue of transactions to broadcast to the peer
 
 	queuedProps chan *propEvent   // Queue of blocks to broadcast to the peer
 	queuedAnns  chan *types.Block // Queue of blocks to announce to the peer
@@ -105,18 +98,17 @@ type peer struct {
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	return &peer{
-		Peer:          p,
-		rw:            rw,
-		version:       version,
-		id:            fmt.Sprintf("%x", p.ID().Bytes()[:8]),
-		knownTxs:      mapset.NewSet(),
-		knownJoinTxs:  mapset.NewSet(),
-		knownBlocks:   mapset.NewSet(),
-		queuedTxs:     make(chan []*types.Transaction, maxQueuedTxs),
-		queuedJoinTxs: make(chan []*types.Transaction, maxQueuedJoinTxs),
-		queuedProps:   make(chan *propEvent, maxQueuedProps),
-		queuedAnns:    make(chan *types.Block, maxQueuedAnns),
-		term:          make(chan struct{}),
+		Peer:         p,
+		rw:           rw,
+		version:      version,
+		id:           fmt.Sprintf("%x", p.ID().Bytes()[:8]),
+		knownTxs:     mapset.NewSet(),
+		knownJoinTxs: mapset.NewSet(),
+		knownBlocks:  mapset.NewSet(),
+		queuedTxs:    make(chan []*types.Transaction, maxQueuedTxs),
+		queuedProps:  make(chan *propEvent, maxQueuedProps),
+		queuedAnns:   make(chan *types.Block, maxQueuedAnns),
+		term:         make(chan struct{}),
 	}
 }
 
@@ -131,12 +123,6 @@ func (p *peer) broadcast() {
 				return
 			}
 			p.Log().Trace("Broadcast transactions", "count", len(txs))
-
-		case jtxs := <-p.queuedJoinTxs:
-			if err := p.SendJoinTransactions(jtxs); err != nil {
-				return
-			}
-			p.Log().Trace("Broadcast join transactions", "count", len(jtxs))
 
 		case prop := <-p.queuedProps:
 			if err := p.SendNewBlock(prop.block, prop.td); err != nil {
@@ -221,15 +207,6 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 	return p2p.Send(p.rw, TxMsg, txs)
 }
 
-// SendTransactions sends join transactions to the peer and includes the hashes
-// in its transaction hash set for future reference.
-func (p *peer) SendJoinTransactions(jtxs types.Transactions) error {
-	for _, jtx := range jtxs {
-		p.knownJoinTxs.Add(jtx.Hash())
-	}
-	return p2p.Send(p.rw, JoinTxMsg, jtxs)
-}
-
 // AsyncSendTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped.
 func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
@@ -240,19 +217,6 @@ func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 		}
 	default:
 		p.Log().Debug("Dropping transaction propagation", "count", len(txs))
-	}
-}
-
-// AsyncSendJoinTransactions queues list of transactions propagation to a remote
-// peer. If the peer's broadcast queue is full, the event is silently dropped. // TODO : add - for join transaction
-func (p *peer) AsyncSendJoinTransactions(jtxs []*types.Transaction) {
-	select {
-	case p.queuedJoinTxs <- jtxs:
-		for _, jtx := range jtxs {
-			p.knownJoinTxs.Add(jtx.Hash())
-		}
-	default:
-		p.Log().Debug("Dropping join transaction propagation", "count", len(jtxs))
 	}
 }
 
@@ -327,9 +291,9 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 	return p2p.Send(p.rw, ReceiptsMsg, receipts)
 }
 
-// TODO : andus >> Send MakeLeagueBlockMsg ( 채굴리그(나포함)가 생성한 블록을 보냄 )
-func (p *peer) SendMakeLeagueBlock(tb fairtypes.VoteBlock) error {
-	return p2p.Send(p.rw, MakeLeagueBlockMsg, tb.GetTsVoteBlock())
+// Send MakeLeagueBlockMsg ( 채굴리그(나포함)가 생성한 블록을 보냄 )
+func (p *peer) SendMakeLeagueBlock(eb *types.NewLeagueBlockEvent) error {
+	return p2p.Send(p.rw, MakeLeagueBlockMsg, eb)
 }
 
 // RequestOneHeader is a wrapper around the header query functions to fetch a

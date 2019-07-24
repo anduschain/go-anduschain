@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"github.com/anduschain/go-anduschain/miner"
 	"math"
 	"math/big"
@@ -52,7 +51,6 @@ const (
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
 
-	joinTxChanSize         = 4096 // TODO(hakuna) : add
 	newLeagueBlockChanSize = 1024 // TODO(hakuna) : added new version
 )
 
@@ -229,25 +227,24 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.syncer()
 	go pm.txsyncLoop()
 
-	// FIXME(hakuna) : 리그들에게 블록 브로드 케스팅 루프, new protocal 로 변경
+	// for anduschain league
 	pm.newLeagueBlockCh = make(chan types.NewLeagueBlockEvent, newLeagueBlockChanSize)
 	pm.newLeagueBlockSub = pm.miner.Worker().SubscribeNewLeagueBlockEvent(pm.newLeagueBlockCh)
 	go pm.leagueBroadCast()
 }
 
-// FIXME(hakuna) : 리그들에게 블록 브로드 케스팅, new protocal 로 변경, 보내는 노드 서명 후 전송....
+// league broadcasting loop
 func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
-		case <-pm.newLeagueBlockCh: // FIXME(hakuna)
-			log.Debug("리그 브로드 캐스팅", "연결된 피어 수", len(pm.peers.peers))
+		case ev := <-pm.newLeagueBlockCh:
+			log.Debug("broadcasting league", "peerCount", len(pm.peers.peers), "hash", ev.Block.Hash())
 			for _, peer := range pm.peers.peers {
-				log.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
-
-				//err := peer.SendMakeLeagueBlock(*event.Block)
-				//if err != nil {
-				//	log.Error("sendvoteblock err!!", err)
-				//}
+				log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+				err := peer.SendMakeLeagueBlock(&ev)
+				if err != nil {
+					log.Error("peer broadcasting", "msg", err)
+				}
 			}
 		case <-pm.newLeagueBlockSub.Err():
 			return
@@ -684,8 +681,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 
-		log.Debug("NewBlockMsg", "blockNum", request.Block.Number().String(), "miner", request.Block.Coinbase().String(), "voterCount", len(request.Block.Voters()))
-
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
 
@@ -732,15 +727,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.txpool.AddRemotes(txs)
 
 	case msg.Code == MakeLeagueBlockMsg:
-		tb := &fairtypes.TsVoteBlock{}
-		if err := msg.Decode(&tb); err != nil {
+		var request types.NewLeagueBlockEvent
+		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		// FIXME(hakuna) : 브로드 케스팅 수신부 수정
-		//if pm.chans.IsLeagueRunning() {
-		//	pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
-		//}
+		if pm.miner.Mining() {
+			pm.miner.Worker().LeagueBlockCh() <- &request
+		}
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)

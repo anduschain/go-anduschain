@@ -75,17 +75,17 @@ type DebClient struct {
 	statusFeed  event.Feed // process status feed
 	closeClient event.Feed
 
-	exitWoker chan struct{}
+	exitWorker chan struct{}
 
 	// FIXME(hakuna) : add to process status
 }
 
-func NewDebClient(config *params.ChainConfig, exitWoker chan struct{}) *DebClient {
+func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}) *DebClient {
 	dc := DebClient{
 		fnEndpoint: DefaultConfig.FairnodeEndpoint(types.Network(config.NetworkType())),
 		ctx:        context.Background(),
 		config:     config,
-		exitWoker:  exitWoker,
+		exitWorker: exitWorker,
 	}
 
 	go dc.workerCheckLoop()
@@ -96,7 +96,7 @@ func NewDebClient(config *params.ChainConfig, exitWoker chan struct{}) *DebClien
 func (dc *DebClient) workerCheckLoop() {
 	for {
 		select {
-		case <-dc.exitWoker:
+		case <-dc.exitWorker:
 			// system out
 			// worker was dead, and close channel.
 			dc.scope.Close()

@@ -122,6 +122,12 @@ type intervalAdjust struct {
 	inc   bool
 }
 
+type NewLeagueBlockData struct {
+	Block *types.Block
+	Addr  common.Address
+	Sign  []byte
+}
+
 // worker is the main object which takes care of submitting new work to consensus engine
 // and gathering the sealing result.
 type worker struct {
@@ -189,6 +195,8 @@ type worker struct {
 
 	fnStatus  types.FnStatus
 	makeBlock int32
+
+	leagueBlockCh chan *types.NewLeagueBlockEvent
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -217,6 +225,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		// for deb client
 		fnStatusCh:      make(chan types.FairnodeStatusEvent), // non async channel
 		fnClientCloseCh: make(chan types.ClientClose),
+
+		leagueBlockCh: make(chan *types.NewLeagueBlockEvent),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -265,6 +275,8 @@ func (w *worker) leagueStatusLoop() {
 					atomic.StoreInt32(&w.makeBlock, 1)
 					w.startCh <- struct{}{}
 				}
+			case types.VOTE_COMPLETE:
+				atomic.StoreInt32(&w.makeBlock, 0)
 			}
 		case <-w.fnStatusdSub.Err():
 			return
@@ -290,6 +302,10 @@ func (w *worker) clientStatusLoop() {
 // leauge new block subscribe
 func (w *worker) SubscribeNewLeagueBlockEvent(ch chan<- types.NewLeagueBlockEvent) event.Subscription {
 	return w.scope.Track(w.newLeagueBlockFeed.Subscribe(ch))
+}
+
+func (w *worker) LeagueBlockCh() chan *types.NewLeagueBlockEvent {
+	return w.leagueBlockCh
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -624,18 +640,8 @@ func (w *worker) resultLoop() {
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
 
-			//vb := fairtypes.VoteBlock{
-			//	Block:      block,
-			//	HeaderHash: block.Header().Hash(),
-			//	Sig:        sig,
-			//	OtprnHash:  w.fairclient.GetUsingOtprnWithSig().HashOtprn(),
-			//	Voter:      w.coinbase,
-			//	//Receipts:   receipts,
-			//}
-			//
-			//// 블록 투표 ( 블록 해시, 블록 번호, otprnhash, sign, address )
-			//
-			//// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
+
 			//w.chans.GetLeagueBlockBroadcastCh() <- &vb // FIXME(hakuna) : 로직 교체 해야함
 			//log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
 			//
@@ -646,7 +652,9 @@ func (w *worker) resultLoop() {
 			//}
 
 			fmt.Println("============resultCh=============", block.Hash().String())
-			atomic.StoreInt32(&w.makeBlock, 0)
+
+		case ev := <-w.leagueBlockCh:
+			fmt.Println("============leagueBlockCh=============", ev.Block.Hash())
 
 		//case <-w.resultCh: // TODO(hakuna) : fix new client channel, finalblock received
 		//	block := new(types.Block) // TODO(hakuna) : fix new client channel

@@ -238,6 +238,8 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			}
 		case proto.ProcessStatus_MAKE_BLOCK:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK})
+		case proto.ProcessStatus_VOTE_COMPLETE:
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE})
 		}
 	}
 }
