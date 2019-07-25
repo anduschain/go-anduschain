@@ -152,8 +152,7 @@ func (m *MemDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote types.
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	voteKey := makeVoteKey(otprn, blockNum)
-
+	voteKey := MakeVoteKey(otprn, blockNum)
 	if list, ok := m.VoteList[voteKey]; ok {
 		list = append(list, vote)
 		m.VoteList[voteKey] = list

@@ -339,7 +339,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
 
 	header.Time = big.NewInt(time.Now().Unix())
-	header.Difficulty = c.CalcDifficulty(chain, header.Time.Uint64(), header)
+	header.Difficulty = new(big.Int)
 	return nil
 }
 
@@ -359,7 +359,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	//c.ValidationBlockWidthJoinTx(chainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
 	c.ChangeJoinNonceAndReword(chainID, state, Txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Extra, header.Coinbase, header.ParentHash)
+	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	block := types.NewBlock(header, Txs, receipts, voters)
 
 	// Assemble and return the final block for sealing
@@ -433,7 +433,7 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	cHeader := chain.CurrentHeader()
 	if cHeader.Number.Uint64() > 0 {
-		return CalcDifficulty(cHeader.Nonce.Uint64(), cHeader.Extra, cHeader.Coinbase, parent.Hash())
+		return CalcDifficulty(cHeader.Nonce.Uint64(), cHeader.Otprn, cHeader.Coinbase, parent.Hash())
 	}
 	return big.NewInt(0)
 }

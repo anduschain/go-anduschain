@@ -37,7 +37,7 @@ type FairnodeDB interface {
 	GetBlock(blockHash common.Hash) *types.Block
 }
 
-func makeVoteKey(otprn common.Hash, blockNum *big.Int) common.Hash {
+func MakeVoteKey(otprn common.Hash, blockNum *big.Int) common.Hash {
 	var k []byte
 	k = append(k, otprn.Bytes()...)
 	k = append(k, blockNum.Bytes()...)

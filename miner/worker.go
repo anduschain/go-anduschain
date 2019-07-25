@@ -18,6 +18,7 @@ package miner
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -197,6 +198,7 @@ type worker struct {
 	makeBlock int32
 
 	leagueBlockCh   chan *types.NewLeagueBlockEvent
+	voteResultCh    chan types.Voters
 	possibleWinning *types.Block // A set of possible winning block
 }
 
@@ -228,6 +230,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		fnClientCloseCh: make(chan types.ClientClose),
 
 		leagueBlockCh: make(chan *types.NewLeagueBlockEvent),
+		voteResultCh:  make(chan types.Voters),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -302,6 +305,9 @@ func (w *worker) leagueStatusLoop() {
 					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
 				}
 			case types.VOTE_COMPLETE:
+				if voters, ok := ev.Payload.(types.Voters); ok {
+					w.voteResultCh <- voters
+				}
 				atomic.StoreInt32(&w.makeBlock, 0)
 			}
 		case <-w.fnStatusdSub.Err():
@@ -739,6 +745,13 @@ func (w *worker) resultLoop() {
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: rblock, Address: w.coinbase, Sign: sign}) // league block for broadcasting
 			log.Info("possible winning block and league broadcasting", "hash", rblock.Hash())
+
+		case voters := <-w.voteResultCh:
+			if w.fnStatus != types.VOTE_COMPLETE {
+				continue
+			}
+
+			fmt.Println("=======voters========", voters.Hash().String())
 
 		//case <-w.resultCh: // TODO(hakuna) : fix new client channel, finalblock received
 		//	block := new(types.Block) // TODO(hakuna) : fix new client channel

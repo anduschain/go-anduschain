@@ -7,6 +7,8 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/rlp"
 	mrand "math/rand"
 )
 
@@ -16,6 +18,73 @@ func ValidationDifficulty(header *types.Header) error {
 		return errors.New("invalid difficulty")
 	}
 	return nil
+}
+
+func ValidationFinalBlockHash(voters []types.Voter) common.Hash {
+	type voteRes struct {
+		Header *types.Header
+		Count  uint64
+	}
+
+	voteMap := make(map[common.Hash]voteRes)
+
+	for _, vote := range voters {
+		header := new(types.Header)
+		err := rlp.DecodeBytes(vote.Header, header)
+		if err != nil {
+			log.Error("vote decode header", "msg", err)
+			continue
+		}
+
+		if res, ok := voteMap[header.Hash()]; ok {
+			res.Count++
+		} else {
+			voteMap[header.Hash()] = voteRes{Header: header, Count: 1}
+		}
+	}
+
+	// 1. count가 높은 블록
+	// 2. Rand == diffcult 값이 높은 블록
+	// 3. joinNunce	== nonce 값이 놓은 블록
+	// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
+	var top, temp voteRes
+	for _, res := range voteMap {
+		temp = res
+		if top.Header == nil {
+			top = temp
+		} else {
+			if top.Count < temp.Count {
+				top = temp
+			} else if top.Count == temp.Count {
+				// 동수인 투표일때
+				if top.Header.Difficulty.Cmp(temp.Header.Difficulty) < 0 {
+					top = temp
+				}
+
+				if top.Header.Difficulty.Cmp(temp.Header.Difficulty) == 0 {
+					if top.Header.Nonce.Uint64() < temp.Header.Nonce.Uint64() {
+						top = temp
+					}
+
+					if top.Header.Nonce.Uint64() == temp.Header.Nonce.Uint64() {
+						if temp.Header.Number.Uint64()%2 == 0 {
+							if top.Header.Coinbase.Big().Cmp(temp.Header.Coinbase.Big()) > 0 {
+								top = temp
+							}
+						} else {
+							if top.Header.Coinbase.Big().Cmp(temp.Header.Coinbase.Big()) < 0 {
+								top = temp
+							}
+						}
+
+					}
+				}
+
+			}
+		}
+	}
+
+	return top.Header.Hash()
 }
 
 func ValidationSignHash(sign []byte, hash common.Hash, sAddr common.Address) error {

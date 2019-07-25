@@ -166,9 +166,10 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer stream.CloseSend()
 
 	var (
-		isReqLeague bool
-		isJoinTx    bool
-		isVote      bool
+		isReqLeague     bool
+		isJoinTx        bool
+		isVote          bool
+		isReqVoteResult bool
 	)
 
 	for {
@@ -249,8 +250,13 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				isVote = true
 			}
 		case proto.ProcessStatus_VOTE_COMPLETE:
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE})
-
+			if isReqVoteResult {
+				continue
+			}
+			// 투표결과 요청 후, voter 확인 후, 블록에 넣기
+			voters := dc.requestVoteResult()
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE, Payload: voters})
+			isReqVoteResult = true
 		default:
 			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
@@ -324,4 +330,9 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 	}
 
 	log.Info("vote success", "hash", block.Hash())
+}
+
+func (dc *DebClient) requestVoteResult() types.Voters {
+	// TODO(hakuan) : to be work
+	return nil
 }

@@ -389,14 +389,25 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 		return nil, err
 	}
 
-	voter := types.Voter{}
+	voter := types.Voter{
+		Header:   vote.GetHeader(),
+		Voter:    addr,
+		VoteSign: vote.GetVoterSign(),
+	}
 
 	rs.db.SaveVote(otprnHash, header.Number, voter)
+	logger.Info("vote save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", header.Hash())
 
 	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteResult) (*proto.ResVoteResult, error) {
+
+	// TODO(hakuan) : to be work
+	otprnHash := common.Hash{}
+	finalBlockHash := verify.ValidationFinalBlockHash(rs.db.GetVoters(fairdb.MakeVoteKey(otprnHash, big.NewInt(0))))
+	logger.Info("final block", "hash", finalBlockHash)
+
 	return nil, nil
 }
 
