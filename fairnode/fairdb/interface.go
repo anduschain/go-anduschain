@@ -31,7 +31,7 @@ type FairnodeDB interface {
 	GetLeagueList(otprnHash common.Hash) []types.HeartBeat
 
 	SaveVote(otprn common.Hash, blockNum *big.Int, vote types.Voter)
-	GetVoters(otekey common.Hash) []types.Voter
+	GetVoters(votekey common.Hash) []types.Voter
 
 	SaveFinalBlock(block types.Block)
 	GetBlock(blockHash common.Hash) *types.Block

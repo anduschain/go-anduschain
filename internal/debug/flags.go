@@ -29,7 +29,7 @@ import (
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/metrics/exp"
 	"github.com/fjl/memsize/memsizeui"
-	colorable "github.com/mattn/go-colorable"
+	"github.com/mattn/go-colorable"
 	"gopkg.in/urfave/cli.v1"
 )
 

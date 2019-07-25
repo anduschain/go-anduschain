@@ -168,6 +168,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	var (
 		isReqLeague bool
 		isJoinTx    bool
+		isVote      bool
 	)
 
 	for {
@@ -185,8 +186,6 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			log.Error("VerifySignature", "msg", err)
 			return
 		}
-
-		log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String())
 
 		switch in.GetCode() {
 		case proto.ProcessStatus_MAKE_LEAGUE:
@@ -237,9 +236,23 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				log.Warn("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
 			}
 		case proto.ProcessStatus_MAKE_BLOCK:
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK})
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK, Payload: otprn})
+		case proto.ProcessStatus_VOTE_START:
+			if isVote {
+				continue
+			}
+			voteCh := make(chan types.NewLeagueBlockEvent)
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_START, Payload: voteCh})
+			select {
+			case ev := <-voteCh:
+				dc.vote(ev)
+				isVote = true
+			}
 		case proto.ProcessStatus_VOTE_COMPLETE:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE})
+
+		default:
+			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
 	}
 }
@@ -277,4 +290,38 @@ func (dc *DebClient) requestLeague(otprn types.Otprn) []string {
 	} else {
 		return nil
 	}
+}
+
+func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
+	block := ev.Block
+	if block == nil {
+		log.Error("voting block is nil")
+		return
+	}
+
+	msg := proto.Vote{
+		Header:       block.Header().Byte(),
+		VoterAddress: ev.Address.String(),
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.Header,
+		msg.VoterAddress,
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("voting info signature", "msg", err)
+		return
+	}
+
+	msg.VoterSign = sign // add voter's signature
+
+	_, err = dc.rpc.Vote(dc.ctx, &msg)
+	if err != nil {
+		log.Error("voting request", "msg", err)
+		return
+	}
+
+	log.Info("vote success", "hash", block.Hash())
 }

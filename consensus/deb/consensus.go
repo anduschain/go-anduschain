@@ -4,10 +4,9 @@
 package deb
 
 import (
-	"crypto/ecdsa"
+	"bytes"
 	"errors"
-	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"fmt"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
@@ -57,47 +56,25 @@ var (
 	// of 1 or 2, or if the value does not match the turn of the signer.
 	errInvalidDifficulty = errors.New("invalid difficulty")
 
-	errFailSignature = errors.New("블록헤더 서명 실패")
-
 	errNonFairNodeSig = errors.New("페어노드 서명이 없다")
-
-	errGetPubKeyError = errors.New("공개키 로드 에러")
 
 	errNotMatchFairAddress = errors.New("패어노드 어드레스와 맞지 않습니다")
 
 	errGetState = errors.New("상태 디비 조회 에러 발생")
 
-	errNotMatchOtprnOrBlockNumber = errors.New("OTPRN 또는 생성할 블록 번호와 맞지 않습니다")
+	ertNotMatchOtprn = errors.New("invalid otprn ")
 
-	errNotInJoinTX = errors.New("마이너의 JOIN_TX가 담겨 있지 않음")
+	errNotMatchBlockNumber = errors.New("invalid block number ")
 
-	errTxTicketPriceNotAvailable = errors.New("참가비가 포함되어있지 않은 트랜잭션이 포함된 블록이 있다")
-
-	errTxOtprn = errors.New("JoinTx의 Otprn 과 리그의 otprn이 다른게 존재")
-
-	errTxNumNotMatch = errors.New("JoinTx의 Num과 블록 NUM 이 다르다")
-
-	errDecodeTx = errors.New("Tx Decode에서 문제 발생")
+	errNotExistJoinTransaction = errors.New("invalid block, not exist join transaction")
 )
-
-type client interface {
-	SaveWiningBlock(otprnHash common.Hash, block *types.Block)
-	GetWinningBlock(otprnHash common.Hash, hash common.Hash) *types.Block
-}
 
 // Deb is the proof-of-Deb consensus engine proposed to support the
 type Deb struct {
-	config *params.DebConfig // Consensus engine configuration parameters
-	db     ethdb.Database    // Database to store and retrieve snapshot checkpoints
-	//joinNonce  uint64
-	privKey   *ecdsa.PrivateKey
-	otprnHash common.Hash
-	coinbase  common.Address
-	chans     fairtypes.Channals
-	client    client
-	//logger     log.Logger
-	fairAddr   string
-	difficulty string
+	config   *params.DebConfig // Consensus engine configuration parameters
+	db       ethdb.Database    // Database to store and retrieve snapshot checkpoints
+	coinbase common.Address
+	otprn    *types.Otprn
 }
 
 var (
@@ -108,11 +85,9 @@ var (
 // signers set to the ones provided by the user.
 func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	deb := &Deb{
-		config:   config,
-		db:       db,
-		fairAddr: config.FairPubKey,
+		config: config,
+		db:     db,
 	}
-
 	return deb
 }
 
@@ -136,38 +111,23 @@ func NewShared() *Deb {
 	return &Deb{}
 }
 
-func (c *Deb) SetSignKey(signKey *ecdsa.PrivateKey) {
-	c.privKey = signKey
+func (c *Deb) SetCoinbase(coinbase common.Address) {
+	c.coinbase = coinbase
 }
 
-func (c *Deb) SetChans(chans fairtypes.Channals) {
-	c.chans = chans
-}
-
-func (c *Deb) SetManager(manager client) {
-	c.client = manager
-}
-
-// TODO : andus >> 생성된 블록(브로드케스팅용) 서명
-func (c *Deb) SignBlockHeader(blockHash []byte) ([]byte, error) {
-	sig, err := crypto.Sign(blockHash, c.privKey)
-	if err != nil {
-		return nil, errFailSignature
-	}
-
-	return sig, nil
+func (c *Deb) SetOtprn(otprn *types.Otprn) {
+	c.otprn = otprn
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered
 // from the signature in the header's extra-data section.
 func (c *Deb) Author(header *types.Header) (common.Address, error) {
-
 	return header.Coinbase, nil
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
 func (c *Deb) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
-	return c.verifyHeader(chain, header, nil)
+	return c.verifyHeader(chain, header, nil, seal)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
@@ -179,7 +139,7 @@ func (c *Deb) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header
 
 	go func() {
 		for i, header := range headers {
-			err := c.verifyHeader(chain, header, headers[:i])
+			err := c.verifyHeader(chain, header, headers[:i], true)
 
 			select {
 			case <-abort:
@@ -195,7 +155,7 @@ func (c *Deb) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header
 // caller may optionally pass in a batch of parents (ascending order) to avoid
 // looking those up from the database. This is useful for concurrently verifying
 // a batch of new headers.
-func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header, seal bool) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
@@ -214,6 +174,16 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		}
 	}
 
+	// otprn check
+	otprn, err := types.DecodeOtprn(header.Otprn)
+	if err != nil {
+		return err
+	}
+
+	if err := otprn.ValidateSignature(); err != nil {
+		return err
+	}
+
 	if number > 0 {
 		diff := CalcDifficulty(header.Nonce.Uint64(), header.Extra, header.Coinbase, header.ParentHash)
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
@@ -227,14 +197,14 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 
 	// All basic checks passed, verify cascading fields
-	return c.verifyCascadingFields(chain, header, parents)
+	return c.verifyCascadingFields(chain, header, parents, seal)
 }
 
 // verifyCascadingFields verifies all the header fields that are not standalone,
 // rather depend on a batch of previous headers. The caller may optionally pass
 // in a batch of parents (ascending order) to avoid looking those up from the
 // database. This is useful for concurrently verifying a batch of new headers.
-func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.Header, parents []*types.Header, seal bool) error {
 	// The genesis block is the always valid dead-end
 	number := header.Number.Uint64()
 	if number == 0 {
@@ -251,8 +221,69 @@ func (c *Deb) verifyCascadingFields(chain consensus.ChainReader, header *types.H
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
+
+	if !seal {
+		// league block was not sealing from fairnode
+		return nil
+	}
 	// All basic checks passed, verify the seal and return
 	return c.verifySeal(chain, header, parents)
+}
+
+func (c *Deb) ValidationLeagueBlock(chain consensus.ChainReader, block *types.Block) error {
+	if chain.CurrentHeader().Number.Uint64()+1 != block.Number().Uint64() {
+		return errNotMatchBlockNumber
+	}
+
+	bOtp, err := c.otprn.EncodeOtprn()
+	if err != nil {
+		return err
+	}
+
+	// current otprn vs header otprn
+	if bytes.Compare(bOtp, block.Header().Otprn) != 0 {
+		return ertNotMatchOtprn
+	}
+
+	if err := c.validationBlockInJoinTx(block.Header(), block.Transactions()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// join tx check in block
+func (c *Deb) validationBlockInJoinTx(header *types.Header, txs types.Transactions) error {
+	for i, tx := range txs {
+		if tx.TransactionId() == types.JoinTx {
+			addr, err := tx.Sender(types.NewEIP155Signer(tx.ChainId()))
+			if err != nil {
+				return errors.New(fmt.Sprintf("transaction find sender index=%d msg=%s", i, err.Error()))
+			}
+
+			if addr == header.Coinbase {
+				jnonce, err := tx.JoinNonce()
+				if err != nil {
+					return errors.New(fmt.Sprintf("transaction get join nonce index=%d msg=%s", i, err.Error()))
+				}
+
+				if jnonce != header.Nonce.Uint64() {
+					continue
+				}
+
+				txOtprn, err := tx.Otprn()
+				if err != nil {
+					return errors.New(fmt.Sprintf("transaction get otprn index=%d msg=%s", i, err.Error()))
+				}
+
+				if bytes.Compare(txOtprn, header.Otprn) == 0 {
+					return nil
+				}
+
+			}
+		}
+	}
+
+	return errNotExistJoinTransaction
 }
 
 // VerifySeal implements consensus.Engine, checking whether the signature contained
@@ -271,7 +302,8 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 	if number == 0 {
 		return errUnknownBlock
 	}
-	// TODO : andus >> RAND value 체크
+	// TODO(hakuna) : fairnode sign check
+	// TODO(hakuna) : voters check
 	return nil
 }
 
@@ -294,12 +326,20 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	}
 
 	// otprn....
+	if c.otprn == nil {
+		return errors.New("otprn is nil")
+	}
 
-	// nonce => joinNonce
+	bOtprn, err := c.otprn.EncodeOtprn()
+	if err != nil {
+		return err
+	}
+
+	header.Otprn = bOtprn
+	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
+
 	header.Time = big.NewInt(time.Now().Unix())
-	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase))
 	header.Difficulty = c.CalcDifficulty(chain, header.Time.Uint64(), header)
-
 	return nil
 }
 

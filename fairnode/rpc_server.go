@@ -7,8 +7,10 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
+	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/peer"
@@ -92,7 +94,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		nodeInfo.GetHead(),
 	})
 
-	err = ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
+	err = verify.ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
@@ -138,7 +140,7 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 
 	addr := common.HexToAddress(nodeInfo.GetMinerAddress())
 
-	err := ValidationSignHash(nodeInfo.GetSign(), hash, addr)
+	err := verify.ValidationSignHash(nodeInfo.GetSign(), hash, addr)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
@@ -163,7 +165,7 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 		}
 
 		// 참가 대상 확인
-		if IsJoinOK(otprn, addr) {
+		if verify.IsJoinOK(otprn, addr) {
 			// OTPRN 전송
 			bOtprn, err := otprn.EncodeOtprn()
 			if err != nil {
@@ -215,7 +217,7 @@ func (rs *rpcServer) RequestLeague(ctx context.Context, nodeInfo *proto.ReqLeagu
 
 	addr := common.HexToAddress(nodeInfo.GetMinerAddress())
 
-	err := ValidationSignHash(nodeInfo.GetSign(), hash, addr)
+	err := verify.ValidationSignHash(nodeInfo.GetSign(), hash, addr)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
@@ -273,13 +275,13 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 	})
 
 	addr := common.HexToAddress(nodeInfo.GetMinerAddress())
-	err := ValidationSignHash(nodeInfo.GetSign(), hash, addr)
+	err := verify.ValidationSignHash(nodeInfo.GetSign(), hash, addr)
 	if err != nil {
 		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
 	var status *types.FnStatus // 해당되는 리그의 상태
-	var currnet *big.Int
+	var currnet *big.Int       // current block number
 	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
 	if league, ok := rs.leagues[otprnHash]; ok {
 		status = &league.Status
@@ -309,31 +311,89 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 	}
 
 	for {
-
 		m := makeMsg(status, currnet.Bytes()) // make message
 		hash := rlpHash([]interface{}{
 			m.Code,
 		})
-
 		sign, err := rs.fn.SignHash(hash.Bytes())
 		if err != nil {
 			logger.Error("ProcessController signature message", "msg", err)
 			return err
 		}
-
 		m.Sign = sign // add sign
-
 		if err := stream.Send(m); err != nil {
 			logger.Error("ProcessController send status message", "msg", err)
 			return err
 		}
-		logger.Info("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
+		logger.Debug("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
 		time.Sleep(1 * time.Second)
 	}
 }
 
 func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, error) {
-	return nil, nil
+
+	if vote.GetVoterAddress() == "" {
+		return nil, errorEmpty("vote address")
+	}
+
+	if bytes.Compare(vote.GetHeader(), emptyByte) == 0 {
+		return nil, errorEmpty("header")
+	}
+
+	if bytes.Compare(vote.GetVoterSign(), emptyByte) == 0 {
+		return nil, errorEmpty("vote sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		vote.GetHeader(),
+		vote.GetVoterAddress(),
+	})
+
+	addr := common.HexToAddress(vote.GetVoterAddress())
+	err := verify.ValidationSignHash(vote.GetVoterSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	header := new(types.Header)
+	err = rlp.DecodeBytes(vote.GetHeader(), header)
+	if err != nil {
+		logger.Error("vote decode header", "msg", err)
+		return nil, err
+	}
+
+	otprn, err := types.DecodeOtprn(header.Otprn)
+	if err != nil {
+		return nil, err
+	}
+
+	err = otprn.ValidateSignature() // check otprn
+	if err != nil {
+		return nil, err
+	}
+
+	var currnet *big.Int // current block number
+	otprnHash := otprn.HashOtprn()
+	if league, ok := rs.leagues[otprnHash]; ok {
+		currnet = league.Current
+	} else {
+		return nil, errors.New(fmt.Sprintf("this vote is not matched in any league hash=%s", otprnHash.String()))
+	}
+
+	if currnet.Uint64()+1 != header.Number.Uint64() { // check block number
+		return nil, errors.New(fmt.Sprintf("invalid block number current=%d vote=%d", currnet.Uint64(), header.Number.Uint64()))
+	}
+
+	err = verify.ValidationDifficulty(header) // check block difficulty
+	if err != nil {
+		return nil, err
+	}
+
+	voter := types.Voter{}
+
+	rs.db.SaveVote(otprnHash, header.Number, voter)
+
+	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteResult) (*proto.ResVoteResult, error) {

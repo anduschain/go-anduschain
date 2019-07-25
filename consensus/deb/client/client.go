@@ -97,8 +97,7 @@ func (dc *DebClient) workerCheckLoop() {
 	for {
 		select {
 		case <-dc.exitWorker:
-			// system out
-			// worker was dead, and close channel.
+			// system out, worker was dead, and close channel.
 			dc.scope.Close()
 			return
 		}

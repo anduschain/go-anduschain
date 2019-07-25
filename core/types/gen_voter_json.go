@@ -5,7 +5,6 @@ package types
 import (
 	"encoding/json"
 	"errors"
-	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
@@ -16,14 +15,12 @@ var _ = (*votertMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (v Voter) MarshalJSON() ([]byte, error) {
 	type Voter struct {
-		HeaderHash common.Hash    `json:"blockHash" gencodec:"required"`
-		Difficulty *hexutil.Big   `json:"difficulty" gencodec:"required"`
-		Voter      common.Address `json:"voter" gencodec:"required"`
-		VoteSign   hexutil.Bytes  `json:"voterSign" gencodec:"required"`
+		Header   hexutil.Bytes  `json:"blockHeader" gencodec:"required"`
+		Voter    common.Address `json:"voter" gencodec:"required"`
+		VoteSign hexutil.Bytes  `json:"voterSign" gencodec:"required"`
 	}
 	var enc Voter
-	enc.HeaderHash = v.HeaderHash
-	enc.Difficulty = (*hexutil.Big)(v.Difficulty)
+	enc.Header = v.Header
 	enc.Voter = v.Voter
 	enc.VoteSign = v.VoteSign
 	return json.Marshal(&enc)
@@ -32,23 +29,18 @@ func (v Voter) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (v *Voter) UnmarshalJSON(input []byte) error {
 	type Voter struct {
-		HeaderHash *common.Hash    `json:"blockHash" gencodec:"required"`
-		Difficulty *hexutil.Big    `json:"difficulty" gencodec:"required"`
-		Voter      *common.Address `json:"voter" gencodec:"required"`
-		VoteSign   *hexutil.Bytes  `json:"voterSign" gencodec:"required"`
+		Header   *hexutil.Bytes  `json:"blockHeader" gencodec:"required"`
+		Voter    *common.Address `json:"voter" gencodec:"required"`
+		VoteSign *hexutil.Bytes  `json:"voterSign" gencodec:"required"`
 	}
 	var dec Voter
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	if dec.HeaderHash == nil {
-		return errors.New("missing required field 'blockHash' for Voter")
+	if dec.Header == nil {
+		return errors.New("missing required field 'blockHeader' for Voter")
 	}
-	v.HeaderHash = *dec.HeaderHash
-	if dec.Difficulty == nil {
-		return errors.New("missing required field 'difficulty' for Voter")
-	}
-	v.Difficulty = (*big.Int)(dec.Difficulty)
+	v.Header = *dec.Header
 	if dec.Voter == nil {
 		return errors.New("missing required field 'voter' for Voter")
 	}

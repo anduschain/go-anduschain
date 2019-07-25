@@ -56,5 +56,9 @@ type NewLeagueBlockEvent struct {
 	Sign    []byte
 }
 
-type FairnodeStatusEvent struct{ Status FnStatus }
+type FairnodeStatusEvent struct {
+	Status  FnStatus
+	Payload interface{}
+}
+
 type ClientClose struct{}

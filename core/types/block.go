@@ -18,6 +18,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
@@ -85,9 +86,9 @@ type Header struct {
 	Time        *big.Int    `json:"timestamp"        gencodec:"required"`
 	Extra       []byte      `json:"extraData"        gencodec:"required"`
 
-	Nonce       BlockNonce `json:"nonce"            gencodec:"required"`
-	Otprn       []byte     `json:"otprn"            gencodec:"required"`       //  otprn with fairnode signature
-	FairNodeSig []byte     `json:"fairnodeSig"            gencodec:"required"` //  fairnode signature, not import header hash - from fairnode
+	Nonce        BlockNonce `json:"nonce"            gencodec:"required"`
+	Otprn        []byte     `json:"otprn"            gencodec:"required"`        //  otprn with fairnode signature
+	FairnodeSign []byte     `json:"fairnodeSign"            gencodec:"required"` //  fairnode signature, not import header hash - from fairnode
 
 }
 
@@ -121,7 +122,12 @@ func (h *Header) Hash() common.Hash {
 		h.Nonce,
 		h.Otprn,
 	})
+}
 
+func (h *Header) Byte() []byte {
+	var b bytes.Buffer
+	rlp.Encode(&b, h)
+	return b.Bytes()
 }
 
 // Size returns the approximate memory used by all internal contents. It is used
@@ -320,18 +326,8 @@ func (b *Block) Extra() []byte { return b.header.Extra }
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
-func (b *Block) Body() *Body { return &Body{b.transactions, b.voters} }
-
-// TODO : add - 구조변경으로 추가 되는 메소드들
-func (b *Block) FairNodeSig() []byte { return b.header.FairNodeSig }
-
-func (b *Block) GetFairNodeSig() ([]byte, bool) {
-	if len(b.header.FairNodeSig) > 0 {
-		return b.header.FairNodeSig, true
-	} else {
-		return nil, false
-	}
-}
+func (b *Block) Body() *Body          { return &Body{b.transactions, b.voters} }
+func (b *Block) FairnodeSign() []byte { return b.header.FairnodeSign }
 
 func (b *Block) Voters() Voters         { return b.voters }
 func (b *Block) VoterHash() common.Hash { return b.header.VoteHash }
@@ -368,10 +364,10 @@ func (b *Block) WithSeal(header *Header) *Block {
 
 // WithSeal returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithSealFairnode(voters Voters, fairnodeSig []byte) *Block {
+func (b *Block) WithSealFairnode(voters Voters, fnSign []byte) *Block {
 	cpy := *b.header
 	cpy.VoteHash = voters.Hash()
-	cpy.FairNodeSig = fairnodeSig
+	cpy.FairnodeSign = fnSign
 
 	return &Block{
 		header:       &cpy,

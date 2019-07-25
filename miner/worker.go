@@ -18,10 +18,10 @@ package miner
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
@@ -196,7 +196,8 @@ type worker struct {
 	fnStatus  types.FnStatus
 	makeBlock int32
 
-	leagueBlockCh chan *types.NewLeagueBlockEvent
+	leagueBlockCh   chan *types.NewLeagueBlockEvent
+	possibleWinning *types.Block // A set of possible winning block
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -272,8 +273,33 @@ func (w *worker) leagueStatusLoop() {
 			switch ev.Status {
 			case types.MAKE_BLOCK:
 				if atomic.LoadInt32(&w.makeBlock) == 0 {
-					atomic.StoreInt32(&w.makeBlock, 1)
-					w.startCh <- struct{}{}
+					if otprn, ok := ev.Payload.(types.Otprn); ok {
+						if deb, ok := w.engine.(*deb.Deb); ok {
+							deb.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
+							deb.SetOtprn(&otprn)        // deb consensus engine setting otprn
+						}
+						atomic.StoreInt32(&w.makeBlock, 1)
+						w.startCh <- struct{}{}
+					}
+				}
+			case types.VOTE_START:
+				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
+					block := w.possibleWinning
+					bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+					acc := accounts.Account{Address: w.coinbase}
+					wallet, err := w.eth.AccountManager().Find(acc)
+					if err != nil {
+						log.Error("wallet not fount", "msg", err)
+						continue
+					}
+
+					sign, err := wallet.SignHash(acc, bHash.Bytes())
+					if err != nil {
+						log.Error("Block Sign Hash", "msg", err)
+						continue
+					}
+
+					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
 				}
 			case types.VOTE_COMPLETE:
 				atomic.StoreInt32(&w.makeBlock, 0)
@@ -598,7 +624,6 @@ func (w *worker) resultLoop() {
 		select {
 		case block := <-w.resultCh:
 			if w.fnStatus != types.MAKE_BLOCK {
-				// 블록 생성 상태가 아니면 pass
 				continue
 			}
 
@@ -638,23 +663,82 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			w.possibleWinning = block                                                                           // made for me, saving possible block
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-
-			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-
-			//w.chans.GetLeagueBlockBroadcastCh() <- &vb // FIXME(hakuna) : 로직 교체 해야함
-			//log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
-			//
-			//// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표 // FIXME(hakuna) : 로직 교체 해야함
-			//if !*w.isVoting {
-			//	*w.isVoting = true
-			//	go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
-			//}
-
-			fmt.Println("============resultCh=============", block.Hash().String())
+			log.Info("made new possible block and league broadcasting", "hash", block.Hash())
 
 		case ev := <-w.leagueBlockCh:
-			fmt.Println("============leagueBlockCh=============", ev.Block.Hash())
+			if w.fnStatus != types.MAKE_BLOCK {
+				continue
+			}
+
+			bHash := rlpHash(ev.Block)
+			if err := client.ValidationSignHash(ev.Sign, bHash, ev.Address); err != nil {
+				log.Error("VerifySignature", "msg", err)
+				continue
+			}
+
+			pblock := w.possibleWinning // possible winning block
+			rblock := ev.Block          // received block
+
+			if err := w.engine.VerifyHeader(w.chain, rblock.Header(), false); err != nil {
+				log.Error("received league block verifyHeader", "msg", err)
+				continue
+			}
+
+			if engine, ok := w.engine.(*deb.Deb); ok {
+				if err := engine.ValidationLeagueBlock(w.chain, rblock); err != nil {
+					log.Error("received league block validationLeagueBlock", "msg", err)
+					continue
+				}
+			}
+
+			if pblock == nil {
+				w.possibleWinning = rblock
+			} else {
+				if rblock.Difficulty().Cmp(pblock.Difficulty()) == 1 { // difficulty 값이 높은 블록
+					w.possibleWinning = rblock
+				} else if rblock.Difficulty().Cmp(pblock.Difficulty()) == 0 {
+					if rblock.Nonce() > pblock.Nonce() { // nonce 값이 큰 블록으로 교체
+						w.possibleWinning = rblock
+					} else if rblock.Nonce() == pblock.Nonce() { // nonce 값이 같을 때
+						if rblock.Number().Uint64()%2 == 0 { // 블록 번호가 짝수 일때, 주소값이 큰 블록
+							if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) > 0 {
+								w.possibleWinning = rblock
+							} else {
+								continue
+							}
+						} else {
+							if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) < 0 { // 블록 번호가 짝수 일때, 주소값이 작은 블록
+								w.possibleWinning = rblock
+							} else {
+								continue
+							}
+						}
+					} else {
+						continue
+					}
+				} else {
+					continue
+				}
+			}
+
+			bHash = rlpHash(rblock) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+			acc := accounts.Account{Address: w.coinbase}
+			wallet, err := w.eth.AccountManager().Find(acc)
+			if err != nil {
+				log.Error("wallet not fount", "msg", err)
+				continue
+			}
+
+			sign, err := wallet.SignHash(acc, bHash.Bytes())
+			if err != nil {
+				log.Error("Block Sign Hash", "msg", err)
+				continue
+			}
+
+			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: rblock, Address: w.coinbase, Sign: sign}) // league block for broadcasting
+			log.Info("possible winning block and league broadcasting", "hash", rblock.Hash())
 
 		//case <-w.resultCh: // TODO(hakuna) : fix new client channel, finalblock received
 		//	block := new(types.Block) // TODO(hakuna) : fix new client channel

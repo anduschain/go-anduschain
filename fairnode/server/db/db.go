@@ -289,7 +289,7 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 		Extra:      block.Header().Extra,
 		Nonce:      int64(block.Nonce()),
 
-		FairnodeSig: block.FairNodeSig(),
+		FairnodeSig: block.FairnodeSign(),
 	}
 
 	// General transaction
@@ -314,10 +314,10 @@ func (fnb *FairNodeDB) SaveFianlBlock(block *types.Block) {
 	}
 
 	var voters []vote
-	for i := range block.Voters() {
-		voter := block.Voters()[i]
-		voters = append(voters, vote{voter.Voter.String(), voter.VoteSign, voter.Difficulty.String()})
-	}
+	//for i := range block.Voters() {
+	//	voter := block.Voters()[i]
+	//	voters = append(voters, vote{voter.Voter.String(), voter.VoteSign, voter.Difficulty.String()})
+	//}
 
 	b := StoredBlock{
 		BlockHash:       block.Hash().String(),

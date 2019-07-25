@@ -5,7 +5,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
-	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"strconv"
@@ -20,10 +19,8 @@ import (
 // or not), which could be abused to produce different hashes for the same header.
 func sigHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
-
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
-		//header.UncleHash,
 		header.Coinbase,
 		header.Root,
 		header.TxHash,
@@ -34,7 +31,6 @@ func sigHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
-		//header.MixDigest,
 		header.Nonce,
 	})
 	hasher.Sum(hash[:0])
@@ -70,21 +66,4 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 	}
 
 	return r
-}
-
-func ValidationFairSignature(hash common.Hash, sig []byte, fairAddr common.Address) bool {
-	fpKey, err := crypto.SigToPub(hash.Bytes(), sig)
-	if err != nil {
-		log.Error("ValidationFairSignature SigToPub", "msg", err)
-		return false
-	}
-
-	addr := crypto.PubkeyToAddress(*fpKey)
-	if addr == fairAddr {
-		return true
-	}
-
-	log.Error("ValidationFairSignature PubkeyToAddress", "addr", addr, "fairaddr", fairAddr)
-
-	return false
 }

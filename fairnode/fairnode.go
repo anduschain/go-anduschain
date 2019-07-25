@@ -159,7 +159,7 @@ func (fn *Fairnode) statusLoop() {
 		select {
 		case <-t.C:
 			for id, league := range fn.leagues {
-				logger.Info("status", "otprn", id.String(), "code", league.Status)
+				logger.Debug("status", "otprn", id.String(), "code", league.Status)
 			}
 		}
 	}
@@ -214,10 +214,10 @@ func (fn *Fairnode) processManageLoop() {
 					}
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
-					time.Sleep(3 * time.Second)
+					time.Sleep(10 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
 					time.Sleep(3 * time.Second)
