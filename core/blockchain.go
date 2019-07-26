@@ -1022,19 +1022,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
-
-		// FIXME(hakuna) : 페어노드 서명 관련 부분 처리
-		//if _, ok := bc.engine.(*deb.Deb); ok {
-		//	// TODO : andus >> 블록의 페어노드 서명이 있는 것만 처리하도록
-		//	if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig(), bc.chainConfig.Deb.FairAddr) {
-		//		log.Error("Non fairnode signature block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
-		//			"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
-		//
-		//		return 0, nil, nil, fmt.Errorf("페어노드 서명이 없음 : item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
-		//			chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
-		//	}
-		//}
-
 		if chain[i].NumberU64() != chain[i-1].NumberU64()+1 || chain[i].ParentHash() != chain[i-1].Hash() {
 			// Chain broke ancestry, log a message (programming error) and skip insertion
 			log.Error("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),

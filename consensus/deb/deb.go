@@ -31,7 +31,9 @@ func sigHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
+		header.Extra,
 		header.Nonce,
+		header.Otprn,
 	})
 	hasher.Sum(hash[:0])
 	return hash
