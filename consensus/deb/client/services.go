@@ -22,16 +22,16 @@ func (dc *DebClient) heartBeat() {
 		log.Warn("heart beat loop was dead")
 	}()
 
-	sign, err := dc.wallet.SignHash(dc.miner.Miner, dc.miner.Hash().Bytes())
-	if err != nil {
-		log.Error("heart beat sign node info", "msg", err)
-		return
-	}
-
-	dc.miner.Node.Sign = sign // heartbeat sign
-
 	submit := func() error {
-		_, err := dc.rpc.HeartBeat(dc.ctx, &dc.miner.Node)
+		dc.miner.Node.Head = dc.backend.BlockChain().CurrentHeader().Hash().String() // head change
+		sign, err := dc.wallet.SignHash(dc.miner.Miner, dc.miner.Hash().Bytes())
+		if err != nil {
+			log.Error("heart beat sign node info", "msg", err)
+			return err
+
+		}
+		dc.miner.Node.Sign = sign // heartbeat sign
+		_, err = dc.rpc.HeartBeat(dc.ctx, &dc.miner.Node)
 		if err != nil {
 			log.Error("heart beat call", "msg", err)
 			return err

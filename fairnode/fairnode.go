@@ -223,9 +223,10 @@ func (fn *Fairnode) processManageLoop() {
 					l.Status = types.VOTE_COMPLETE
 				case types.FINALIZE:
 					time.Sleep(3 * time.Second)
+					l.Current = fn.db.CurrentBlock().Number()
 					l.Status = types.MAKE_JOIN_TX
 				default:
-					logger.Info("process Manage Loop", "staus", status.String())
+					logger.Debug("process Manage Loop", "staus", status.String())
 				}
 			}
 		}

@@ -281,19 +281,17 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
-	var status *types.FnStatus // 해당되는 리그의 상태
-	var currnet *big.Int       // current block number
 	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
+	var clg *league // current league
 	if league, ok := rs.leagues[otprnHash]; ok {
-		status = &league.Status
-		currnet = league.Current
+		clg = league
 	} else {
 		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", nodeInfo.GetOtprnHash()))
 	}
 
-	makeMsg := func(status *types.FnStatus, currentNum []byte) *proto.ProcessMessage {
+	makeMsg := func(l *league) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
-		switch *status {
+		switch l.Status {
 		case types.SAVE_OTPRN:
 			msg.Code = proto.ProcessStatus_WAIT
 		case types.MAKE_LEAGUE:
@@ -309,12 +307,12 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		case types.FINALIZE:
 			msg.Code = proto.ProcessStatus_FINALIZE
 		}
-		msg.CurrentBlockNum = currentNum
+		msg.CurrentBlockNum = l.Current.Bytes()
 		return &msg
 	}
 
 	for {
-		m := makeMsg(status, currnet.Bytes()) // make message
+		m := makeMsg(clg) // make message
 		hash := rlpHash([]interface{}{
 			m.Code,
 		})

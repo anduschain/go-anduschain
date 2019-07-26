@@ -124,7 +124,6 @@ func (dc *DebClient) Start(backend Backend) error {
 			ChainID:      backend.BlockChain().Config().ChainID.String(),
 			MinerAddress: backend.Coinbase().String(),
 			Port:         int64(backend.Server().NodeInfo().Ports.Listener),
-			Head:         backend.BlockChain().CurrentHeader().Hash().String(),
 		},
 		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),

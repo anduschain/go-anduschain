@@ -302,8 +302,13 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 	if number == 0 {
 		return errUnknownBlock
 	}
-	// TODO(hakuna) : fairnode sign check
-	// TODO(hakuna) : voters check
+
+	if bytes.Compare(header.FairnodeSign, []byte{}) == 0 {
+		return errors.New("empty fairnode signature")
+	}
+
+	// TODO(hakuna) : 페어노드 서명 확인
+
 	return nil
 }
 
@@ -348,20 +353,12 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
-	// [1] miner's join transaction 포함 여부 확인
-	// [2] join transasction에 포함된 정보로 티켓 비용 및 보상 처리
-	// [3] join nonce 처리
-
 	//자기것은 joinnonce 를 0으로 만든다.
-	//TODO : 다른데에서 블록을 붙일때 검증이 필요하다.
-
 	chainID := chain.Config().ChainID
-	//c.ValidationBlockWidthJoinTx(chainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
 	c.ChangeJoinNonceAndReword(chainID, state, Txs, header.Coinbase)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	block := types.NewBlock(header, Txs, receipts, voters)
-
 	// Assemble and return the final block for sealing
 	return block, nil
 }
@@ -371,9 +368,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	if txs == nil {
 		return
 	}
-
 	signer := types.NewEIP155Signer(chainid)
-
 	for _, tx := range txs {
 		//if tx.To() != nil {
 		//if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
