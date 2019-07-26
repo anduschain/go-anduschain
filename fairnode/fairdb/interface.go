@@ -3,11 +3,16 @@ package fairdb
 import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/pkg/errors"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"math/big"
 )
 
 var logger = log.New("fairnode", "database")
+
+var (
+	ErrAlreadyExistBlock = errors.New("already exist block")
+)
 
 type FairnodeDB interface {
 	Start() error
@@ -30,10 +35,10 @@ type FairnodeDB interface {
 	SaveLeague(otprnHash common.Hash, enode string)
 	GetLeagueList(otprnHash common.Hash) []types.HeartBeat
 
-	SaveVote(otprn common.Hash, blockNum *big.Int, vote types.Voter)
-	GetVoters(votekey common.Hash) []types.Voter
+	SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter)
+	GetVoters(votekey common.Hash) []*types.Voter
 
-	SaveFinalBlock(block types.Block)
+	SaveFinalBlock(block *types.Block) error
 	GetBlock(blockHash common.Hash) *types.Block
 }
 

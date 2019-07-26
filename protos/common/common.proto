@@ -26,6 +26,10 @@ enum ProcessStatus {
     VOTE_START = 4;
     VOTE_COMPLETE = 5;
     REJECT = 6;
+    SEND_BLOCK = 7;
+    SEND_BLOCK_WAIT = 8;
+    REQ_FAIRNODE_SIGN = 9; // 서명 요청해, method terminate
+    FINALIZE = 10;
 }
 
 message Participate {
@@ -77,44 +81,48 @@ message Vote {
 // 투표 결과 요청
 message ReqVoteResult {
     bytes otprnHash = 1;
+    string address = 2;
+    bytes sign = 3;
 }
 
 message ResVoteResult {
     Status result = 1;
     string blockHash = 2;
-    bytes voters = 3; // rlp encoded
-}
-
-enum SealConfirmStatus {
-    PENDING = 0;
-    SEND_BLOCK = 1;
-    SEAL_FAIL = 2; // 블록 폐기, method terminate
-    COMPLETE = 3; // 서명 요청해, method terminate
+    repeated Vote voters = 3;
+    bytes sign = 4;
 }
 
 // 블록 실링 확인 요청
 message ReqConfirmSeal {
-    string enode = 1;
+    bytes otprnHash = 1;
     bytes blockHash = 2;
     bytes voteHash = 3;
+    string address = 4;
+    bytes sign = 5;
 }
 
 message ResConfirmSeal {
-    SealConfirmStatus code = 1;
+    ProcessStatus code = 1;
+    bytes sign = 2;
 }
 
 // 블록 요청
 message ReqBlock {
-    string enode = 1;
-    bytes block = 2; // rlp encoded
+    bytes block = 1; // rlp encoded
+    string address = 2;
+    bytes sign = 3;
 }
 
 // 블록 서명 요청
 message ReqFairnodeSign {
-    bytes blockHash = 1;
-    bytes voteHash = 2;
+    bytes otprnHash = 1;
+    bytes blockHash = 2;
+    bytes voteHash = 3;
+    string address = 4;
+    bytes sign = 5;
 }
 
 message ResFairnodeSign {
     bytes signature = 1;
+    bytes sign = 2;
 }

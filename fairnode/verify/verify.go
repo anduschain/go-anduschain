@@ -20,14 +20,17 @@ func ValidationDifficulty(header *types.Header) error {
 	return nil
 }
 
-func ValidationFinalBlockHash(voters []types.Voter) common.Hash {
+func ValidationFinalBlockHash(voters []*types.Voter) common.Hash {
 	type voteRes struct {
 		Header *types.Header
 		Count  uint64
 	}
 
-	voteMap := make(map[common.Hash]voteRes)
+	if len(voters) <= 0 {
+		return common.Hash{}
+	}
 
+	voteResult := make(map[common.Hash]voteRes)
 	for _, vote := range voters {
 		header := new(types.Header)
 		err := rlp.DecodeBytes(vote.Header, header)
@@ -36,10 +39,12 @@ func ValidationFinalBlockHash(voters []types.Voter) common.Hash {
 			continue
 		}
 
-		if res, ok := voteMap[header.Hash()]; ok {
-			res.Count++
+		hash := header.Hash()
+		if m, ok := voteResult[hash]; ok {
+			m.Count++
+			voteResult[hash] = m
 		} else {
-			voteMap[header.Hash()] = voteRes{Header: header, Count: 1}
+			voteResult[hash] = voteRes{Header: header, Count: 1}
 		}
 	}
 
@@ -47,40 +52,49 @@ func ValidationFinalBlockHash(voters []types.Voter) common.Hash {
 	// 2. Rand == diffcult 값이 높은 블록
 	// 3. joinNunce	== nonce 값이 놓은 블록
 	// 4. 블록이 홀수 이면 - 주소값이 작은사람 , 블록이 짝수이면 - 주소값이 큰사람
-	var top, temp voteRes
-	for _, res := range voteMap {
-		temp = res
+	var top voteRes
+	for _, vs := range voteResult {
+		if vs.Header == nil {
+			continue
+		}
+
 		if top.Header == nil {
-			top = temp
-		} else {
-			if top.Count < temp.Count {
-				top = temp
-			} else if top.Count == temp.Count {
-				// 동수인 투표일때
-				if top.Header.Difficulty.Cmp(temp.Header.Difficulty) < 0 {
-					top = temp
-				}
+			top = vs
+			continue
+		}
 
-				if top.Header.Difficulty.Cmp(temp.Header.Difficulty) == 0 {
-					if top.Header.Nonce.Uint64() < temp.Header.Nonce.Uint64() {
-						top = temp
-					}
-
-					if top.Header.Nonce.Uint64() == temp.Header.Nonce.Uint64() {
-						if temp.Header.Number.Uint64()%2 == 0 {
-							if top.Header.Coinbase.Big().Cmp(temp.Header.Coinbase.Big()) > 0 {
-								top = temp
-							}
-						} else {
-							if top.Header.Coinbase.Big().Cmp(temp.Header.Coinbase.Big()) < 0 {
-								top = temp
-							}
+		if top.Count < vs.Count {
+			top = vs
+		} else if top.Count == vs.Count {
+			switch top.Header.Difficulty.Cmp(vs.Header.Difficulty) {
+			case 1:
+				// top > vs
+				continue
+			case 0:
+				// top == vs
+				if top.Header.Nonce.Uint64() < vs.Header.Nonce.Uint64() {
+					top = vs
+				} else if top.Header.Nonce.Uint64() == vs.Header.Nonce.Uint64() {
+					if vs.Header.Number.Uint64()%2 == 0 {
+						//block count even
+						if top.Header.Coinbase.Big().Cmp(vs.Header.Coinbase.Big()) < 0 {
+							top = vs
 						}
-
+					} else {
+						//block count odd
+						if top.Header.Coinbase.Big().Cmp(vs.Header.Coinbase.Big()) < 0 {
+							top = vs
+						}
 					}
+				} else {
+					continue
 				}
-
+			case -1:
+				// top < vs
+				top = vs
 			}
+		} else {
+			continue
 		}
 	}
 

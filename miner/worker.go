@@ -18,7 +18,6 @@ package miner
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -30,6 +29,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/deckarep/golang-set"
@@ -194,12 +194,14 @@ type worker struct {
 	fnClientCloseCh  chan types.ClientClose
 	fnClientCLoseSub event.Subscription
 
-	fnStatus  types.FnStatus
-	makeBlock int32
+	fnStatus types.FnStatus
 
-	leagueBlockCh   chan *types.NewLeagueBlockEvent
-	voteResultCh    chan types.Voters
-	possibleWinning *types.Block // A set of possible winning block
+	leagueBlockCh      chan *types.NewLeagueBlockEvent
+	voteResultCh       chan types.Voters
+	submitBlockCh      chan *types.Block
+	fnSignCh           chan []byte
+	possibleWinning    *types.Block // A set of possible winning block
+	possibleFinalBlock *types.Block // A set of possible winning block
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -231,6 +233,8 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 		leagueBlockCh: make(chan *types.NewLeagueBlockEvent),
 		voteResultCh:  make(chan types.Voters),
+		submitBlockCh: make(chan *types.Block),
+		fnSignCh:      make(chan []byte),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -271,19 +275,18 @@ func (w *worker) leagueStatusLoop() {
 	for {
 		select {
 		case ev := <-w.fnStatusCh:
-			log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
+			if w.fnStatus == ev.Status {
+				continue
+			}
 			w.fnStatus = ev.Status
 			switch ev.Status {
 			case types.MAKE_BLOCK:
-				if atomic.LoadInt32(&w.makeBlock) == 0 {
-					if otprn, ok := ev.Payload.(types.Otprn); ok {
-						if deb, ok := w.engine.(*deb.Deb); ok {
-							deb.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
-							deb.SetOtprn(&otprn)        // deb consensus engine setting otprn
-						}
-						atomic.StoreInt32(&w.makeBlock, 1)
-						w.startCh <- struct{}{}
+				if otprn, ok := ev.Payload.(types.Otprn); ok {
+					if deb, ok := w.engine.(*deb.Deb); ok {
+						deb.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
+						deb.SetOtprn(&otprn)        // deb consensus engine setting otprn
 					}
+					w.startCh <- struct{}{}
 				}
 			case types.VOTE_START:
 				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
@@ -305,10 +308,21 @@ func (w *worker) leagueStatusLoop() {
 					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
 				}
 			case types.VOTE_COMPLETE:
-				if voters, ok := ev.Payload.(types.Voters); ok {
-					w.voteResultCh <- voters
+				if payload, ok := ev.Payload.([]interface{}); ok {
+					if voters, ok := payload[0].(types.Voters); ok {
+						w.voteResultCh <- voters
+					}
+
+					if submitBlockCh, ok := payload[1].(chan *types.Block); ok {
+						w.submitBlockCh = submitBlockCh
+					}
 				}
-				atomic.StoreInt32(&w.makeBlock, 0)
+			case types.REQ_FAIRNODE_SIGN:
+				if fnSign, ok := ev.Payload.([]byte); ok {
+					w.fnSignCh <- fnSign
+				}
+			default:
+				log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
 			}
 		case <-w.fnStatusdSub.Err():
 			return
@@ -392,7 +406,6 @@ func (w *worker) start() {
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
-	atomic.StoreInt32(&w.makeBlock, 0)
 	w.debClient.Stop()
 }
 
@@ -679,7 +692,7 @@ func (w *worker) resultLoop() {
 			}
 
 			bHash := rlpHash(ev.Block)
-			if err := client.ValidationSignHash(ev.Sign, bHash, ev.Address); err != nil {
+			if err := verify.ValidationSignHash(ev.Sign, bHash, ev.Address); err != nil {
 				log.Error("VerifySignature", "msg", err)
 				continue
 			}
@@ -751,90 +764,99 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			fmt.Println("=======voters========", voters.Hash().String())
+			pBlock := w.possibleWinning
+			if pBlock == nil {
+				continue
+			}
 
-		//case <-w.resultCh: // TODO(hakuna) : fix new client channel, finalblock received
-		//	block := new(types.Block) // TODO(hakuna) : fix new client channel
-		//
-		//	debEngine, ok := w.engine.(*deb.Deb)
-		//	if !ok {
-		//		// Deb engine check
-		//		continue
-		//	}
-		//
-		//	var (
-		//		sealhash = w.engine.SealHash(block.Header())
-		//		hash     = block.Hash()
-		//	)
-		//
-		//	if w.current.header.Number.Cmp(block.Number()) != 0 {
-		//		log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-		//		continue
-		//	}
-		//
-		//	// AndusChain check fairnode signature
-		//	err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig())
-		//	if err != nil {
-		//		log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
-		//		continue
-		//	}
-		//
-		//	bstart := time.Now()
-		//
-		//	// finalblock 검증 및 commit block
-		//
-		//	var parent *types.Block
-		//	parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
-		//
-		//	state, err := w.chain.StateAt(parent.Root())
-		//	if err != nil {
-		//		log.Error("Worker result StateNew Error", "err", err)
-		//	}
-		//
-		//	// Process block using the parent state as reference point.
-		//	receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
-		//	if err != nil {
-		//		log.Error("Worker result Processor Error", "err", err)
-		//	}
-		//
-		//	// Validate the state using the default validator
-		//	err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
-		//	if err != nil {
-		//		log.Error("Worker result ValidateState Error", "err", err)
-		//	}
-		//
-		//	//Commit block and state to database.
-		//	stat, err := w.chain.WriteBlockWithState(block, receipts, state)
-		//	if err != nil {
-		//		log.Error("Failed writing block to chain", "err", err)
-		//		continue
-		//	}
-		//
-		//	log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
-		//		"elapsed", common.PrettyDuration(time.Since(bstart)))
-		//
-		//	// Broadcast the block and announce chain insertion event
-		//	w.mux.Post(types.NewMinedBlockEvent{Block: block})
-		//
-		//	var CanonStatTy, SideStatTy bool
-		//	var events []interface{}
-		//	switch stat {
-		//	case core.CanonStatTy:
-		//		CanonStatTy = true
-		//		events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-		//		events = append(events, types.ChainHeadEvent{Block: block})
-		//	case core.SideStatTy:
-		//		SideStatTy = true
-		//		events = append(events, types.ChainSideEvent{Block: block})
-		//	}
-		//
-		//	log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
-		//
-		//	w.chain.PostChainEvents(events, logs)
-		//
-		//	// Insert the block into the set of pending ones to resultLoop for confirmations
-		//	w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+			fbHash := verify.ValidationFinalBlockHash(voters)
+			if fbHash != pBlock.Hash() {
+				log.Error("vote result final block hash difference", "fbHash", fbHash, "pHash", pBlock.Hash())
+				continue
+			}
 
+			w.possibleFinalBlock = pBlock.WithVoter(voters) // add voters in block
+			w.submitBlockCh <- w.possibleFinalBlock         // pass block to fairnode
+			w.possibleWinning = nil
+
+		case fnSign := <-w.fnSignCh:
+			if w.fnStatus != types.REQ_FAIRNODE_SIGN {
+				continue
+			}
+
+			if w.possibleFinalBlock == nil {
+				log.Error("possible final block is nil")
+				continue
+			}
+
+			block := w.possibleFinalBlock.WithSealFairnode(fnSign)
+
+			var (
+				sealhash = w.engine.SealHash(block.Header())
+				hash     = block.Hash()
+			)
+
+			if w.current.header.Number.Cmp(block.Number()) != 0 {
+				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				continue
+			}
+
+			bstart := time.Now()
+
+			// finalblock 검증 및 commit block
+			var parent *types.Block
+			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+
+			state, err := w.chain.StateAt(parent.Root())
+			if err != nil {
+				log.Error("Worker result StateNew Error", "err", err)
+			}
+
+			// Process block using the parent state as reference point.
+			receipts, logs, usedGas, err := w.chain.Processor().Process(block, state, w.chain.GetVmConifg())
+			if err != nil {
+				log.Error("Worker result Processor Error", "err", err)
+			}
+
+			// Validate the state using the default validator
+			err = w.chain.Validator().ValidateState(block, parent, state, receipts, usedGas)
+			if err != nil {
+				log.Error("Worker result ValidateState Error", "err", err)
+			}
+
+			//Commit block and state to database.
+			stat, err := w.chain.WriteBlockWithState(block, receipts, state)
+			if err != nil {
+				log.Error("Failed writing block to chain", "err", err)
+				continue
+			}
+
+			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+				"elapsed", common.PrettyDuration(time.Since(bstart)))
+
+			// Broadcast the block and announce chain insertion event
+			w.mux.Post(types.NewMinedBlockEvent{Block: block})
+
+			var CanonStatTy, SideStatTy bool
+			var events []interface{}
+			switch stat {
+			case core.CanonStatTy:
+				CanonStatTy = true
+				events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+				events = append(events, types.ChainHeadEvent{Block: block})
+			case core.SideStatTy:
+				SideStatTy = true
+				events = append(events, types.ChainSideEvent{Block: block})
+			}
+
+			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
+
+			w.chain.PostChainEvents(events, logs)
+
+			// Insert the block into the set of pending ones to resultLoop for confirmations
+			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+
+			w.possibleFinalBlock = nil
 		case <-w.exitCh:
 			return
 		}

@@ -31,9 +31,11 @@ const (
 )
 
 type league struct {
-	Otprn   *types.Otprn
-	Status  types.FnStatus
-	Current *big.Int
+	Otprn     *types.Otprn
+	Status    types.FnStatus
+	Current   *big.Int // current block number
+	BlockHash *common.Hash
+	Votehash  *common.Hash
 }
 
 var (
@@ -219,9 +221,11 @@ func (fn *Fairnode) processManageLoop() {
 				case types.VOTE_START:
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
-				case types.VOTE_COMPLETE:
+				case types.FINALIZE:
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
+				default:
+					logger.Info("process Manage Loop", "staus", status.String())
 				}
 			}
 		}

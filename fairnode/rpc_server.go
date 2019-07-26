@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
+	"github.com/anduschain/go-anduschain/log"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -305,6 +306,8 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			msg.Code = proto.ProcessStatus_VOTE_START
 		case types.VOTE_COMPLETE:
 			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
+		case types.FINALIZE:
+			msg.Code = proto.ProcessStatus_FINALIZE
 		}
 		msg.CurrentBlockNum = currentNum
 		return &msg
@@ -395,30 +398,363 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 		VoteSign: vote.GetVoterSign(),
 	}
 
-	rs.db.SaveVote(otprnHash, header.Number, voter)
+	rs.db.SaveVote(otprnHash, header.Number, &voter)
 	logger.Info("vote save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", header.Hash())
 
 	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteResult) (*proto.ResVoteResult, error) {
+	if res.GetAddress() == "" {
+		return nil, errorEmpty("address")
+	}
 
-	// TODO(hakuan) : to be work
-	otprnHash := common.Hash{}
-	finalBlockHash := verify.ValidationFinalBlockHash(rs.db.GetVoters(fairdb.MakeVoteKey(otprnHash, big.NewInt(0))))
-	logger.Info("final block", "hash", finalBlockHash)
+	if bytes.Compare(res.GetOtprnHash(), emptyByte) == 0 {
+		return nil, errorEmpty("otprn hash")
+	}
 
-	return nil, nil
+	if bytes.Compare(res.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		res.GetOtprnHash(),
+		res.GetAddress(),
+	})
+
+	addr := common.HexToAddress(res.GetAddress())
+	err := verify.ValidationSignHash(res.GetSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	otprnHash := common.BytesToHash(res.GetOtprnHash())
+	var clg *league // current league
+	if league, ok := rs.leagues[otprnHash]; ok {
+		clg = league
+	} else {
+		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", res.GetOtprnHash()))
+	}
+
+	voters := rs.db.GetVoters(fairdb.MakeVoteKey(otprnHash, new(big.Int).Add(clg.Current, big.NewInt(1))))
+	if len(voters) == 0 {
+		return nil, errors.New("voters count is zero")
+	}
+
+	var pVoters []*proto.Vote
+	for _, vote := range voters {
+		// vote result validation
+		hash := rlpHash([]interface{}{
+			vote.Header,
+			vote.Voter.String(),
+		})
+
+		err := verify.ValidationSignHash(vote.VoteSign, hash, vote.Voter)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+		}
+
+		pVoters = append(pVoters, &proto.Vote{
+			Header:       vote.Header,
+			VoterAddress: vote.Voter.String(),
+			VoterSign:    vote.VoteSign,
+		})
+	}
+
+	finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
+	voteHash := types.Voters(voters).Hash()                   // voter hash
+
+	clg.BlockHash = &finalBlockHash
+	clg.Votehash = &voteHash
+
+	logger.Info("Request VoteResult final block", "hash", finalBlockHash, "len", len(voters))
+
+	msg := proto.ResVoteResult{
+		Result:    proto.Status_SUCCESS,
+		BlockHash: finalBlockHash.String(),
+		Voters:    pVoters,
+	}
+
+	hash = rlpHash([]interface{}{
+		msg.Result,
+		msg.BlockHash,
+		msg.Voters,
+	})
+
+	sign, err := rs.fn.SignHash(hash.Bytes())
+	if err != nil {
+		logger.Error("Request VoteResult signature message", "msg", err)
+		return nil, err
+	}
+	msg.Sign = sign // add sign
+
+	return &msg, nil
 }
 
 func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.FairnodeService_SealConfirmServer) error {
-	return nil
+	if reqSeal.GetAddress() == "" {
+		return errorEmpty("address")
+	}
+
+	if bytes.Compare(reqSeal.GetOtprnHash(), emptyByte) == 0 {
+		return errorEmpty("otprn hash")
+	}
+
+	if bytes.Compare(reqSeal.GetBlockHash(), emptyByte) == 0 {
+		return errorEmpty("block hash")
+	}
+
+	if bytes.Compare(reqSeal.GetVoteHash(), emptyByte) == 0 {
+		return errorEmpty("vote hash")
+	}
+
+	if bytes.Compare(reqSeal.GetSign(), emptyByte) == 0 {
+		return errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		reqSeal.GetOtprnHash(),
+		reqSeal.GetBlockHash(),
+		reqSeal.GetVoteHash(),
+		reqSeal.GetAddress(),
+	})
+
+	addr := common.HexToAddress(reqSeal.GetAddress())
+	err := verify.ValidationSignHash(reqSeal.GetSign(), hash, addr)
+	if err != nil {
+		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	otprnHash := common.BytesToHash(reqSeal.GetOtprnHash())
+	var clg *league // current league
+	if league, ok := rs.leagues[otprnHash]; ok {
+		clg = league
+	} else {
+		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", reqSeal.GetOtprnHash()))
+	}
+
+	if clg.Votehash == nil || clg.BlockHash == nil {
+		return errors.New("current league votehash or blockhash is nil")
+	}
+
+	voteHash := common.BytesToHash(reqSeal.GetVoteHash())
+	blockHash := common.BytesToHash(reqSeal.GetBlockHash())
+
+	if *clg.Votehash != voteHash {
+		return errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), voteHash.String()))
+	}
+
+	if *clg.BlockHash != blockHash {
+		return errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), blockHash.String()))
+	}
+
+	makeMsg := func(l *league) *proto.ResConfirmSeal {
+		var m proto.ResConfirmSeal
+		switch l.Status {
+		case types.SEND_BLOCK:
+			m.Code = proto.ProcessStatus_SEND_BLOCK
+		case types.SEND_BLOCK_WAIT:
+			m.Code = proto.ProcessStatus_SEND_BLOCK_WAIT
+		case types.REQ_FAIRNODE_SIGN:
+			m.Code = proto.ProcessStatus_REQ_FAIRNODE_SIGN
+		}
+		return &m
+	}
+
+	if sBlock := rs.db.GetBlock(blockHash); sBlock != nil {
+		clg.Status = types.REQ_FAIRNODE_SIGN
+	} else {
+		clg.Status = types.SEND_BLOCK
+	}
+
+	for {
+		m := makeMsg(clg)
+		if m == nil {
+			continue
+		}
+
+		hash = rlpHash([]interface{}{
+			m.Code,
+		})
+
+		sign, err := rs.fn.SignHash(hash.Bytes())
+		if err != nil {
+			logger.Error("SealConfirm signature message", "msg", err)
+			return err
+		}
+		m.Sign = sign // add sign
+
+		if err := stream.Send(m); err != nil {
+			logger.Error("SealConfirm send status message", "msg", err)
+			return err
+		}
+
+		logger.Debug("SealConfirm send status message", "address", reqSeal.GetAddress(), "status", m.GetCode().String())
+
+		if clg.Status == types.REQ_FAIRNODE_SIGN {
+			// fairnode signature request signal submit and exit rpc
+			return nil
+		}
+
+		time.Sleep(1 * time.Second)
+	}
 }
 
-func (rs *rpcServer) SendBlock(ctx context.Context, block *proto.ReqBlock) (*empty.Empty, error) {
-	return nil, nil
+func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty.Empty, error) {
+	if req.GetAddress() == "" {
+		return nil, errorEmpty("address")
+	}
+
+	if bytes.Compare(req.GetBlock(), emptyByte) == 0 {
+		return nil, errorEmpty("block")
+	}
+
+	if bytes.Compare(req.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		req.GetBlock(),
+		req.GetAddress(),
+	})
+
+	addr := common.HexToAddress(req.GetAddress())
+	err := verify.ValidationSignHash(req.GetSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	block := new(types.Block)
+	stream := rlp.NewStream(bytes.NewReader(req.GetBlock()), 0)
+	if err := block.DecodeRLP(stream); err != nil {
+		log.Error("decode block", "msg", err)
+		return nil, err
+	}
+
+	otprn, err := types.DecodeOtprn(block.Otprn())
+	if err != nil {
+		log.Error("decode otprn", "msg", err)
+		return nil, err
+	}
+
+	var clg *league // current league
+	if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
+		clg = league
+	} else {
+		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", otprn.HashOtprn().String()))
+	}
+
+	if *clg.BlockHash != block.Hash() {
+		return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), block.Hash().String()))
+
+	}
+
+	if *clg.Votehash != block.VoterHash() {
+		return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), block.VoterHash().String()))
+
+	}
+
+	clg.Status = types.SEND_BLOCK_WAIT // saving block
+	err = rs.db.SaveFinalBlock(block)
+	if err != nil {
+		if err == fairdb.ErrAlreadyExistBlock {
+			// already exist block
+			clg.Status = types.REQ_FAIRNODE_SIGN
+			return &empty.Empty{}, nil
+		}
+		clg.Status = types.SEND_BLOCK_WAIT
+		return nil, err
+	}
+
+	clg.Status = types.REQ_FAIRNODE_SIGN
+	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestFairnodeSign(ctx context.Context, reqInfo *proto.ReqFairnodeSign) (*proto.ResFairnodeSign, error) {
-	return nil, nil
+	if reqInfo.GetAddress() == "" {
+		return nil, errorEmpty("address")
+	}
+
+	if bytes.Compare(reqInfo.GetOtprnHash(), emptyByte) == 0 {
+		return nil, errorEmpty("otprn hash")
+	}
+
+	if bytes.Compare(reqInfo.GetBlockHash(), emptyByte) == 0 {
+		return nil, errorEmpty("block hash")
+	}
+
+	if bytes.Compare(reqInfo.GetVoteHash(), emptyByte) == 0 {
+		return nil, errorEmpty("vote hash")
+	}
+
+	if bytes.Compare(reqInfo.GetSign(), emptyByte) == 0 {
+		return nil, errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		reqInfo.GetOtprnHash(),
+		reqInfo.GetBlockHash(),
+		reqInfo.GetVoteHash(),
+		reqInfo.GetAddress(),
+	})
+
+	addr := common.HexToAddress(reqInfo.GetAddress())
+	err := verify.ValidationSignHash(reqInfo.GetSign(), hash, addr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	otprnHash := common.BytesToHash(reqInfo.GetOtprnHash())
+	var clg *league // current league
+	if league, ok := rs.leagues[otprnHash]; ok {
+		clg = league
+	} else {
+		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", reqInfo.GetOtprnHash()))
+	}
+
+	if clg.Votehash == nil || clg.BlockHash == nil {
+		return nil, errors.New("current league votehash or blockhash is nil")
+	}
+
+	voteHash := common.BytesToHash(reqInfo.GetVoteHash())
+	blockHash := common.BytesToHash(reqInfo.GetBlockHash())
+
+	if *clg.Votehash != voteHash {
+		return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), voteHash.String()))
+	}
+
+	if *clg.BlockHash != blockHash {
+		return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), blockHash.String()))
+	}
+
+	hash = rlpHash([]interface{}{
+		reqInfo.GetBlockHash(),
+		reqInfo.GetVoteHash(),
+	})
+
+	signature, err := rs.fn.SignHash(hash.Bytes())
+	if err != nil {
+		logger.Error("Request Fairnode Signature message", "msg", err)
+		return nil, err
+	}
+
+	m := proto.ResFairnodeSign{
+		Signature: signature,
+	}
+
+	hash = rlpHash([]interface{}{
+		m.GetSignature(),
+	})
+
+	sign, err := rs.fn.SignHash(hash.Bytes())
+	if err != nil {
+		logger.Error("Request Fairnode Signature message", "msg", err)
+		return nil, err
+	}
+
+	m.Sign = sign
+
+	clg.Status = types.FINALIZE
+
+	return &m, nil
 }

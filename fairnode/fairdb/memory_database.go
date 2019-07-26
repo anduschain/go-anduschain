@@ -20,15 +20,15 @@ type MemDatabase struct {
 	NodeList   map[string]types.HeartBeat
 	OtprnList  []types.Otprn
 	LeagueList map[common.Hash]map[string]types.HeartBeat
-	VoteList   map[common.Hash][]types.Voter
-	BlockChain []types.Block
+	VoteList   map[common.Hash][]*types.Voter
+	BlockChain []*types.Block
 }
 
 func NewMemDatabase() *MemDatabase {
 	return &MemDatabase{
 		NodeList:   make(map[string]types.HeartBeat),
 		LeagueList: make(map[common.Hash]map[string]types.HeartBeat),
-		VoteList:   make(map[common.Hash][]types.Voter),
+		VoteList:   make(map[common.Hash][]*types.Voter),
 		ConfigList: make(map[common.Hash]types.ChainConfig),
 	}
 }
@@ -70,7 +70,7 @@ func (m *MemDatabase) CurrentBlock() *types.Block {
 	if len(m.BlockChain) == 0 {
 		return nil
 	}
-	return &m.BlockChain[len(m.BlockChain)-1] // current block
+	return m.BlockChain[len(m.BlockChain)-1] // current block
 }
 
 func (m *MemDatabase) CurrentOtprn() *types.Otprn {
@@ -148,7 +148,7 @@ func (m *MemDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
 	return leagues
 }
 
-func (m *MemDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote types.Voter) {
+func (m *MemDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -157,11 +157,11 @@ func (m *MemDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote types.
 		list = append(list, vote)
 		m.VoteList[voteKey] = list
 	} else {
-		m.VoteList[voteKey] = []types.Voter{vote}
+		m.VoteList[voteKey] = []*types.Voter{vote}
 	}
 }
 
-func (m *MemDatabase) GetVoters(votekey common.Hash) []types.Voter {
+func (m *MemDatabase) GetVoters(votekey common.Hash) []*types.Voter {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if list, ok := m.VoteList[votekey]; ok {
@@ -170,10 +170,20 @@ func (m *MemDatabase) GetVoters(votekey common.Hash) []types.Voter {
 	return nil
 }
 
-func (m *MemDatabase) SaveFinalBlock(block types.Block) {
+func (m *MemDatabase) SaveFinalBlock(block *types.Block) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	for _, b := range m.BlockChain {
+		if b.Hash() == block.Hash() {
+			return ErrAlreadyExistBlock
+		}
+	}
+
 	m.BlockChain = append(m.BlockChain, block)
+
+	fmt.Println("===========SaveFinalBlock=============", len(m.BlockChain))
+	return nil
 }
 
 func (m *MemDatabase) GetBlock(blockHash common.Hash) *types.Block {
@@ -181,7 +191,7 @@ func (m *MemDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	defer m.mu.Unlock()
 	for _, block := range m.BlockChain {
 		if block.Hash() == blockHash {
-			return &block
+			return block
 		}
 	}
 	return nil

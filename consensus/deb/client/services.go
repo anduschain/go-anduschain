@@ -3,7 +3,9 @@ package client
 import (
 	"bytes"
 	"errors"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"math/big"
@@ -183,10 +185,12 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			in.Code,
 		})
 
-		if err := ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
+		if err := verify.ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
 			log.Error("VerifySignature", "msg", err)
 			return
 		}
+
+		log.Info("===> receiveFairnodeStatusLoop", "stream", in.GetCode().String())
 
 		switch in.GetCode() {
 		case proto.ProcessStatus_MAKE_LEAGUE:
@@ -231,8 +235,8 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 					return
 				}
 
-				isJoinTx = true
 				log.Info("made join transaction", "hash", sTx.Hash())
+				isJoinTx = true
 			} else {
 				log.Warn("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
 			}
@@ -254,9 +258,22 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				continue
 			}
 			// 투표결과 요청 후, voter 확인 후, 블록에 넣기
-			voters := dc.requestVoteResult()
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE, Payload: voters})
-			isReqVoteResult = true
+			voters := dc.requestVoteResult(otprn)
+			if voters == nil {
+				continue
+			}
+			submitBlock := make(chan *types.Block)
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE, Payload: []interface{}{voters, submitBlock}})
+			select {
+			case block := <-submitBlock:
+				go dc.reqSealConfirm(otprn, *block)
+				isReqVoteResult = true
+			}
+		case proto.ProcessStatus_FINALIZE:
+			// make block routine start
+			isJoinTx = false
+			isVote = false
+			isReqVoteResult = false
 		default:
 			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
@@ -332,7 +349,220 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 	log.Info("vote success", "hash", block.Hash())
 }
 
-func (dc *DebClient) requestVoteResult() types.Voters {
-	// TODO(hakuan) : to be work
+func (dc *DebClient) requestVoteResult(otprn types.Otprn) types.Voters {
+	msg := proto.ReqVoteResult{
+		OtprnHash: otprn.HashOtprn().Bytes(),
+		Address:   dc.miner.Node.MinerAddress,
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.OtprnHash,
+		msg.Address,
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("voting info signature", "msg", err)
+		return nil
+	}
+
+	msg.Sign = sign
+
+	res, err := dc.rpc.RequestVoteResult(dc.ctx, &msg)
+	if err != nil {
+		log.Error("Request Vote Result", "msg", err)
+		return nil
+	}
+
+	hash = rlpHash([]interface{}{
+		res.GetResult(),
+		res.GetBlockHash(),
+		res.GetVoters(),
+	})
+
+	if err := verify.ValidationSignHash(res.GetSign(), hash, dc.FnAddress()); err != nil {
+		log.Error("VerifySignature", "msg", err)
+		return nil
+	}
+
+	if res.Result == proto.Status_SUCCESS {
+		var voters []*types.Voter
+		for _, vote := range res.GetVoters() {
+			hash := rlpHash([]interface{}{
+				vote.Header,
+				vote.VoterAddress,
+			})
+
+			err := verify.ValidationSignHash(vote.GetVoterSign(), hash, common.HexToAddress(vote.VoterAddress))
+			if err != nil {
+				log.Error("VerifySignature", "msg", err)
+				return nil
+			}
+
+			voters = append(voters, &types.Voter{
+				Header:   vote.Header,
+				Voter:    common.HexToAddress(vote.VoterAddress),
+				VoteSign: vote.VoterSign,
+			})
+		}
+		return types.Voters(voters)
+	} else {
+		return nil
+	}
+}
+
+func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
+	defer log.Warn("reqSealConfirm was dead", "otprn", otprn.HashOtprn().String())
+
+	msg := proto.ReqConfirmSeal{
+		OtprnHash: otprn.HashOtprn().Bytes(),
+		Address:   dc.miner.Node.MinerAddress,
+		BlockHash: block.Hash().Bytes(),
+		VoteHash:  block.VoterHash().Bytes(),
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.GetOtprnHash(),
+		msg.GetBlockHash(),
+		msg.GetVoteHash(),
+		msg.GetAddress(),
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("request SealConfirm info signature", "msg", err)
+		return
+	}
+
+	msg.Sign = sign
+	stream, err := dc.rpc.SealConfirm(dc.ctx, &msg)
+	if err != nil {
+		log.Error("request SealConfirm", "msg", err)
+		return
+	}
+
+	defer stream.CloseSend()
+
+	var (
+		isSendBlock       bool
+		isReqFairnodeSign bool
+	)
+
+	for {
+		in, err := stream.Recv()
+		if err != nil {
+			log.Error("request SealConfirm stream receive", "msg", err)
+			return
+		}
+
+		hash := rlpHash([]interface{}{
+			in.Code,
+		})
+
+		if err := verify.ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
+			log.Error("VerifySignature", "msg", err)
+			return
+		}
+
+		switch in.GetCode() {
+		case proto.ProcessStatus_SEND_BLOCK:
+			if isSendBlock {
+				continue
+			}
+			// submitting to fairnode
+			if err := dc.sendBlock(block); err != nil {
+				log.Error("send block to fairnode", "msg", err)
+				return
+			}
+			isSendBlock = true
+		case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
+			if isReqFairnodeSign {
+				continue
+			}
+			fnSign := dc.requestFairnodeSign(otprn, block)
+			if fnSign == nil {
+				return
+			}
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
+			isReqFairnodeSign = true
+		default:
+			log.Info("request SealConfirm loop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
+		}
+	}
+}
+
+func (dc *DebClient) sendBlock(block types.Block) error {
+
+	var buf bytes.Buffer
+	err := block.EncodeRLP(&buf)
+	if err != nil {
+		return err
+	}
+
+	msg := proto.ReqBlock{
+		Block:   buf.Bytes(),
+		Address: dc.miner.Node.MinerAddress,
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.GetBlock(),
+		msg.GetAddress(),
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("send block signature", "msg", err)
+		return err
+	}
+
+	msg.Sign = sign
+
+	_, err = dc.rpc.SendBlock(dc.ctx, &msg)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (dc *DebClient) requestFairnodeSign(otprn types.Otprn, block types.Block) []byte {
+
+	msg := proto.ReqFairnodeSign{
+		OtprnHash: otprn.HashOtprn().Bytes(),
+		Address:   dc.miner.Node.MinerAddress,
+		BlockHash: block.Hash().Bytes(),
+		VoteHash:  block.VoterHash().Bytes(),
+	}
+
+	hash := rlpHash([]interface{}{
+		msg.GetOtprnHash(),
+		msg.GetBlockHash(),
+		msg.GetVoteHash(),
+		msg.GetAddress(),
+	})
+
+	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
+	if err != nil {
+		log.Error("request fairnode signature info signature", "msg", err)
+		return nil
+	}
+
+	msg.Sign = sign
+
+	res, err := dc.rpc.RequestFairnodeSign(dc.ctx, &msg)
+	if err != nil {
+		log.Error("request fairnode signature", "msg", err)
+		return nil
+	}
+
+	hash = rlpHash([]interface{}{
+		res.GetSignature(),
+	})
+
+	if err := verify.ValidationSignHash(res.GetSign(), hash, dc.FnAddress()); err != nil {
+		log.Error("VerifySignature", "msg", err)
+		return nil
+	}
+
+	return res.GetSignature()
 }

@@ -332,6 +332,8 @@ func (b *Block) FairnodeSign() []byte { return b.header.FairnodeSign }
 func (b *Block) Voters() Voters         { return b.voters }
 func (b *Block) VoterHash() common.Hash { return b.header.VoteHash }
 
+func (b *Block) Otprn() []byte { return b.header.Otprn }
+
 // Size returns the true RLP encoded storage size of the block, either by encoding
 // and returning it, or returning a previsouly cached value.
 func (b *Block) Size() common.StorageSize {
@@ -362,12 +364,24 @@ func (b *Block) WithSeal(header *Header) *Block {
 	}
 }
 
-// WithSeal returns a new block with the data from b but the header replaced with
+// WithSealFairnode returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithSealFairnode(voters Voters, fnSign []byte) *Block {
+func (b *Block) WithSealFairnode(fnSign []byte) *Block {
+	cpy := *b.header
+	cpy.FairnodeSign = fnSign
+
+	return &Block{
+		header:       &cpy,
+		transactions: b.transactions,
+		voters:       b.voters,
+	}
+}
+
+// WithVoter returns a new block with the data from b but the header replaced with
+// the sealed one.
+func (b *Block) WithVoter(voters Voters) *Block {
 	cpy := *b.header
 	cpy.VoteHash = voters.Hash()
-	cpy.FairnodeSign = fnSign
 
 	return &Block{
 		header:       &cpy,

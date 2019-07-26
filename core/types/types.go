@@ -71,6 +71,14 @@ func (f FnStatus) String() string {
 		return "VOTE_COMPLETE"
 	case MAKE_PENDING_LEAGUE:
 		return "MAKE_PENDING_LEAGUE"
+	case SEND_BLOCK:
+		return "SEND_BLOCK"
+	case SEND_BLOCK_WAIT:
+		return "SEND_BLOCK_WAIT"
+	case REQ_FAIRNODE_SIGN:
+		return "REQ_FAIRNODE_SIGN"
+	case FINALIZE:
+		return "FINALIZE"
 	default:
 		return "UNKNOWN"
 	}
@@ -85,4 +93,8 @@ const (
 	VOTE_START
 	VOTE_COMPLETE
 	MAKE_PENDING_LEAGUE
+	SEND_BLOCK
+	SEND_BLOCK_WAIT
+	REQ_FAIRNODE_SIGN
+	FINALIZE
 )
