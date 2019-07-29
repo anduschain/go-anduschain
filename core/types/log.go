@@ -42,10 +42,9 @@ type Log struct {
 	// block in which the transaction was included
 	BlockNumber uint64 `json:"blockNumber"`
 	// hash of the transaction
-	TxHash common.Hash `json:"genTransactionHash" gencodec:"required"`
+	TxHash common.Hash `json:"transactionHash" gencodec:"required"`
 	// index of the transaction in the block
-	TxIndex uint `json:"genTransactionIndex" gencodec:"required"`
-
+	TxIndex uint `json:"transactionIndex" gencodec:"required"`
 	// hash of the block in which the transaction was included
 	BlockHash common.Hash `json:"blockHash"`
 	// index of the log in the receipt
@@ -76,9 +75,8 @@ type rlpStorageLog struct {
 	BlockNumber uint64
 	TxHash      common.Hash
 	TxIndex     uint
-
-	BlockHash common.Hash
-	Index     uint
+	BlockHash   common.Hash
+	Index       uint
 }
 
 // EncodeRLP implements rlp.Encoder.

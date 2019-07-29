@@ -530,10 +530,15 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 	if number == nil {
 		return nil
 	}
+
+	fmt.Println("=============GetBodyRLP==============", "number", *number)
+
 	body := rawdb.ReadBodyRLP(bc.db, hash, *number)
 	if len(body) == 0 {
 		return nil
 	}
+
+	fmt.Println("=============ReadBodyRLP==============", "body", common.BytesToHash(body).String())
 	// Cache the found body for next time and return
 	bc.bodyRLPCache.Add(hash, body)
 	return body
@@ -873,15 +878,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
-	// FIXME(hakuna) : 패어 노드 서명 부분 처리해야함
-	// AndusChain, Check Fairnode signature
-	//if deb, ok := bc.engine.(*deb.Deb); ok {
-	//	err, _ := deb.FairNodeSigCheck(block, block.FairNodeSig())
-	//	if err != nil {
-	//		return NonStatTy, err
-	//	}
-	//}
-
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -895,12 +891,13 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	log.Debug("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String())
+	log.Info("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String()) // TODO(hakuna) : before release level to debug
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {
 		return NonStatTy, err
 	}
+
 	rawdb.WriteBlock(bc.db, block)
 
 	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))

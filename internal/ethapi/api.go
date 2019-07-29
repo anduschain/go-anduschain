@@ -794,8 +794,9 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 		"timestamp":        (*hexutil.Big)(head.Time),
 		"transactionsRoot": head.TxHash,
 		"receiptsRoot":     head.ReceiptHash,
-		"voterHash":        head.VoteHash, // TODO : add
-
+		"voteHash":         head.VoteHash,
+		"otprn":            hexutil.Bytes(head.Otprn),
+		"fairnodeSign":     hexutil.Bytes(head.FairnodeSign),
 	}
 
 	if inclTx {
@@ -834,6 +835,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
+	TxType           hexutil.Uint64  `json:"transactionType"`
 	BlockHash        common.Hash     `json:"blockHash"`
 	BlockNumber      *hexutil.Big    `json:"blockNumber"`
 	From             common.Address  `json:"from"`
@@ -861,6 +863,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 	v, r, s := tx.RawSignatureValues()
 
 	result := &RPCTransaction{
+		TxType:   hexutil.Uint64(tx.TransactionId()),
 		From:     from,
 		Gas:      hexutil.Uint64(tx.Gas()),
 		GasPrice: (*hexutil.Big)(tx.GasPrice()),

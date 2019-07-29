@@ -531,6 +531,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 			// Retrieve the requested block body, stopping if enough was found
 			if data := pm.blockchain.GetBodyRLP(hash); len(data) != 0 {
+				fmt.Println("=============GetBlockBodiesMsg GetBodyRLP==============", "body", common.BytesToHash(data).String())
 				bodies = append(bodies, data)
 				bytes += len(data)
 			}
@@ -544,13 +545,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		// Deliver them all to the downloader for queuing
 		transactions := make([][]*types.Transaction, len(request))
 		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {
 			transactions[i] = body.Transactions
-			voters[i] = body.Voter
+			voters[i] = body.Voters
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
 		filter := len(transactions) > 0 || len(voters) > 0
@@ -626,7 +628,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// Retrieve the requested block's receipts, skipping if unknown to us
 			results := pm.blockchain.GetReceiptsByHash(hash)
 			if results == nil {
-				if header := pm.blockchain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyRootHash {
+				if header := pm.blockchain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyReceiptHash {
 					continue
 				}
 			}
@@ -642,15 +644,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
-		receipts := struct {
-			receipts [][]*types.Receipt
-		}{}
+		var receipts [][]*types.Receipt
 
 		if err := msg.Decode(&receipts); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		// Deliver all to the downloader
-		if err := pm.downloader.DeliverReceipts(p.id, receipts.receipts); err != nil {
+		if err := pm.downloader.DeliverReceipts(p.id, receipts); err != nil {
 			log.Debug("Failed to deliver receipts", "err", err)
 		}
 
@@ -764,6 +765,9 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		for _, peer := range transfer {
 			peer.AsyncSendNewBlock(block, td)
 		}
+
+		log.Info(" ===========> Propagated block", "hash", hash) // TODO(hakuna) : delete before release
+
 		log.Trace("Propagated block", "hash", hash, "recipients", len(transfer), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 		return
 	}
@@ -772,6 +776,8 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		for _, peer := range peers {
 			peer.AsyncSendNewBlockHash(block)
 		}
+
+		log.Info(" ===========> Announced block", "hash", hash) // TODO(hakuna) : delete before release
 		log.Trace("Announced block", "hash", hash, "recipients", len(peers), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 	}
 }
@@ -802,8 +808,9 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
 		if ev, ok := obj.Data.(types.NewMinedBlockEvent); ok {
-			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
-			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
+			log.Info(" ===========> minedBroadcastLoop", "hash", ev.Block.Hash()) // TODO(hakuna) : delete before release
+			pm.BroadcastBlock(ev.Block, true)                                     // First propagate block to peers
+			pm.BroadcastBlock(ev.Block, false)                                    // Only then announce to the rest
 		}
 	}
 }

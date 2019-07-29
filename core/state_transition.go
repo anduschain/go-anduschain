@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 
@@ -192,9 +193,18 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
+		fmt.Println("========>ApplyMessage IntrinsicGas error", err)
 		return nil, 0, false, err
 	}
+
+	fmt.Println("========>ApplyMessage IntrinsicGas", "gas", gas)
+
+	if *msg.To() == params.JtxAddress {
+		gas = 0
+	}
+
 	if err = st.useGas(gas); err != nil {
+		fmt.Println("========>ApplyMessage useGas error", err)
 		return nil, 0, false, err
 	}
 

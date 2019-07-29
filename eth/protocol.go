@@ -175,15 +175,11 @@ type newBlockData struct {
 
 // blockBody represents the data content of a single block.
 type blockBody struct {
-	Voter        []*types.Voter
 	Transactions []*types.Transaction // Transactions contained within a block
+	Voters       []*types.Voter
 }
 
 // blockBodiesData is the network packet for block content distribution.
-type blockBodiesData []*blockBody
+//type blockBodiesData []*blockBody
 
-type newLeagueBlockData struct {
-	Block *types.Block
-	Addr  common.Address
-	Sign  []byte
-}
+type blockBodiesData []*blockBody

@@ -40,5 +40,5 @@ func (v Voters) GetRlp(i int) []byte {
 }
 
 func (v Voters) Hash() common.Hash {
-	return rlpHash(&v)
+	return DeriveSha(v)
 }

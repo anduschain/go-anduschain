@@ -195,6 +195,7 @@ type extblock struct {
 type storageblock struct {
 	Header *Header
 	Txs    Transactions
+	Voters Voters
 	TD     *big.Int
 }
 
@@ -268,8 +269,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&eb); err != nil {
 		return err
 	}
-	b.header, b.transactions = eb.Header, eb.Txs
-	b.voters = eb.Voters
+	b.header, b.transactions, b.voters = eb.Header, eb.Txs, eb.Voters
 
 	b.size.Store(common.StorageSize(rlp.ListSize(size)))
 	return nil
@@ -290,7 +290,7 @@ func (b *StorageBlock) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&sb); err != nil {
 		return err
 	}
-	b.header, b.transactions, b.td = sb.Header, sb.Txs, sb.TD
+	b.header, b.transactions, b.voters, b.td = sb.Header, sb.Txs, sb.Voters, sb.TD
 	return nil
 }
 
@@ -361,12 +361,13 @@ func (b *Block) WithSeal(header *Header) *Block {
 	return &Block{
 		header:       &cpy,
 		transactions: b.transactions,
+		voters:       b.voters,
 	}
 }
 
-// WithSealFairnode returns a new block with the data from b but the header replaced with
+// WithFairnodeSign returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithSealFairnode(fnSign []byte) *Block {
+func (b *Block) WithFairnodeSign(fnSign []byte) *Block {
 	cpy := *b.header
 	cpy.FairnodeSign = fnSign
 

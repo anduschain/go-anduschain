@@ -100,9 +100,15 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
-	if block := rs.db.CurrentBlock(); block != nil {
-		if block.Hash().String() != nodeInfo.GetHead() {
-			return nil, errors.New("head is mismatch")
+	if cBlock := rs.db.CurrentBlock(); cBlock != nil {
+		if cBlock.Hash().String() != nodeInfo.GetHead() {
+			if block := rs.db.GetBlock(common.HexToHash(nodeInfo.GetHead())); block != nil {
+				if cBlock.Number().Uint64()-block.Number().Uint64() != 1 {
+					return nil, errors.New("head is mismatch")
+				}
+			} else {
+				return nil, errors.New("head is mismatch")
+			}
 		}
 	}
 
@@ -465,7 +471,7 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 	clg.BlockHash = &finalBlockHash
 	clg.Votehash = &voteHash
 
-	logger.Info("Request VoteResult final block", "hash", finalBlockHash, "len", len(voters))
+	logger.Info("Request VoteResult final block", "hash", finalBlockHash, "voteHash", voteHash, "len", len(voters))
 
 	msg := proto.ResVoteResult{
 		Result:    proto.Status_SUCCESS,

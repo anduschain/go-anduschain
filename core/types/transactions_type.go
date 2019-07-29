@@ -25,7 +25,6 @@ import (
 const (
 	GeneralTx uint64 = iota
 	JoinTx
-	JoinTxToAddr = "0x000000000000000000000000000000000000da07"
 )
 
 // Transactions is a Transaction slice type for basic sorting.

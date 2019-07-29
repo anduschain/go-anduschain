@@ -279,7 +279,7 @@ func ReadReceipts(db DatabaseReader, hash common.Hash, number uint64) types.Rece
 		return nil
 	}
 	// Convert the revceipts from their storage form to their internal representation
-	storageReceipts := []*types.ReceiptForStorage{}
+	var storageReceipts []*types.ReceiptForStorage
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
 		log.Error("Invalid receipt array RLP", "hash", hash, "err", err)
 		return nil
@@ -289,13 +289,6 @@ func ReadReceipts(db DatabaseReader, hash common.Hash, number uint64) types.Rece
 		receipts[i] = (*types.Receipt)(receipt)
 	}
 	return receipts
-}
-
-// DeleteReceipts removes all receipt data associated with a block hash.
-func DeleteJoinReceipts(db DatabaseDeleter, hash common.Hash, number uint64) {
-	if err := db.Delete(blockReceiptsKey(number, hash)); err != nil {
-		log.Crit("Failed to delete block receipts", "err", err)
-	}
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
@@ -348,7 +341,6 @@ func WriteBlock(db DatabaseWriter, block *types.Block) {
 
 // DeleteBlock removes all block data associated with a hash.
 func DeleteBlock(db DatabaseDeleter, hash common.Hash, number uint64) {
-	DeleteJoinReceipts(db, hash, number)
 	DeleteReceipts(db, hash, number)
 	DeleteHeader(db, hash, number)
 	DeleteBody(db, hash, number)

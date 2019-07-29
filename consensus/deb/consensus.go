@@ -185,7 +185,7 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 
 	if number > 0 {
-		diff := CalcDifficulty(header.Nonce.Uint64(), header.Extra, header.Coinbase, header.ParentHash)
+		diff := CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
 			return errInvalidDifficulty
 		}
@@ -249,6 +249,39 @@ func (c *Deb) ValidationLeagueBlock(chain consensus.ChainReader, block *types.Bl
 		return err
 	}
 	return nil
+}
+
+// pblock > possibeblock, rblock > received block
+func (c *Deb) SelectWinningBlock(pblock, rblock *types.Block) *types.Block {
+	if pblock == nil {
+		return rblock
+	}
+
+	switch rblock.Difficulty().Cmp(pblock.Difficulty()) {
+	case 1:
+		// difficulty 값이 높은 블록
+		return rblock
+	case 0:
+		// nonce 값이 큰 블록으로 교체
+		if rblock.Nonce() > pblock.Nonce() {
+			return rblock
+		}
+
+		// nonce 값이 같을 때
+		if rblock.Nonce() == pblock.Nonce() {
+			if rblock.Number().Uint64()%2 == 0 { // 블록 번호가 짝수 일때, 주소값이 큰 블록
+				if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) > 0 {
+					return rblock
+				}
+			} else {
+				if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) < 0 { // 블록 번호가 짝수 일때, 주소값이 작은 블록
+					return rblock
+				}
+			}
+		}
+	}
+
+	return pblock
 }
 
 // join tx check in block
@@ -344,7 +377,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
 
 	header.Time = big.NewInt(time.Now().Unix())
-	header.Difficulty = new(big.Int)
+	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	return nil
 }
 
@@ -353,39 +386,20 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
-	//자기것은 joinnonce 를 0으로 만든다.
-	chainID := chain.Config().ChainID
-	c.ChangeJoinNonceAndReword(chainID, state, Txs, header.Coinbase)
+	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header.Coinbase) // join nonce 척리
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
-	block := types.NewBlock(header, Txs, receipts, voters)
+
 	// Assemble and return the final block for sealing
-	return block, nil
+	return types.NewBlock(header, Txs, receipts, voters), nil
 }
 
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
 func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
-	if txs == nil {
+	if len(txs) == 0 {
 		return
 	}
 	signer := types.NewEIP155Signer(chainid)
 	for _, tx := range txs {
-		//if tx.To() != nil {
-		//if fairutil.CmpAddress(*tx.To(), c.fairAddr) {
-		//	from, _ := tx.Sender(signer)
-		//	state.AddJoinNonce(from)
-		//	logger.Debug("Add JOIN_NONCE", "addr", from.String())
-		//
-		//	//채굴자 보상
-		//	state.AddBalance(coinbase, tx.Value())
-		//	logger.Debug("Add Reword", "addr", coinbase.String())
-		//
-		//	//패어 노드 차감
-		//	state.SubBalance(c.fairAddr, tx.Value())
-		//	logger.Debug("Sub Fee from fairnode", "addr", c.fairAddr.String())
-		//}
-		//}
-
 		if tx.TransactionId() == types.JoinTx {
 			from, _ := tx.Sender(signer)
 			state.AddJoinNonce(from)

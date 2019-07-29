@@ -181,8 +181,6 @@ func (m *MemDatabase) SaveFinalBlock(block *types.Block) error {
 	}
 
 	m.BlockChain = append(m.BlockChain, block)
-
-	fmt.Println("===========SaveFinalBlock=============", len(m.BlockChain))
 	return nil
 }
 

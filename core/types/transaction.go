@@ -19,6 +19,7 @@ package types
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -87,7 +88,6 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
 	} else {
 		return nil
 	}
-	to := common.HexToAddress(JoinTxToAddr)
 
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, joinNonce)
@@ -96,7 +96,7 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
 	d := txdata{
 		Type:         JoinTx,
 		AccountNonce: nonce,
-		Recipient:    &to,
+		Recipient:    &params.JtxAddress,
 		Payload:      payload,
 		Amount:       new(big.Int),
 		GasLimit:     0,

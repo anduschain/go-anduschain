@@ -331,13 +331,13 @@ func (fu *FairTcp) GetFinalBlock(otprnHash common.Hash, votePool *pool.VotePool)
 }
 
 func SignFairNode(block *types.Block, vBlock pool.VoteBlock, account accounts.Account, ks *keystore.KeyStore) error {
-	sig, err := ks.SignHash(account, block.Hash().Bytes())
+	_, err := ks.SignHash(account, block.Hash().Bytes())
 	if err != nil {
 		return err
 	}
 
 	// Fairnode block 서명 및 voter 추가
-	block.WithSealFairnode(sig)
+	//block.WithSealFairnode(sig)
 
 	return nil
 }

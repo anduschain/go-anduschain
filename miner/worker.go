@@ -57,7 +57,7 @@ const (
 	resubmitAdjustChanSize = 10
 
 	// miningLogAtDepth is the number of confirmations before logging successful mining.
-	miningLogAtDepth = 7
+	miningLogAtDepth = 1 // README(hakuna) : confirm just in time.
 
 	// minRecommitInterval is the minimal time interval to recreate the mining block with
 	// any newly arrived transactions.
@@ -697,8 +697,7 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			pblock := w.possibleWinning // possible winning block
-			rblock := ev.Block          // received block
+			rblock := ev.Block // received block
 
 			if err := w.engine.VerifyHeader(w.chain, rblock.Header(), false); err != nil {
 				log.Error("received league block verifyHeader", "msg", err)
@@ -710,36 +709,15 @@ func (w *worker) resultLoop() {
 					log.Error("received league block validationLeagueBlock", "msg", err)
 					continue
 				}
-			}
 
-			if pblock == nil {
-				w.possibleWinning = rblock
-			} else {
-				if rblock.Difficulty().Cmp(pblock.Difficulty()) == 1 { // difficulty 값이 높은 블록
-					w.possibleWinning = rblock
-				} else if rblock.Difficulty().Cmp(pblock.Difficulty()) == 0 {
-					if rblock.Nonce() > pblock.Nonce() { // nonce 값이 큰 블록으로 교체
-						w.possibleWinning = rblock
-					} else if rblock.Nonce() == pblock.Nonce() { // nonce 값이 같을 때
-						if rblock.Number().Uint64()%2 == 0 { // 블록 번호가 짝수 일때, 주소값이 큰 블록
-							if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) > 0 {
-								w.possibleWinning = rblock
-							} else {
-								continue
-							}
-						} else {
-							if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) < 0 { // 블록 번호가 짝수 일때, 주소값이 작은 블록
-								w.possibleWinning = rblock
-							} else {
-								continue
-							}
-						}
-					} else {
-						continue
-					}
-				} else {
+				if w.possibleWinning = engine.SelectWinningBlock(w.possibleWinning, rblock); w.possibleWinning == nil {
+					log.Error("SelectWinningBlock", "msg", "selected block was nil")
 					continue
 				}
+			}
+
+			if w.possibleWinning.Hash() != rblock.Hash() {
+				continue
 			}
 
 			bHash = rlpHash(rblock) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
@@ -776,7 +754,7 @@ func (w *worker) resultLoop() {
 			}
 
 			w.possibleFinalBlock = pBlock.WithVoter(voters) // add voters in block
-			w.submitBlockCh <- w.possibleFinalBlock         // pass block to fairnode
+			w.submitBlockCh <- w.possibleFinalBlock         // pass votershash
 			w.possibleWinning = nil
 
 		case fnSign := <-w.fnSignCh:
@@ -789,7 +767,7 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			block := w.possibleFinalBlock.WithSealFairnode(fnSign)
+			block := w.possibleFinalBlock.WithFairnodeSign(fnSign) // fairnode sign add
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -800,6 +778,8 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
+
+			// TODO(hakuna) : vailidation fairnode signature
 
 			bstart := time.Now()
 
@@ -849,7 +829,7 @@ func (w *worker) resultLoop() {
 				events = append(events, types.ChainSideEvent{Block: block})
 			}
 
-			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
+			log.Info("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
 
 			w.chain.PostChainEvents(events, logs)
 
@@ -914,7 +894,6 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	}
 
 	w.current.txs = append(w.current.txs, tx)
-
 	w.current.receipts = append(w.current.receipts, receipt)
 
 	return receipt.Logs, nil
@@ -1110,7 +1089,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 		// Short circuit if there is no available pending transactions
-		if len(pending) == 0 && len(pendingJoinTx) == 0 {
+		if len(pending) == 0 || len(pendingJoinTx) == 0 {
 			w.updateSnapshot()
 			return
 		}
@@ -1144,7 +1123,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		w.commit(w.fullTaskHook, true, tstart)
+		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
+			log.Error("Failed commit for mining", "err", err, "update", true)
+			return
+		}
 	}
 
 }

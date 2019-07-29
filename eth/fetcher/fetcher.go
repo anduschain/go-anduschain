@@ -525,7 +525,6 @@ func (f *Fetcher) loop() {
 				for hash, announce := range f.completing {
 					if f.queued[hash] == nil {
 						txnHash := types.DeriveSha(types.Transactions(task.transactions[i]))
-
 						if txnHash == announce.header.TxHash && announce.origin == task.peer {
 							// Mark the body matched, reassemble if still unknown
 							matched = true
