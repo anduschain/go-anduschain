@@ -200,6 +200,7 @@ type worker struct {
 	voteResultCh       chan types.Voters
 	submitBlockCh      chan *types.Block
 	fnSignCh           chan []byte
+	leagueBroadCastCh  chan struct{}
 	possibleWinning    *types.Block // A set of possible winning block
 	possibleFinalBlock *types.Block // A set of possible winning block
 }
@@ -231,10 +232,11 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		fnStatusCh:      make(chan types.FairnodeStatusEvent), // non async channel
 		fnClientCloseCh: make(chan types.ClientClose),
 
-		leagueBlockCh: make(chan *types.NewLeagueBlockEvent),
-		voteResultCh:  make(chan types.Voters),
-		submitBlockCh: make(chan *types.Block),
-		fnSignCh:      make(chan []byte),
+		leagueBlockCh:     make(chan *types.NewLeagueBlockEvent),
+		leagueBroadCastCh: make(chan struct{}),
+		voteResultCh:      make(chan types.Voters),
+		submitBlockCh:     make(chan *types.Block),
+		fnSignCh:          make(chan []byte),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -279,17 +281,24 @@ func (w *worker) leagueStatusLoop() {
 				continue
 			}
 			w.fnStatus = ev.Status
-			switch ev.Status {
+			switch w.fnStatus {
 			case types.MAKE_BLOCK:
 				if otprn, ok := ev.Payload.(types.Otprn); ok {
-					if deb, ok := w.engine.(*deb.Deb); ok {
-						deb.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
-						deb.SetOtprn(&otprn)        // deb consensus engine setting otprn
+					if engine, ok := w.engine.(*deb.Deb); ok {
+						engine.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
+						engine.SetOtprn(&otprn)        // deb consensus engine setting otprn
 					}
 					w.startCh <- struct{}{}
 				}
+			case types.LEAGUE_BROADCASTING:
+				// league broadcasting
+				w.leagueBroadCastCh <- struct{}{}
 			case types.VOTE_START:
 				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
+					if w.possibleWinning == nil {
+						log.Error("leagueStatusLoop possible winning block was nil")
+						continue
+					}
 					block := w.possibleWinning
 					bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
 					acc := accounts.Account{Address: w.coinbase}
@@ -470,6 +479,8 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 				delete(w.pendingTasks, h)
 			}
 		}
+		w.possibleFinalBlock = nil
+		w.possibleWinning = nil
 		w.pendingMu.Unlock()
 	}
 
@@ -668,6 +679,22 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			w.pendingMu.Lock()
+			w.possibleWinning = block // made for me, saving possible block
+			w.pendingMu.Unlock()
+
+			log.Info("save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+
+		case <-w.leagueBroadCastCh:
+			if w.fnStatus != types.LEAGUE_BROADCASTING {
+				continue
+			}
+
+			if w.possibleWinning == nil {
+				continue
+			}
+
+			block := w.possibleWinning
 			bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
 			acc := accounts.Account{Address: w.coinbase}
 			wallet, err := w.eth.AccountManager().Find(acc)
@@ -682,12 +709,16 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			w.possibleWinning = block                                                                           // made for me, saving possible block
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("made new possible block and league broadcasting", "hash", block.Hash())
-
+			log.Info("possible block broadcasting", "hash", block.Hash())
 		case ev := <-w.leagueBlockCh:
-			if w.fnStatus != types.MAKE_BLOCK {
+			bypass := true
+			switch w.fnStatus {
+			case types.MAKE_BLOCK, types.LEAGUE_BROADCASTING:
+				bypass = false
+			}
+
+			if bypass {
 				continue
 			}
 
@@ -704,23 +735,29 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			var wBlock *types.Block
+
 			if engine, ok := w.engine.(*deb.Deb); ok {
 				if err := engine.ValidationLeagueBlock(w.chain, rblock); err != nil {
 					log.Error("received league block validationLeagueBlock", "msg", err)
 					continue
 				}
 
-				if w.possibleWinning = engine.SelectWinningBlock(w.possibleWinning, rblock); w.possibleWinning == nil {
+				if wBlock = engine.SelectWinningBlock(w.possibleWinning, rblock); w.possibleWinning == nil {
 					log.Error("SelectWinningBlock", "msg", "selected block was nil")
 					continue
 				}
 			}
 
-			if w.possibleWinning.Hash() != rblock.Hash() {
+			if wBlock.Hash() == w.possibleWinning.Hash() {
 				continue
 			}
 
-			bHash = rlpHash(rblock) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+			w.pendingMu.Lock()
+			w.possibleWinning = wBlock
+			w.pendingMu.Unlock()
+
+			bHash = rlpHash(w.possibleWinning) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
 			acc := accounts.Account{Address: w.coinbase}
 			wallet, err := w.eth.AccountManager().Find(acc)
 			if err != nil {
@@ -734,8 +771,8 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: rblock, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("possible winning block and league broadcasting", "hash", rblock.Hash())
+			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: w.possibleWinning, Address: w.coinbase, Sign: sign}) // league block for broadcasting
+			log.Info("possible winning block and league broadcasting", "hash", w.possibleWinning.Hash())
 
 		case voters := <-w.voteResultCh:
 			if w.fnStatus != types.VOTE_COMPLETE {
@@ -753,9 +790,11 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			w.pendingMu.Lock()
 			w.possibleFinalBlock = pBlock.WithVoter(voters) // add voters in block
 			w.submitBlockCh <- w.possibleFinalBlock         // pass votershash
 			w.possibleWinning = nil
+			w.pendingMu.Unlock()
 
 		case fnSign := <-w.fnSignCh:
 			if w.fnStatus != types.REQ_FAIRNODE_SIGN {
@@ -836,7 +875,9 @@ func (w *worker) resultLoop() {
 			// Insert the block into the set of pending ones to resultLoop for confirmations
 			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
+			w.pendingMu.Lock()
 			w.possibleFinalBlock = nil
+			w.pendingMu.Unlock()
 		case <-w.exitCh:
 			return
 		}

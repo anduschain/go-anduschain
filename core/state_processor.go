@@ -17,7 +17,6 @@
 package core
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/misc"
@@ -140,8 +139,5 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
-
-	fmt.Println("======> receipt.Bloom", receipt.Bloom, "logs length", len(receipt.Logs))
-
 	return receipt, gas, err
 }

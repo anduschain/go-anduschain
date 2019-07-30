@@ -112,6 +112,7 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 
 				dc.otprn = append(dc.otprn, otprn) // otprn save
 				go dc.receiveFairnodeStatusLoop(*otprn)
+				log.Info("otprn received and start fairnode status looop", "hash", otprn.HashOtprn())
 			}
 		case proto.Status_FAIL:
 			log.Warn("otprn got nil")
@@ -190,17 +191,17 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			return
 		}
 
-		log.Info("===> receiveFairnodeStatusLoop", "stream", in.GetCode().String())
+		//log.Info("===> receiveFairnodeStatusLoop", "stream", in.GetCode().String())
 
 		switch in.GetCode() {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			if !isReqLeague {
+				isReqLeague = true
 				enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
 				for _, enode := range enodes {
 					dc.backend.Server().AddPeer(discover.MustParseNode(enode))
 					log.Info("make league status", "addPeer", enodes)
 				}
-				isReqLeague = true
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:
 			if isJoinTx {
@@ -238,10 +239,13 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				log.Info("made join transaction", "hash", sTx.Hash())
 				isJoinTx = true
 			} else {
-				log.Warn("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
+				log.Error("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
+				return
 			}
 		case proto.ProcessStatus_MAKE_BLOCK:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK, Payload: otprn})
+		case proto.ProcessStatus_LEAGUE_BROADCASTING:
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.LEAGUE_BROADCASTING, Payload: nil})
 		case proto.ProcessStatus_VOTE_START:
 			if isVote {
 				continue
@@ -262,10 +266,10 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			if voters == nil {
 				continue
 			}
-			submitBlock := make(chan *types.Block)
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE, Payload: []interface{}{voters, submitBlock}})
+			submitBlockCh := make(chan *types.Block)
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_COMPLETE, Payload: []interface{}{voters, submitBlockCh}})
 			select {
-			case block := <-submitBlock:
+			case block := <-submitBlockCh:
 				go dc.reqSealConfirm(otprn, *block)
 				isReqVoteResult = true
 			}

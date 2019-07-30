@@ -530,15 +530,10 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 	if number == nil {
 		return nil
 	}
-
-	fmt.Println("=============GetBodyRLP==============", "number", *number)
-
 	body := rawdb.ReadBodyRLP(bc.db, hash, *number)
 	if len(body) == 0 {
 		return nil
 	}
-
-	fmt.Println("=============ReadBodyRLP==============", "body", common.BytesToHash(body).String())
 	// Cache the found body for next time and return
 	bc.bodyRLPCache.Add(hash, body)
 	return body

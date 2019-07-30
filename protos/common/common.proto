@@ -23,13 +23,14 @@ enum ProcessStatus {
     MAKE_LEAGUE = 1;
     MAKE_JOIN_TX = 2;
     MAKE_BLOCK = 3;
-    VOTE_START = 4;
-    VOTE_COMPLETE = 5;
-    REJECT = 6;
-    SEND_BLOCK = 7;
-    SEND_BLOCK_WAIT = 8;
-    REQ_FAIRNODE_SIGN = 9; // 서명 요청해, method terminate
-    FINALIZE = 10;
+    LEAGUE_BROADCASTING = 4;
+    VOTE_START = 5;
+    VOTE_COMPLETE = 6;
+    REJECT = 7;
+    SEND_BLOCK = 8;
+    SEND_BLOCK_WAIT = 9;
+    REQ_FAIRNODE_SIGN = 10; // 서명 요청해, method terminate
+    FINALIZE = 11;
 }
 
 message Participate {

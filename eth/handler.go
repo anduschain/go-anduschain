@@ -717,6 +717,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		for i, tx := range txs {
 			// Validate and mark the remote transaction
 			if tx == nil {
@@ -787,7 +788,6 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
 		}
-
 		log.Trace("Broadcast transaction", "hash", tx.Hash(), "recipients", len(peers))
 
 	}
@@ -811,9 +811,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 func (pm *ProtocolManager) txBroadcastLoop() {
 	for {
 		select {
-		case event := <-pm.txsCh:
-			pm.BroadcastTxs(event.Txs)
-
+		case ev := <-pm.txsCh:
+			pm.BroadcastTxs(ev.Txs)
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
 			return

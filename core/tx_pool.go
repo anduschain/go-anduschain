@@ -602,12 +602,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNonceTooLow
 	}
 
-	// Drop non-local transactions under our own minimal accepted gas price
-	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
-		return ErrUnderpriced
-	}
-
 	if tx.TransactionId() == types.JoinTx {
 		// joinnonde check
 		jnonce, err := tx.JoinNonce()
@@ -620,6 +614,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		}
 
 	} else {
+		// Drop non-local transactions under our own minimal accepted gas price
+		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
+		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+			return ErrUnderpriced
+		}
+
 		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
 		if err != nil {
 			return err
@@ -691,7 +691,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		log.Info("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
 		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(types.NewTxsEvent{types.Transactions{tx}})
+		go pool.txFeed.Send(types.NewTxsEvent{Txs: types.Transactions{tx}})
 
 		return old != nil, nil
 	}

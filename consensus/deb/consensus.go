@@ -274,7 +274,7 @@ func (c *Deb) SelectWinningBlock(pblock, rblock *types.Block) *types.Block {
 					return rblock
 				}
 			} else {
-				if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) < 0 { // 블록 번호가 짝수 일때, 주소값이 작은 블록
+				if rblock.Coinbase().Big().Cmp(pblock.Coinbase().Big()) < 0 { // 블록 번호가 홀수 일때, 주소값이 작은 블록
 					return rblock
 				}
 			}

@@ -306,9 +306,13 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			msg.Code = proto.ProcessStatus_MAKE_JOIN_TX
 		case types.MAKE_BLOCK:
 			msg.Code = proto.ProcessStatus_MAKE_BLOCK
+		case types.LEAGUE_BROADCASTING:
+			msg.Code = proto.ProcessStatus_LEAGUE_BROADCASTING
 		case types.VOTE_START:
 			msg.Code = proto.ProcessStatus_VOTE_START
 		case types.VOTE_COMPLETE:
+			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
+		case types.REQ_FAIRNODE_SIGN:
 			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
 		case types.FINALIZE:
 			msg.Code = proto.ProcessStatus_FINALIZE
@@ -332,7 +336,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			logger.Error("ProcessController send status message", "msg", err)
 			return err
 		}
-		logger.Debug("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
+		//logger.Debug("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -757,8 +761,6 @@ func (rs *rpcServer) RequestFairnodeSign(ctx context.Context, reqInfo *proto.Req
 	}
 
 	m.Sign = sign
-
-	clg.Status = types.FINALIZE
 
 	return &m, nil
 }

@@ -21,6 +21,7 @@ import (
 const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
+	MIN_LEAGUE_NUM         = 2
 )
 
 type fnType uint64
@@ -202,27 +203,33 @@ func (fn *Fairnode) processManageLoop() {
 				case types.PENDING:
 					// now league connection count check
 					nodes := fn.db.GetLeagueList(fn.currentLeague)
-					if len(nodes) > 0 {
+					if len(nodes) >= MIN_LEAGUE_NUM {
 						l.Status = types.MAKE_LEAGUE
 					}
 				case types.MAKE_LEAGUE:
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					// 생성할 블록 번호 조회
 					if block := fn.db.CurrentBlock(); block != nil {
 						l.Current = block.Number()
 					}
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
-					time.Sleep(10 * time.Second)
+					time.Sleep(3 * time.Second)
+					l.Status = types.LEAGUE_BROADCASTING
+				case types.LEAGUE_BROADCASTING:
+					time.Sleep(7 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
+				case types.REQ_FAIRNODE_SIGN:
+					time.Sleep(5 * time.Second)
+					l.Status = types.FINALIZE
 				case types.FINALIZE:
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					l.Current = fn.db.CurrentBlock().Number()
 					l.Status = types.MAKE_JOIN_TX
 				default:
@@ -238,7 +245,7 @@ func (fn *Fairnode) makeOtprn() {
 	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
 
 	newOtprn := func() error {
-		if nodes := fn.db.GetActiveNode(); len(nodes) > 0 {
+		if nodes := fn.db.GetActiveNode(); len(nodes) >= MIN_LEAGUE_NUM {
 			// 체인 관련 설정값 읽어옴
 			config := fn.db.GetChainConfig()
 			// OTPRN생성
@@ -262,7 +269,7 @@ func (fn *Fairnode) makeOtprn() {
 				return errors.New(fmt.Sprintf("league was exist otprn=%s", otprn.HashOtprn().String()))
 			}
 		} else {
-			return errors.New(fmt.Sprintf("not enough active node count = %d", len(nodes)))
+			return errors.New(fmt.Sprintf("not enough active node minimum=%d count=%d", MIN_LEAGUE_NUM, len(nodes)))
 		}
 	}
 
