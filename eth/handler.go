@@ -531,7 +531,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 			// Retrieve the requested block body, stopping if enough was found
 			if data := pm.blockchain.GetBodyRLP(hash); len(data) != 0 {
-				fmt.Println("=============GetBlockBodiesMsg GetBodyRLP==============", "body", common.BytesToHash(data).String())
 				bodies = append(bodies, data)
 				bytes += len(data)
 			}
@@ -765,9 +764,6 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		for _, peer := range transfer {
 			peer.AsyncSendNewBlock(block, td)
 		}
-
-		log.Info(" ===========> Propagated block", "hash", hash) // TODO(hakuna) : delete before release
-
 		log.Trace("Propagated block", "hash", hash, "recipients", len(transfer), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 		return
 	}
@@ -776,8 +772,6 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		for _, peer := range peers {
 			peer.AsyncSendNewBlockHash(block)
 		}
-
-		log.Info(" ===========> Announced block", "hash", hash) // TODO(hakuna) : delete before release
 		log.Trace("Announced block", "hash", hash, "recipients", len(peers), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 	}
 }
@@ -808,9 +802,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
 		if ev, ok := obj.Data.(types.NewMinedBlockEvent); ok {
-			log.Info(" ===========> minedBroadcastLoop", "hash", ev.Block.Hash()) // TODO(hakuna) : delete before release
-			pm.BroadcastBlock(ev.Block, true)                                     // First propagate block to peers
-			pm.BroadcastBlock(ev.Block, false)                                    // Only then announce to the rest
+			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
+			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
 		}
 	}
 }
