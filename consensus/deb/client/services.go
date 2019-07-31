@@ -186,6 +186,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 		hash := rlpHash([]interface{}{
 			in.Code,
+			in.CurrentBlockNum,
 		})
 
 		if err := verify.ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {

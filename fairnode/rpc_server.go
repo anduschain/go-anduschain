@@ -316,8 +316,16 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
 		case types.FINALIZE:
 			msg.Code = proto.ProcessStatus_FINALIZE
+		case types.REJECT:
+			msg.Code = proto.ProcessStatus_REJECT
 		}
-		msg.CurrentBlockNum = l.Current.Bytes()
+
+		if l.Current != nil {
+			msg.CurrentBlockNum = l.Current.Bytes()
+		} else {
+			msg.CurrentBlockNum = []byte{}
+		}
+
 		return &msg
 	}
 
@@ -325,6 +333,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 		m := makeMsg(clg) // make message
 		hash := rlpHash([]interface{}{
 			m.Code,
+			m.CurrentBlockNum,
 		})
 		sign, err := rs.fn.SignHash(hash.Bytes())
 		if err != nil {
@@ -383,16 +392,16 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 		return nil, err
 	}
 
-	var currnet *big.Int // current block number
+	var l *league // current block number
 	otprnHash := otprn.HashOtprn()
 	if league, ok := rs.leagues[otprnHash]; ok {
-		currnet = league.Current
+		l = league
 	} else {
 		return nil, errors.New(fmt.Sprintf("this vote is not matched in any league hash=%s", otprnHash.String()))
 	}
 
-	if currnet.Uint64()+1 != header.Number.Uint64() { // check block number
-		return nil, errors.New(fmt.Sprintf("invalid block number current=%d vote=%d", currnet.Uint64(), header.Number.Uint64()))
+	if l.Current.Uint64()+1 != header.Number.Uint64() { // check block number
+		return nil, errors.New(fmt.Sprintf("invalid block number current=%d vote=%d", l.Current.Uint64(), header.Number.Uint64()))
 	}
 
 	err = verify.ValidationDifficulty(header) // check block difficulty
@@ -407,8 +416,8 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 	}
 
 	rs.db.SaveVote(otprnHash, header.Number, &voter)
+	l.IsVoting = true // known league
 	logger.Info("vote save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", header.Hash())
-
 	return &empty.Empty{}, nil
 }
 

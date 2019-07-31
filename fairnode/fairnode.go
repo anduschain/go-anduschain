@@ -37,6 +37,7 @@ type league struct {
 	Current   *big.Int // current block number
 	BlockHash *common.Hash
 	Votehash  *common.Hash
+	IsVoting  bool
 }
 
 var (
@@ -225,6 +226,12 @@ func (fn *Fairnode) processManageLoop() {
 				case types.VOTE_START:
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
+				case types.VOTE_COMPLETE:
+					if !l.IsVoting {
+						logger.Error("anyone was not vote, league change and term")
+						l.Status = types.REJECT
+						delete(fn.leagues, fn.currentLeague) // league delete
+					}
 				case types.REQ_FAIRNODE_SIGN:
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE

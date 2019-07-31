@@ -81,6 +81,8 @@ func (f FnStatus) String() string {
 		return "REQ_FAIRNODE_SIGN"
 	case FINALIZE:
 		return "FINALIZE"
+	case REJECT:
+		return "REJECT"
 	default:
 		return "UNKNOWN"
 	}
@@ -100,4 +102,5 @@ const (
 	SEND_BLOCK_WAIT
 	REQ_FAIRNODE_SIGN
 	FINALIZE
+	REJECT
 )
