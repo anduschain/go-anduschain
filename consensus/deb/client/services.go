@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/p2p/discover"
+	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"math/big"
 	"time"
@@ -196,7 +198,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		}
 
 		stCode = in.GetCode()
-		log.Info("===> receiveFairnodeStatusLoop", "stream", stCode.String())
+		log.Info("===> receive fairnode signal", "stream", stCode.String())
 
 		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
@@ -214,10 +216,20 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				state := dc.backend.TxPool().State()
 				coinbase := dc.miner.Miner.Address
 
+				// balance check
+				epoch := new(big.Float).SetUint64(otprn.Data.Epoch)                  // block count which league will be made
+				fee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)           // join transaction fee
+				price := new(big.Float).Mul(big.NewFloat(params.Daon), fee)          // join transaction price ( fee * 10e18) - unit : daon
+				limitBalance := math.FloatToBigInt(new(big.Float).Mul(price, epoch)) // minimum balance for participate in league.
+				balance := state.GetBalance(coinbase)                                // current balance
+
+				if balance.Cmp(limitBalance) < 0 {
+					log.Error("not enough balance", "limit", fmt.Sprintf("%s Wie", limitBalance.String()), "balance", fmt.Sprintf("%s Wie", balance.String()))
+					return
+				}
+
 				nonce := state.GetNonce(coinbase)
 				jnonce := state.GetJoinNonce(coinbase)
-
-				fmt.Println("======> make join transaction", "nonce", nonce, "jnonce", jnonce)
 
 				bOtrpn, err := otprn.EncodeOtprn()
 				if err != nil {

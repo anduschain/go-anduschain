@@ -427,7 +427,8 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	}
 
 	jtxFee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)
-	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee) // percent
+	price := new(big.Float).Mul(big.NewFloat(params.Daon), jtxFee) // join transaction price ( fee * 10e18) - unit : daon
+	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee)     // percent
 	fnAddr := otprn.FnAddr
 
 	signer := types.NewEIP155Signer(chainid)
@@ -435,7 +436,9 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 		if tx.TransactionId() == types.JoinTx {
 			from, _ := tx.Sender(signer)
 			state.AddJoinNonce(from)
+			state.SubBalance(from, math.FloatToBigInt(price))
 			logger.Debug("add join transaction nonce", "addr", from.String())
+			logger.Debug("sub join transaction fee", "addr", from.String(), "amount", price.String())
 			jCnt++
 		}
 	}

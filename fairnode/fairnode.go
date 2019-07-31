@@ -248,9 +248,9 @@ func (fn *Fairnode) makeOtprn() {
 		if nodes := fn.db.GetActiveNode(); len(nodes) >= MIN_LEAGUE_NUM {
 			// 체인 관련 설정값 읽어옴
 			config := fn.db.GetChainConfig()
-			// OTPRN생성
+			// OTPRN 생성
 			otprn := types.NewOtprn(uint64(len(nodes)), fn.GetAddress(), *config)
-			// otprn 서명
+			// OTPRN 서명
 			err := otprn.SignOtprn(fn.privKey)
 			if err != nil {
 				return err

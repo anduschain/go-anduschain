@@ -40,6 +40,7 @@ var (
 var (
 	MAIN_NETWORK = big.NewInt(14288640)
 	TEST_NETWORK = big.NewInt(14288641)
+	DEB_NETWORK  = big.NewInt(14288642)
 )
 
 var (
@@ -74,10 +75,9 @@ var (
 		Deb:                 &DebConfig{FairPubKey: TestNetPubKey},
 	}
 
-	// TODO : andus >> consensus 추가
 	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
 	DebChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3356),
+		ChainID:             DEB_NETWORK,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
