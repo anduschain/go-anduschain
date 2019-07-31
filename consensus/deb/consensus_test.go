@@ -3,7 +3,9 @@ package deb
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 	"testing"
 )
@@ -70,5 +72,64 @@ func TestDeb_SelectWinningBlock(t *testing.T) {
 	} else {
 		t.Error("fail", "rb.Hash()", rb.Hash(), "blocks[1].Hash()", blocks[1].Hash())
 	}
+}
 
+func TestDeb_ChangeJoinNonceAndReword(t *testing.T) {
+
+	jcnt := float64(6)
+	jtxFee := big.NewFloat(10) // 10 daon
+	ta := big.NewFloat(jcnt * params.Daon)
+	total := new(big.Float).Mul(ta, jtxFee)
+	mRewardA, fnFeeA := calRewardAndFnFee(jcnt, params.Daon, jtxFee, big.NewFloat(0.1))
+
+	totlaA := math.FloatToBigInt(total)
+	t.Log("total", totlaA.String())
+	t.Log("fairnode fee", fnFeeA.String())
+	t.Log("miner's reward", mRewardA.String())
+
+	sum := new(big.Int).Add(fnFeeA, mRewardA)
+
+	if totlaA.Cmp(sum) != 0 {
+		t.Error("not equal reward value")
+	} else {
+		t.Log("equal reward value", "passed")
+	}
+	t.Log("-----------------------------------")
+	jcnt = float64(6)
+	jtxFee = big.NewFloat(1) // 1 daon
+	ta = big.NewFloat(jcnt * params.Daon)
+	total = new(big.Float).Mul(ta, jtxFee)
+	mRewardA, fnFeeA = calRewardAndFnFee(jcnt, params.Daon, jtxFee, big.NewFloat(0.001))
+
+	totlaA = math.FloatToBigInt(total)
+	t.Log("total", totlaA.String())
+	t.Log("fairnode fee", fnFeeA.String())
+	t.Log("miner's reward", mRewardA.String())
+
+	sum = new(big.Int).Add(fnFeeA, mRewardA)
+
+	if totlaA.Cmp(sum) != 0 {
+		t.Error("not equal reward value")
+	} else {
+		t.Log("equal reward value", "passed")
+	}
+	t.Log("-----------------------------------")
+	jcnt = float64(6)
+	jtxFee = big.NewFloat(0.5) // 0.5 daon
+	ta = big.NewFloat(jcnt * params.Daon)
+	total = new(big.Float).Mul(ta, jtxFee)
+	mRewardA, fnFeeA = calRewardAndFnFee(jcnt, params.Daon, jtxFee, big.NewFloat(0.01))
+
+	totlaA = math.FloatToBigInt(total)
+	t.Log("total", totlaA.String())
+	t.Log("fairnode fee", fnFeeA.String())
+	t.Log("miner's reward", mRewardA.String())
+
+	sum = new(big.Int).Add(fnFeeA, mRewardA)
+
+	if totlaA.Cmp(sum) != 0 {
+		t.Error("not equal reward value")
+	} else {
+		t.Log("equal reward value", "passed")
+	}
 }

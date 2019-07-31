@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
@@ -104,6 +105,10 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 					return err
 				}
 
+				if err := otprn.ValidateSignature(); err != nil {
+					return err
+				}
+
 				for _, o := range dc.otprn {
 					if o.HashOtprn() == otprn.HashOtprn() {
 						return nil
@@ -168,12 +173,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 	defer stream.CloseSend()
 
-	var (
-		isReqLeague     bool
-		isJoinTx        bool
-		isVote          bool
-		isReqVoteResult bool
-	)
+	var stCode proto.ProcessStatus
 
 	for {
 		in, err := stream.Recv()
@@ -191,23 +191,21 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			return
 		}
 
-		//log.Info("===> receiveFairnodeStatusLoop", "stream", in.GetCode().String())
+		if stCode == in.GetCode() {
+			continue
+		}
 
-		switch in.GetCode() {
+		stCode = in.GetCode()
+		log.Info("===> receiveFairnodeStatusLoop", "stream", stCode.String())
+
+		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
-			if !isReqLeague {
-				isReqLeague = true
-				enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
-				for _, enode := range enodes {
-					dc.backend.Server().AddPeer(discover.MustParseNode(enode))
-					log.Info("make league status", "addPeer", enodes)
-				}
+			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
+			for i, enode := range enodes {
+				dc.backend.Server().AddPeer(discover.MustParseNode(enode))
+				log.Info("make league status", "addPeer", enodes[i])
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:
-			if isJoinTx {
-				continue
-			}
-
 			fnBlockNum := new(big.Int)
 			fnBlockNum.SetBytes(in.GetCurrentBlockNum())
 			current := dc.backend.BlockChain().CurrentHeader().Number
@@ -218,6 +216,8 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 
 				nonce := state.GetNonce(coinbase)
 				jnonce := state.GetJoinNonce(coinbase)
+
+				fmt.Println("======> make join transaction", "nonce", nonce, "jnonce", jnonce)
 
 				bOtrpn, err := otprn.EncodeOtprn()
 				if err != nil {
@@ -237,7 +237,6 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				}
 
 				log.Info("made join transaction", "hash", sTx.Hash())
-				isJoinTx = true
 			} else {
 				log.Error("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
 				return
@@ -247,20 +246,13 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		case proto.ProcessStatus_LEAGUE_BROADCASTING:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.LEAGUE_BROADCASTING, Payload: nil})
 		case proto.ProcessStatus_VOTE_START:
-			if isVote {
-				continue
-			}
 			voteCh := make(chan types.NewLeagueBlockEvent)
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.VOTE_START, Payload: voteCh})
 			select {
 			case ev := <-voteCh:
 				dc.vote(ev)
-				isVote = true
 			}
 		case proto.ProcessStatus_VOTE_COMPLETE:
-			if isReqVoteResult {
-				continue
-			}
 			// 투표결과 요청 후, voter 확인 후, 블록에 넣기
 			voters := dc.requestVoteResult(otprn)
 			if voters == nil {
@@ -271,13 +263,10 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			select {
 			case block := <-submitBlockCh:
 				go dc.reqSealConfirm(otprn, *block)
-				isReqVoteResult = true
 			}
 		case proto.ProcessStatus_FINALIZE:
 			// make block routine start
-			isJoinTx = false
-			isVote = false
-			isReqVoteResult = false
+
 		default:
 			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}

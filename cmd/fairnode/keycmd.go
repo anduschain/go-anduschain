@@ -125,8 +125,8 @@ func addChainConfig(ctx *cli.Context) error {
 	config := &types.ChainConfig{
 		Epoch:       100,
 		Mminer:      100,
-		JoinTxPrice: big.NewInt(6),
-		FnFee:       big.NewFloat(0.0),
+		JoinTxPrice: big.NewFloat(6).String(),
+		FnFee:       big.NewFloat(0.0).String(),
 	}
 
 	w := NewWizard()
@@ -156,8 +156,8 @@ func addChainConfig(ctx *cli.Context) error {
 
 	// join transaction price
 	fmt.Printf("Input join transaction price (default : 6 Daon) ")
-	if price := w.readDefaultInt(6); price >= 0 {
-		config.JoinTxPrice = big.NewInt(int64(price))
+	if price := w.readDefaultFloat(6); price >= 0 {
+		config.JoinTxPrice = big.NewFloat(price).String()
 	} else {
 		log.Crit("input price was wrong")
 	}
@@ -165,7 +165,7 @@ func addChainConfig(ctx *cli.Context) error {
 	// fairnode 수수료
 	fmt.Printf("Input fairnode fee percent (default : 0) ")
 	if fee := w.readDefaultFloat(0.0); fee >= 0 {
-		config.FnFee = big.NewFloat(fee)
+		config.FnFee = big.NewFloat(fee).String()
 	} else {
 		log.Crit("input fee was wrong")
 	}

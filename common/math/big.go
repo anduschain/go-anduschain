@@ -210,3 +210,11 @@ func Exp(base, exponent *big.Int) *big.Int {
 	}
 	return result
 }
+
+// big float to big int
+func FloatToBigInt(val *big.Float) *big.Int {
+	bigval := val
+	result := new(big.Int)
+	bigval.Int(result)
+	return result
+}

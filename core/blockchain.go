@@ -886,7 +886,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	log.Info("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String()) // TODO(hakuna) : before release level to debug
+	log.Trace("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String()) // TODO(hakuna) : before release level to debug
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {

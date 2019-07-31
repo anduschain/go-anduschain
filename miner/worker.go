@@ -806,7 +806,20 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
+			if bytes.Compare(fnSign, []byte{}) == 0 {
+				log.Error("empty fairnode signature")
+				continue
+			}
+
 			block := w.possibleFinalBlock.WithFairnodeSign(fnSign) // fairnode sign add
+
+			if engine, ok := w.engine.(*deb.Deb); ok {
+				err := engine.VerifyFairnodeSign(block.Header())
+				if err != nil {
+					log.Error("verify fairnode signature", "msg", err)
+					continue
+				}
+			}
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -817,8 +830,6 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-
-			// TODO(hakuna) : vailidation fairnode signature
 
 			bstart := time.Now()
 
@@ -868,8 +879,7 @@ func (w *worker) resultLoop() {
 				events = append(events, types.ChainSideEvent{Block: block})
 			}
 
-			log.Info("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
-
+			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
 			w.chain.PostChainEvents(events, logs)
 
 			// Insert the block into the set of pending ones to resultLoop for confirmations

@@ -69,3 +69,10 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 
 	return r
 }
+
+func rlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
+}

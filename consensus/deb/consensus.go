@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common/math"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 	"time"
@@ -22,12 +24,6 @@ import (
 )
 
 type ErrorType int
-
-const (
-	ErrNonFairNodeSig ErrorType = iota
-	ErrGetPubKeyError
-	ErrNotMatchFairAddress
-)
 
 // Deb proof-of-Deb protocol constants.
 var (
@@ -56,11 +52,7 @@ var (
 	// of 1 or 2, or if the value does not match the turn of the signer.
 	errInvalidDifficulty = errors.New("invalid difficulty")
 
-	errNonFairNodeSig = errors.New("페어노드 서명이 없다")
-
-	errNotMatchFairAddress = errors.New("패어노드 어드레스와 맞지 않습니다")
-
-	errGetState = errors.New("상태 디비 조회 에러 발생")
+	errGetState = errors.New("get state reade error, parent root")
 
 	ertNotMatchOtprn = errors.New("invalid otprn ")
 
@@ -340,7 +332,25 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 		return errors.New("empty fairnode signature")
 	}
 
-	// TODO(hakuna) : 페어노드 서명 확인
+	return c.VerifyFairnodeSign(header)
+}
+
+// validation fairnode signature
+func (c *Deb) VerifyFairnodeSign(header *types.Header) error {
+	otp, err := types.DecodeOtprn(header.Otprn)
+	if err != nil {
+		return err
+	}
+
+	// check fairnode signature
+	hash := rlpHash([]interface{}{
+		header.Hash(),
+		header.VoteHash,
+	})
+
+	if err := validationSignHash(header.FairnodeSign, hash, otp.FnAddr); err != nil {
+		return errors.New(fmt.Sprintf("verify signature msg=%s", err.Error()))
+	}
 
 	return nil
 }
@@ -359,7 +369,6 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	current, err := chain.StateAt(parent.Root)
 	if err != nil {
-		logger.Error("Prepare State", "error", err)
 		return errGetState
 	}
 
@@ -375,7 +384,6 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	header.Otprn = bOtprn
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
-
 	header.Time = big.NewInt(time.Now().Unix())
 	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	return nil
@@ -386,29 +394,63 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 
-	c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header.Coinbase) // join nonce 척리
+	if err := c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header); err != nil {
+		return nil, err
+	}
+
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, Txs, receipts, voters), nil
 }
 
+// return miner's reward, fairnode fee
+func calRewardAndFnFee(jCnt, unit float64, jtxFee, fnFeeRate *big.Float) (*big.Int, *big.Int) {
+	fee := new(big.Float).Mul(jtxFee, big.NewFloat(jCnt))
+	total := new(big.Float).Mul(big.NewFloat(unit), fee) // total reward value
+	fnFee := new(big.Float).Mul(total, new(big.Float).Quo(fnFeeRate, big.NewFloat(100)))
+	mReward := new(big.Float).Sub(total, fnFee) // miner's reword
+	return math.FloatToBigInt(mReward), math.FloatToBigInt(fnFee)
+}
+
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
-func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, coinbase common.Address) {
+func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, header *types.Header) error {
 	if len(txs) == 0 {
-		return
+		return nil
 	}
+
+	var jCnt float64 // count of join transaction
+
+	otprn, err := types.DecodeOtprn(header.Otprn)
+	if err != nil {
+		return err
+	}
+
+	jtxFee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)
+	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee) // percent
+	fnAddr := otprn.FnAddr
+
 	signer := types.NewEIP155Signer(chainid)
 	for _, tx := range txs {
 		if tx.TransactionId() == types.JoinTx {
 			from, _ := tx.Sender(signer)
 			state.AddJoinNonce(from)
-			logger.Debug("Add JOIN_NONCE", "addr", from.String())
+			logger.Debug("add join transaction nonce", "addr", from.String())
+			jCnt++
 		}
-
 	}
-	state.ResetJoinNonce(coinbase)
-	logger.Debug("RESET JOIN_NONCE", "addr", coinbase.String())
+
+	if jCnt == 0 {
+		return errors.New("join transaction is nil")
+	}
+
+	mReward, fnFee := calRewardAndFnFee(jCnt, params.Daon, jtxFee, fnFeeRate)
+	state.AddBalance(header.Coinbase, mReward)
+	state.AddBalance(fnAddr, fnFee)
+	state.ResetJoinNonce(header.Coinbase)
+	logger.Debug("reset join transaction nonce", "addr", header.Coinbase.String())
+
+	return nil
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using
@@ -449,6 +491,19 @@ func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *t
 
 func CalcDifficulty(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
 	return big.NewInt(MakeRand(joinNonce, common.BytesToHash(otprn), coinbase, parentHash) + 1)
+}
+
+func validationSignHash(sign []byte, hash common.Hash, sAddr common.Address) error {
+	fpKey, err := crypto.SigToPub(hash.Bytes(), sign)
+	if err != nil {
+		return err
+	}
+	addr := crypto.PubkeyToAddress(*fpKey)
+	if addr != sAddr {
+		return errors.New(fmt.Sprintf("not matched address %v", sAddr))
+	}
+
+	return nil
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
