@@ -27,7 +27,7 @@ const (
 var (
 	emptyByte []byte
 	emptyHash = common.Hash{}
-	log       = logger.New("deb", "deb client")
+	log       = logger.New("deb", "client")
 )
 
 type Miner struct {
@@ -67,7 +67,7 @@ type DebClient struct {
 
 	backend Backend
 	miner   *Miner
-	otprn   []*types.Otprn
+	otprn   map[common.Hash]*types.Otprn
 
 	wallet accounts.Wallet
 
@@ -86,6 +86,7 @@ func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}) *DebClie
 		ctx:        context.Background(),
 		config:     config,
 		exitWorker: exitWorker,
+		otprn:      make(map[common.Hash]*types.Otprn),
 	}
 
 	go dc.workerCheckLoop()
@@ -165,8 +166,10 @@ func (dc *DebClient) Stop() {
 }
 
 func (dc *DebClient) close() {
-	dc.otprn = dc.otprn[:0] // init otprn
-	dc.grpcConn.Close()     // grpc connection close
+	for hash := range dc.otprn {
+		delete(dc.otprn, hash) // init otprn
+	}
+	dc.grpcConn.Close() // grpc connection close
 	dc.closeClient.Send(types.ClientClose{})
 	atomic.StoreInt32(&dc.running, 0)
 }
