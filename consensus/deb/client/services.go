@@ -147,8 +147,6 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
 
-	fmt.Println("=======receiveFairnodeStatusLoop==========", "otprn", otprn.HashOtprn().String())
-
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,
 		MinerAddress: dc.miner.Node.MinerAddress,
@@ -196,7 +194,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			return
 		}
 
-		log.Info("===> receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
+		log.Debug("receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
 
 		if stCode == in.GetCode() {
 			continue

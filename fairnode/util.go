@@ -1,17 +1,23 @@
 package fairnode
 
 import (
+	"container/ring"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+)
+
+const (
+	LeagueSelectCount = 5 // node count for making league
 )
 
 var (
@@ -75,4 +81,42 @@ func reduceStr(str string) string {
 	} else {
 		return str
 	}
+}
+
+func SelectedNode(self string, nodes []types.HeartBeat, max int) []string {
+	sIndex := -1
+	eNodes := ring.New(len(nodes))
+
+	for i := 0; i < eNodes.Len(); i++ {
+		if nodes[i].Enode == self {
+			sIndex = i
+		}
+		eNodes.Value = nodes[i]
+		eNodes = eNodes.Next()
+	}
+
+	if sIndex < 0 {
+		return nil // there is no self in league party.
+	}
+
+	var res []string
+	r := eNodes.Move(sIndex)
+
+	if r.Len() < max {
+		max = r.Len() - 1
+	}
+
+	for i := 0; i < max; i++ {
+		r = r.Next()
+		if r.Value == nil {
+			continue
+		}
+		value := r.Value.(types.HeartBeat)
+		if value.Enode == self {
+			continue
+		}
+		res = append(res, value.EnodeUrl())
+	}
+
+	return res
 }

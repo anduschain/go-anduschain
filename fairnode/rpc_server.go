@@ -231,11 +231,9 @@ func (rs *rpcServer) RequestLeague(ctx context.Context, nodeInfo *proto.ReqLeagu
 
 	otprn := common.BytesToHash(nodeInfo.GetOtprnHash())
 	nodes := rs.db.GetLeagueList(otprn)
-
-	// TODO(hakuna) : self를 제외한 enodeurl 전송 구현 해야됨
-	var enodes []string
-	for _, node := range nodes {
-		enodes = append(enodes, node.EnodeUrl())
+	enodes := SelectedNode(nodeInfo.GetEnode(), nodes, 5) // 5 enode url per node
+	if enodes == nil {
+		return nil, errors.New("empty enode list")
 	}
 
 	m := proto.ResLeague{
