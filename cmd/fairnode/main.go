@@ -101,6 +101,26 @@ func init() {
 					Value: os.Getenv("HOME") + "/.fairnode/key",
 					Usage: "file containing a raw private key to encrypt",
 				},
+				cli.StringFlag{
+					Name:  "dbhost",
+					Value: "localhost",
+					Usage: "default dbpath localhost",
+				},
+				cli.StringFlag{
+					Name:  "dbport",
+					Value: "27017",
+					Usage: "default dbport 27017",
+				},
+				cli.StringFlag{
+					Name:  "dbuser",
+					Value: "",
+					Usage: "default user is nil",
+				},
+				cli.StringFlag{
+					Name:  "dbCertPath",
+					Value: "",
+					Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
+				},
 			},
 		},
 	}

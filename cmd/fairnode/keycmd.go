@@ -86,6 +86,14 @@ func makeFairNodeKey(ctx *cli.Context) error {
 	return nil
 }
 
+type dbConfig struct {
+	host, port, user, pass, ssl string
+}
+
+func (c *dbConfig) GetInfo() (host, port, user, pass, ssl string) {
+	return c.host, c.port, c.user, c.pass, c.ssl
+}
+
 func addChainConfig(ctx *cli.Context) error {
 	keyfilePath := ctx.String("keypath")
 	keyfile := filepath.Join(keyfilePath, "fairkey.json")
@@ -94,17 +102,38 @@ func addChainConfig(ctx *cli.Context) error {
 		return err
 	}
 
+	var err error
+
+	fmt.Println("Input fairnode keystore password")
 	passphrase := promptPassphrase(false)
 	pk, err := fairnode.GetPriveKey(keyfilePath, passphrase)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("Input fairnode database password")
+	dbpass := promptPassphrase(false)
+
 	var fdb fairdb.FairnodeDB
 	if ctx.GlobalBool("fakemode") {
 		fdb = fairdb.NewMemDatabase()
 	} else {
-		fdb = fairdb.NewMemDatabase() // TODO(hakuna) : change real connection db
+		conf := &dbConfig{
+			host: ctx.String("dbhost"),
+			port: ctx.String("dbport"),
+			user: ctx.String("dbuser"),
+			pass: dbpass,
+			ssl:  ctx.String("dbCertPath"),
+		}
+
+		fdb, err = fairdb.NewMongoDatabase(conf)
+		if err != nil {
+			return err
+		}
+	}
+
+	if fdb == nil {
+		return errors.New("db assign had issue, db is nil")
 	}
 
 	if err := fdb.Start(); err != nil {
@@ -127,15 +156,17 @@ func addChainConfig(ctx *cli.Context) error {
 		Mminer:      100,
 		JoinTxPrice: big.NewFloat(6).String(),
 		FnFee:       big.NewFloat(0.0).String(),
+		NodeVersion: "0.6.12",
 	}
 
 	w := NewWizard()
 	// role 지정될 블록 번호
 	fmt.Printf("Input rule apply block number ")
 	if num := w.readInt(); num > blockNumber {
-		config.BlockNumber = big.NewInt(int64(num))
+		config.BlockNumber = big.NewInt(int64(num)).Uint64()
 	} else {
 		log.Crit("block number is more current block number")
+		return nil
 	}
 
 	// 리그 최대 참여자 (Cminer)
@@ -144,6 +175,7 @@ func addChainConfig(ctx *cli.Context) error {
 		config.Mminer = mMiner
 	} else {
 		log.Crit("input miner number was wrong")
+		return nil
 	}
 
 	// 리그 생성 블록 주기 (Epoch)
@@ -152,6 +184,7 @@ func addChainConfig(ctx *cli.Context) error {
 		config.Epoch = term
 	} else {
 		log.Crit("input epoch was wrong")
+		return nil
 	}
 
 	// join transaction price
@@ -160,6 +193,7 @@ func addChainConfig(ctx *cli.Context) error {
 		config.JoinTxPrice = big.NewFloat(price).String()
 	} else {
 		log.Crit("input price was wrong")
+		return nil
 	}
 
 	// fairnode 수수료
@@ -168,11 +202,22 @@ func addChainConfig(ctx *cli.Context) error {
 		config.FnFee = big.NewFloat(fee).String()
 	} else {
 		log.Crit("input fee was wrong")
+		return nil
+	}
+
+	// node version
+	fmt.Printf("Input node version (ex : 0.6.12)")
+	if version := w.readString(); version != "" {
+		config.NodeVersion = version
+	} else {
+		log.Crit("input version was wrong")
+		return nil
 	}
 
 	sign, err := crypto.Sign(config.Hash().Bytes(), pk)
 	if err != nil {
 		log.Crit(fmt.Sprintf("config signature error msg = %s", err.Error()))
+		return nil
 	}
 
 	config.Sign = sign // add sign

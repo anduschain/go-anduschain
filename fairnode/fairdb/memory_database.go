@@ -44,11 +44,12 @@ func (m *MemDatabase) Stop() {
 func (m *MemDatabase) GetChainConfig() *types.ChainConfig {
 	// sample
 	return &types.ChainConfig{
-		BlockNumber: big.NewInt(1),
+		BlockNumber: big.NewInt(1).Uint64(),
 		FnFee:       big.NewFloat(1.0).String(), // 1%
 		JoinTxPrice: big.NewFloat(6).String(),   // 6 daon
 		Mminer:      100,
 		Epoch:       10,
+		NodeVersion: "0.6.12",
 	}
 }
 

@@ -86,8 +86,14 @@ func NewFairnode() (*Fairnode, error) {
 }
 
 func (fn *Fairnode) Start() error {
+	var err error
 	if DefaultConfig.Fake {
 		fn.db = fairdb.NewMemDatabase() // fake mode memory db
+	} else {
+		fn.db, err = fairdb.NewMongoDatabase(DefaultConfig) // fake mode memory db
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := fn.db.Start(); err != nil {

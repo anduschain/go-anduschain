@@ -31,7 +31,7 @@ type Config struct {
 	SysLog  bool
 	Version string
 
-	GethVersion string
+	NodeVersion string
 	Miner       int64
 	Fee         int64
 
@@ -40,6 +40,7 @@ type Config struct {
 
 var (
 	DefaultConfig *Config
+	Version       = "1.0.2"
 )
 
 func init() {
@@ -68,26 +69,23 @@ func NewConfig() *Config {
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
 		Port:    "60002",
-		NAT:     "none",
 		ChainID: 1315,
 		Debug:   false,
 		SysLog:  false,
-		Version: "1.0.2", // Fairnode version
-
-		//Mining Config
-		GethVersion: "0.6.11",
-		Miner:       100,
-		Epoch:       100,
-		Fee:         6,
+		Version: Version, // Fairnode version
 	}
 }
 
 // Set miner config
 func (c *Config) SetMiningConf(miner, epoch, fee int64, version string) {
-	c.GethVersion = version
+	c.NodeVersion = version
 	c.Miner = miner
 	c.Epoch = epoch
 	c.Fee = fee
+}
+
+func (c *Config) GetInfo() (host, port, user, pass, ssl string) {
+	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {

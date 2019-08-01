@@ -33,11 +33,12 @@ func (hb HeartBeat) EnodeUrl() string {
 
 // otprn data
 type ChainConfig struct {
-	BlockNumber *big.Int // applying rule starting block number
+	BlockNumber uint64 // applying rule starting block number
 	JoinTxPrice string
 	FnFee       string
 	Mminer      uint64 // max node in league
 	Epoch       uint64 // league change term
+	NodeVersion string
 	Sign        []byte
 }
 
@@ -48,6 +49,7 @@ func (cf *ChainConfig) Hash() common.Hash {
 		cf.FnFee,
 		cf.Mminer,
 		cf.Epoch,
+		cf.NodeVersion,
 	})
 }
 
