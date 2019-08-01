@@ -111,21 +111,21 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 					return err
 				}
 
-				for _, o := range dc.otprn {
-					if o.HashOtprn() == otprn.HashOtprn() {
-						return nil
-					}
+				if _, ok := dc.otprn[otprn.HashOtprn()]; ok {
+					log.Warn("already, have been had otprn", "msg", err)
+					return nil
+				} else {
+					dc.otprn[otprn.HashOtprn()] = otprn // otprn save
+					go dc.receiveFairnodeStatusLoop(*otprn)
+					log.Info("otprn received and start fairnode status loop", "hash", otprn.HashOtprn())
+					return nil
 				}
 
-				dc.otprn = append(dc.otprn, otprn) // otprn save
-				go dc.receiveFairnodeStatusLoop(*otprn)
-				log.Info("otprn received and start fairnode status looop", "hash", otprn.HashOtprn())
 			}
 		case proto.Status_FAIL:
 			log.Warn("otprn got nil")
 			return nil
 		}
-
 		return nil
 	}
 
@@ -146,6 +146,8 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
+
+	fmt.Println("=======receiveFairnodeStatusLoop==========", "otprn", otprn.HashOtprn().String())
 
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,
@@ -194,12 +196,13 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			return
 		}
 
+		log.Info("===> receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
+
 		if stCode == in.GetCode() {
 			continue
 		}
 
 		stCode = in.GetCode()
-		log.Info("===> receive fairnode signal", "stream", stCode.String())
 
 		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
@@ -279,7 +282,9 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			}
 		case proto.ProcessStatus_FINALIZE:
 			// make block routine start
-
+		case proto.ProcessStatus_REJECT:
+			delete(dc.otprn, otprn.HashOtprn()) // delete otprn
+			log.Warn("fairnode status loop", "msg", "otprn deleted")
 		default:
 			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
@@ -345,6 +350,11 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 	}
 
 	msg.VoterSign = sign // add voter's signature
+
+	//if true {
+	//	// TODO(hakuna) : blocking for testing
+	//	return
+	//}
 
 	_, err = dc.rpc.Vote(dc.ctx, &msg)
 	if err != nil {

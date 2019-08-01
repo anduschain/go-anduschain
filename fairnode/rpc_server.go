@@ -181,7 +181,7 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 
 			rs.db.SaveLeague(otprn.HashOtprn(), nodeInfo.GetEnode()) // 리그 리스트에 저장
 
-			logger.Info("otprn submitted", "otrpn", otprn.HashOtprn().String(), "enode", reduceStr(nodeInfo.GetEnode()))
+			logger.Info("otprn submitted", "otrpn", reduceStr(otprn.HashOtprn().String()), "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,
 				Otprn:  bOtprn,
@@ -298,7 +298,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 	makeMsg := func(l *league) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
 		switch l.Status {
-		case types.SAVE_OTPRN:
+		case types.PENDING:
 			msg.Code = proto.ProcessStatus_WAIT
 		case types.MAKE_LEAGUE:
 			msg.Code = proto.ProcessStatus_MAKE_LEAGUE
@@ -345,7 +345,12 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 			logger.Error("ProcessController send status message", "msg", err)
 			return err
 		}
+
 		//logger.Debug("ProcessController send status message", "enode", reduceStr(nodeInfo.GetEnode()), "status", m.GetCode().String())
+
+		if m.GetCode() == proto.ProcessStatus_REJECT {
+			return errors.New(fmt.Sprintf("ProcessController league reject hash=%s", reduceStr(otprnHash.String())))
+		}
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -416,7 +421,11 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 	}
 
 	rs.db.SaveVote(otprnHash, header.Number, &voter)
-	l.IsVoting = true // known league
+
+	l.Mu.Lock()
+	l.Voted = append(l.Voted, true) // known league
+	l.Mu.Unlock()
+
 	logger.Info("vote save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", header.Hash())
 	return &empty.Empty{}, nil
 }
