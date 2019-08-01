@@ -171,6 +171,21 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			return nil, errors.New(fmt.Sprintf("otprn validation failed msg=%s", err.Error()))
 		}
 
+		var clg *league // current league
+		if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
+			clg = league
+		} else {
+			return &proto.ResOtprn{
+				Result: proto.Status_FAIL,
+			}, nil
+		}
+
+		if clg.Status != types.PENDING {
+			return &proto.ResOtprn{
+				Result: proto.Status_FAIL,
+			}, nil
+		}
+
 		// 참가 대상 확인
 		if verify.IsJoinOK(otprn, addr) {
 			// OTPRN 전송
