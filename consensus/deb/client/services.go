@@ -194,7 +194,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			return
 		}
 
-		log.Debug("receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
+		log.Debug("Receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
 
 		if stCode == in.GetCode() {
 			continue
