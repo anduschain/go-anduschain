@@ -57,7 +57,7 @@ const (
 	resubmitAdjustChanSize = 10
 
 	// miningLogAtDepth is the number of confirmations before logging successful mining.
-	miningLogAtDepth = 1 // README(hakuna) : confirm just in time.
+	miningLogAtDepth = 3 // README(hakuna) : confirm just in time.
 
 	// minRecommitInterval is the minimal time interval to recreate the mining block with
 	// any newly arrived transactions.
@@ -76,7 +76,7 @@ const (
 	intervalAdjustBias = 200 * 1000.0 * 1000.0
 
 	// staleThreshold is the maximum depth of the acceptable stale block.
-	staleThreshold = 7
+	staleThreshold = 3 // README(hakuna) : confirm just in time.
 )
 
 // environment is the worker's current environment and holds all of the current state information.

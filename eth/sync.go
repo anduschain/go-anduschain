@@ -55,8 +55,6 @@ func (pm *ProtocolManager) syncTransactions(p *peer) {
 		return
 	}
 
-	// FIXME(hakuna) : jointx pool
-
 	select {
 	case pm.txsyncCh <- &txsync{p, txs}:
 	case <-pm.quitSync:

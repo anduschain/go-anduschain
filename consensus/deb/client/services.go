@@ -112,7 +112,7 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 				}
 
 				if _, ok := dc.otprn[otprn.HashOtprn()]; ok {
-					log.Warn("already, have been had otprn", "msg", err)
+					log.Debug("already, have been had otprn", "msg", err)
 					return nil
 				} else {
 					dc.otprn[otprn.HashOtprn()] = otprn // otprn save
@@ -123,7 +123,7 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 
 			}
 		case proto.Status_FAIL:
-			log.Warn("otprn got nil")
+			log.Debug("otprn got nil")
 			return nil
 		}
 		return nil
