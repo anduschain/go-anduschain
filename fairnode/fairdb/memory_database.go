@@ -56,9 +56,6 @@ func (m *MemDatabase) GetChainConfig() *types.ChainConfig {
 func (m *MemDatabase) SaveChainConfig(config *types.ChainConfig) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if config == nil {
-		return errors.New("config is nil")
-	}
 	if _, ok := m.ConfigList[config.Hash()]; ok {
 		return errors.New(fmt.Sprintf("config exsist Hash = %s", config.Hash().String()))
 	} else {
@@ -171,7 +168,7 @@ func (m *MemDatabase) GetVoters(votekey common.Hash) []*types.Voter {
 	return nil
 }
 
-func (m *MemDatabase) SaveFinalBlock(block *types.Block) error {
+func (m *MemDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

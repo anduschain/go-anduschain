@@ -38,6 +38,10 @@ func NewOtprn(cMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
 	}
 }
 
+func (otprn *Otprn) RandToByte() []byte {
+	return otprn.Rand[:]
+}
+
 func (otprn *Otprn) GetValue() (cMiner uint64, mMiner uint64, rand [20]byte) {
 	return otprn.Cminer, otprn.Data.Mminer, otprn.Rand
 }

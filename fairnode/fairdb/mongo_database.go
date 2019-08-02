@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
+	"github.com/anduschain/go-anduschain/rlp"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
@@ -14,6 +16,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 const dbName = "AndusChain"
@@ -29,13 +32,14 @@ type MongoDatabase struct {
 	dialInfo *mgo.DialInfo
 	mongo    *mgo.Session
 
-	chainConfig   *mgo.Collection
-	activeNodeCol *mgo.Collection
-	minerNode     *mgo.Collection
-	otprnList     *mgo.Collection
-	blockChain    *mgo.Collection
-	blockChainRaw *mgo.Collection
-	transactions  *mgo.Collection
+	chainConfig     *mgo.Collection
+	activeNodeCol   *mgo.Collection
+	leagues         *mgo.Collection
+	otprnList       *mgo.Collection
+	voteAggregation *mgo.Collection
+	blockChain      *mgo.Collection
+	blockChainRaw   *mgo.Collection
+	transactions    *mgo.Collection
 }
 
 type config interface {
@@ -90,7 +94,7 @@ func (m *MongoDatabase) Start() error {
 	}
 
 	if err != nil {
-		logger.Error("Mongo DB Dial", "error", err)
+		logger.Error("Mongo DB Dial", "mongo", err)
 		return mongDBConnectError
 	}
 
@@ -99,11 +103,13 @@ func (m *MongoDatabase) Start() error {
 	m.mongo = session
 	m.chainConfig = session.DB(dbName).C("ChainConfig")
 	m.activeNodeCol = session.DB(dbName).C("ActiveNode")
-	m.minerNode = session.DB(dbName).C("MinerNode")
+	m.leagues = session.DB(dbName).C("Leagues")
 	m.otprnList = session.DB(dbName).C("OtprnList")
 	m.blockChain = session.DB(dbName).C("BlockChain")
 	m.blockChainRaw = session.DB(dbName).C("BlockChainRaw")
+	m.voteAggregation = session.DB(dbName).C("VoteAggregation")
 	m.transactions = session.DB(dbName).C("Transactions")
+
 	logger.Debug("Start fairnode mongo database")
 	return nil
 }
@@ -114,85 +120,244 @@ func (m *MongoDatabase) Stop() {
 }
 
 func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
+	var num uint64
 	block := m.CurrentBlock()
 	if block == nil {
-		return nil
+		logger.Warn("get current block number", "database", "mongo", "current", num)
+	} else {
+		num = block.Number().Uint64()
 	}
-	conf := new(types.ChainConfig)
-	err := m.chainConfig.Find(bson.M{"blocknumber": bson.M{"$gte": block.Number().Uint64()}}).Sort("-blocknumber").One(conf)
+
+	conf := new(fntype.Config)
+	err := m.chainConfig.Find(bson.M{}).Sort("-timestamp").One(&conf)
 	if err != nil {
 		logger.Error("get chain conifg", "msg", err)
 		return nil
 	}
-	return conf
+
+	return &types.ChainConfig{
+		BlockNumber: conf.Config.BlockNumber,
+		JoinTxPrice: conf.Config.JoinTxPrice,
+		FnFee:       conf.Config.FnFee,
+		Mminer:      conf.Config.Mminer,
+		Epoch:       conf.Config.Epoch,
+		NodeVersion: conf.Config.NodeVersion,
+		Sign:        conf.Config.Sign,
+	}
 }
 
 func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
-	err := m.chainConfig.Insert(config)
+	err := m.chainConfig.Insert(fntype.Config{
+		Config: fntype.ChainConfig{
+			BlockNumber: config.BlockNumber,
+			JoinTxPrice: config.JoinTxPrice,
+			FnFee:       config.FnFee,
+			Mminer:      config.Mminer,
+			Epoch:       config.Epoch,
+			NodeVersion: config.NodeVersion,
+			Sign:        config.Sign,
+		},
+		Timestamp: time.Now().Unix(),
+	})
 	if err != nil {
-		logger.Error("Save chain config", "msg", err)
+		logger.Error("Save chain config", "database", "mongo", "msg", err)
 	}
 	return nil
 }
 
 func (m *MongoDatabase) CurrentBlock() *types.Block {
-	b := new(types.Block)
-	err := m.blockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(b)
+	b := new(fntype.Block)
+	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
 	if err != nil {
-		logger.Error("get current block", "msg", err)
+		logger.Error("get current block", "database", "mongo", "msg", err)
 		return nil
 	}
-	return b
+	return m.GetBlock(common.HexToHash(b.Hash))
 }
 
 func (m *MongoDatabase) CurrentOtprn() *types.Otprn {
-	return nil
+	otprn, err := RecvOtprn(m.otprnList.Find(bson.M{}).Sort("-timestamp"))
+	if err != nil {
+		logger.Error("get otprn", "database", "mongo", "msg", err)
+		return nil
+	}
+	return otprn
 }
 
 func (m *MongoDatabase) InitActiveNode() {
-
+	node := new(fntype.HeartBeat)
+	for m.activeNodeCol.Find(bson.M{}).Iter().Next(node) {
+		err := m.activeNodeCol.RemoveId(node.Enode)
+		if err != nil {
+			logger.Error("InitActiveNode Active Node", "database", "mongo", "msg", err)
+		}
+	}
 }
 
 func (m *MongoDatabase) SaveActiveNode(node types.HeartBeat) {
+	_, err := m.activeNodeCol.UpsertId(node.Enode, &fntype.HeartBeat{
+		Enode:        node.Enode,
+		MinerAddress: node.MinerAddress,
+		ChainID:      node.ChainID,
+		NodeVersion:  node.NodeVersion,
+		Host:         node.Host,
+		Port:         node.Port,
+		Time:         node.Time.Int64(),
+		Head:         node.Head.String(),
+		Sign:         node.Sign,
+	})
 
+	if err != nil {
+		logger.Error("Save Active Node", "database", "mongo", "msg", err)
+	}
 }
 
 func (m *MongoDatabase) GetActiveNode() []types.HeartBeat {
-	return nil
+	var nodes []types.HeartBeat
+	sNode := new([]fntype.HeartBeat)
+	err := m.activeNodeCol.Find(bson.M{}).All(sNode)
+	if err != nil {
+		logger.Error("Get Active Node", "database", "mongo", "msg", err)
+	}
+	for _, node := range *sNode {
+		nodes = append(nodes, types.HeartBeat{
+			Enode:        node.Enode,
+			MinerAddress: node.MinerAddress,
+			ChainID:      node.ChainID,
+			NodeVersion:  node.NodeVersion,
+			Host:         node.Host,
+			Port:         node.Port,
+			Time:         new(big.Int).SetInt64(node.Time),
+			Head:         common.HexToHash(node.Head),
+			Sign:         node.Sign,
+		})
+	}
+	return nodes
 }
 
 func (m *MongoDatabase) RemoveActiveNode(enode string) {
-
+	err := m.activeNodeCol.RemoveId(enode)
+	if err != nil {
+		logger.Error("Remove Active Node", "database", "mongo", "msg", err)
+	}
 }
 
 func (m *MongoDatabase) SaveOtprn(otprn types.Otprn) {
+	tOtp, err := TransOtprn(otprn)
+	if err != nil {
+		logger.Error("Save otprn trans otprn", "database", "mongo", "msg", err)
+	}
 
+	err = m.otprnList.Insert(tOtp)
+	if err != nil {
+		logger.Error("Save otprn insert", "database", "mongo", "msg", err)
+	}
 }
 
 func (m *MongoDatabase) GetOtprn(otprnHash common.Hash) *types.Otprn {
-	return nil
+	otprn, err := RecvOtprn(m.otprnList.FindId(otprnHash.String()))
+	if err != nil {
+		logger.Error("Get otprn", "database", "mongo", "msg", err)
+		return nil
+	}
+	return otprn
 }
 
 func (m *MongoDatabase) SaveLeague(otprnHash common.Hash, enode string) {
-
+	node := new(fntype.HeartBeat)
+	err := m.activeNodeCol.FindId(enode).One(node)
+	if err != nil {
+		logger.Error("Save League, Get active node", "database", "mongo", "enode", enode, "msg", err)
+	}
+	_, err = m.leagues.UpsertId(otprnHash.String(), bson.M{"$push": bson.M{"nodes": node}})
+	if err != nil {
+		logger.Error("Save League update or insert", "database", "mongo", "msg", err)
+	}
 }
 
 func (m *MongoDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
-	return nil
+	league := new(fntype.League)
+	err := m.leagues.FindId(otprnHash.String()).One(league)
+	if err != nil {
+		logger.Error("Gat League List", "msg", err)
+	}
+	var nodes []types.HeartBeat
+	for _, node := range league.Nodes {
+		nodes = append(nodes, types.HeartBeat{
+			Enode:        node.Enode,
+			MinerAddress: node.MinerAddress,
+			ChainID:      node.ChainID,
+			NodeVersion:  node.NodeVersion,
+			Host:         node.Host,
+			Port:         node.Port,
+			Time:         new(big.Int).SetInt64(node.Time),
+			Head:         common.HexToHash(node.Head),
+			Sign:         node.Sign,
+		})
+	}
+	return nodes
 }
 
 func (m *MongoDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter) {
-
+	voteKey := MakeVoteKey(otprn, blockNum)
+	_, err := m.voteAggregation.UpsertId(voteKey.String(), bson.M{"$push": bson.M{
+		"voters": fntype.Voter{
+			Header:   vote.Header,
+			Voter:    vote.Voter.String(),
+			VoteSign: vote.VoteSign,
+		}}})
+	if err != nil {
+		logger.Error("Save vote update or insert", "database", "mongo", "msg", err)
+	}
 }
 
 func (m *MongoDatabase) GetVoters(votekey common.Hash) []*types.Voter {
-	return nil
+	vt := new(fntype.VoteAggregation)
+	err := m.voteAggregation.FindId(votekey.String()).One(vt)
+	if err != nil {
+		logger.Error("Get voters update or insert", "database", "mongo", "msg", err)
+	}
+	var voters []*types.Voter
+	for _, vote := range vt.Voters {
+		voters = append(voters, &types.Voter{
+			Header:   vote.Header,
+			Voter:    common.HexToAddress(vote.Voter),
+			VoteSign: vote.VoteSign,
+		})
+	}
+	return voters
 }
 
-func (m *MongoDatabase) SaveFinalBlock(block *types.Block) error {
+func (m *MongoDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) error {
+	err := m.blockChain.Insert(TransBlock(block))
+	if err != nil {
+		return err
+	}
+
+	err = m.blockChainRaw.Insert(fntype.RawBlock{
+		Hash: block.Hash().String(),
+		Raw:  common.Bytes2Hex(byteBlock),
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
-	return nil
+	b := new(fntype.RawBlock)
+	err := m.blockChainRaw.FindId(blockHash.String()).One(b)
+	if err != nil {
+		logger.Error("Get block", "database", "mongo", "msg", err)
+		return nil
+	}
+
+	blockEnc := common.FromHex(b.Raw)
+	block := new(types.Block)
+	if err := rlp.DecodeBytes(blockEnc, block); err != nil {
+		logger.Error("Get block, decode", "database", "mongo", "msg", err)
+		return nil
+	}
+
+	return block
 }

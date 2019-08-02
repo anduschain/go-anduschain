@@ -145,12 +145,10 @@ func addChainConfig(ctx *cli.Context) error {
 	var blockNumber uint64
 	block := fdb.CurrentBlock()
 	if block == nil {
-		fmt.Println("Current block number is 0")
 		blockNumber = 0
 	} else {
 		blockNumber = block.Number().Uint64()
 	}
-
 	config := &types.ChainConfig{
 		Epoch:       100,
 		Mminer:      100,
@@ -160,6 +158,8 @@ func addChainConfig(ctx *cli.Context) error {
 	}
 
 	w := NewWizard()
+	fmt.Printf("Current block number is %d", blockNumber)
+	fmt.Println()
 	// role 지정될 블록 번호
 	fmt.Printf("Input rule apply block number ")
 	if num := w.readInt(); num > blockNumber {

@@ -349,11 +349,6 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 
 	msg.VoterSign = sign // add voter's signature
 
-	//if true {
-	//	// TODO(hakuna) : blocking for testing
-	//	return
-	//}
-
 	_, err = dc.rpc.Vote(dc.ctx, &msg)
 	if err != nil {
 		log.Error("voting request", "msg", err)

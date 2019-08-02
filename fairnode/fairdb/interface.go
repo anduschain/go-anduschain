@@ -38,7 +38,7 @@ type FairnodeDB interface {
 	SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter)
 	GetVoters(votekey common.Hash) []*types.Voter
 
-	SaveFinalBlock(block *types.Block) error
+	SaveFinalBlock(block *types.Block, byteBlock []byte) error
 	GetBlock(blockHash common.Hash) *types.Block
 }
 

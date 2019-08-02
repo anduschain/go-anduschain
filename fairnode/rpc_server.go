@@ -101,7 +101,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 	}
 
 	if cBlock := rs.db.CurrentBlock(); cBlock != nil {
-		if cBlock.Hash().String() != nodeInfo.GetHead() {
+		if cBlock.Hash() != common.HexToHash(nodeInfo.GetHead()) {
 			if block := rs.db.GetBlock(common.HexToHash(nodeInfo.GetHead())); block != nil {
 				if cBlock.Number().Uint64()-block.Number().Uint64() != 1 {
 					return nil, errors.New("head is mismatch")
@@ -694,7 +694,7 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	}
 
 	clg.Status = types.SEND_BLOCK_WAIT // saving block
-	err = rs.db.SaveFinalBlock(block)
+	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
 		if err == fairdb.ErrAlreadyExistBlock {
 			// already exist block

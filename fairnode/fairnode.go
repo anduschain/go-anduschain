@@ -223,14 +223,12 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
-					time.Sleep(5 * time.Second)
 					// 생성할 블록 번호 조회
-					l.Mu.Lock()
 					if block := fn.db.CurrentBlock(); block != nil {
 						l.Current = block.Number()
 					}
+					time.Sleep(5 * time.Second)
 					l.Status = types.MAKE_BLOCK
-					l.Mu.Unlock()
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
@@ -251,12 +249,8 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
-					l.Mu.Lock()
 					l.Current = fn.db.CurrentBlock().Number()
-					l.Mu.Unlock()
-
 					fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
-
 					time.Sleep(5 * time.Second)
 					if l.Status == types.REJECT {
 						continue
@@ -296,11 +290,11 @@ func (fn *Fairnode) makeOtprn() {
 			if _, ok := fn.leagues[otprn.HashOtprn()]; !ok {
 				// make new league
 				fn.mu.Lock()
-				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)} // TODO(hakuna) : currnet block status
+				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
 				fn.db.SaveOtprn(*otprn)
 
 				if isCur {
-					fn.currentLeague = otprn.HashOtprn() // TODO(hakuna) : currnet <-> pending ... 처리
+					fn.currentLeague = otprn.HashOtprn()
 				} else {
 					fn.pendingLeague = otprn.HashOtprn()
 				}

@@ -15,9 +15,9 @@ var (
 	fairaddress = crypto.PubkeyToAddress(fairkey.PublicKey)
 
 	chainConfig = ChainConfig{
-		BlockNumber: big.NewInt(1),
-		FnFee:       big.NewFloat(1.0),
-		JoinTxPrice: big.NewInt(6),
+		BlockNumber: big.NewInt(1).Uint64(),
+		FnFee:       big.NewFloat(1.0).String(),
+		JoinTxPrice: big.NewInt(6).String(),
 		Mminer:      100,
 		Epoch:       100,
 	}
