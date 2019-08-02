@@ -245,6 +245,14 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.REJECT
 						l.Mu.Unlock()
 					}
+				case types.SEND_BLOCK_WAIT:
+					time.Sleep(5 * time.Second)
+					if l.BlockHash == nil {
+						logger.Error("Send block wait, timeout")
+						l.Mu.Lock()
+						l.Status = types.REJECT
+						l.Mu.Unlock()
+					}
 				case types.REQ_FAIRNODE_SIGN:
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE

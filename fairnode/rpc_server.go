@@ -696,12 +696,13 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	clg.Status = types.SEND_BLOCK_WAIT // saving block
 	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
-		if err == fairdb.ErrAlreadyExistBlock {
-			// already exist block
-			clg.Status = types.REQ_FAIRNODE_SIGN
-			return &empty.Empty{}, nil
-		}
-		clg.Status = types.SEND_BLOCK_WAIT
+		log.Error("SaveFinalBlock", "msg", err)
+		//if err == fairdb.ErrAlreadyExistBlock {
+		//	// already exist block
+		//	clg.Status = types.REQ_FAIRNODE_SIGN
+		//	return &empty.Empty{}, nil
+		//}
+		//clg.Status = types.SEND_BLOCK_WAIT
 		return nil, err
 	}
 
