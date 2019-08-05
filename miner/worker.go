@@ -403,6 +403,9 @@ func (w *worker) pendingBlock() *types.Block {
 
 // start sets the running status as 1 and triggers new work submitting.
 func (w *worker) start() {
+	if w.isRunning() {
+		return
+	}
 	if err := w.debClient.Start(w.eth); err == nil {
 		atomic.StoreInt32(&w.running, 1)
 		w.startCh <- struct{}{}
@@ -414,6 +417,10 @@ func (w *worker) start() {
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
+	if w.possibleFinalBlock != nil {
+		// if have possible final block, will return (don't stop mining)
+		return
+	}
 	atomic.StoreInt32(&w.running, 0)
 	w.debClient.Stop()
 }

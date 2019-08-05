@@ -269,7 +269,7 @@ func (m *MongoDatabase) SaveLeague(otprnHash common.Hash, enode string) {
 	if err != nil {
 		logger.Error("Save League, Get active node", "database", "mongo", "enode", enode, "msg", err)
 	}
-	_, err = m.leagues.UpsertId(otprnHash.String(), bson.M{"$push": bson.M{"nodes": node}})
+	_, err = m.leagues.UpsertId(otprnHash.String(), bson.M{"$addToSet": bson.M{"nodes": node}})
 	if err != nil {
 		logger.Error("Save League update or insert", "database", "mongo", "msg", err)
 	}
@@ -300,7 +300,7 @@ func (m *MongoDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
 
 func (m *MongoDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter) {
 	voteKey := MakeVoteKey(otprn, blockNum)
-	_, err := m.voteAggregation.UpsertId(voteKey.String(), bson.M{"$push": bson.M{
+	_, err := m.voteAggregation.UpsertId(voteKey.String(), bson.M{"$addToSet": bson.M{
 		"voters": fntype.Voter{
 			Header:   vote.Header,
 			Voter:    vote.Voter.String(),
