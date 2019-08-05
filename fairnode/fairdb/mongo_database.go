@@ -113,7 +113,7 @@ func (m *MongoDatabase) Start() error {
 	m.voteAggregation = session.DB(DbName).C("VoteAggregation")
 	m.transactions = session.DB(DbName).C("Transactions")
 
-	logger.Debug("Start fairnode mongo database")
+	logger.Debug("Start fairnode mongo database", "chainID", m.chainID.String(), "url", m.url)
 	return nil
 }
 

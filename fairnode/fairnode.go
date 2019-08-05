@@ -22,7 +22,7 @@ import (
 const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
-	MIN_LEAGUE_NUM         = 2
+	MIN_LEAGUE_NUM         = 3
 )
 
 type fnType uint64
