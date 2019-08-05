@@ -22,7 +22,7 @@ import (
 const DbName = "AndusChainTestnet"
 
 var (
-	MongDBConnectError = errors.New("fail to connecting mongodb database")
+	MongDBConnectError = errors.New("fail to connecting mongo database")
 )
 
 type MongoDatabase struct {
@@ -52,7 +52,7 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
 	host, port, user, pass, ssl, chainID := conf.GetInfo()
 	if strings.Compare(user, "") != 0 {
-		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, ssl, DbName)
+		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, port, DbName)
 	} else {
 		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, DbName)
 	}
@@ -126,7 +126,7 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	var num uint64
 	block := m.CurrentBlock()
 	if block == nil {
-		logger.Warn("get current block number", "database", "mongo", "current", num)
+		logger.Warn("Get current block number", "database", "mongo", "current", num)
 	} else {
 		num = block.Number().Uint64()
 	}
@@ -134,7 +134,7 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	conf := new(fntype.Config)
 	err := m.chainConfig.Find(bson.M{}).Sort("-timestamp").One(&conf)
 	if err != nil {
-		logger.Error("get chain conifg", "msg", err)
+		logger.Error("Get chain conifg", "msg", err)
 		return nil
 	}
 
@@ -172,7 +172,7 @@ func (m *MongoDatabase) CurrentBlock() *types.Block {
 	b := new(fntype.Block)
 	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
 	if err != nil {
-		logger.Error("get current block", "database", "mongo", "msg", err)
+		logger.Error("Get current block", "database", "mongo", "msg", err)
 		return nil
 	}
 	return m.GetBlock(common.HexToHash(b.Hash))
@@ -181,7 +181,7 @@ func (m *MongoDatabase) CurrentBlock() *types.Block {
 func (m *MongoDatabase) CurrentOtprn() *types.Otprn {
 	otprn, err := RecvOtprn(m.otprnList.Find(bson.M{}).Sort("-timestamp"))
 	if err != nil {
-		logger.Error("get otprn", "database", "mongo", "msg", err)
+		logger.Error("Get otprn", "database", "mongo", "msg", err)
 		return nil
 	}
 	return otprn
