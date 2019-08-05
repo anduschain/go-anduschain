@@ -8,7 +8,7 @@ import (
 const (
 	MainnetFairHost = "mainfair.anduschain.io"
 	//TestnetFairHost = "testfair.anduschain.io"
-	TestnetFairHost = "localhost:60002"
+	TestnetFairHost = "fairnode.testnet.anduschain.io:60002" // FIXME(hauka) : change elb
 )
 
 type Config struct {

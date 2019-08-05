@@ -43,8 +43,21 @@ type league struct {
 }
 
 var (
-	logger = log.New("fairnode", "main")
+	logger log.Logger
 )
+
+func init() {
+	if !DefaultConfig.Debug {
+		handler := log.MultiHandler(
+			log.Must.FileHandler("./fairnode.log", log.TerminalFormat()), // fairnode.log로 저장
+		)
+		log.Root().SetHandler(handler)
+	} else {
+		log.Root().SetHandler(log.StdoutHandler)
+	}
+
+	logger = log.New("fairnode", "main")
+}
 
 type Fairnode struct {
 	mu          sync.Mutex
