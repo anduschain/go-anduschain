@@ -21,7 +21,7 @@ var DefaultConfig = Config{
 	FairServerPort: "60002",
 }
 
-func (c Config) FairnodeEndpoint(network types.Network) string {
+func (c *Config) FairnodeEndpoint(network types.Network) string {
 	switch network {
 	case types.MAIN_NETWORK:
 		return MainnetFairHost

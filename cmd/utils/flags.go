@@ -1260,10 +1260,9 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 
 // setting fairnode connection config
 func SetFairnodeConfig(ctx *cli.Context, cfg *client.Config) {
-	if ctx.GlobalBool(SoloFlag.Name) || ctx.GlobalBool(DebFlag.Name) {
-		cfg.FairServerHost = ctx.GlobalString("serverHost")
-	}
+	cfg.FairServerHost = ctx.GlobalString("serverHost")
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
+	client.DefaultConfig = *cfg
 }
 
 // RegisterEthService adds an Anduschain client to the stack.

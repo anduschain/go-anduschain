@@ -80,7 +80,6 @@ type DebClient struct {
 
 func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}) *DebClient {
 	dc := DebClient{
-		fnEndpoint: DefaultConfig.FairnodeEndpoint(types.Network(config.NetworkType())),
 		ctx:        context.Background(),
 		config:     config,
 		exitWorker: exitWorker,
@@ -109,7 +108,7 @@ func (dc *DebClient) FnAddress() common.Address {
 
 func (dc *DebClient) Start(backend Backend) error {
 	var err error
-
+	dc.fnEndpoint = DefaultConfig.FairnodeEndpoint(types.Network(dc.config.NetworkType()))
 	dc.fnPubKey, err = crypto.DecompressPubkey(common.Hex2Bytes(dc.config.Deb.FairPubKey))
 	if err != nil {
 		log.Error("DecompressPubkey", "msg", err)

@@ -40,7 +40,7 @@ var DefaultConfig = Config{
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
 
-	// TODO : gaslimite 올림
+	// README(hakuna) : gaslimite 올림
 	MinerGasFloor: 8000000000,
 	MinerGasCeil:  8000000000000000000,
 	MinerGasPrice: big.NewInt(params.GWei),
@@ -60,13 +60,6 @@ func init() {
 			home = user.HomeDir
 		}
 	}
-
-	//TODO : deprecated ethash
-	//if runtime.GOOS == "windows" {
-	//	DefaultConfig.Ethash.DatasetDir = filepath.Join(home, "AppData", "Ethash")
-	//} else {
-	//	DefaultConfig.Ethash.DatasetDir = filepath.Join(home, ".ethash")
-	//}
 }
 
 //go:generate gencodec -type Config -field-override configMarshaling -formats toml -out gen_config.go

@@ -126,6 +126,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		}
 	}
 
+	// fairnode conifg setting
+	utils.SetFairnodeConfig(ctx, &cfg.Deb)
+
 	// Apply flags.
 	utils.SetNodeConfig(ctx, &cfg.Node)
 	stack, err := node.New(&cfg.Node)
@@ -139,9 +142,6 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 
 	utils.SetShhConfig(ctx, stack, &cfg.Shh)
 	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
-
-	// fairnode conifg setting
-	utils.SetFairnodeConfig(ctx, &cfg.Deb)
 
 	return stack, cfg
 }
