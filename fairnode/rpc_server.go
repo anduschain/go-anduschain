@@ -195,7 +195,6 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			}
 
 			rs.db.SaveLeague(otprn.HashOtprn(), nodeInfo.GetEnode()) // 리그 리스트에 저장
-
 			logger.Info("otprn submitted", "otrpn", reduceStr(otprn.HashOtprn().String()), "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,

@@ -269,6 +269,14 @@ func (m *MongoDatabase) SaveLeague(otprnHash common.Hash, enode string) {
 	if err != nil {
 		logger.Error("Save League, Get active node", "database", "mongo", "enode", enode, "msg", err)
 	}
+
+	nodes := m.GetLeagueList(otprnHash)
+	for _, node := range nodes {
+		if node.Enode == enode {
+			return
+		}
+	}
+
 	_, err = m.leagues.UpsertId(otprnHash.String(), bson.M{"$addToSet": bson.M{"nodes": node}})
 	if err != nil {
 		logger.Error("Save League update or insert", "database", "mongo", "msg", err)
