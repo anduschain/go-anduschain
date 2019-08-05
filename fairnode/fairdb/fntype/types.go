@@ -1,25 +1,23 @@
 // this type for mongodb stored type
 package fntype
 
-import "gopkg.in/mgo.v2/bson"
-
 type Header struct {
-	ParentHash   string          `json:"parentHash" bson:"parentHash"`
-	Coinbase     string          `json:"miner" bson:"miner"`
-	Root         string          `json:"stateRoot" bson:"stateRoot"`
-	TxHash       string          `json:"transactionsRoot" bson:"transactionsRoot"`
-	VoteHash     string          `json:"voteRoot" bson:"voteRoot"`
-	ReceiptHash  string          `json:"receiptsRoot" bson:"receiptsRoot"`
-	Bloom        []byte          `json:"logsBloom" bson:"logsBloom"`
-	Difficulty   string          `json:"difficulty" bson:"difficulty"`
-	Number       bson.Decimal128 `json:"number" bson:"number"`
-	GasLimit     uint64          `json:"gasLimit" bson:"gasLimit"`
-	GasUsed      uint64          `json:"gasUsed" bson:"gasUsed"`
-	Time         string          `json:"timestamp" bson:"timestamp"`
-	Extra        []byte          `json:"extraData" bson:"extraData"`
-	Nonce        uint64          `json:"nonce" bson:"nonce"`
-	Otprn        []byte          `json:"otprn" bson:"otprn"`
-	FairnodeSign []byte          `json:"fairnodeSign" bson:"fairnodeSign"`
+	ParentHash   string `json:"parentHash" bson:"parentHash"`
+	Coinbase     string `json:"miner" bson:"miner"`
+	Root         string `json:"stateRoot" bson:"stateRoot"`
+	TxHash       string `json:"transactionsRoot" bson:"transactionsRoot"`
+	VoteHash     string `json:"voteRoot" bson:"voteRoot"`
+	ReceiptHash  string `json:"receiptsRoot" bson:"receiptsRoot"`
+	Bloom        []byte `json:"logsBloom" bson:"logsBloom"`
+	Difficulty   string `json:"difficulty" bson:"difficulty"`
+	Number       uint64 `json:"number" bson:"number"`
+	GasLimit     uint64 `json:"gasLimit" bson:"gasLimit"`
+	GasUsed      uint64 `json:"gasUsed" bson:"gasUsed"`
+	Time         string `json:"timestamp" bson:"timestamp"`
+	Extra        []byte `json:"extraData" bson:"extraData"`
+	Nonce        uint64 `json:"nonce" bson:"nonce"`
+	Otprn        []byte `json:"otprn" bson:"otprn"`
+	FairnodeSign []byte `json:"fairnodeSign" bson:"fairnodeSign"`
 }
 
 type Body struct {

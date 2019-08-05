@@ -4,7 +4,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 	"math/big"
 	"time"
 )
@@ -36,8 +35,6 @@ func TransBlock(block *types.Block) fntype.Block {
 			VoteSign: vote.VoteSign,
 		})
 	}
-
-	blockNum, _ := bson.ParseDecimal128(block.Number().String())
 	return fntype.Block{
 		Hash: block.Hash().String(),
 		Header: fntype.Header{
@@ -49,7 +46,7 @@ func TransBlock(block *types.Block) fntype.Block {
 			ReceiptHash:  block.ReceiptHash().String(),
 			Bloom:        block.Bloom().Bytes(),
 			Difficulty:   block.Difficulty().String(),
-			Number:       blockNum,
+			Number:       block.NumberU64(),
 			GasLimit:     block.GasLimit(),
 			GasUsed:      block.GasUsed(),
 			Time:         block.Time().String(),
