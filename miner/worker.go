@@ -18,6 +18,7 @@ package miner
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -423,6 +424,7 @@ func (w *worker) stop() {
 	}
 	atomic.StoreInt32(&w.running, 0)
 	w.debClient.Stop()
+	fmt.Println("========worker.stop===========")
 }
 
 // isRunning returns an indicator whether worker is running or not.
@@ -702,6 +704,12 @@ func (w *worker) resultLoop() {
 			}
 
 			block := w.possibleWinning
+
+			if err := w.engine.VerifyHeader(w.chain, block.Header(), false); err != nil {
+				log.Error("Possible Winning Block Verify Header", "msg", err)
+				continue
+			}
+
 			bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
 			acc := accounts.Account{Address: w.coinbase}
 			wallet, err := w.eth.AccountManager().Find(acc)
@@ -717,7 +725,7 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("possible block broadcasting", "hash", block.Hash())
+			log.Info("Possible Block broadcasting", "hash", block.Hash())
 		case ev := <-w.leagueBlockCh:
 			bypass := true
 			switch w.fnStatus {

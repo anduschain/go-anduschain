@@ -252,7 +252,7 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
-					if len(l.Voted) == 0 {
+					if len(l.Voted) >= MIN_LEAGUE_NUM {
 						logger.Error("anyone was not vote, league change and term")
 						l.Mu.Lock()
 						l.Status = types.REJECT
