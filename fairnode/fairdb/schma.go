@@ -5,6 +5,7 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"math/big"
 	"time"
 )
 
@@ -61,6 +62,37 @@ func TransBlock(block *types.Block) fntype.Block {
 			Transactions: tsx,
 			Voters:       voters,
 		},
+	}
+}
+
+func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection) {
+	singer := types.NewEIP155Signer(chainID)
+	for _, tx := range block.Transactions() {
+		from, err := tx.Sender(singer)
+		if err != nil {
+			logger.Error("Save Transaction, Sender", "database", "mongo", "msg", err)
+			continue
+		}
+
+		err = txC.Insert(fntype.STransaction{
+			Hash:      tx.Hash().String(),
+			BlockHash: block.Hash().String(),
+			From:      from.String(),
+			Data: fntype.TxData{
+				Type:         tx.TransactionId(),
+				AccountNonce: tx.Nonce(),
+				Price:        tx.GasPrice().String(),
+				GasLimit:     tx.Gas(),
+				Recipient:    tx.To().String(),
+				Amount:       tx.Value().String(),
+				Payload:      tx.Data(),
+			},
+		})
+
+		if err != nil {
+			logger.Error("Save Transaction, Insert", "database", "mongo", "msg", err)
+			continue
+		}
 	}
 }
 

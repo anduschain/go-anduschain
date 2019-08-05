@@ -1,7 +1,9 @@
 package fairnode
 
 import (
+	"github.com/anduschain/go-anduschain/params"
 	"gopkg.in/urfave/cli.v1"
+	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -24,7 +26,7 @@ type Config struct {
 	KeyPass string
 
 	Port    string // 네트워크 포트
-	ChainID uint64
+	ChainID *big.Int
 	Debug   bool
 	SysLog  bool
 	Version string
@@ -63,23 +65,29 @@ func NewConfig() *Config {
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
 		Port:    "60002",
-		ChainID: 1315,
 		Debug:   false,
 		SysLog:  false,
 		Version: Version, // Fairnode version
 	}
 }
 
-func (c *Config) GetInfo() (host, port, user, pass, ssl string) {
-	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path
+func (c *Config) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
+	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path, c.ChainID
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.KeyPass = keypass
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
 	DefaultConfig.Port = ctx.GlobalString("port")
-	DefaultConfig.ChainID = ctx.GlobalUint64("chainID")
 	DefaultConfig.Debug = ctx.GlobalBool("debug")
+
+	if ctx.GlobalBool("mainnet") {
+		DefaultConfig.ChainID = params.MAIN_NETWORK
+	} else if ctx.GlobalBool("testnet") {
+		DefaultConfig.ChainID = params.TEST_NETWORK
+	} else {
+		DefaultConfig.ChainID = new(big.Int).SetUint64(ctx.GlobalUint64("chainID"))
+	}
 
 	if ctx.GlobalBool("fake") {
 		DefaultConfig.Fake = true

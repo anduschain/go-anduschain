@@ -90,8 +90,8 @@ type dbConfig struct {
 	host, port, user, pass, ssl string
 }
 
-func (c *dbConfig) GetInfo() (host, port, user, pass, ssl string) {
-	return c.host, c.port, c.user, c.pass, c.ssl
+func (c *dbConfig) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
+	return c.host, c.port, c.user, c.pass, c.ssl, big.NewInt(0)
 }
 
 func addChainConfig(ctx *cli.Context) error {

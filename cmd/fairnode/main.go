@@ -58,14 +58,12 @@ func init() {
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
-		cli.Uint64Flag{
+		cli.BoolFlag{
 			Name:  "mainnet",
-			Value: params.MAIN_NETWORK.Uint64(),
 			Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
 		},
-		cli.Uint64Flag{
+		cli.BoolFlag{
 			Name:  "testnet",
-			Value: params.TEST_NETWORK.Uint64(),
 			Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
 		},
 		cli.Uint64Flag{

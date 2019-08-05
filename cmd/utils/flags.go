@@ -132,7 +132,6 @@ var (
 		Usage: "Network identifier (integer, null=MainNet, 3355=Testnet(andusChain))",
 		Value: eth.DefaultConfig.NetworkId,
 	}
-	// TODO : andus >> consensus
 	DebFlag = cli.BoolFlag{
 		Name:  "deb",
 		Usage: "deb network: andus Chain test network",

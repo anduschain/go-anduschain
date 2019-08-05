@@ -43,6 +43,14 @@ type Transaction struct {
 	Data      TxData
 }
 
+// for saving transation -> transaction collection
+type STransaction struct {
+	Hash      string `json:"txHash" xml:"txHash" bson:"_id,omitempty"`
+	BlockHash string `json:"blockHash" xml:"blockHash" bson:"blockHash"`
+	From      string `json:"From" xml:"From" bson:"From"`
+	Data      TxData
+}
+
 type Voter struct {
 	Header   []byte `json:"blockHeader" bson:"blockHeader"`
 	Voter    string `json:"voter" bson:"voter"`

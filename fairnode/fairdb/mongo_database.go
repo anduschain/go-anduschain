@@ -31,6 +31,7 @@ type MongoDatabase struct {
 	url      string
 	dialInfo *mgo.DialInfo
 	mongo    *mgo.Session
+	chainID  *big.Int
 
 	chainConfig     *mgo.Collection
 	activeNodeCol   *mgo.Collection
@@ -43,18 +44,20 @@ type MongoDatabase struct {
 }
 
 type config interface {
-	GetInfo() (host, port, user, pass, ssl string)
+	GetInfo() (host, port, user, pass, ssl string, chainID *big.Int)
 }
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
 func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
-	host, port, user, pass, ssl := conf.GetInfo()
+	host, port, user, pass, ssl, chainID := conf.GetInfo()
 	if strings.Compare(user, "") != 0 {
 		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, ssl, DbName)
 	} else {
 		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, DbName)
 	}
+
+	db.chainID = chainID
 
 	// SSL db connection config
 	if strings.Compare(ssl, "") != 0 {
@@ -349,6 +352,8 @@ func (m *MongoDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) err
 	if err != nil {
 		return err
 	}
+
+	TransTransaction(block, m.chainID, m.transactions)
 	return nil
 }
 
