@@ -880,10 +880,10 @@ func (w *worker) resultLoop() {
 			case core.CanonStatTy:
 				CanonStatTy = true
 				events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, types.ChainHeadEvent{Block: block})
+				//events = append(events, types.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
-				events = append(events, types.ChainSideEvent{Block: block})
+				//events = append(events, types.ChainSideEvent{Block: block})
 			}
 
 			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
