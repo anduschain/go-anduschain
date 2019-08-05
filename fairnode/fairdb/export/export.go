@@ -2,9 +2,11 @@ package export
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"github.com/anduschain/go-anduschain/fairnode/server/db"
+	"github.com/anduschain/go-anduschain/fairnode/fairdb"
+	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
+	"github.com/anduschain/go-anduschain/rlp"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -14,6 +16,7 @@ import (
 
 var (
 	logger = log.New("godaon", "chain_export")
+	dbName = fairdb.DbName
 )
 
 type FairNodeDB struct {
@@ -26,7 +29,7 @@ type FairNodeDB struct {
 func NewSession(host, port, user, pwd string) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 	if strings.Compare(user, "") != 0 {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, host, port, db.DBNAME)
+		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, host, port, dbName)
 	} else {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s", host, port)
 	}
@@ -39,14 +42,14 @@ func (fnb *FairNodeDB) Start() error {
 	session, err := mgo.Dial(fnb.url)
 	if err != nil {
 		logger.Error("Mongo DB Dial", "error", err)
-		return db.MongDBConnectError
+		return fairdb.MongDBConnectError
 	}
 
 	session.SetMode(mgo.Monotonic, true)
 
 	fnb.Mongo = session
-	fnb.BlockChain = session.DB(db.DBNAME).C("BlockChain")
-	fnb.BlockChainRaw = session.DB(db.DBNAME).C("BlockChainRaw")
+	fnb.BlockChain = session.DB(dbName).C("BlockChain")
+	fnb.BlockChainRaw = session.DB(dbName).C("BlockChainRaw")
 
 	logger.Info("connected to database", "url", fnb.url)
 
@@ -69,9 +72,9 @@ func (fnb *FairNodeDB) Export(w io.Writer) error {
 func (fnb *FairNodeDB) ExportN(w io.Writer, first uint64, last uint64) error {
 	logger.Info("ExportN", "first", first, "last", last)
 	iter := fnb.BlockChain.Find(bson.M{"header.number": bson.M{"$gte": first, "$lte": last}}).Sort("header.number").Iter()
-	var sBlock db.StoredBlock
-	for iter.Next(&sBlock) {
-		block, err := fnb.GetRawBlock(sBlock.BlockHash)
+	b := new(fntype.Block)
+	for iter.Next(&b) {
+		block, err := fnb.GetRawBlock(b.Hash)
 		if err != nil {
 			return err
 		}
@@ -84,17 +87,18 @@ func (fnb *FairNodeDB) ExportN(w io.Writer, first uint64, last uint64) error {
 }
 
 func (fnb *FairNodeDB) GetRawBlock(blockHash string) (*types.Block, error) {
-	var res []db.StoreFinalBlockRaw
-	var b []byte
-	err := fnb.BlockChainRaw.Find(bson.M{"blockhash": blockHash}).Sort("order").All(&res)
+	b := new(fntype.RawBlock)
+	err := fnb.BlockChainRaw.FindId(blockHash).One(b)
 	if err != nil {
+		logger.Error("Get block", "database", "mongo", "msg", err)
 		return nil, err
 	}
 
-	for i := 0; i < len(res); i++ {
-		b = append(b, res[i].Raw...)
+	blockEnc := common.FromHex(b.Raw)
+	block := new(types.Block)
+	if err := rlp.DecodeBytes(blockEnc, block); err != nil {
+		logger.Error("Get block, decode", "database", "mongo", "msg", err)
+		return nil, err
 	}
-
-	block := fairtypes.DecodeBlock(b)
 	return block, nil
 }

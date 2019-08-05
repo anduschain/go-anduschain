@@ -24,16 +24,10 @@ type Config struct {
 	KeyPass string
 
 	Port    string // 네트워크 포트
-	NAT     string
 	ChainID uint64
-	Epoch   int64
 	Debug   bool
 	SysLog  bool
 	Version string
-
-	NodeVersion string
-	Miner       int64
-	Fee         int64
 
 	Fake bool
 }
@@ -74,14 +68,6 @@ func NewConfig() *Config {
 		SysLog:  false,
 		Version: Version, // Fairnode version
 	}
-}
-
-// Set miner config
-func (c *Config) SetMiningConf(miner, epoch, fee int64, version string) {
-	c.NodeVersion = version
-	c.Miner = miner
-	c.Epoch = epoch
-	c.Fee = fee
 }
 
 func (c *Config) GetInfo() (host, port, user, pass, ssl string) {

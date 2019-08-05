@@ -19,10 +19,10 @@ import (
 	"time"
 )
 
-const dbName = "AndusChainTestnet"
+const DbName = "AndusChainTestnet"
 
 var (
-	mongDBConnectError = errors.New("fail to connecting mongodb database")
+	MongDBConnectError = errors.New("fail to connecting mongodb database")
 )
 
 type MongoDatabase struct {
@@ -51,9 +51,9 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
 	host, port, user, pass, ssl := conf.GetInfo()
 	if strings.Compare(user, "") != 0 {
-		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, ssl, dbName)
+		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, ssl, DbName)
 	} else {
-		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, dbName)
+		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, DbName)
 	}
 
 	// SSL db connection config
@@ -95,20 +95,20 @@ func (m *MongoDatabase) Start() error {
 
 	if err != nil {
 		logger.Error("Mongo DB Dial", "mongo", err)
-		return mongDBConnectError
+		return MongDBConnectError
 	}
 
 	session.SetMode(mgo.Monotonic, true)
 
 	m.mongo = session
-	m.chainConfig = session.DB(dbName).C("ChainConfig")
-	m.activeNodeCol = session.DB(dbName).C("ActiveNode")
-	m.leagues = session.DB(dbName).C("Leagues")
-	m.otprnList = session.DB(dbName).C("OtprnList")
-	m.blockChain = session.DB(dbName).C("BlockChain")
-	m.blockChainRaw = session.DB(dbName).C("BlockChainRaw")
-	m.voteAggregation = session.DB(dbName).C("VoteAggregation")
-	m.transactions = session.DB(dbName).C("Transactions")
+	m.chainConfig = session.DB(DbName).C("ChainConfig")
+	m.activeNodeCol = session.DB(DbName).C("ActiveNode")
+	m.leagues = session.DB(DbName).C("Leagues")
+	m.otprnList = session.DB(DbName).C("OtprnList")
+	m.blockChain = session.DB(DbName).C("BlockChain")
+	m.blockChainRaw = session.DB(DbName).C("BlockChainRaw")
+	m.voteAggregation = session.DB(DbName).C("VoteAggregation")
+	m.transactions = session.DB(DbName).C("Transactions")
 
 	logger.Debug("Start fairnode mongo database")
 	return nil

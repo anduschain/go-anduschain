@@ -76,8 +76,6 @@ type DebClient struct {
 	closeClient event.Feed
 
 	exitWorker chan struct{}
-
-	// FIXME(hakuna) : add to process status
 }
 
 func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}) *DebClient {

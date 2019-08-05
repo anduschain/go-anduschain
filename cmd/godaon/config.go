@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"io"
 	"os"
 	"reflect"
@@ -30,7 +31,6 @@ import (
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/dashboard"
 	"github.com/anduschain/go-anduschain/eth"
-	fairconfig "github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
@@ -81,8 +81,7 @@ type gethConfig struct {
 	Node      node.Config
 	Ethstats  ethstatsConfig
 	Dashboard dashboard.Config
-	// TODO(hakuna) : deprecated
-	FairNode fairconfig.Config
+	Deb       client.Config
 }
 
 func loadConfig(file string, cfg *gethConfig) error {
@@ -117,7 +116,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		Shh:       whisper.DefaultConfig,
 		Node:      defaultNodeConfig(),
 		Dashboard: dashboard.DefaultConfig,
-		FairNode:  *fairconfig.DefaultConfig,
+		Deb:       client.DefaultConfig,
 	}
 
 	// Load config file.
@@ -141,8 +140,8 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	utils.SetShhConfig(ctx, stack, &cfg.Shh)
 	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
 
-	// andus >> faior ctx 설정
-	utils.SetFairNodeConfig(ctx, &cfg.FairNode)
+	// fairnode conifg setting
+	utils.SetFairnodeConfig(ctx, &cfg.Deb)
 
 	return stack, cfg
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/fdlimit"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -36,7 +37,6 @@ import (
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/ethstats"
-	fairconfig "github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/les"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
@@ -576,13 +576,6 @@ var (
 		Name:  "metrics.influxdb.host.tag",
 		Usage: "InfluxDB `host` tag attached to all measurements",
 		Value: "localhost",
-	}
-
-	// andus >> FairclientFlag, UDP, TCP port // TODO(hakuna) : deprecated
-	FairclientPort = cli.StringFlag{
-		Name:  "clientPort",
-		Usage: "fairnode port",
-		Value: "50002",
 	}
 
 	FairserverIP = cli.StringFlag{
@@ -1266,24 +1259,12 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 	cfg.Refresh = ctx.GlobalDuration(DashboardRefreshFlag.Name)
 }
 
-// TODO(hakuna) : deprecated, will modified
-func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
-	if ctx.GlobalBool(TestnetFlag.Name) {
-		// Testnet fairnode Addr
-		// FIXME : mainnet 런칭할때 변경
-		cfg.FairServerHost = cfg.GetHost("test")
-	} else if ctx.GlobalBool(SoloFlag.Name) || ctx.GlobalBool(DebFlag.Name) {
+// setting fairnode connection config
+func SetFairnodeConfig(ctx *cli.Context, cfg *client.Config) {
+	if ctx.GlobalBool(SoloFlag.Name) || ctx.GlobalBool(DebFlag.Name) {
 		cfg.FairServerHost = ctx.GlobalString("serverHost")
-	} else {
-		// Mainnet fairnode Addr
-		cfg.FairServerHost = cfg.GetHost("main")
 	}
-
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
-	cfg.ClientPort = ctx.GlobalString("clientPort")
-	cfg.NAT = ctx.GlobalString("nat")
-
-	fairconfig.DefaultConfig = cfg
 }
 
 // RegisterEthService adds an Anduschain client to the stack.

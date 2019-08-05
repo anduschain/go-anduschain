@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode"
+	"github.com/anduschain/go-anduschain/params"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -56,6 +57,16 @@ func init() {
 			Name:  "keypath",
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
+		},
+		cli.Uint64Flag{
+			Name:  "mainnet",
+			Value: params.MAIN_NETWORK.Uint64(),
+			Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
+		},
+		cli.Uint64Flag{
+			Name:  "testnet",
+			Value: params.TEST_NETWORK.Uint64(),
+			Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
 		},
 		cli.Uint64Flag{
 			Name:  "chainID",

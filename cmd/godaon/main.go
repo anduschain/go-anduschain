@@ -158,7 +158,6 @@ var (
 	}
 
 	fairclientFlages = []cli.Flag{
-		utils.FairclientPort,
 		utils.FairserverIP,
 		utils.FairserverPort,
 	}

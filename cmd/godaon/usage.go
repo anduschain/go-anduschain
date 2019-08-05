@@ -73,9 +73,8 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
-		Name: "FAIR CLIENT",
+		Name: "DEB CLIENT",
 		Flags: []cli.Flag{
-			utils.FairclientPort,
 			utils.FairserverIP,
 			utils.FairserverPort,
 		},
