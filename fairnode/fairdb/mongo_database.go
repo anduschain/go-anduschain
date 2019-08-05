@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const dbName = "AndusChain"
+const dbName = "AndusChainTestnet"
 
 var (
 	mongDBConnectError = errors.New("fail to connecting mongodb database")
