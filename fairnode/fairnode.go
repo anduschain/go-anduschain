@@ -46,19 +46,6 @@ var (
 	logger log.Logger
 )
 
-func init() {
-	if !DefaultConfig.Debug {
-		handler := log.MultiHandler(
-			log.Must.FileHandler("./fairnode.log", log.TerminalFormat()), // fairnode.log로 저장
-		)
-		log.Root().SetHandler(handler)
-	} else {
-		log.Root().SetHandler(log.StdoutHandler)
-	}
-
-	logger = log.New("fairnode", "main")
-}
-
 type Fairnode struct {
 	mu          sync.Mutex
 	tcpListener net.Listener
@@ -71,13 +58,24 @@ type Fairnode struct {
 	currentLeague       common.Hash
 	pendingLeague       common.Hash
 	leagues             map[common.Hash]*league
-	makePendingLeagueCh chan struct{}
+	makePendingLeagueCh chan common.Hash
 }
 
 func NewFairnode() (*Fairnode, error) {
+	if DefaultConfig.Debug {
+		log.Root().SetHandler(log.StdoutHandler)
+	} else {
+		handler := log.MultiHandler(
+			log.Must.FileHandler("./fairnode.log", log.TerminalFormat()), // fairnode.log로 저장
+		)
+		log.Root().SetHandler(handler)
+	}
+
+	logger = log.New("fairnode", "main")
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", DefaultConfig.Port))
 	if err != nil {
-		logger.Error("failed to listen", "msg", err)
+		logger.Error("Failed to listen", "msg", err)
 		return nil, err
 	}
 
@@ -94,28 +92,28 @@ func NewFairnode() (*Fairnode, error) {
 		currentLeague:       common.Hash{},
 		pendingLeague:       common.Hash{},
 		leagues:             make(map[common.Hash]*league),
-		makePendingLeagueCh: make(chan struct{}),
+		makePendingLeagueCh: make(chan common.Hash),
 	}, nil
 }
 
 func (fn *Fairnode) Start() error {
 	var err error
-	if DefaultConfig.Fake {
+	if DefaultConfig.Memorydb {
 		fn.db = fairdb.NewMemDatabase() // fake mode memory db
 	} else {
-		fn.db, err = fairdb.NewMongoDatabase(DefaultConfig) // fake mode memory db
+		fn.db, err = fairdb.NewMongoDatabase(&DefaultConfig) // fake mode memory db
 		if err != nil {
 			return err
 		}
 	}
 
 	if err := fn.db.Start(); err != nil {
-		logger.Error("fail to db start", "msg", err)
+		logger.Error("Fail to db start", "msg", err)
 		return err
 	}
 
 	if config := fn.db.GetChainConfig(); config == nil {
-		return errors.New("chain config is nil, please run addChainConfig")
+		return errors.New("Chain config is nil, please run addChainConfig")
 	}
 
 	fn.db.InitActiveNode() // fairnode init Active node reset
@@ -173,7 +171,7 @@ func (fn *Fairnode) LeagueSet() map[common.Hash]*league {
 
 // role에 따른 작업 구분
 func (fn *Fairnode) roleCheck() {
-	defer logger.Warn("role check was dead")
+	defer logger.Warn("Role check was dead")
 	if fn.role == FN_LEADER {
 		logger.Info("I'm Leader in fairnode group")
 		go fn.makeOtprn()
@@ -182,13 +180,16 @@ func (fn *Fairnode) roleCheck() {
 }
 
 func (fn *Fairnode) statusLoop() {
-	defer logger.Warn("status loop was dead")
+	defer logger.Warn("Status loop was dead")
 	t := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case <-t.C:
+			if len(fn.leagues) == 0 {
+				continue
+			}
 			for id, league := range fn.leagues {
-				logger.Debug("status", "otprn", reduceStr(id.String()), "code", league.Status)
+				logger.Debug("Status", "otprn", reduceStr(id.String()), "code", league.Status)
 			}
 		}
 	}
@@ -197,7 +198,7 @@ func (fn *Fairnode) statusLoop() {
 
 // 3분에 한번씩 3분간 heartbeat를 보내지 않은 노드 삭제
 func (fn *Fairnode) cleanOldNode() {
-	defer logger.Warn("clean old node was dead")
+	defer logger.Warn("Clean old node was dead")
 	t := time.NewTicker(CLEAN_OLD_NODE_TERM * time.Minute)
 	for {
 		select {
@@ -213,18 +214,22 @@ func (fn *Fairnode) cleanOldNode() {
 					count++
 				}
 			}
-			logger.Info("clean old node", "count", count)
+			logger.Info("Clean old node", "count", count)
 		}
 	}
 }
 
 func (fn *Fairnode) processManageLoop() {
 	t := time.NewTicker(500 * time.Millisecond)
+	var status types.FnStatus
 	for {
 		select {
 		case <-t.C:
 			if l, ok := fn.leagues[fn.currentLeague]; ok {
-				status := l.Status
+				if status != l.Status {
+					status = l.Status
+				}
+
 				switch status {
 				case types.PENDING:
 					// now league connection count check
@@ -233,27 +238,27 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.MAKE_LEAGUE
 					}
 				case types.MAKE_LEAGUE:
-					time.Sleep(5 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
 					// 생성할 블록 번호 조회
 					if block := fn.db.CurrentBlock(); block != nil {
 						l.Current = block.Number()
 					}
-					time.Sleep(5 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
-					time.Sleep(7 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
-					if len(l.Voted) >= MIN_LEAGUE_NUM {
-						logger.Error("anyone was not vote, league change and term")
+					if len(l.Voted) < 2 {
+						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(l.Voted))
 						l.Mu.Lock()
 						l.Status = types.REJECT
 						l.Mu.Unlock()
@@ -271,25 +276,15 @@ func (fn *Fairnode) processManageLoop() {
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
 					l.Current = fn.db.CurrentBlock().Number()
-					fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
-					time.Sleep(5 * time.Second)
-					if l.Status == types.REJECT {
-						continue
-					}
-					l.Status = types.MAKE_JOIN_TX
 					l.Voted = l.Voted[:0] // reset vote state
 					l.Votehash = nil
 					l.BlockHash = nil
+					time.Sleep(3 * time.Second)
+					fn.makePendingLeagueCh <- l.Otprn.HashOtprn() // signal for checking league otprn
 				case types.REJECT:
-					l.Mu.Lock()
-					delete(fn.leagues, fn.currentLeague) // league delete
-					if pl, ok := fn.leagues[fn.pendingLeague]; ok {
-						pl.Current = fn.db.CurrentBlock().Number()
-						fn.currentLeague = fn.pendingLeague // change pending to current
-					}
-					l.Mu.Unlock()
+
 				default:
-					logger.Debug("process Manage Loop", "staus", status.String())
+					logger.Debug("Process Manage Loop", "Status", status.String())
 				}
 			}
 		}
@@ -311,28 +306,32 @@ func (fn *Fairnode) makeOtprn() {
 			if _, ok := fn.leagues[otprn.HashOtprn()]; !ok {
 				// make new league
 				fn.mu.Lock()
-				fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
-				fn.db.SaveOtprn(*otprn)
-
 				if isCur {
 					fn.currentLeague = otprn.HashOtprn()
+					fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+					fn.db.SaveOtprn(*otprn)
 				} else {
-					fn.pendingLeague = otprn.HashOtprn()
+					if _, ok := fn.leagues[fn.pendingLeague]; !ok {
+						fn.pendingLeague = otprn.HashOtprn()
+						fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+						fn.db.SaveOtprn(*otprn)
+					} else {
+						return errors.New(fmt.Sprintf("Pending League was exist otprn=%s", fn.pendingLeague.String()))
+					}
 				}
-
 				fn.mu.Unlock()
-				logger.Info("make otprn for league", "otprn", otprn.HashOtprn().String())
+				logger.Info("Make otprn for league", "otprn", otprn.HashOtprn().String())
 				return nil
 			} else {
-				return errors.New(fmt.Sprintf("league was exist otprn=%s", otprn.HashOtprn().String()))
+				return errors.New(fmt.Sprintf("League was exist otprn=%s", otprn.HashOtprn().String()))
 			}
 		} else {
-			return errors.New(fmt.Sprintf("not enough active node minimum=%d count=%d", MIN_LEAGUE_NUM, len(nodes)))
+			return errors.New(fmt.Sprintf("Not enough active node minimum=%d count=%d", MIN_LEAGUE_NUM, len(nodes)))
 		}
 	}
 
 	if err := newOtprn(true); err != nil {
-		logger.Error("new otprn error", "msg", err)
+		logger.Error("Make otprn error", "msg", err)
 	}
 
 	// league status를 체크해서 주기마다 otprn 생성
@@ -341,18 +340,20 @@ func (fn *Fairnode) makeOtprn() {
 		case <-t.C:
 			if _, ok := fn.leagues[fn.currentLeague]; !ok {
 				if err := newOtprn(true); err != nil {
-					logger.Error("new otprn error", "msg", err)
+					logger.Error("Make otprn error", "msg", err)
 				}
 			}
-		case <-fn.makePendingLeagueCh:
+		case leagueKey := <-fn.makePendingLeagueCh:
 			// channel for making pending league
-			if league, ok := fn.leagues[fn.currentLeague]; ok {
+			if league, ok := fn.leagues[leagueKey]; ok {
 				epoch := new(big.Int).SetUint64(league.Otprn.Data.Epoch) // epoch, league change term
 				if epoch.Uint64() == 0 {
+					league.Status = types.MAKE_JOIN_TX
 					continue
 				}
 
 				if league.Current.Uint64() == 0 {
+					league.Status = types.MAKE_JOIN_TX
 					continue
 				}
 
@@ -361,17 +362,27 @@ func (fn *Fairnode) makeOtprn() {
 				isChange := new(big.Int).Mod(league.Current, epoch)
 				if isPending.Uint64() == 0 {
 					if isChange.Uint64() == 0 {
-						logger.Warn("currnet league will be rejected", "epoch", epoch.String(), "current", league.Current.String())
+						logger.Warn("Currnet league will be rejected", "epoch", epoch.String(), "current", league.Current.String())
 						league.Mu.Lock()
+						delete(fn.leagues, leagueKey) // league delete
+						if pl, ok := fn.leagues[fn.pendingLeague]; ok {
+							pl.Current = fn.db.CurrentBlock().Number()
+							fn.currentLeague = fn.pendingLeague // change pending to current
+							fn.pendingLeague = common.Hash{}    // empty pending league key
+						}
 						league.Status = types.REJECT
 						league.Mu.Unlock()
 					} else {
 						// make otprn and pending league
 						if err := newOtprn(false); err != nil {
-							logger.Error("new otprn error", "msg", err)
+							logger.Error("Make otprn error", "msg", err)
+							continue
 						}
-						logger.Info("make pending league", "epoch", epoch.String(), "current", league.Current.String())
+						league.Status = types.MAKE_JOIN_TX
+						logger.Info("Make pending league", "epoch", epoch.String(), "current", league.Current.String())
 					}
+				} else {
+					league.Status = types.MAKE_JOIN_TX
 				}
 			}
 		}

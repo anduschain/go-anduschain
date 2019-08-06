@@ -115,7 +115,7 @@ func addChainConfig(ctx *cli.Context) error {
 	dbpass := promptPassphrase(false)
 
 	var fdb fairdb.FairnodeDB
-	if ctx.GlobalBool("fakemode") {
+	if ctx.GlobalBool("memorydb") {
 		fdb = fairdb.NewMemDatabase()
 	} else {
 		conf := &dbConfig{

@@ -82,7 +82,7 @@ func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPric
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
 }
 
-func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
+func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte, coinase common.Address) *Transaction {
 	if len(otprn) > 0 {
 		otprn = common.CopyBytes(otprn)
 	} else {
@@ -91,7 +91,12 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
 
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, joinNonce)
-	payload := append(otprn, b...)
+	hash := rlpHash([]interface{}{joinNonce, otprn, coinase})
+
+	var payload []byte
+	payload = append(payload, otprn...)
+	payload = append(payload, b...)
+	payload = append(payload, hash.Bytes()...)
 
 	d := txdata{
 		Type:         JoinTx,
@@ -105,6 +110,7 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte) *Transaction {
 		R:            new(big.Int),
 		S:            new(big.Int),
 	}
+
 	return &Transaction{data: d}
 }
 
@@ -142,7 +148,7 @@ func (tx *Transaction) TransactionId() uint64 {
 func (tx *Transaction) JoinNonce() (uint64, error) {
 	if tx.data.Type == JoinTx {
 		payload := tx.data.Payload
-		return binary.LittleEndian.Uint64(payload[len(payload)-8:]), nil
+		return binary.LittleEndian.Uint64(payload[len(payload)-40 : len(payload)-32]), nil
 	}
 	return 0, errors.New("not join transaction")
 }
@@ -151,7 +157,16 @@ func (tx *Transaction) JoinNonce() (uint64, error) {
 func (tx *Transaction) Otprn() ([]byte, error) {
 	if tx.data.Type == JoinTx {
 		payload := tx.data.Payload
-		return payload[:len(payload)-8], nil
+		return payload[:len(payload)-40], nil
+	}
+	return nil, errors.New("not join transaction")
+}
+
+// for join transaction
+func (tx *Transaction) PayloadHash() ([]byte, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return payload[len(payload)-32:], nil
 	}
 	return nil, errors.New("not join transaction")
 }

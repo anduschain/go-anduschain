@@ -31,16 +31,26 @@ type Config struct {
 	SysLog  bool
 	Version string
 
-	Fake bool
+	Memorydb bool
 }
 
 var (
-	DefaultConfig *Config
 	Version       = "1.0.2"
+	DefaultConfig = Config{
+		DBhost:   "localhost",
+		DBport:   "27017",
+		DBuser:   "",
+		SSL_path: "",
+
+		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
+
+		Port:    "60002",
+		Debug:   false,
+		Version: Version, // Fairnode version
+	}
 )
 
 func init() {
-	DefaultConfig = NewConfig()
 	home := os.Getenv("HOME")
 	if home == "" {
 		if user, err := user.Current(); err == nil {
@@ -53,22 +63,6 @@ func init() {
 		DefaultConfig.FairNodeDir = filepath.Join(home, ".fairnode")
 	}
 
-}
-
-func NewConfig() *Config {
-	return &Config{
-		DBhost:   "localhost",
-		DBport:   "27017",
-		DBuser:   "",
-		SSL_path: "",
-
-		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
-
-		Port:    "60002",
-		Debug:   false,
-		SysLog:  false,
-		Version: Version, // Fairnode version
-	}
 }
 
 func (c *Config) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
@@ -89,8 +83,8 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 		DefaultConfig.ChainID = new(big.Int).SetUint64(ctx.GlobalUint64("chainID"))
 	}
 
-	if ctx.GlobalBool("fake") {
-		DefaultConfig.Fake = true
+	if ctx.GlobalBool("memorydb") {
+		DefaultConfig.Memorydb = true
 	} else {
 		DefaultConfig.DBhost = ctx.GlobalString("dbhost")
 		DefaultConfig.DBport = ctx.GlobalString("dbport")
@@ -98,5 +92,4 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 		DefaultConfig.SSL_path = ctx.GlobalString("dbCertPath")
 		DefaultConfig.DBpass = dbpass
 	}
-
 }

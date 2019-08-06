@@ -191,17 +191,17 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			// OTPRN 전송
 			bOtprn, err := otprn.EncodeOtprn()
 			if err != nil {
-				return nil, errors.New(fmt.Sprintf("otprn EncodeOtprn failed msg=%s", err.Error()))
+				return nil, errors.New(fmt.Sprintf("Otprn EncodeOtprn failed msg=%s", err.Error()))
 			}
 
 			rs.db.SaveLeague(otprn.HashOtprn(), nodeInfo.GetEnode()) // 리그 리스트에 저장
-			logger.Info("otprn submitted", "otrpn", reduceStr(otprn.HashOtprn().String()), "enode", reduceStr(nodeInfo.GetEnode()))
+			logger.Info("Otprn submitted", "otrpn", reduceStr(otprn.HashOtprn().String()), "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,
 				Otprn:  bOtprn,
 			}, nil
 		} else {
-			logger.Warn("otprn not submitted", "msg", "Not eligible", "enode", reduceStr(nodeInfo.GetEnode()))
+			logger.Warn("Otprn not submitted", "msg", "Not eligible", "enode", reduceStr(nodeInfo.GetEnode()))
 			return &proto.ResOtprn{
 				Result: proto.Status_SUCCESS,
 			}, nil
@@ -438,7 +438,7 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 	l.Voted = append(l.Voted, true) // known league
 	l.Mu.Unlock()
 
-	logger.Info("vote save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", header.Hash())
+	logger.Info("Voting Save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", reduceStr(header.Hash().String()))
 	return &empty.Empty{}, nil
 }
 
@@ -474,7 +474,8 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", res.GetOtprnHash()))
 	}
 
-	voters := rs.db.GetVoters(fairdb.MakeVoteKey(otprnHash, new(big.Int).Add(clg.Current, big.NewInt(1))))
+	voteKey := fairdb.MakeVoteKey(otprnHash, new(big.Int).Add(clg.Current, big.NewInt(1)))
+	voters := rs.db.GetVoters(voteKey)
 	if len(voters) == 0 {
 		return nil, errors.New("voters count is zero")
 	}
@@ -505,8 +506,6 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 	clg.BlockHash = &finalBlockHash
 	clg.Votehash = &voteHash
 
-	logger.Info("Request VoteResult final block", "hash", finalBlockHash, "voteHash", voteHash, "len", len(voters))
-
 	msg := proto.ResVoteResult{
 		Result:    proto.Status_SUCCESS,
 		BlockHash: finalBlockHash.String(),
@@ -525,6 +524,8 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 		return nil, err
 	}
 	msg.Sign = sign // add sign
+
+	logger.Info("Request VoteResult final block", "hash", finalBlockHash, "voteHash", voteHash, "len", len(voters))
 
 	return &msg, nil
 }
@@ -606,6 +607,12 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 	}
 
 	for {
+		switch clg.Status {
+		case types.FINALIZE, types.REJECT:
+			// league status
+			return nil
+		}
+
 		m := makeMsg(clg)
 		if m == nil {
 			continue
@@ -628,12 +635,6 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 		}
 
 		logger.Debug("SealConfirm send status message", "address", reqSeal.GetAddress(), "status", m.GetCode().String())
-
-		if clg.Status == types.REQ_FAIRNODE_SIGN {
-			// fairnode signature request signal submit and exit rpc
-			return nil
-		}
-
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -689,23 +690,22 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 
 	if *clg.Votehash != block.VoterHash() {
 		return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), block.VoterHash().String()))
-
 	}
 
 	if clg.Status == types.REQ_FAIRNODE_SIGN {
 		return &empty.Empty{}, nil
 	}
 
-	clg.Status = types.SEND_BLOCK_WAIT // saving block
+	clg.Status = types.SEND_BLOCK_WAIT // Saving Block in database
 	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
 		log.Error("Save Final block", "msg", err)
-		clg.Status = types.SEND_BLOCK
+		clg.Status = types.REJECT
 		return nil, err
 	}
 
-	log.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 	clg.Status = types.REQ_FAIRNODE_SIGN
+	log.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 	return &empty.Empty{}, nil
 }
 
@@ -792,6 +792,8 @@ func (rs *rpcServer) RequestFairnodeSign(ctx context.Context, reqInfo *proto.Req
 	}
 
 	m.Sign = sign
+
+	logger.Info("Request Fairnode Signature", "Req", reqInfo.GetAddress(), "fnSign", common.BytesToHash(signature))
 
 	return &m, nil
 }

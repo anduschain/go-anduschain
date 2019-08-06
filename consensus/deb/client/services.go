@@ -239,7 +239,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 					return
 				}
 
-				sTx, err := dc.wallet.SignTx(dc.miner.Miner, types.NewJoinTransaction(nonce, jnonce, bOtrpn), dc.config.ChainID)
+				sTx, err := dc.wallet.SignTx(dc.miner.Miner, types.NewJoinTransaction(nonce, jnonce, bOtrpn, dc.miner.Miner.Address), dc.config.ChainID)
 				if err != nil {
 					log.Error("signature join transaction", "msg", err)
 					return
@@ -280,11 +280,12 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			}
 		case proto.ProcessStatus_FINALIZE:
 			// make block routine start
+			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.FINALIZE, Payload: nil})
 		case proto.ProcessStatus_REJECT:
 			delete(dc.otprn, otprn.HashOtprn()) // delete otprn
-			log.Warn("fairnode status loop", "msg", "otprn deleted")
+			log.Warn("Fairnode status loop", "msg", "otprn deleted")
 		default:
-			log.Info("receiveFairnodeStatusLoop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
+			log.Info("Receive Fairnode Status Loop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
 	}
 }
@@ -327,7 +328,7 @@ func (dc *DebClient) requestLeague(otprn types.Otprn) []string {
 func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 	block := ev.Block
 	if block == nil {
-		log.Error("voting block is nil")
+		log.Error("Voting block is nil")
 		return
 	}
 
@@ -343,7 +344,7 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
-		log.Error("voting info signature", "msg", err)
+		log.Error("Voting info signature", "msg", err)
 		return
 	}
 
@@ -351,11 +352,11 @@ func (dc *DebClient) vote(ev types.NewLeagueBlockEvent) {
 
 	_, err = dc.rpc.Vote(dc.ctx, &msg)
 	if err != nil {
-		log.Error("voting request", "msg", err)
+		log.Error("Voting request", "msg", err)
 		return
 	}
 
-	log.Info("vote success", "hash", block.Hash())
+	log.Info("Vote Success", "hash", block.Hash())
 }
 
 func (dc *DebClient) requestVoteResult(otprn types.Otprn) types.Voters {
@@ -452,15 +453,12 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 
 	defer stream.CloseSend()
 
-	var (
-		isSendBlock       bool
-		isReqFairnodeSign bool
-	)
+	var stCode proto.ProcessStatus
 
 	for {
 		in, err := stream.Recv()
 		if err != nil {
-			log.Error("request SealConfirm stream receive", "msg", err)
+			log.Error("Request SealConfirm stream receive", "msg", err)
 			return
 		}
 
@@ -473,29 +471,26 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 			return
 		}
 
-		switch in.GetCode() {
+		log.Debug("Request SealConfirm Status", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
+		if stCode == in.GetCode() {
+			continue
+		}
+		stCode = in.GetCode()
+		switch stCode {
 		case proto.ProcessStatus_SEND_BLOCK:
-			if isSendBlock {
-				continue
-			}
 			// submitting to fairnode
 			if err := dc.sendBlock(block); err != nil {
-				log.Error("send block to fairnode", "msg", err)
+				log.Error("Send Winning Block to fairnode", "msg", err)
 				return
 			}
-			isSendBlock = true
 		case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
-			if isReqFairnodeSign {
-				continue
-			}
 			fnSign := dc.requestFairnodeSign(otprn, block)
 			if fnSign == nil {
 				return
 			}
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
-			isReqFairnodeSign = true
 		default:
-			log.Info("request SealConfirm loop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
+			log.Info("Request SealConfirm loop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}
 	}
 }
@@ -552,7 +547,7 @@ func (dc *DebClient) requestFairnodeSign(otprn types.Otprn, block types.Block) [
 
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
-		log.Error("request fairnode signature info signature", "msg", err)
+		log.Error("Request Fairnode signature info signature", "msg", err)
 		return nil
 	}
 
@@ -560,7 +555,7 @@ func (dc *DebClient) requestFairnodeSign(otprn types.Otprn, block types.Block) [
 
 	res, err := dc.rpc.RequestFairnodeSign(dc.ctx, &msg)
 	if err != nil {
-		log.Error("request fairnode signature", "msg", err)
+		log.Error("Request Fairnode signature", "msg", err)
 		return nil
 	}
 

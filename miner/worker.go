@@ -18,7 +18,6 @@ package miner
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -58,7 +57,7 @@ const (
 	resubmitAdjustChanSize = 10
 
 	// miningLogAtDepth is the number of confirmations before logging successful mining.
-	miningLogAtDepth = 3 // README(hakuna) : confirm just in time.
+	miningLogAtDepth = 1 // README(hakuna) : confirm just in time.
 
 	// minRecommitInterval is the minimal time interval to recreate the mining block with
 	// any newly arrived transactions.
@@ -77,7 +76,7 @@ const (
 	intervalAdjustBias = 200 * 1000.0 * 1000.0
 
 	// staleThreshold is the maximum depth of the acceptable stale block.
-	staleThreshold = 3 // README(hakuna) : confirm just in time.
+	staleThreshold = 1 // README(hakuna) : confirm just in time.
 )
 
 // environment is the worker's current environment and holds all of the current state information.
@@ -204,6 +203,9 @@ type worker struct {
 	leagueBroadCastCh  chan struct{}
 	possibleWinning    *types.Block // A set of possible winning block
 	possibleFinalBlock *types.Block // A set of possible winning block
+
+	finalBlock *types.Block
+	finalizeCh chan struct{}
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
@@ -238,6 +240,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		voteResultCh:      make(chan types.Voters),
 		submitBlockCh:     make(chan *types.Block),
 		fnSignCh:          make(chan []byte),
+		finalizeCh:        make(chan struct{}),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -331,6 +334,11 @@ func (w *worker) leagueStatusLoop() {
 				if fnSign, ok := ev.Payload.([]byte); ok {
 					w.fnSignCh <- fnSign
 				}
+			case types.FINALIZE:
+				if w.finalBlock == nil {
+					continue
+				}
+				w.finalizeCh <- struct{}{}
 			default:
 				log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
 			}
@@ -424,7 +432,6 @@ func (w *worker) stop() {
 	}
 	atomic.StoreInt32(&w.running, 0)
 	w.debClient.Stop()
-	fmt.Println("========worker.stop===========")
 }
 
 // isRunning returns an indicator whether worker is running or not.
@@ -490,6 +497,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		}
 		w.possibleFinalBlock = nil
 		w.possibleWinning = nil
+		w.finalBlock = nil
 		w.pendingMu.Unlock()
 	}
 
@@ -502,12 +510,13 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
-			commit(false, commitInterruptNewHead)
+
+			//commit(false, commitInterruptNewHead)
 
 		case <-timer.C:
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
-			if w.isRunning() && (w.config.Deb == nil) {
+			if w.isRunning() && w.config.Deb == nil {
 				// Short circuit if no new transaction arrives.
 				if atomic.LoadInt32(&w.newTxs) == 0 {
 					timer.Reset(recommit)
@@ -590,9 +599,7 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				//if w.config.Clique != nil && w.config.Clique.Period == 0 {
-				//	w.commitNewWork(nil, false, time.Now().Unix())
-				//}
+				// w.commitNewWork(nil, false, time.Now().Unix())
 			}
 			atomic.AddInt32(&w.newTxs, int32(len(ev.Txs)))
 
@@ -692,7 +699,7 @@ func (w *worker) resultLoop() {
 			w.possibleWinning = block // made for me, saving possible block
 			w.pendingMu.Unlock()
 
-			log.Info("save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+			log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
 
 		case <-w.leagueBroadCastCh:
 			if w.fnStatus != types.LEAGUE_BROADCASTING {
@@ -704,11 +711,6 @@ func (w *worker) resultLoop() {
 			}
 
 			block := w.possibleWinning
-
-			if err := w.engine.VerifyHeader(w.chain, block.Header(), false); err != nil {
-				log.Error("Possible Winning Block Verify Header", "msg", err)
-				continue
-			}
 
 			bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
 			acc := accounts.Account{Address: w.coinbase}
@@ -746,7 +748,7 @@ func (w *worker) resultLoop() {
 			rblock := ev.Block // received block
 
 			if err := w.engine.VerifyHeader(w.chain, rblock.Header(), false); err != nil {
-				log.Error("received league block verifyHeader", "msg", err)
+				log.Error("Received league block verifyHeader", "msg", err, "hash", rblock.Header().Hash())
 				continue
 			}
 
@@ -754,7 +756,7 @@ func (w *worker) resultLoop() {
 
 			if engine, ok := w.engine.(*deb.Deb); ok {
 				if err := engine.ValidationLeagueBlock(w.chain, rblock); err != nil {
-					log.Error("received league block validationLeagueBlock", "msg", err)
+					log.Error("Received league block Validation League Block", "msg", err, "hash", rblock.Header().Hash())
 					continue
 				}
 
@@ -787,7 +789,7 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: w.possibleWinning, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("possible winning block and league broadcasting", "hash", w.possibleWinning.Hash())
+			log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash())
 
 		case voters := <-w.voteResultCh:
 			if w.fnStatus != types.VOTE_COMPLETE {
@@ -801,7 +803,7 @@ func (w *worker) resultLoop() {
 
 			fbHash := verify.ValidationFinalBlockHash(voters)
 			if fbHash != pBlock.Hash() {
-				log.Error("vote result final block hash difference", "fbHash", fbHash, "pHash", pBlock.Hash())
+				log.Error("Vote result final block hash difference", "fbHash", fbHash, "pHash", pBlock.Hash())
 				continue
 			}
 
@@ -817,12 +819,12 @@ func (w *worker) resultLoop() {
 			}
 
 			if w.possibleFinalBlock == nil {
-				log.Error("possible final block is nil")
+				log.Error("Possible final block is nil")
 				continue
 			}
 
 			if bytes.Compare(fnSign, []byte{}) == 0 {
-				log.Error("empty fairnode signature")
+				log.Error("Empty fairnode signature")
 				continue
 			}
 
@@ -831,10 +833,24 @@ func (w *worker) resultLoop() {
 			if engine, ok := w.engine.(*deb.Deb); ok {
 				err := engine.VerifyFairnodeSign(block.Header())
 				if err != nil {
-					log.Error("verify fairnode signature", "msg", err)
+					log.Error("Verify fairnode signature", "msg", err)
 					continue
 				}
 			}
+
+			w.finalBlock = block
+			log.Info("Make Final Block for Finalize", "hash", w.finalBlock.Hash())
+		case <-w.finalizeCh:
+			if w.fnStatus != types.FINALIZE {
+				continue
+			}
+
+			if w.finalBlock == nil {
+				log.Error("Final Block is nil")
+				continue
+			}
+
+			block := w.finalBlock
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -888,7 +904,7 @@ func (w *worker) resultLoop() {
 			case core.CanonStatTy:
 				CanonStatTy = true
 				events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				//events = append(events, types.ChainHeadEvent{Block: block})
+				events = append(events, types.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
 				//events = append(events, types.ChainSideEvent{Block: block})
@@ -902,6 +918,7 @@ func (w *worker) resultLoop() {
 
 			w.pendingMu.Lock()
 			w.possibleFinalBlock = nil
+			w.finalBlock = nil
 			w.pendingMu.Unlock()
 		case <-w.exitCh:
 			return
@@ -1211,6 +1228,13 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	if err != nil {
 		return err
 	}
+
+	if engine, ok := w.engine.(*deb.Deb); ok {
+		if err := engine.ValidationLeagueBlock(w.chain, block); err != nil {
+			return err
+		}
+	}
+
 	if w.isRunning() {
 		if interval != nil {
 			interval()

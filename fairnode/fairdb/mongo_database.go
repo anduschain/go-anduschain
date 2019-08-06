@@ -342,7 +342,9 @@ func (m *MongoDatabase) GetVoters(votekey common.Hash) []*types.Voter {
 func (m *MongoDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) error {
 	err := m.blockChain.Insert(TransBlock(block))
 	if err != nil {
-		return err
+		if !mgo.IsDup(err) {
+			return err
+		}
 	}
 
 	err = m.blockChainRaw.Insert(fntype.RawBlock{
@@ -350,7 +352,9 @@ func (m *MongoDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) err
 		Raw:  common.Bytes2Hex(byteBlock),
 	})
 	if err != nil {
-		return err
+		if !mgo.IsDup(err) {
+			return err
+		}
 	}
 
 	TransTransaction(block, m.chainID, m.transactions)

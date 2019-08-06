@@ -76,8 +76,8 @@ func init() {
 			Usage: "default is false, if true, you will see logs in terminal",
 		},
 		cli.BoolFlag{
-			Name:  "fake",
-			Usage: "default is false, if true, running fakemode fairnode",
+			Name:  "memorydb",
+			Usage: "default is false, if true, running memorydb fairnode",
 		},
 	}
 
@@ -102,8 +102,8 @@ func init() {
 			Action:    addChainConfig,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "fakemode",
-					Usage: "for testing fakemode",
+					Name:  "memorydb",
+					Usage: "for testing memorydb",
 				},
 				cli.StringFlag{
 					Name:  "keypath",

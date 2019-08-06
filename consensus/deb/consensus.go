@@ -278,32 +278,17 @@ func (c *Deb) SelectWinningBlock(pblock, rblock *types.Block) *types.Block {
 
 // join tx check in block
 func (c *Deb) validationBlockInJoinTx(header *types.Header, txs types.Transactions) error {
-	for i, tx := range txs {
+	for _, tx := range txs {
 		if tx.TransactionId() == types.JoinTx {
-			addr, err := tx.Sender(types.NewEIP155Signer(tx.ChainId()))
-			if err != nil {
-				return errors.New(fmt.Sprintf("transaction find sender index=%d msg=%s", i, err.Error()))
-			}
+			hash := rlpHash([]interface{}{
+				header.Nonce.Uint64(),
+				header.Otprn,
+				header.Coinbase,
+			})
 
-			if addr == header.Coinbase {
-				jnonce, err := tx.JoinNonce()
-				if err != nil {
-					return errors.New(fmt.Sprintf("transaction get join nonce index=%d msg=%s", i, err.Error()))
-				}
-
-				if jnonce != header.Nonce.Uint64() {
-					continue
-				}
-
-				txOtprn, err := tx.Otprn()
-				if err != nil {
-					return errors.New(fmt.Sprintf("transaction get otprn index=%d msg=%s", i, err.Error()))
-				}
-
-				if bytes.Compare(txOtprn, header.Otprn) == 0 {
-					return nil
-				}
-
+			phash, _ := tx.PayloadHash()
+			if bytes.Compare(hash.Bytes(), phash) == 0 {
+				return nil
 			}
 		}
 	}
@@ -374,7 +359,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	// otprn....
 	if c.otprn == nil {
-		return errors.New("otprn is nil")
+		return errors.New("consensus prepare, otprn is nil")
 	}
 
 	bOtprn, err := c.otprn.EncodeOtprn()

@@ -66,7 +66,7 @@ func TestNewJoinTransaction(t *testing.T) {
 		t.Error("otprn encode err", err)
 	}
 
-	jtx := NewJoinTransaction(0, 0, bOtrpn)
+	jtx := NewJoinTransaction(0, 0, bOtrpn, common.Address{})
 	t.Log("Join transaction", jtx.Hash().String())
 
 	jnonce, err := jtx.JoinNonce()
@@ -87,6 +87,14 @@ func TestNewJoinTransaction(t *testing.T) {
 	}
 
 	t.Log("join transaction otprn", dotp.HashOtprn().String())
+	t.Log("++++++++++++++++++++++++++++++++++")
+
+	hash, _ := jtx.PayloadHash()
+	rHash := rlpHash([]interface{}{jnonce, bOtrpn, common.Address{}})
+
+	if bytes.Compare(hash, rHash.Bytes()) != 0 {
+		t.Error("join transaction payload recover")
+	}
 
 	t.Log("++++++++++++++++++++++++++++++++++")
 
@@ -134,7 +142,7 @@ func TestTransaction_MarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Error("otprn encode err", err)
 	}
-	jtx := NewJoinTransaction(0, 0, bOtrpn)
+	jtx := NewJoinTransaction(0, 0, bOtrpn, common.Address{})
 	sjtx, err := SignTx(jtx, signer, key)
 	if err != nil {
 		t.Error("join transaction SignTx", err)
