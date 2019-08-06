@@ -87,8 +87,10 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection)
 		})
 
 		if err != nil {
-			logger.Error("Save Transaction, Insert", "database", "mongo", "msg", err)
-			continue
+			if !mgo.IsDup(err) {
+				logger.Error("Save Transaction, Insert", "database", "mongo", "msg", err)
+				continue
+			}
 		}
 	}
 }
