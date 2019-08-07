@@ -41,6 +41,8 @@ type MongoDatabase struct {
 	blockChain      *mgo.Collection
 	blockChainRaw   *mgo.Collection
 	transactions    *mgo.Collection
+
+	activeFairnode *mgo.Collection
 }
 
 type config interface {
@@ -112,6 +114,8 @@ func (m *MongoDatabase) Start() error {
 	m.blockChainRaw = session.DB(DbName).C("BlockChainRaw")
 	m.voteAggregation = session.DB(DbName).C("VoteAggregation")
 	m.transactions = session.DB(DbName).C("Transactions")
+
+	m.activeFairnode = session.DB(DbName).C("ActiveFairnode")
 
 	logger.Debug("Start fairnode mongo database", "chainID", m.chainID.String(), "url", m.url)
 	return nil
@@ -377,4 +381,65 @@ func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	}
 
 	return block
+}
+
+type stType uint64
+
+const (
+	PENDING stType = iota
+	LEADER
+	FOLLOWER
+)
+
+func (s stType) String() string {
+	switch s {
+	case PENDING:
+		return "PENDING"
+	case LEADER:
+		return "LEADER"
+	case FOLLOWER:
+		return "FOLLOWER"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (m *MongoDatabase) InsertActiveFairnode(nodeKey common.Hash, address string) {
+	err := m.activeFairnode.Insert(fntype.Fairnode{ID: nodeKey.String(), Address: address, Status: PENDING.String()})
+	if err != nil {
+		if !mgo.IsDup(err) {
+			logger.Error("Insert Active Fairnode", "database", "mongo", "msg", err)
+		}
+	}
+}
+
+func (m *MongoDatabase) GetActiveFairnodes() map[common.Hash]map[string]string {
+	res := make(map[common.Hash]map[string]string)
+	d := new(fntype.Fairnode)
+	iter := m.activeFairnode.Find(bson.M{}).Iter()
+	for iter.Next(d) {
+		res[common.HexToHash(d.ID)] = make(map[string]string)
+		res[common.HexToHash(d.ID)]["KEY"] = d.ID
+		res[common.HexToHash(d.ID)]["ADDRESS"] = d.Address
+		res[common.HexToHash(d.ID)]["STATUS"] = d.Status
+	}
+	return nil
+}
+
+func (m *MongoDatabase) RemoveActiveFairnode(nodeKey common.Hash) {
+	err := m.activeFairnode.RemoveId(nodeKey.String())
+	if err != nil {
+		if mgo.ErrNotFound != err {
+			logger.Error("Remove Active Fairnode", "database", "mongo", "msg", err)
+		}
+	}
+}
+
+func (m *MongoDatabase) UpdateActiveFairnode(nodeKey common.Hash, status uint64) {
+	err := m.activeFairnode.UpdateId(nodeKey.String(), bson.M{"status": stType(status).String()})
+	if err != nil {
+		if mgo.ErrNotFound != err {
+			logger.Error("Update Active Fairnode", "database", "mongo", "msg", err)
+		}
+	}
 }

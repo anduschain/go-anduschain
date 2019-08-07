@@ -7,6 +7,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
+	fs "github.com/anduschain/go-anduschain/fairnode/fairsync"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -23,13 +24,6 @@ const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
 	MIN_LEAGUE_NUM         = 3
-)
-
-type fnType uint64
-
-const (
-	FN_LEADER fnType = iota
-	FN_FOLLOWER
 )
 
 type league struct {
@@ -53,12 +47,14 @@ type Fairnode struct {
 	privKey     *ecdsa.PrivateKey
 	db          fairdb.FairnodeDB
 	errCh       chan error
-	role        fnType
+	roleCh      chan fs.FnType
 
 	currentLeague       *common.Hash
 	pendingLeague       *common.Hash
 	leagues             map[common.Hash]*league
 	makePendingLeagueCh chan struct{}
+
+	fnSyncer *fs.FnSyncer
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -84,14 +80,21 @@ func NewFairnode() (*Fairnode, error) {
 		return nil, err
 	}
 
-	return &Fairnode{
-		tcpListener:         lis,
-		gRpcServer:          grpc.NewServer(),
-		errCh:               make(chan error),
+	fn := Fairnode{
+		tcpListener: lis,
+		gRpcServer:  grpc.NewServer(),
+		errCh:       make(chan error),
+		roleCh:      make(chan fs.FnType),
+
 		privKey:             pKey,
 		leagues:             make(map[common.Hash]*league),
 		makePendingLeagueCh: make(chan struct{}),
-	}, nil
+	}
+
+	// fairnode syncer
+	fn.fnSyncer = fs.NewFnSyncer(fn.roleCh, DefaultConfig.SubPort)
+
+	return &fn, nil
 }
 
 func (fn *Fairnode) Start() error {
@@ -112,6 +115,12 @@ func (fn *Fairnode) Start() error {
 
 	if config := fn.db.GetChainConfig(); config == nil {
 		return errors.New("Chain config is nil, please run addChainConfig")
+	}
+
+	if db, ok := fn.db.(*fairdb.MongoDatabase); ok {
+		fn.fnSyncer.Start(db)
+	} else {
+		fn.fnSyncer.Start(nil)
 	}
 
 	fn.db.InitActiveNode() // fairnode init Active node reset
@@ -167,13 +176,26 @@ func (fn *Fairnode) LeagueSet() map[common.Hash]*league {
 	return fn.leagues
 }
 
-// role에 따른 작업 구분
+// role checking loop
 func (fn *Fairnode) roleCheck() {
 	defer logger.Warn("Role check was dead")
-	if fn.role == FN_LEADER {
-		logger.Info("I'm Leader in fairnode group")
-		go fn.makeOtprn()
-		go fn.processManageLoop()
+	var r fs.FnType
+	for {
+		select {
+		case role := <-fn.roleCh:
+			if r == role {
+				continue
+			}
+			r = role
+			switch r {
+			case fs.FN_LEADER:
+				logger.Info("I'm Leader in fairnode group")
+				go fn.makeOtprn()
+				go fn.processManageLoop()
+			case fs.FN_FOLLOWER:
+
+			}
+		}
 	}
 }
 

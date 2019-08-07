@@ -54,6 +54,11 @@ func init() {
 			Usage: "default port 60002",
 		},
 		cli.StringFlag{
+			Name:  "subport",
+			Value: "60100",
+			Usage: "default port 60002",
+		},
+		cli.StringFlag{
 			Name:  "keypath",
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),

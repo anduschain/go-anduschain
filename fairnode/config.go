@@ -25,10 +25,10 @@ type Config struct {
 	KeyPath string
 	KeyPass string
 
-	Port    string // 네트워크 포트
+	Port    string // 네트워크 포트, for node
+	SubPort string // fairnode to fairnode port
 	ChainID *big.Int
 	Debug   bool
-	SysLog  bool
 	Version string
 
 	Memorydb bool
@@ -45,6 +45,7 @@ var (
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
 		Port:    "60002",
+		SubPort: "60100",
 		Debug:   false,
 		Version: Version, // Fairnode version
 	}
@@ -73,6 +74,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	DefaultConfig.KeyPass = keypass
 	DefaultConfig.KeyPath = ctx.GlobalString("keypath")
 	DefaultConfig.Port = ctx.GlobalString("port")
+	DefaultConfig.SubPort = ctx.GlobalString("subport")
 	DefaultConfig.Debug = ctx.GlobalBool("debug")
 
 	if ctx.GlobalBool("mainnet") {

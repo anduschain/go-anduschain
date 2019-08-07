@@ -17,3 +17,7 @@ service FairnodeService {
     rpc SendBlock(common.ReqBlock) returns (google.protobuf.Empty) {}
     rpc RequestFairnodeSign(common.ReqFairnodeSign) returns (common.ResFairnodeSign) {}
 }
+
+service FairnodeSyncService {
+    rpc SyncController(google.protobuf.Empty) returns (stream common.ProcessMessage) {}
+}
