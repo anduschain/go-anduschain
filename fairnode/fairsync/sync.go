@@ -73,6 +73,7 @@ func (fs *FnSyncer) Start(db database) {
 
 func (fs *FnSyncer) Stop() {
 	if atomic.LoadInt64(&fs.running) == 1 {
+		fs.db.RemoveActiveFairnode(fs.id)
 		fs.exitCh <- struct{}{}
 		atomic.StoreInt64(&fs.running, 0)
 	}
@@ -101,10 +102,10 @@ func getFairnodeID() (*common.Hash, string) {
 
 	for _, a := range addrs {
 		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To16() != nil {
+			if ipnet.IP.To4() != nil {
 				hash := rlpHash([]interface{}{
 					ipnet.IP.String(),
-					time.Now().Unix(),
+					time.Now().String(),
 				})
 				return &hash, ipnet.IP.String()
 			}

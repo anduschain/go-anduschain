@@ -150,6 +150,7 @@ func (fn *Fairnode) severLoop() {
 }
 
 func (fn *Fairnode) Stop() {
+	fn.fnSyncer.Stop()
 	fn.db.Stop()
 	fn.gRpcServer.Stop()
 	fn.tcpListener.Close()
