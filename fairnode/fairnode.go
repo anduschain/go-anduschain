@@ -375,11 +375,9 @@ func (fn *Fairnode) makeOtprn() {
 				isChange := new(big.Int).Mod(league.Current, epoch)
 				if isPending.Uint64() == 0 {
 					if isChange.Uint64() == 0 {
-						fmt.Println("=====AAAAA=====")
 						logger.Warn("Currnet league will be rejected", "epoch", epoch.String(), "current", league.Current.String())
 						league.Status = types.REJECT
 					} else {
-						fmt.Println("=====BBBBBB=====")
 						league.Status = types.MAKE_JOIN_TX
 						// make otprn and pending league
 						if err := newOtprn(false); err != nil {
@@ -389,7 +387,6 @@ func (fn *Fairnode) makeOtprn() {
 						logger.Info("Make pending league", "epoch", epoch.String(), "current", league.Current.String())
 					}
 				} else {
-					fmt.Println("=====CCCCCC=====")
 					league.Status = types.MAKE_JOIN_TX
 				}
 			}
