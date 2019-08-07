@@ -278,14 +278,14 @@ func (c *Deb) SelectWinningBlock(pblock, rblock *types.Block) *types.Block {
 
 // join tx check in block
 func (c *Deb) validationBlockInJoinTx(header *types.Header, txs types.Transactions) error {
+	hash := rlpHash([]interface{}{
+		header.Nonce.Uint64(),
+		header.Otprn,
+		header.Coinbase,
+	})
+
 	for _, tx := range txs {
 		if tx.TransactionId() == types.JoinTx {
-			hash := rlpHash([]interface{}{
-				header.Nonce.Uint64(),
-				header.Otprn,
-				header.Coinbase,
-			})
-
 			phash, _ := tx.PayloadHash()
 			if bytes.Compare(hash.Bytes(), phash) == 0 {
 				return nil
