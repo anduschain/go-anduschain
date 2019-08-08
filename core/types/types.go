@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
+	proto "github.com/anduschain/go-anduschain/protos/common"
 	"math/big"
 )
 
@@ -106,3 +107,57 @@ const (
 	FINALIZE
 	REJECT
 )
+
+func StatusToProto(status FnStatus) proto.ProcessStatus {
+	switch status {
+	case PENDING:
+		return proto.ProcessStatus_WAIT
+	case MAKE_LEAGUE:
+		return proto.ProcessStatus_MAKE_LEAGUE
+	case MAKE_JOIN_TX:
+		return proto.ProcessStatus_MAKE_JOIN_TX
+	case MAKE_BLOCK:
+		return proto.ProcessStatus_MAKE_BLOCK
+	case LEAGUE_BROADCASTING:
+		return proto.ProcessStatus_LEAGUE_BROADCASTING
+	case VOTE_START:
+		return proto.ProcessStatus_VOTE_START
+	case VOTE_COMPLETE:
+		return proto.ProcessStatus_VOTE_COMPLETE
+	case REQ_FAIRNODE_SIGN:
+		return proto.ProcessStatus_REQ_FAIRNODE_SIGN
+	case FINALIZE:
+		return proto.ProcessStatus_FINALIZE
+	case REJECT:
+		return proto.ProcessStatus_REJECT
+	default:
+		return proto.ProcessStatus_WAIT
+	}
+}
+
+func ProtoToStatus(status proto.ProcessStatus) FnStatus {
+	switch status {
+	case proto.ProcessStatus_WAIT:
+		return PENDING
+	case proto.ProcessStatus_MAKE_LEAGUE:
+		return MAKE_LEAGUE
+	case proto.ProcessStatus_MAKE_JOIN_TX:
+		return MAKE_JOIN_TX
+	case proto.ProcessStatus_MAKE_BLOCK:
+		return MAKE_BLOCK
+	case proto.ProcessStatus_LEAGUE_BROADCASTING:
+		return LEAGUE_BROADCASTING
+	case proto.ProcessStatus_VOTE_START:
+		return VOTE_START
+	case proto.ProcessStatus_VOTE_COMPLETE:
+		return VOTE_COMPLETE
+	case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
+		return REQ_FAIRNODE_SIGN
+	case proto.ProcessStatus_FINALIZE:
+		return FINALIZE
+	case proto.ProcessStatus_REJECT:
+		return REJECT
+	default:
+		return PENDING
+	}
+}

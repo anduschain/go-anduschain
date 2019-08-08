@@ -19,5 +19,5 @@ service FairnodeService {
 }
 
 service FairnodeSyncService {
-    rpc SyncController(google.protobuf.Empty) returns (stream common.ProcessMessage) {}
+    rpc SyncController(google.protobuf.Empty) returns (stream common.FairnodeMessage) {}
 }

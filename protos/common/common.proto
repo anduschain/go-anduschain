@@ -40,6 +40,15 @@ message Participate {
     bytes sign = 4;
 }
 
+message SyncMessage {
+    bytes otprnHash = 1;
+    ProcessStatus code = 2;
+}
+
+message FairnodeMessage {
+    repeated SyncMessage msg = 1;
+}
+
 message ProcessMessage {
     ProcessStatus code = 1;
     bytes currentBlockNum = 2;

@@ -23,7 +23,7 @@ import (
 const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
-	MIN_LEAGUE_NUM         = 3
+	MIN_LEAGUE_NUM         = 2
 )
 
 type league struct {
@@ -54,7 +54,8 @@ type Fairnode struct {
 	leagues             map[common.Hash]*league
 	makePendingLeagueCh chan struct{}
 
-	fnSyncer *fs.FnSyncer
+	fnSyncer   *fs.FnSyncer
+	syncRecvCh chan []fs.Leagues
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -89,12 +90,32 @@ func NewFairnode() (*Fairnode, error) {
 		privKey:             pKey,
 		leagues:             make(map[common.Hash]*league),
 		makePendingLeagueCh: make(chan struct{}),
+		syncRecvCh:          make(chan []fs.Leagues),
 	}
 
 	// fairnode syncer
-	fn.fnSyncer = fs.NewFnSyncer(fn.roleCh, DefaultConfig.SubPort)
+	fn.fnSyncer = fs.NewFnSyncer(&fn, DefaultConfig.SubPort)
 
 	return &fn, nil
+}
+
+func (fn *Fairnode) Leagues() map[common.Hash]*fs.Leagues {
+	res := make(map[common.Hash]*fs.Leagues)
+	for key, league := range fn.leagues {
+		res[key] = &fs.Leagues{
+			OtprnHash: league.Otprn.HashOtprn(),
+			Status:    league.Status,
+		}
+	}
+	return res
+}
+
+func (fn *Fairnode) RoleCheckChannel() chan fs.FnType {
+	return fn.roleCh
+}
+
+func (fn *Fairnode) SyncMessageChannel() chan []fs.Leagues {
+	return fn.syncRecvCh
 }
 
 func (fn *Fairnode) Start() error {
@@ -194,7 +215,8 @@ func (fn *Fairnode) roleCheck() {
 				go fn.makeOtprn()
 				go fn.processManageLoop()
 			case fs.FN_FOLLOWER:
-
+				go fn.processManageLoopFollower()
+				logger.Info("I'm Follower in fairnode group")
 			}
 		}
 	}
@@ -236,6 +258,19 @@ func (fn *Fairnode) cleanOldNode() {
 				}
 			}
 			logger.Info("Clean old node", "count", count)
+		}
+	}
+}
+
+func (fn *Fairnode) processManageLoopFollower() {
+	t := time.NewTicker(500 * time.Millisecond)
+	for {
+		select {
+		case <-t.C:
+		case leagues := <-fn.syncRecvCh:
+			for i, league := range leagues {
+				fmt.Println("OtprnHash", league.OtprnHash.String(), "status", league.Status.String(), "index", i)
+			}
 		}
 	}
 }
@@ -282,7 +317,7 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
-					if len(l.Voted) < 2 {
+					if len(l.Voted) < (MIN_LEAGUE_NUM - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(l.Voted))
 						l.Status = types.REJECT
 					}
@@ -321,6 +356,10 @@ func (fn *Fairnode) processManageLoop() {
 			}
 		}
 	}
+}
+
+func (fn *Fairnode) AddLeague(otprn *types.Otprn) {
+	fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
 }
 
 func (fn *Fairnode) makeOtprn() {

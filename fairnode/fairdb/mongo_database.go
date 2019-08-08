@@ -415,15 +415,18 @@ func (m *MongoDatabase) InsertActiveFairnode(nodeKey common.Hash, address string
 
 func (m *MongoDatabase) GetActiveFairnodes() map[common.Hash]map[string]string {
 	res := make(map[common.Hash]map[string]string)
-	d := new(fntype.Fairnode)
-	iter := m.activeFairnode.Find(bson.M{}).Iter()
-	for iter.Next(d) {
-		res[common.HexToHash(d.ID)] = make(map[string]string)
-		res[common.HexToHash(d.ID)]["KEY"] = d.ID
-		res[common.HexToHash(d.ID)]["ADDRESS"] = d.Address
-		res[common.HexToHash(d.ID)]["STATUS"] = d.Status
+	var nodes []fntype.Fairnode
+	err := m.activeFairnode.Find(bson.M{}).All(&nodes)
+	if err != nil {
+		logger.Error("Get Active Fairnode", "database", "mongo", "msg", err)
+		return nil
 	}
-	return nil
+	for _, node := range nodes {
+		res[common.HexToHash(node.ID)] = make(map[string]string)
+		res[common.HexToHash(node.ID)]["ADDRESS"] = node.Address
+		res[common.HexToHash(node.ID)]["STATUS"] = node.Status
+	}
+	return res
 }
 
 func (m *MongoDatabase) RemoveActiveFairnode(nodeKey common.Hash) {
@@ -436,10 +439,14 @@ func (m *MongoDatabase) RemoveActiveFairnode(nodeKey common.Hash) {
 }
 
 func (m *MongoDatabase) UpdateActiveFairnode(nodeKey common.Hash, status uint64) {
-	err := m.activeFairnode.UpdateId(nodeKey.String(), bson.M{"status": stType(status).String()})
+	node := new(fntype.Fairnode)
+	err := m.activeFairnode.FindId(nodeKey.String()).One(node)
 	if err != nil {
-		if mgo.ErrNotFound != err {
-			logger.Error("Update Active Fairnode", "database", "mongo", "msg", err)
-		}
+		logger.Error("Update Active Fairnode, Get node", "database", "mongo", "msg", err)
+	}
+	node.Status = stType(status).String()
+	err = m.activeFairnode.UpdateId(nodeKey.String(), node)
+	if err != nil {
+		logger.Error("Update Active Fairnode", "database", "mongo", "msg", err)
 	}
 }

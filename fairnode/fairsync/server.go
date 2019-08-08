@@ -1,46 +1,49 @@
 package fairsync
 
 import (
-	"fmt"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
+	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"net"
+	"time"
 )
+
+type fnBackSrv interface {
+	Address() string
+	SyncErrChannel() chan error
+	FairnodeLeagues() map[common.Hash]*Leagues
+}
 
 type rpcSyncServer struct {
 	tcpListener net.Listener
 	gRpcServer  *grpc.Server
 	errCh       chan error
+	syncErrch   chan error
+	backend     fnBackSrv
 }
 
-func NewRpcSyncServer(port string) (*rpcSyncServer, error) {
-
+func newRpcSyncServer(backend fnBackSrv) *rpcSyncServer {
 	// for fairnode
-	lisSync, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	lisSync, err := net.Listen("tcp", backend.Address())
 	if err != nil {
 		logger.Error("Failed to listen", "msg", err)
-		return nil, err
+		backend.SyncErrChannel() <- err
 	}
 
 	return &rpcSyncServer{
 		tcpListener: lisSync,
 		gRpcServer:  grpc.NewServer(),
 		errCh:       make(chan error),
-	}, nil
+		backend:     backend,
+		syncErrch:   backend.SyncErrChannel(),
+	}
 }
 
 func (rs *rpcSyncServer) Start() {
 	go rs.syncLoop()
-
-	select {
-	case err := <-rs.errCh:
-		logger.Error("Started NewRpcSyncServer", "msg", err)
-		return
-	default:
-		logger.Info("Started NewRpcSyncServer")
-		return
-	}
 }
 
 func (rs *rpcSyncServer) Stop() {
@@ -52,13 +55,33 @@ func (rs *rpcSyncServer) Stop() {
 func (rs *rpcSyncServer) syncLoop() {
 	fairnode.RegisterFairnodeSyncServiceServer(rs.gRpcServer, rs)
 	if err := rs.gRpcServer.Serve(rs.tcpListener); err != nil {
-		logger.Error("failed to serve: %v", err)
+		logger.Error("Sync Server Failed to serve", "msg", err)
 		rs.errCh <- err
+		return
 	}
 
 	defer logger.Warn("Sync loop was dead")
 }
 
 func (rs *rpcSyncServer) SyncController(empty *empty.Empty, stream fairnode.FairnodeSyncService_SyncControllerServer) error {
-	return nil
+
+	makeMsg := func() *proto.FairnodeMessage {
+		msg := new(proto.FairnodeMessage)
+		for otprnHash, league := range rs.backend.FairnodeLeagues() {
+			msg.Msg = append(msg.Msg, &proto.SyncMessage{
+				Code:      types.StatusToProto(league.Status),
+				OtprnHash: otprnHash.Bytes(),
+			})
+		}
+		return msg
+	}
+
+	for {
+		if err := stream.Send(makeMsg()); err != nil {
+			logger.Error("Sync Controller send status message", "msg", err)
+			return err
+		}
+
+		time.Sleep(1 * time.Second)
+	}
 }
