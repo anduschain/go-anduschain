@@ -23,7 +23,7 @@ import (
 const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
-	MIN_LEAGUE_NUM         = 2
+	MIN_LEAGUE_NUM         = 2 // TODO(hakuna) : change deafult 3
 )
 
 type league struct {
@@ -262,19 +262,42 @@ func (fn *Fairnode) cleanOldNode() {
 	}
 }
 
+// when fairnode Folllower
 func (fn *Fairnode) processManageLoopFollower() {
-	t := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
-		case <-t.C:
 		case leagues := <-fn.syncRecvCh:
-			for i, league := range leagues {
-				fmt.Println("OtprnHash", league.OtprnHash.String(), "status", league.Status.String(), "index", i)
+			for _, l := range leagues {
+				// 리그 생성
+				if _, ok := fn.leagues[l.OtprnHash]; !ok {
+					otprn := fn.db.GetOtprn(l.OtprnHash)
+					if otprn == nil {
+						logger.Error("Process Manage Loop Follower, Get Otprn is nil", "hash", l.OtprnHash)
+					}
+					fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+				} else {
+					league := fn.leagues[l.OtprnHash]
+					if league.Status == l.Status {
+						continue
+					}
+					league.Status = l.Status
+					switch league.Status {
+					case types.MAKE_JOIN_TX:
+						if block := fn.db.CurrentBlock(); block != nil {
+							league.Current = block.Number()
+						}
+					case types.FINALIZE:
+						league.Current = fn.db.CurrentBlock().Number()
+					case types.REJECT:
+						delete(fn.leagues, l.OtprnHash)
+					}
+				}
 			}
 		}
 	}
 }
 
+// when fairnode leader
 func (fn *Fairnode) processManageLoop() {
 	t := time.NewTicker(500 * time.Millisecond)
 	var status types.FnStatus
@@ -356,10 +379,6 @@ func (fn *Fairnode) processManageLoop() {
 			}
 		}
 	}
-}
-
-func (fn *Fairnode) AddLeague(otprn *types.Otprn) {
-	fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
 }
 
 func (fn *Fairnode) makeOtprn() {
