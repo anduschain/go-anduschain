@@ -600,6 +600,7 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 		return &m
 	}
 
+	// TODO(hakuna) : LEADER 일때만 처리
 	if sBlock := rs.db.GetBlock(blockHash); sBlock != nil {
 		clg.Status = types.REQ_FAIRNODE_SIGN
 	} else {
@@ -695,15 +696,17 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	if clg.Status == types.REQ_FAIRNODE_SIGN {
 		return &empty.Empty{}, nil
 	}
-
+	// TODO(hakuna) : LEADER 일때만 처리
 	clg.Status = types.SEND_BLOCK_WAIT // Saving Block in database
 	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
 		log.Error("Save Final block", "msg", err)
+		// TODO(hakuna) : LEADER 일때만 처리
 		clg.Status = types.REJECT
 		return nil, err
 	}
 
+	// TODO(hakuna) : LEADER 일때만 처리
 	clg.Status = types.REQ_FAIRNODE_SIGN
 	log.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 	return &empty.Empty{}, nil
