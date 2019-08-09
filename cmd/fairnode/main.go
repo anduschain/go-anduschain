@@ -56,7 +56,7 @@ func init() {
 		cli.StringFlag{
 			Name:  "subport",
 			Value: "60100",
-			Usage: "default port 60002",
+			Usage: "default port 60100",
 		},
 		cli.StringFlag{
 			Name:  "keypath",
