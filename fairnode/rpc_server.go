@@ -28,6 +28,7 @@ type fnNode interface {
 	SignHash(hash []byte) ([]byte, error)
 	Database() fairdb.FairnodeDB
 	LeagueSet() map[common.Hash]*league
+	IsLeader() bool
 }
 
 func errorEmpty(key string) error {
@@ -309,29 +310,7 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 
 	makeMsg := func(l *league) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
-		switch l.Status {
-		case types.PENDING:
-			msg.Code = proto.ProcessStatus_WAIT
-		case types.MAKE_LEAGUE:
-			msg.Code = proto.ProcessStatus_MAKE_LEAGUE
-		case types.MAKE_JOIN_TX:
-			msg.Code = proto.ProcessStatus_MAKE_JOIN_TX
-		case types.MAKE_BLOCK:
-			msg.Code = proto.ProcessStatus_MAKE_BLOCK
-		case types.LEAGUE_BROADCASTING:
-			msg.Code = proto.ProcessStatus_LEAGUE_BROADCASTING
-		case types.VOTE_START:
-			msg.Code = proto.ProcessStatus_VOTE_START
-		case types.VOTE_COMPLETE:
-			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
-		case types.REQ_FAIRNODE_SIGN:
-			msg.Code = proto.ProcessStatus_VOTE_COMPLETE
-		case types.FINALIZE:
-			msg.Code = proto.ProcessStatus_FINALIZE
-		case types.REJECT:
-			msg.Code = proto.ProcessStatus_REJECT
-		}
-
+		msg.Code = types.StatusToProto(l.Status)
 		if l.Current != nil {
 			msg.CurrentBlockNum = l.Current.Bytes()
 		} else {
@@ -434,10 +413,6 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 
 	rs.db.SaveVote(otprnHash, header.Number, &voter)
 
-	l.Mu.Lock()
-	l.Voted = append(l.Voted, true) // known league
-	l.Mu.Unlock()
-
 	logger.Info("Voting Save", "voter", vote.GetVoterAddress(), "number", header.Number.String(), "hash", reduceStr(header.Hash().String()))
 	return &empty.Empty{}, nil
 }
@@ -502,9 +477,6 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 
 	finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
 	voteHash := types.Voters(voters).Hash()                   // voter hash
-
-	clg.BlockHash = &finalBlockHash
-	clg.Votehash = &voteHash
 
 	msg := proto.ResVoteResult{
 		Result:    proto.Status_SUCCESS,
@@ -600,13 +572,6 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 		return &m
 	}
 
-	// TODO(hakuna) : LEADER 일때만 처리
-	if sBlock := rs.db.GetBlock(blockHash); sBlock != nil {
-		clg.Status = types.REQ_FAIRNODE_SIGN
-	} else {
-		clg.Status = types.SEND_BLOCK
-	}
-
 	for {
 		switch clg.Status {
 		case types.FINALIZE, types.REJECT:
@@ -696,18 +661,13 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	if clg.Status == types.REQ_FAIRNODE_SIGN {
 		return &empty.Empty{}, nil
 	}
-	// TODO(hakuna) : LEADER 일때만 처리
-	clg.Status = types.SEND_BLOCK_WAIT // Saving Block in database
+
 	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
 		log.Error("Save Final block", "msg", err)
-		// TODO(hakuna) : LEADER 일때만 처리
-		clg.Status = types.REJECT
 		return nil, err
 	}
 
-	// TODO(hakuna) : LEADER 일때만 처리
-	clg.Status = types.REQ_FAIRNODE_SIGN
 	log.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 	return &empty.Empty{}, nil
 }

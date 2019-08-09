@@ -73,6 +73,7 @@ func (rs *rpcSyncServer) SyncController(empty *empty.Empty, stream fairnode.Fair
 				OtprnHash: otprnHash.Bytes(),
 			})
 		}
+
 		return msg
 	}
 

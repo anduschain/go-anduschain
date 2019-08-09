@@ -176,7 +176,9 @@ func (m *MongoDatabase) CurrentBlock() *types.Block {
 	b := new(fntype.Block)
 	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
 	if err != nil {
-		logger.Error("Get current block", "database", "mongo", "msg", err)
+		if mgo.ErrNotFound != err {
+			logger.Error("Get current block", "database", "mongo", "msg", err)
+		}
 		return nil
 	}
 	return m.GetBlock(common.HexToHash(b.Hash))
@@ -294,7 +296,9 @@ func (m *MongoDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
 	league := new(fntype.League)
 	err := m.leagues.FindId(otprnHash.String()).One(league)
 	if err != nil {
-		logger.Error("Gat League List", "msg", err)
+		if mgo.ErrNotFound != err {
+			logger.Error("Gat League List", "msg", err)
+		}
 	}
 	var nodes []types.HeartBeat
 	for _, node := range league.Nodes {

@@ -178,6 +178,8 @@ func (fs *FnSyncer) roleChecker() {
 			case FN_FOLLOWER:
 				fs.close()
 				fs.db.RemoveActiveFairnode(*fs.leager)
+				fs.curRole = PENDING
+				fs.roleCh <- fs.curRole
 				fs.db.UpdateActiveFairnode(fs.id, uint64(PENDING))
 				fs.nodes = parseNode(fs.db.GetActiveFairnodes())
 				fs.curRole = fs.checkRole()

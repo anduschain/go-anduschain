@@ -13,6 +13,7 @@ import (
 type fnBackClient interface {
 	SyncErrChannel() chan error
 	SyncMessageChannel() chan []Leagues
+	FairnodeLeagues() map[common.Hash]*Leagues
 }
 
 type rpcSyncClinet struct {

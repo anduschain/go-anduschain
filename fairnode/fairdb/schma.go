@@ -103,6 +103,7 @@ func TransOtprn(otprn types.Otprn) (fntype.Otprn, error) {
 	}
 
 	return fntype.Otprn{
+		Hash:   otprn.HashOtprn().String(),
 		Rand:   otprn.RandToByte(),
 		FnAddr: otprn.FnAddr.String(),
 		Cminer: otprn.Cminer,

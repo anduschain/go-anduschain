@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	fs "github.com/anduschain/go-anduschain/fairnode/fairsync"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -23,7 +24,7 @@ import (
 const (
 	CLEAN_OLD_NODE_TERM    = 3 // per min
 	CHECK_ACTIVE_NODE_TERM = 3 // per sec
-	MIN_LEAGUE_NUM         = 2 // TODO(hakuna) : change deafult 3
+	MIN_LEAGUE_NUM         = 3 // minimum node count
 )
 
 type league struct {
@@ -33,7 +34,6 @@ type league struct {
 	Current   *big.Int // current block number
 	BlockHash *common.Hash
 	Votehash  *common.Hash
-	Voted     []bool // vote state
 }
 
 var (
@@ -54,8 +54,11 @@ type Fairnode struct {
 	leagues             map[common.Hash]*league
 	makePendingLeagueCh chan struct{}
 
-	fnSyncer   *fs.FnSyncer
-	syncRecvCh chan []fs.Leagues
+	fnSyncer    *fs.FnSyncer
+	syncRecvCh  chan []fs.Leagues
+	syncErrorCh chan struct{}
+
+	curRole fs.FnType
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -91,6 +94,7 @@ func NewFairnode() (*Fairnode, error) {
 		leagues:             make(map[common.Hash]*league),
 		makePendingLeagueCh: make(chan struct{}),
 		syncRecvCh:          make(chan []fs.Leagues),
+		syncErrorCh:         make(chan struct{}),
 	}
 
 	// fairnode syncer
@@ -118,6 +122,10 @@ func (fn *Fairnode) SyncMessageChannel() chan []fs.Leagues {
 	return fn.syncRecvCh
 }
 
+func (fn *Fairnode) IsLeader() bool {
+	return fn.curRole == fs.FN_LEADER
+}
+
 func (fn *Fairnode) Start() error {
 	var err error
 	if DefaultConfig.Memorydb {
@@ -143,8 +151,6 @@ func (fn *Fairnode) Start() error {
 	} else {
 		fn.fnSyncer.Start(nil)
 	}
-
-	fn.db.InitActiveNode() // fairnode init Active node reset
 
 	go fn.severLoop()
 	go fn.cleanOldNode()
@@ -201,22 +207,25 @@ func (fn *Fairnode) LeagueSet() map[common.Hash]*league {
 // role checking loop
 func (fn *Fairnode) roleCheck() {
 	defer logger.Warn("Role check was dead")
-	var r fs.FnType
 	for {
 		select {
 		case role := <-fn.roleCh:
-			if r == role {
+			if fn.curRole == role {
 				continue
 			}
-			r = role
-			switch r {
+			fn.curRole = role
+			switch fn.curRole {
 			case fs.FN_LEADER:
 				logger.Info("I'm Leader in fairnode group")
+				fn.db.InitActiveNode() // fairnode init Active node reset
 				go fn.makeOtprn()
 				go fn.processManageLoop()
 			case fs.FN_FOLLOWER:
-				go fn.processManageLoopFollower()
 				logger.Info("I'm Follower in fairnode group")
+				go fn.processManageLoopFollower()
+			case fs.PENDING:
+				fn.syncErrorCh <- struct{}{}
+
 			}
 		}
 	}
@@ -286,13 +295,34 @@ func (fn *Fairnode) processManageLoopFollower() {
 						if block := fn.db.CurrentBlock(); block != nil {
 							league.Current = block.Number()
 						}
+					case types.VOTE_COMPLETE:
+						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
+						voters := fn.db.GetVoters(voteKey)
+						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
+						voteHash := types.Voters(voters).Hash()                   // voter hash
+						league.BlockHash = &finalBlockHash
+						league.Votehash = &voteHash
 					case types.FINALIZE:
-						league.Current = fn.db.CurrentBlock().Number()
+						if block := fn.db.CurrentBlock(); block != nil {
+							league.Current = block.Number()
+						}
+						league.Votehash = nil
+						league.BlockHash = nil
 					case types.REJECT:
 						delete(fn.leagues, l.OtprnHash)
 					}
 				}
 			}
+		case <-fn.syncErrorCh:
+			for _, league := range fn.leagues {
+				league.Status = types.REJECT
+			}
+			time.Sleep(500 * time.Millisecond)
+			for _, league := range fn.leagues {
+				delete(fn.leagues, league.Otprn.HashOtprn())
+			}
+			logger.Warn("Sync error channel called")
+			return
 		}
 	}
 }
@@ -340,24 +370,35 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
-					if len(l.Voted) < (MIN_LEAGUE_NUM - 1) {
-						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(l.Voted))
+					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
+					voters := fn.db.GetVoters(voteKey)
+					finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
+					voteHash := types.Voters(voters).Hash()                   // voter hash
+					l.BlockHash = &finalBlockHash
+					l.Votehash = &voteHash
+
+					time.Sleep(2 * time.Second)
+					if len(voters) < (MIN_LEAGUE_NUM - 1) {
+						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
 						l.Status = types.REJECT
+					} else {
+						l.Status = types.SEND_BLOCK
 					}
-				case types.SEND_BLOCK_WAIT:
+				case types.SEND_BLOCK:
 					time.Sleep(5 * time.Second)
 					if l.BlockHash == nil {
 						logger.Error("Send block wait, timeout")
-						l.Mu.Lock()
 						l.Status = types.REJECT
-						l.Mu.Unlock()
+					} else {
+						l.Status = types.REQ_FAIRNODE_SIGN
 					}
 				case types.REQ_FAIRNODE_SIGN:
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
-					l.Current = fn.db.CurrentBlock().Number()
-					l.Voted = l.Voted[:0] // reset vote state
+					if block := fn.db.CurrentBlock(); block != nil {
+						l.Current = block.Number()
+					}
 					l.Votehash = nil
 					l.BlockHash = nil
 					time.Sleep(3 * time.Second)

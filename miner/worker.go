@@ -357,6 +357,10 @@ func (w *worker) clientStatusLoop() {
 		case <-w.fnClientCloseCh:
 			log.Warn("deb client was close")
 			w.stop()
+			time.AfterFunc(10*time.Second, func() {
+				log.Info("Retry Mining")
+				w.start()
+			})
 		case <-w.fnClientCLoseSub.Err():
 			return
 		}
@@ -426,10 +430,6 @@ func (w *worker) start() {
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
-	if w.possibleFinalBlock != nil {
-		// if have possible final block, will return (don't stop mining)
-		return
-	}
 	atomic.StoreInt32(&w.running, 0)
 	w.debClient.Stop()
 }

@@ -124,6 +124,10 @@ func StatusToProto(status FnStatus) proto.ProcessStatus {
 		return proto.ProcessStatus_VOTE_START
 	case VOTE_COMPLETE:
 		return proto.ProcessStatus_VOTE_COMPLETE
+	case SEND_BLOCK:
+		return proto.ProcessStatus_SEND_BLOCK
+	case SEND_BLOCK_WAIT:
+		return proto.ProcessStatus_SEND_BLOCK_WAIT
 	case REQ_FAIRNODE_SIGN:
 		return proto.ProcessStatus_REQ_FAIRNODE_SIGN
 	case FINALIZE:
@@ -151,6 +155,10 @@ func ProtoToStatus(status proto.ProcessStatus) FnStatus {
 		return VOTE_START
 	case proto.ProcessStatus_VOTE_COMPLETE:
 		return VOTE_COMPLETE
+	case proto.ProcessStatus_SEND_BLOCK:
+		return SEND_BLOCK
+	case proto.ProcessStatus_SEND_BLOCK_WAIT:
+		return SEND_BLOCK_WAIT
 	case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
 		return REQ_FAIRNODE_SIGN
 	case proto.ProcessStatus_FINALIZE:

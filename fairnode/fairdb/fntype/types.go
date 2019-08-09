@@ -51,7 +51,7 @@ type STransaction struct {
 
 type Voter struct {
 	Header   []byte `json:"blockHeader" bson:"blockHeader"`
-	Voter    string `json:"voter" bson:"voter"`
+	Voter    string `json:"voter" bson:"_id,omitempty"`
 	VoteSign []byte `json:"voterSign" bson:"voterSign"`
 }
 
