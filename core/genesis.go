@@ -306,8 +306,8 @@ func DefaultGenesisBlock() *Genesis {
 		Nonce:      0,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
-		ExtraData:  []byte("anduschain-mainnet"),
+		Alloc:      decodePrealloc(MainnetAllocData),
+		ExtraData:  []byte(fmt.Sprintf("anduschain-mainnet-%s", params.MAIN_NETWORK.String())),
 	}
 }
 
@@ -319,8 +319,8 @@ func DefaultAndsuChainTestnetGenesisBlock() *Genesis {
 		Nonce:      0,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(AndusChainTestNetAllockData),
-		ExtraData:  []byte("anduschain-testnet"),
+		Alloc:      decodePrealloc(TestNetAllockData),
+		ExtraData:  []byte(fmt.Sprintf("anduschain-testnet-%s", params.TEST_NETWORK.String())),
 	}
 }
 
