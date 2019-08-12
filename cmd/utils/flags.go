@@ -129,7 +129,7 @@ var (
 	}
 	NetworkIdFlag = cli.Uint64Flag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, null=MainNet, 3355=Testnet(andusChain))",
+		Usage: "Network identifier (integer, 14288640=MainNet(not opening), 14288641=Testnet)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
 	DebFlag = cli.BoolFlag{
@@ -1183,7 +1183,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	switch {
 	case ctx.GlobalBool(TestnetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 102
+			cfg.NetworkId = params.TEST_NETWORK.Uint64() // chain id and network id equal
 		}
 		cfg.Genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
