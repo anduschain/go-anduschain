@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const DbName = "AndusChainTestnet"
+const DbName = "Anduschain"
 
 var (
 	MongDBConnectError = errors.New("fail to connecting mongo database")
@@ -27,6 +27,8 @@ var (
 
 type MongoDatabase struct {
 	mu sync.Mutex
+
+	dbName string
 
 	url      string
 	dialInfo *mgo.DialInfo
@@ -53,10 +55,11 @@ type config interface {
 func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
 	host, port, user, pass, ssl, chainID := conf.GetInfo()
+	db.dbName = fmt.Sprintf("%s_%s", DbName, chainID.String())
 	if strings.Compare(user, "") != 0 {
-		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, port, DbName)
+		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, port, db.dbName)
 	} else {
-		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, DbName)
+		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, db.dbName)
 	}
 
 	db.chainID = chainID
@@ -106,16 +109,16 @@ func (m *MongoDatabase) Start() error {
 	session.SetMode(mgo.Monotonic, true)
 
 	m.mongo = session
-	m.chainConfig = session.DB(DbName).C("ChainConfig")
-	m.activeNodeCol = session.DB(DbName).C("ActiveNode")
-	m.leagues = session.DB(DbName).C("Leagues")
-	m.otprnList = session.DB(DbName).C("OtprnList")
-	m.blockChain = session.DB(DbName).C("BlockChain")
-	m.blockChainRaw = session.DB(DbName).C("BlockChainRaw")
-	m.voteAggregation = session.DB(DbName).C("VoteAggregation")
-	m.transactions = session.DB(DbName).C("Transactions")
+	m.chainConfig = session.DB(m.dbName).C("ChainConfig")
+	m.activeNodeCol = session.DB(m.dbName).C("ActiveNode")
+	m.leagues = session.DB(m.dbName).C("Leagues")
+	m.otprnList = session.DB(m.dbName).C("OtprnList")
+	m.blockChain = session.DB(m.dbName).C("BlockChain")
+	m.blockChainRaw = session.DB(m.dbName).C("BlockChainRaw")
+	m.voteAggregation = session.DB(m.dbName).C("VoteAggregation")
+	m.transactions = session.DB(m.dbName).C("Transactions")
 
-	m.activeFairnode = session.DB(DbName).C("ActiveFairnode")
+	m.activeFairnode = session.DB(m.dbName).C("ActiveFairnode")
 
 	logger.Debug("Start fairnode mongo database", "chainID", m.chainID.String(), "url", m.url)
 	return nil

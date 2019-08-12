@@ -9,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/fairnode"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/pborman/uuid"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
@@ -88,10 +89,11 @@ func makeFairNodeKey(ctx *cli.Context) error {
 
 type dbConfig struct {
 	host, port, user, pass, ssl string
+	chainID                     *big.Int
 }
 
 func (c *dbConfig) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
-	return c.host, c.port, c.user, c.pass, c.ssl, big.NewInt(0)
+	return c.host, c.port, c.user, c.pass, c.ssl, c.chainID
 }
 
 func addChainConfig(ctx *cli.Context) error {
@@ -118,12 +120,23 @@ func addChainConfig(ctx *cli.Context) error {
 	if ctx.GlobalBool("memorydb") {
 		fdb = fairdb.NewMemDatabase()
 	} else {
+
+		chainID := new(big.Int)
+		if ctx.Bool("mainnet") {
+			chainID = params.MAIN_NETWORK
+		} else if ctx.Bool("testnet") {
+			chainID = params.TEST_NETWORK
+		} else {
+			chainID = new(big.Int).SetUint64(ctx.Uint64("chainID"))
+		}
+
 		conf := &dbConfig{
-			host: ctx.String("dbhost"),
-			port: ctx.String("dbport"),
-			user: ctx.String("dbuser"),
-			pass: dbpass,
-			ssl:  ctx.String("dbCertPath"),
+			host:    ctx.String("dbhost"),
+			port:    ctx.String("dbport"),
+			user:    ctx.String("dbuser"),
+			pass:    dbpass,
+			ssl:     ctx.String("dbCertPath"),
+			chainID: chainID,
 		}
 
 		fdb, err = fairdb.NewMongoDatabase(conf)
@@ -150,10 +163,10 @@ func addChainConfig(ctx *cli.Context) error {
 		blockNumber = block.Number().Uint64()
 	}
 	config := &types.ChainConfig{
-		Epoch:       100,
+		Epoch:       10,
 		Mminer:      100,
-		JoinTxPrice: big.NewFloat(6).String(),
-		FnFee:       big.NewFloat(0.0).String(),
+		JoinTxPrice: big.NewFloat(1).String(),
+		FnFee:       big.NewFloat(0.1).String(),
 		NodeVersion: "0.6.12",
 	}
 
@@ -179,8 +192,8 @@ func addChainConfig(ctx *cli.Context) error {
 	}
 
 	// 리그 생성 블록 주기 (Epoch)
-	fmt.Printf("Input epoch for league change term (default : 100) ")
-	if term := w.readDefaultInt(100); term > 0 {
+	fmt.Printf("Input epoch for league change term (default : 10) ")
+	if term := w.readDefaultInt(10); term > 0 {
 		config.Epoch = term
 	} else {
 		log.Crit("input epoch was wrong")
@@ -188,8 +201,8 @@ func addChainConfig(ctx *cli.Context) error {
 	}
 
 	// join transaction price
-	fmt.Printf("Input join transaction price (default : 6 Daon) ")
-	if price := w.readDefaultFloat(6); price >= 0 {
+	fmt.Printf("Input join transaction price (default : 1 Daon) ")
+	if price := w.readDefaultFloat(1); price >= 0 {
 		config.JoinTxPrice = big.NewFloat(price).String()
 	} else {
 		log.Crit("input price was wrong")
@@ -197,8 +210,8 @@ func addChainConfig(ctx *cli.Context) error {
 	}
 
 	// fairnode 수수료
-	fmt.Printf("Input fairnode fee percent (default : 0) ")
-	if fee := w.readDefaultFloat(0.0); fee >= 0 {
+	fmt.Printf("Input fairnode fee percent (default : 0.1) ")
+	if fee := w.readDefaultFloat(0.1); fee >= 0 {
 		config.FnFee = big.NewFloat(fee).String()
 	} else {
 		log.Crit("input fee was wrong")

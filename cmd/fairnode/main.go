@@ -135,6 +135,19 @@ func init() {
 					Value: "",
 					Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
 				},
+				cli.BoolFlag{
+					Name:  "mainnet",
+					Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
+				},
+				cli.BoolFlag{
+					Name:  "testnet",
+					Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
+				},
+				cli.Uint64Flag{
+					Name:  "chainID",
+					Value: 3355,
+					Usage: "default chainid is 3355",
+				},
 			},
 		},
 	}
@@ -185,8 +198,7 @@ func init() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	// TODO(hakuna) : 배포할때 주석 풀것
-	//signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
+	signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
 		logger.Error("App Run error", "msg", err.Error())
 		os.Exit(1)
