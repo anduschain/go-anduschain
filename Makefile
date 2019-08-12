@@ -97,6 +97,10 @@ godaon-linux: godaon-linux-386 godaon-linux-amd64 godaon-linux-arm godaon-linux-
 	@echo "Linux cross compilation done:"
 	@ls -ld $(GOBIN)/godaon-linux-*
 
+godaon-bundle: godaon-linux-386 godaon-linux-amd64 godaon-darwin-amd64 godaon-windows-386 godaon-windows-amd64
+	@echo "Bundle cross compilation done:"
+	@ls -ld $(GOBIN)/godaon-*
+
 godaon-linux-386:
 	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/386 -v ./cmd/godaon
 	@echo "Linux 386 cross compilation done:"
