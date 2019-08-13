@@ -659,8 +659,6 @@ func setNodeUserIdent(ctx *cli.Context, cfg *node.Config) {
 // flags, reverting to pre-configured ones if none have been specified.
 func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 	urls := params.MainnetBootnodes
-	//AndusChain TestNetBootNode
-	//urls := params.AndusChainBootnodes
 	switch {
 	case ctx.GlobalIsSet(BootnodesFlag.Name) || ctx.GlobalIsSet(BootnodesV4Flag.Name):
 		if ctx.GlobalIsSet(BootnodesV4Flag.Name) {
@@ -669,7 +667,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 			urls = strings.Split(ctx.GlobalString(BootnodesFlag.Name), ",")
 		}
 	case ctx.GlobalBool(TestnetFlag.Name):
-		urls = params.AndusChainBootnodes
+		urls = params.TestnetBootnodes
 	case ctx.GlobalBool(SoloFlag.Name):
 		return
 	case cfg.BootstrapNodes != nil:

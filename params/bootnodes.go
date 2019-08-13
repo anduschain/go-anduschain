@@ -16,16 +16,13 @@
 
 package params
 
-// TODO(hakuna) : bootnode added
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main Ethereum network.
-var MainnetBootnodes = []string{
-	"enode://a0ca256bdde175df67b8092927bcb51be6643fc438156995b492a7ca8088f2e83514ec903a80b044321e0225f6d4ca78a070c536b15eea7a1f480b29cb0fdb98@13.209.167.161:50501", //andus
-}
+var MainnetBootnodes = []string{}
 
 //AndusChainTestNode
-var AndusChainBootnodes = []string{
-	"enode://a0ca256bdde175df67b8092927bcb51be6643fc438156995b492a7ca8088f2e83514ec903a80b044321e0225f6d4ca78a070c536b15eea7a1f480b29cb0fdb98@13.209.167.161:50501",
+var TestnetBootnodes = []string{
+	"enode://585232819253c97da804baefe8b0b015cd797dc784cd8b48888ff2e69f0e39815bdcdf81ea04e7823b663df7b49e075d5558fc3a0dfeea021c5147bb6540cd4c@13.209.167.161:50501",
 }
 
 // DiscoveryV5Bootnodes are the enode URLs of the P2P bootstrap nodes for the
