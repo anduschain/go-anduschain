@@ -22,7 +22,7 @@ var MainnetBootnodes = []string{}
 
 //AndusChainTestNode
 var TestnetBootnodes = []string{
-	"enode://585232819253c97da804baefe8b0b015cd797dc784cd8b48888ff2e69f0e39815bdcdf81ea04e7823b663df7b49e075d5558fc3a0dfeea021c5147bb6540cd4c@13.209.167.161:50501",
+	"enode://585232819253c97da804baefe8b0b015cd797dc784cd8b48888ff2e69f0e39815bdcdf81ea04e7823b663df7b49e075d5558fc3a0dfeea021c5147bb6540cd4c@bootnode.testnet.anduschain.io:50501",
 }
 
 // DiscoveryV5Bootnodes are the enode URLs of the P2P bootstrap nodes for the
