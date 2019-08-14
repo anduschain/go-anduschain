@@ -1214,7 +1214,7 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 // The sender is responsible for signing the transaction and using the correct nonce.
 func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encodedTx hexutil.Bytes) (common.Hash, error) {
 	var tx *types.Transaction
-	if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
+	if err := rlp.DecodeBytes(encodedTx, &tx); err != nil {
 		return common.Hash{}, err
 	}
 	return submitTransaction(ctx, s.b, tx)
