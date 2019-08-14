@@ -273,6 +273,8 @@ func (fn *Fairnode) cleanOldNode() {
 
 // when fairnode Folllower
 func (fn *Fairnode) processManageLoopFollower() {
+	defer logger.Warn("Process Manage Loop Follower was Dead")
+
 	for {
 		select {
 		case leagues := <-fn.syncRecvCh:

@@ -187,6 +187,8 @@ func (fs *FnSyncer) roleChecker() {
 			}
 			logger.Warn("Role Checker", "msg", err)
 		case <-fs.exitCh:
+			// when deae, delete my info
+			fs.db.RemoveActiveFairnode(fs.id)
 			return
 		}
 	}
