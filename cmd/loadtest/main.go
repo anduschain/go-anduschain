@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/loadtest"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/util"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
 	"log"
 	"strings"
@@ -14,8 +15,8 @@ import (
 var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
 	accPath  = flag.String("path", "", "accounts file path")
-	duration = flag.Int64("duration", 20, "send transation term / millisecond")
-	chainID  = flag.Int64("chainID", 1315, "chain ID")
+	duration = flag.Int64("duration", 10000, "send transation term / millisecond")
+	chainID  = flag.Int64("chainID", params.TEST_NETWORK.Int64(), "chain ID")
 )
 
 func main() {
