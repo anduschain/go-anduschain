@@ -282,6 +282,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 					otprn := fn.db.GetOtprn(l.OtprnHash)
 					if otprn == nil {
 						logger.Error("Process Manage Loop Follower, Get Otprn is nil", "hash", l.OtprnHash)
+						continue
 					}
 					fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
 				} else {
