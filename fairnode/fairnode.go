@@ -241,7 +241,7 @@ func (fn *Fairnode) statusLoop() {
 				continue
 			}
 			for id, league := range fn.leagues {
-				logger.Debug("Status", "otprn", reduceStr(id.String()), "code", league.Status)
+				logger.Debug("Status", "otprn", reduceStr(id.String()), "code", league.Status, "len", len(fn.leagues))
 			}
 		}
 	}
@@ -275,6 +275,8 @@ func (fn *Fairnode) cleanOldNode() {
 func (fn *Fairnode) processManageLoopFollower() {
 	defer logger.Warn("Process Manage Loop Follower was Dead")
 
+	var dHash common.Hash // delete otprn
+
 	for {
 		select {
 		case leagues := <-fn.syncRecvCh:
@@ -286,13 +288,17 @@ func (fn *Fairnode) processManageLoopFollower() {
 						logger.Error("Process Manage Loop Follower, Get Otprn is nil", "hash", l.OtprnHash)
 						continue
 					}
+
+					if dHash == l.OtprnHash {
+						continue
+					}
+
 					fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
 				} else {
 					league := fn.leagues[l.OtprnHash]
-					if league.Status == l.Status {
-						continue
+					if league.Status != l.Status {
+						league.Status = l.Status
 					}
-					league.Status = l.Status
 					switch league.Status {
 					case types.MAKE_JOIN_TX:
 						if block := fn.db.CurrentBlock(); block != nil {
@@ -301,6 +307,9 @@ func (fn *Fairnode) processManageLoopFollower() {
 					case types.VOTE_COMPLETE:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
 						voters := fn.db.GetVoters(voteKey)
+						if len(voters) < (MIN_LEAGUE_NUM - 1) {
+							continue
+						}
 						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
 						voteHash := types.Voters(voters).Hash()                   // voter hash
 						league.BlockHash = &finalBlockHash
@@ -312,7 +321,11 @@ func (fn *Fairnode) processManageLoopFollower() {
 						league.Votehash = nil
 						league.BlockHash = nil
 					case types.REJECT:
-						delete(fn.leagues, l.OtprnHash)
+						if _, ok := fn.leagues[l.OtprnHash]; ok {
+							logger.Warn("League Reject", "hash", l.OtprnHash)
+							delete(fn.leagues, l.OtprnHash)
+							dHash = l.OtprnHash
+						}
 					}
 				}
 			}
@@ -322,6 +335,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 			}
 			time.Sleep(500 * time.Millisecond)
 			for _, league := range fn.leagues {
+				logger.Warn("Leader Node Error, League Reject", "hash", league.Otprn.HashOtprn().String())
 				delete(fn.leagues, league.Otprn.HashOtprn())
 			}
 			logger.Warn("Sync error channel called")
@@ -375,16 +389,15 @@ func (fn *Fairnode) processManageLoop() {
 				case types.VOTE_COMPLETE:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
 					voters := fn.db.GetVoters(voteKey)
-					finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
-					voteHash := types.Voters(voters).Hash()                   // voter hash
-					l.BlockHash = &finalBlockHash
-					l.Votehash = &voteHash
-
-					time.Sleep(2 * time.Second)
 					if len(voters) < (MIN_LEAGUE_NUM - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
 						l.Status = types.REJECT
 					} else {
+						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
+						voteHash := types.Voters(voters).Hash()                   // voter hash
+						l.BlockHash = &finalBlockHash
+						l.Votehash = &voteHash
+						time.Sleep(2 * time.Second)
 						l.Status = types.SEND_BLOCK
 					}
 				case types.SEND_BLOCK:
@@ -407,7 +420,10 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(3 * time.Second)
 					fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 				case types.REJECT:
-					delete(fn.leagues, *fn.currentLeague) // league delete
+					time.Sleep(1 * time.Second)
+					cur := *fn.currentLeague
+					logger.Warn("League Reject and Delete League", "hash", cur.String())
+					delete(fn.leagues, cur) // league delete
 					if fn.pendingLeague != nil {
 						if pl, ok := fn.leagues[*fn.pendingLeague]; ok {
 							pl.Current = fn.db.CurrentBlock().Number()
