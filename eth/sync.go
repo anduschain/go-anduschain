@@ -34,7 +34,7 @@ const (
 
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
-	txsyncPackSize = 1000 * 1024 // TODO(hakuna) : increase pack size 100 -> 1000
+	txsyncPackSize = 100 * 1024
 )
 
 type txsync struct {
