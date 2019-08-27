@@ -241,7 +241,7 @@ func (fn *Fairnode) statusLoop() {
 				continue
 			}
 			for id, league := range fn.leagues {
-				logger.Debug("Status", "otprn", reduceStr(id.String()), "code", league.Status, "len", len(fn.leagues))
+				logger.Debug("Status", "otprn", reduceStr(id.String()), "code", league.Status, "len", len(fn.leagues), "current", league.Current.String())
 			}
 		}
 	}
