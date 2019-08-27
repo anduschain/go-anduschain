@@ -21,6 +21,7 @@ type FairnodeDB interface {
 	GetChainConfig() *types.ChainConfig
 	SaveChainConfig(config *types.ChainConfig) error
 
+	CurrentInfo() *types.CurrentInfo
 	CurrentBlock() *types.Block
 	CurrentOtprn() *types.Otprn
 

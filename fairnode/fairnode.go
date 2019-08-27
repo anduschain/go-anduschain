@@ -301,8 +301,10 @@ func (fn *Fairnode) processManageLoopFollower() {
 					}
 					switch league.Status {
 					case types.MAKE_JOIN_TX:
-						if block := fn.db.CurrentBlock(); block != nil {
-							league.Current = block.Number()
+						if current := fn.db.CurrentInfo(); current != nil {
+							league.Current = current.Number
+						} else {
+							continue
 						}
 					case types.VOTE_COMPLETE:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
@@ -315,11 +317,13 @@ func (fn *Fairnode) processManageLoopFollower() {
 						league.BlockHash = &finalBlockHash
 						league.Votehash = &voteHash
 					case types.FINALIZE:
-						if block := fn.db.CurrentBlock(); block != nil {
-							league.Current = block.Number()
+						if current := fn.db.CurrentInfo(); current != nil {
+							league.Current = current.Number
+							league.Votehash = nil
+							league.BlockHash = nil
+						} else {
+							continue
 						}
-						league.Votehash = nil
-						league.BlockHash = nil
 					case types.REJECT:
 						if _, ok := fn.leagues[l.OtprnHash]; ok {
 							logger.Warn("League Reject", "hash", l.OtprnHash)
@@ -372,11 +376,17 @@ func (fn *Fairnode) processManageLoop() {
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
 					// 생성할 블록 번호 조회
-					if block := fn.db.CurrentBlock(); block != nil {
-						l.Current = block.Number()
+					if current := fn.db.CurrentInfo(); current != nil {
+						l.Current = current.Number
+						time.Sleep(3 * time.Second)
+						l.Status = types.MAKE_BLOCK
+					} else {
+						if l.Current.Uint64() == 0 {
+							time.Sleep(3 * time.Second)
+							l.Status = types.MAKE_BLOCK
+						}
+						continue
 					}
-					time.Sleep(3 * time.Second)
-					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
@@ -412,21 +422,23 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
-					if block := fn.db.CurrentBlock(); block != nil {
-						l.Current = block.Number()
+					if current := fn.db.CurrentInfo(); current != nil {
+						l.Current = current.Number
+						l.Votehash = nil
+						l.BlockHash = nil
+						time.Sleep(3 * time.Second)
+						fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
+					} else {
+						l.Status = types.REJECT
 					}
-					l.Votehash = nil
-					l.BlockHash = nil
-					time.Sleep(3 * time.Second)
-					fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 				case types.REJECT:
-					time.Sleep(1 * time.Second)
+					time.Sleep(2 * time.Second)
 					cur := *fn.currentLeague
 					logger.Warn("League Reject and Delete League", "hash", cur.String())
 					delete(fn.leagues, cur) // league delete
 					if fn.pendingLeague != nil {
 						if pl, ok := fn.leagues[*fn.pendingLeague]; ok {
-							pl.Current = fn.db.CurrentBlock().Number()
+							pl.Current = fn.db.CurrentInfo().Number
 							fn.currentLeague = fn.pendingLeague // change pending to current
 							fn.pendingLeague = nil              // empty pending league key
 						}

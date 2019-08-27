@@ -106,7 +106,7 @@ func (m *MongoDatabase) Start() error {
 		return MongDBConnectError
 	}
 
-	session.SetMode(mgo.Monotonic, true)
+	session.SetMode(mgo.Strong, true)
 
 	m.mongo = session
 	m.chainConfig = session.DB(m.dbName).C("ChainConfig")
@@ -131,11 +131,11 @@ func (m *MongoDatabase) Stop() {
 
 func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	var num uint64
-	block := m.CurrentBlock()
-	if block == nil {
+	current := m.CurrentInfo()
+	if current == nil {
 		logger.Warn("Get current block number", "database", "mongo", "current", num)
 	} else {
-		num = block.Number().Uint64()
+		num = current.Number.Uint64()
 	}
 
 	conf := new(fntype.Config)
@@ -173,6 +173,19 @@ func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
 		logger.Error("Save chain config", "database", "mongo", "msg", err)
 	}
 	return nil
+}
+
+func (m *MongoDatabase) CurrentInfo() *types.CurrentInfo {
+	b := new(fntype.BlockHeader)
+	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
+	if err != nil {
+		logger.Error("Get current info", "database", "mongo", "msg", err)
+		return nil
+	}
+	return &types.CurrentInfo{
+		Number: new(big.Int).SetUint64(b.Header.Number),
+		Hash:   common.HexToHash(b.Hash),
+	}
 }
 
 func (m *MongoDatabase) CurrentBlock() *types.Block {

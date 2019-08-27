@@ -55,6 +55,11 @@ type Voter struct {
 	VoteSign []byte `json:"voterSign" bson:"voterSign"`
 }
 
+type BlockHeader struct {
+	Hash   string `json:"blockHash" bson:"_id,omitempty"`
+	Header Header `json:"header" bson:"header"`
+}
+
 type Block struct {
 	Hash   string `json:"blockHash" bson:"_id,omitempty"`
 	Header Header `json:"header" bson:"header"`

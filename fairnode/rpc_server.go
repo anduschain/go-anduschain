@@ -101,10 +101,10 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
-	if cBlock := rs.db.CurrentBlock(); cBlock != nil {
-		if cBlock.Hash() != common.HexToHash(nodeInfo.GetHead()) {
+	if current := rs.db.CurrentInfo(); current != nil {
+		if current.Hash != common.HexToHash(nodeInfo.GetHead()) {
 			if block := rs.db.GetBlock(common.HexToHash(nodeInfo.GetHead())); block != nil {
-				if cBlock.Number().Uint64()-block.Number().Uint64() != 1 {
+				if current.Number.Uint64()-block.Number().Uint64() != 1 {
 					return nil, errors.New("head is mismatch")
 				}
 			} else {

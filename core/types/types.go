@@ -32,6 +32,11 @@ func (hb HeartBeat) EnodeUrl() string {
 	return fmt.Sprintf("enode://%s@%s:%d", hb.Enode, hb.Host, hb.Port)
 }
 
+type CurrentInfo struct {
+	Number *big.Int    // block number
+	Hash   common.Hash // block hash
+}
+
 // otprn data
 type ChainConfig struct {
 	BlockNumber uint64 // applying rule starting block number

@@ -156,11 +156,11 @@ func addChainConfig(ctx *cli.Context) error {
 	defer fdb.Stop()
 
 	var blockNumber uint64
-	block := fdb.CurrentBlock()
-	if block == nil {
+	current := fdb.CurrentInfo()
+	if current == nil {
 		blockNumber = 0
 	} else {
-		blockNumber = block.Number().Uint64()
+		blockNumber = current.Number.Uint64()
 	}
 	config := &types.ChainConfig{
 		Epoch:       10,

@@ -64,6 +64,18 @@ func (m *MemDatabase) SaveChainConfig(config *types.ChainConfig) error {
 	}
 }
 
+func (m *MemDatabase) CurrentInfo() *types.CurrentInfo {
+	if len(m.BlockChain) == 0 {
+		return nil
+	}
+
+	block := m.BlockChain[len(m.BlockChain)-1] // current block
+	return &types.CurrentInfo{
+		Number: block.Number(),
+		Hash:   block.Hash(),
+	}
+}
+
 func (m *MemDatabase) CurrentBlock() *types.Block {
 	if len(m.BlockChain) == 0 {
 		return nil
