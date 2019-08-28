@@ -194,6 +194,19 @@ func (m *MemDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) error
 	return nil
 }
 
+func (m *MemDatabase) RemoveBlock(blockHash common.Hash) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c := m.BlockChain
+	for i, block := range c {
+		if block.Hash() == blockHash {
+			c[len(c)-1], c[i] = c[i], c[len(c)-1]
+			m.BlockChain = c[:len(c)-1]
+			return
+		}
+	}
+}
+
 func (m *MemDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -41,6 +41,7 @@ type FairnodeDB interface {
 
 	SaveFinalBlock(block *types.Block, byteBlock []byte) error
 	GetBlock(blockHash common.Hash) *types.Block
+	RemoveBlock(blockHash common.Hash)
 }
 
 func MakeVoteKey(otprn common.Hash, blockNum *big.Int) common.Hash {

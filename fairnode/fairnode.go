@@ -274,9 +274,7 @@ func (fn *Fairnode) cleanOldNode() {
 // when fairnode Folllower
 func (fn *Fairnode) processManageLoopFollower() {
 	defer logger.Warn("Process Manage Loop Follower was Dead")
-
 	var dHash common.Hash // delete otprn
-
 	for {
 		select {
 		case leagues := <-fn.syncRecvCh:
@@ -375,7 +373,6 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
-					// 생성할 블록 번호 조회
 					if current := fn.db.CurrentInfo(); current != nil {
 						l.Current = current.Number
 						time.Sleep(3 * time.Second)
@@ -384,8 +381,9 @@ func (fn *Fairnode) processManageLoop() {
 						if l.Current.Uint64() == 0 {
 							time.Sleep(3 * time.Second)
 							l.Status = types.MAKE_BLOCK
+						} else {
+							continue
 						}
-						continue
 					}
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
@@ -429,6 +427,9 @@ func (fn *Fairnode) processManageLoop() {
 						time.Sleep(3 * time.Second)
 						fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 					} else {
+						hash := *l.BlockHash
+						fn.db.RemoveBlock(hash)
+						logger.Warn("Remove Block, Because Current Info is nil", "hash", hash)
 						l.Status = types.REJECT
 					}
 				case types.REJECT:
@@ -456,7 +457,6 @@ func (fn *Fairnode) processManageLoop() {
 func (fn *Fairnode) makeOtprn() {
 	defer logger.Warn("make otprn was dead")
 	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
-
 	newOtprn := func(isCur bool) error {
 		if nodes := fn.db.GetActiveNode(); len(nodes) >= MIN_LEAGUE_NUM {
 			config := fn.db.GetChainConfig()                                      // 체인 관련 설정값 읽어옴
@@ -484,7 +484,6 @@ func (fn *Fairnode) makeOtprn() {
 					return errors.New(fmt.Sprintf("League was exist otprn=%s", otpHash.String()))
 				}
 			}
-
 			logger.Info("Make otprn for league", "otprn", otpHash.String())
 			return nil
 		} else {

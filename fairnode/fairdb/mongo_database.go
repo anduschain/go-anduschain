@@ -403,6 +403,17 @@ func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	return block
 }
 
+func (m *MongoDatabase) RemoveBlock(blockHash common.Hash) {
+	err := m.blockChain.RemoveId(blockHash.String())
+	if err != nil {
+		logger.Error("Remove Block", "database", "mongo", "msg", err)
+	}
+	err = m.blockChainRaw.RemoveId(blockHash.String())
+	if err != nil {
+		logger.Error("Remove Raw Block", "database", "mongo", "msg", err)
+	}
+}
+
 type stType uint64
 
 const (
