@@ -8,7 +8,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
-	"github.com/anduschain/go-anduschain/log"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -632,13 +631,13 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	block := new(types.Block)
 	stream := rlp.NewStream(bytes.NewReader(req.GetBlock()), 0)
 	if err := block.DecodeRLP(stream); err != nil {
-		log.Error("decode block", "msg", err)
+		logger.Error("decode block", "msg", err)
 		return nil, err
 	}
 
 	otprn, err := types.DecodeOtprn(block.Otprn())
 	if err != nil {
-		log.Error("decode otprn", "msg", err)
+		logger.Error("decode otprn", "msg", err)
 		return nil, err
 	}
 
@@ -647,6 +646,10 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 		clg = league
 	} else {
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", otprn.HashOtprn().String()))
+	}
+
+	if clg == nil {
+		return nil, errors.New("Current Leageu is nil")
 	}
 
 	if *clg.BlockHash != block.Hash() {
@@ -664,11 +667,11 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 
 	err = rs.db.SaveFinalBlock(block, req.GetBlock())
 	if err != nil {
-		log.Error("Save Final block", "msg", err)
+		logger.Error("Save Final block", "msg", err)
 		return nil, err
 	}
 
-	log.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
+	logger.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 	return &empty.Empty{}, nil
 }
 

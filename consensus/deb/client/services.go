@@ -454,6 +454,7 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 	defer stream.CloseSend()
 
 	var stCode proto.ProcessStatus
+	isBlockSend := false
 
 	for {
 		in, err := stream.Recv()
@@ -472,23 +473,29 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 		}
 
 		log.Debug("Request SealConfirm Status", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
-		if stCode == in.GetCode() {
-			continue
+		if stCode != in.GetCode() {
+			stCode = in.GetCode()
 		}
-		stCode = in.GetCode()
 		switch stCode {
 		case proto.ProcessStatus_SEND_BLOCK:
 			// submitting to fairnode
+			if isBlockSend {
+				continue
+			}
 			if err := dc.sendBlock(block); err != nil {
 				log.Error("Send Winning Block to fairnode", "msg", err)
 				return
+			} else {
+				isBlockSend = true
 			}
 		case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
 			fnSign := dc.requestFairnodeSign(otprn, block)
 			if fnSign == nil {
+				continue
+			} else {
+				dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
 				return
 			}
-			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
 		default:
 			log.Info("Request SealConfirm loop", "stream", in.GetCode().String()) // TODO(hakuna) : change level -> trace
 		}

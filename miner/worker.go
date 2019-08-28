@@ -281,10 +281,9 @@ func (w *worker) leagueStatusLoop() {
 	for {
 		select {
 		case ev := <-w.fnStatusCh:
-			if w.fnStatus == ev.Status {
-				continue
+			if w.fnStatus != ev.Status {
+				w.fnStatus = ev.Status
 			}
-			w.fnStatus = ev.Status
 			switch w.fnStatus {
 			case types.MAKE_BLOCK:
 				if otprn, ok := ev.Payload.(types.Otprn); ok {

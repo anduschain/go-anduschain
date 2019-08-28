@@ -58,6 +58,8 @@ type Fairnode struct {
 	syncRecvCh  chan []fs.Leagues
 	syncErrorCh chan struct{}
 
+	lastBlock *types.Block
+
 	curRole fs.FnType
 }
 
@@ -150,6 +152,12 @@ func (fn *Fairnode) Start() error {
 		fn.fnSyncer.Start(db)
 	} else {
 		fn.fnSyncer.Start(nil)
+	}
+
+	// get last block
+	if block := fn.db.CurrentBlock(); block != nil {
+		fn.lastBlock = block
+		logger.Info("Get Current Block", "hash", fn.lastBlock.Hash().String(), "number", fn.lastBlock.Number().String())
 	}
 
 	go fn.severLoop()
@@ -286,12 +294,10 @@ func (fn *Fairnode) processManageLoopFollower() {
 						logger.Error("Process Manage Loop Follower, Get Otprn is nil", "hash", l.OtprnHash)
 						continue
 					}
-
 					if dHash == l.OtprnHash {
 						continue
 					}
-
-					fn.leagues[otprn.HashOtprn()] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+					fn.addLeague(otprn)
 				} else {
 					league := fn.leagues[l.OtprnHash]
 					if league.Status != l.Status {
@@ -299,10 +305,8 @@ func (fn *Fairnode) processManageLoopFollower() {
 					}
 					switch league.Status {
 					case types.MAKE_JOIN_TX:
-						if current := fn.db.CurrentInfo(); current != nil {
-							league.Current = current.Number
-						} else {
-							continue
+						if fn.lastBlock != nil {
+							league.Current = fn.lastBlock.Number()
 						}
 					case types.VOTE_COMPLETE:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
@@ -315,8 +319,9 @@ func (fn *Fairnode) processManageLoopFollower() {
 						league.BlockHash = &finalBlockHash
 						league.Votehash = &voteHash
 					case types.FINALIZE:
-						if current := fn.db.CurrentInfo(); current != nil {
-							league.Current = current.Number
+						if block := fn.db.CurrentBlock(); block != nil {
+							fn.lastBlock = block
+							league.Current = block.Number()
 							league.Votehash = nil
 							league.BlockHash = nil
 						} else {
@@ -356,12 +361,10 @@ func (fn *Fairnode) processManageLoop() {
 			if fn.currentLeague == nil {
 				continue
 			}
-
 			if l, ok := fn.leagues[*fn.currentLeague]; ok {
 				if status != l.Status {
 					status = l.Status
 				}
-
 				switch status {
 				case types.PENDING:
 					// now league connection count check
@@ -373,26 +376,19 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
-					if current := fn.db.CurrentInfo(); current != nil {
-						l.Current = current.Number
-						time.Sleep(3 * time.Second)
-						l.Status = types.MAKE_BLOCK
-					} else {
-						if l.Current.Uint64() == 0 {
-							time.Sleep(3 * time.Second)
-							l.Status = types.MAKE_BLOCK
-						} else {
-							continue
-						}
+					if fn.lastBlock != nil {
+						l.Current = fn.lastBlock.Number()
 					}
+					time.Sleep(3 * time.Second)
+					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
 					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
-					time.Sleep(5 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
@@ -420,8 +416,9 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(5 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
-					if current := fn.db.CurrentInfo(); current != nil {
-						l.Current = current.Number
+					if block := fn.db.CurrentBlock(); block != nil {
+						fn.lastBlock = block
+						l.Current = block.Number()
 						l.Votehash = nil
 						l.BlockHash = nil
 						time.Sleep(3 * time.Second)
@@ -454,8 +451,20 @@ func (fn *Fairnode) processManageLoop() {
 	}
 }
 
+func (fn *Fairnode) addLeague(otprn *types.Otprn) {
+	fn.mu.Lock()
+	defer fn.mu.Unlock()
+	l := league{Otprn: otprn, Status: types.PENDING}
+	if fn.lastBlock != nil {
+		l.Current = fn.lastBlock.Number()
+	} else {
+		l.Current = big.NewInt(0)
+	}
+	fn.leagues[otprn.HashOtprn()] = &l
+}
+
 func (fn *Fairnode) makeOtprn() {
-	defer logger.Warn("make otprn was dead")
+	defer logger.Warn("Make OTPRN was dead")
 	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
 	newOtprn := func(isCur bool) error {
 		if nodes := fn.db.GetActiveNode(); len(nodes) >= MIN_LEAGUE_NUM {
@@ -466,25 +475,24 @@ func (fn *Fairnode) makeOtprn() {
 				return err
 			}
 			otpHash := otprn.HashOtprn()
-
 			if isCur {
 				if fn.currentLeague == nil {
 					fn.currentLeague = &otpHash
-					fn.leagues[otpHash] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+					fn.addLeague(otprn)
 					fn.db.SaveOtprn(*otprn)
 				} else {
-					return errors.New(fmt.Sprintf("League was exist otprn=%s", otpHash.String()))
+					return errors.New(fmt.Sprintf("Current League was exist otprn=%s", otpHash.String()))
 				}
 			} else {
 				if fn.pendingLeague == nil {
 					fn.pendingLeague = &otpHash
-					fn.leagues[otpHash] = &league{Otprn: otprn, Status: types.PENDING, Current: big.NewInt(0)}
+					fn.addLeague(otprn)
 					fn.db.SaveOtprn(*otprn)
 				} else {
-					return errors.New(fmt.Sprintf("League was exist otprn=%s", otpHash.String()))
+					return errors.New(fmt.Sprintf("Pending League was exist otprn=%s", otpHash.String()))
 				}
 			}
-			logger.Info("Make otprn for league", "otprn", otpHash.String())
+			logger.Info("Made League otprn", "hash", otpHash.String())
 			return nil
 		} else {
 			return errors.New(fmt.Sprintf("Not enough active node minimum=%d count=%d", MIN_LEAGUE_NUM, len(nodes)))

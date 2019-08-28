@@ -399,7 +399,6 @@ func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
 		logger.Error("Get block, decode", "database", "mongo", "msg", err)
 		return nil
 	}
-
 	return block
 }
 
