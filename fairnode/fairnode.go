@@ -405,12 +405,18 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.SEND_BLOCK
 					}
 				case types.SEND_BLOCK:
-					time.Sleep(7 * time.Second)
+					hash := *l.BlockHash
 					if l.BlockHash == nil {
 						logger.Error("Send block wait, timeout")
 						l.Status = types.REJECT
 					} else {
-						l.Status = types.REQ_FAIRNODE_SIGN
+						if block := fn.db.GetBlock(hash); block != nil {
+							l.Status = types.REQ_FAIRNODE_SIGN
+						} else {
+							logger.Warn("Wait Send Block", "hash", hash.String())
+							time.Sleep(200 * time.Millisecond)
+							continue
+						}
 					}
 				case types.REQ_FAIRNODE_SIGN:
 					time.Sleep(3 * time.Second)
@@ -442,6 +448,9 @@ func (fn *Fairnode) processManageLoop() {
 						}
 					} else {
 						fn.currentLeague = nil
+					}
+					if block := fn.db.CurrentBlock(); block != nil {
+						fn.lastBlock = block
 					}
 				default:
 					logger.Debug("Process Manage Loop", "Status", status.String())

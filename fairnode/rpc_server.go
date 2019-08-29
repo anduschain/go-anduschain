@@ -160,11 +160,9 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 			break
 		}
 	}
-
 	if !IsExist {
 		return nil, errors.New(fmt.Sprintf("does not exist in active node list addr = %s", reduceStr(nodeInfo.GetEnode())))
 	}
-
 	if otprn := rs.db.CurrentOtprn(); otprn != nil {
 		err := otprn.ValidateSignature()
 		if err != nil {
@@ -185,7 +183,6 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 				Result: proto.Status_FAIL,
 			}, nil
 		}
-
 		// 참가 대상 확인
 		if verify.IsJoinOK(otprn, addr) {
 			// OTPRN 전송
@@ -577,28 +574,23 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 			// league status
 			return nil
 		}
-
 		m := makeMsg(clg)
 		if m == nil {
 			continue
 		}
-
 		hash = rlpHash([]interface{}{
 			m.Code,
 		})
-
 		sign, err := rs.fn.SignHash(hash.Bytes())
 		if err != nil {
 			logger.Error("SealConfirm signature message", "msg", err)
 			return err
 		}
 		m.Sign = sign // add sign
-
 		if err := stream.Send(m); err != nil {
 			logger.Error("SealConfirm send status message", "msg", err)
 			return err
 		}
-
 		logger.Debug("SealConfirm send status message", "address", reqSeal.GetAddress(), "status", m.GetCode().String())
 		time.Sleep(1 * time.Second)
 	}

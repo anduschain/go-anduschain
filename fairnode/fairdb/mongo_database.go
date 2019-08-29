@@ -389,7 +389,9 @@ func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	b := new(fntype.RawBlock)
 	err := m.blockChainRaw.FindId(blockHash.String()).One(b)
 	if err != nil {
-		logger.Error("Get block", "database", "mongo", "msg", err)
+		if err != mgo.ErrNotFound {
+			logger.Error("Get block", "database", "mongo", "msg", err)
+		}
 		return nil
 	}
 
