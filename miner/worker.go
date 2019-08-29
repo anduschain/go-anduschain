@@ -324,7 +324,6 @@ func (w *worker) leagueStatusLoop() {
 					if voters, ok := payload[0].(types.Voters); ok {
 						w.voteResultCh <- voters
 					}
-
 					if submitBlockCh, ok := payload[1].(chan *types.Block); ok {
 						w.submitBlockCh = submitBlockCh
 					}
@@ -355,10 +354,12 @@ func (w *worker) clientStatusLoop() {
 		select {
 		case <-w.fnClientCloseCh:
 			log.Warn("deb client was close")
-			w.stop()
+			w.debClient.Stop()
 			time.AfterFunc(10*time.Second, func() {
-				log.Info("Retry Mining")
-				w.start()
+				if w.isRunning() {
+					log.Info("Retry Mining")
+					w.debStart()
+				}
 			})
 		case <-w.fnClientCLoseSub.Err():
 			return
@@ -413,18 +414,22 @@ func (w *worker) pendingBlock() *types.Block {
 	return w.snapshotBlock
 }
 
-// start sets the running status as 1 and triggers new work submitting.
-func (w *worker) start() {
-	if w.isRunning() {
-		return
-	}
+func (w *worker) debStart() {
 	if err := w.debClient.Start(w.eth); err == nil {
-		atomic.StoreInt32(&w.running, 1)
 		w.startCh <- struct{}{}
 	} else {
 		log.Error("deb client start", "msg", err)
 		return
 	}
+}
+
+// start sets the running status as 1 and triggers new work submitting.
+func (w *worker) start() {
+	if w.isRunning() {
+		return
+	}
+	atomic.StoreInt32(&w.running, 1)
+	w.debStart()
 }
 
 // stop sets the running status as 0.

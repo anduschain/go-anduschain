@@ -183,25 +183,20 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			log.Error("ProcessController stream receive", "msg", err)
 			return
 		}
-
 		hash := rlpHash([]interface{}{
 			in.Code,
 			in.CurrentBlockNum,
 		})
-
 		if err := verify.ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
 			log.Error("VerifySignature", "msg", err)
 			return
 		}
-
 		log.Debug("Receive fairnode signal", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
-
-		if stCode == in.GetCode() {
+		if stCode != in.GetCode() {
+			stCode = in.GetCode()
+		} else {
 			continue
 		}
-
-		stCode = in.GetCode()
-
 		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
@@ -217,39 +212,32 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				// make join transaction
 				state := dc.backend.TxPool().State()
 				coinbase := dc.miner.Miner.Address
-
 				// balance check
 				epoch := new(big.Float).SetUint64(otprn.Data.Epoch)                  // block count which league will be made
 				fee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)           // join transaction fee
 				price := new(big.Float).Mul(big.NewFloat(params.Daon), fee)          // join transaction price ( fee * 10e18) - unit : daon
 				limitBalance := math.FloatToBigInt(new(big.Float).Mul(price, epoch)) // minimum balance for participate in league.
 				balance := state.GetBalance(coinbase)                                // current balance
-
 				if balance.Cmp(limitBalance) < 0 {
 					log.Error("not enough balance", "limit", fmt.Sprintf("%s Wie", limitBalance.String()), "balance", fmt.Sprintf("%s Wie", balance.String()))
 					return
 				}
-
 				nonce := state.GetNonce(coinbase)
 				jnonce := state.GetJoinNonce(coinbase)
-
 				bOtrpn, err := otprn.EncodeOtprn()
 				if err != nil {
 					log.Error("otprn encode err", "msg", err)
 					return
 				}
-
 				sTx, err := dc.wallet.SignTx(dc.miner.Miner, types.NewJoinTransaction(nonce, jnonce, bOtrpn, dc.miner.Miner.Address), dc.config.ChainID)
 				if err != nil {
 					log.Error("signature join transaction", "msg", err)
 					return
 				}
-
 				if err := dc.backend.TxPool().AddLocal(sTx); err != nil {
 					log.Error("join transaction add local", "msg", err)
 					return
 				}
-
 				log.Info("made join transaction", "hash", sTx.Hash())
 			} else {
 				log.Error("fail made join transaction", "fnBlockNum", fnBlockNum.String(), "current", current.String())
