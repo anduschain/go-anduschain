@@ -511,41 +511,30 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 }
 
 func (dc *DebClient) sendBlock(block types.Block) error {
-	fmt.Println("=============SEND_BLOCK_START==============")
+	defer log.Info("Send Block To Fairnode", "hash", block.Hash())
 	var buf bytes.Buffer
 	err := block.EncodeRLP(&buf)
 	if err != nil {
 		return err
 	}
-
 	msg := proto.ReqBlock{
 		Block:   buf.Bytes(),
 		Address: dc.miner.Node.MinerAddress,
 	}
-
 	hash := rlpHash([]interface{}{
 		msg.GetBlock(),
 		msg.GetAddress(),
 	})
-
-	fmt.Println("=============SEND_BLOCK_ENCODE==============")
-
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
-		log.Error("send block signature", "msg", err)
+		log.Error("Send block signature", "msg", err)
 		return err
 	}
-
 	msg.Sign = sign
-
-	fmt.Println("=============SEND_BLOCK_SIGN==============")
-
 	_, err = dc.rpc.SendBlock(dc.ctx, &msg)
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("=============SEND_BLOCK_END==============")
 	return nil
 }
 

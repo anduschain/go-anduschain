@@ -401,11 +401,11 @@ func (fn *Fairnode) processManageLoop() {
 						voteHash := types.Voters(voters).Hash()                   // voter hash
 						l.BlockHash = &finalBlockHash
 						l.Votehash = &voteHash
-						time.Sleep(2 * time.Second)
+						time.Sleep(1 * time.Second)
 						l.Status = types.SEND_BLOCK
 					}
 				case types.SEND_BLOCK:
-					time.Sleep(5 * time.Second)
+					time.Sleep(7 * time.Second)
 					if l.BlockHash == nil {
 						logger.Error("Send block wait, timeout")
 						l.Status = types.REJECT
@@ -413,7 +413,7 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.REQ_FAIRNODE_SIGN
 					}
 				case types.REQ_FAIRNODE_SIGN:
-					time.Sleep(5 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
 					if block := fn.db.CurrentBlock(); block != nil {
