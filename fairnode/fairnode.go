@@ -411,6 +411,7 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.REJECT
 					} else {
 						if block := fn.db.GetBlock(hash); block != nil {
+							logger.Info("Send Block Complate", "hash", block.Hash())
 							l.Status = types.REQ_FAIRNODE_SIGN
 						} else {
 							logger.Warn("Wait Send Block", "hash", hash.String())

@@ -411,84 +411,60 @@ func (dc *DebClient) requestVoteResult(otprn types.Otprn) types.Voters {
 
 func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 	defer log.Warn("reqSealConfirm was dead", "otprn", otprn.HashOtprn().String())
-
 	msg := proto.ReqConfirmSeal{
 		OtprnHash: otprn.HashOtprn().Bytes(),
 		Address:   dc.miner.Node.MinerAddress,
 		BlockHash: block.Hash().Bytes(),
 		VoteHash:  block.VoterHash().Bytes(),
 	}
-
 	hash := rlpHash([]interface{}{
 		msg.GetOtprnHash(),
 		msg.GetBlockHash(),
 		msg.GetVoteHash(),
 		msg.GetAddress(),
 	})
-
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
 		log.Error("request SealConfirm info signature", "msg", err)
 		return
 	}
-
 	msg.Sign = sign
 	stream, err := dc.rpc.SealConfirm(dc.ctx, &msg)
 	if err != nil {
 		log.Error("request SealConfirm", "msg", err)
 		return
 	}
-
 	defer stream.CloseSend()
-
-	var (
-		stCode      proto.ProcessStatus
-		isBlockSend = false
-		reqFnSign   = false
-	)
-
+	var stCode proto.ProcessStatus
 	for {
 		in, err := stream.Recv()
 		if err != nil {
 			log.Error("Request SealConfirm stream receive", "msg", err)
 			return
 		}
-
 		hash := rlpHash([]interface{}{
 			in.Code,
 		})
-
 		if err := verify.ValidationSignHash(in.GetSign(), hash, dc.FnAddress()); err != nil {
 			log.Error("VerifySignature", "msg", err)
 			return
 		}
-
 		log.Debug("Request SealConfirm Status", "hash", otprn.HashOtprn(), "stream", in.GetCode().String())
 		if stCode != in.GetCode() {
 			stCode = in.GetCode()
+		} else {
+			continue
 		}
 		switch stCode {
 		case proto.ProcessStatus_SEND_BLOCK:
 			// submitting to fairnode
-			if isBlockSend {
-				continue
-			}
-			if err := dc.sendBlock(block); err != nil {
-				log.Error("Send Winning Block to fairnode", "msg", err)
-				return
-			} else {
-				isBlockSend = true
-			}
+			go dc.sendBlock(block)
 		case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
-			if reqFnSign {
-				continue
-			}
 			fnSign := dc.requestFairnodeSign(otprn, block)
 			if fnSign == nil {
 				time.Sleep(200 * time.Millisecond)
 				continue
 			} else {
-				reqFnSign = true
 				dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
 				return
 			}
@@ -498,12 +474,12 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 	}
 }
 
-func (dc *DebClient) sendBlock(block types.Block) error {
+func (dc *DebClient) sendBlock(block types.Block) {
 	defer log.Info("Send Block To Fairnode", "hash", block.Hash())
 	var buf bytes.Buffer
 	err := block.EncodeRLP(&buf)
 	if err != nil {
-		return err
+		log.Error("Send block EncodeRLP", "msg", err)
 	}
 	msg := proto.ReqBlock{
 		Block:   buf.Bytes(),
@@ -516,50 +492,41 @@ func (dc *DebClient) sendBlock(block types.Block) error {
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
 		log.Error("Send block signature", "msg", err)
-		return err
 	}
 	msg.Sign = sign
 	_, err = dc.rpc.SendBlock(dc.ctx, &msg)
 	if err != nil {
-		return err
+		log.Error("Send block, rpc send", "msg", err)
 	}
-	return nil
 }
 
 func (dc *DebClient) requestFairnodeSign(otprn types.Otprn, block types.Block) []byte {
-
 	msg := proto.ReqFairnodeSign{
 		OtprnHash: otprn.HashOtprn().Bytes(),
 		Address:   dc.miner.Node.MinerAddress,
 		BlockHash: block.Hash().Bytes(),
 		VoteHash:  block.VoterHash().Bytes(),
 	}
-
 	hash := rlpHash([]interface{}{
 		msg.GetOtprnHash(),
 		msg.GetBlockHash(),
 		msg.GetVoteHash(),
 		msg.GetAddress(),
 	})
-
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
 		log.Error("Request Fairnode signature info signature", "msg", err)
 		return nil
 	}
-
 	msg.Sign = sign
-
 	res, err := dc.rpc.RequestFairnodeSign(dc.ctx, &msg)
 	if err != nil {
 		log.Error("Request Fairnode signature", "msg", err)
 		return nil
 	}
-
 	hash = rlpHash([]interface{}{
 		res.GetSignature(),
 	})
-
 	if err := verify.ValidationSignHash(res.GetSign(), hash, dc.FnAddress()); err != nil {
 		log.Error("VerifySignature", "msg", err)
 		return nil

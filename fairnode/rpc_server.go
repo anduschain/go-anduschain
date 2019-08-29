@@ -600,71 +600,58 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	if req.GetAddress() == "" {
 		return nil, errorEmpty("address")
 	}
-
 	if bytes.Compare(req.GetBlock(), emptyByte) == 0 {
 		return nil, errorEmpty("block")
 	}
-
 	if bytes.Compare(req.GetSign(), emptyByte) == 0 {
 		return nil, errorEmpty("sign")
 	}
-
 	hash := rlpHash([]interface{}{
 		req.GetBlock(),
 		req.GetAddress(),
 	})
-
 	addr := common.HexToAddress(req.GetAddress())
 	err := verify.ValidationSignHash(req.GetSign(), hash, addr)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
-
 	block := new(types.Block)
 	stream := rlp.NewStream(bytes.NewReader(req.GetBlock()), 0)
 	if err := block.DecodeRLP(stream); err != nil {
 		logger.Error("decode block", "msg", err)
 		return nil, err
 	}
-
 	otprn, err := types.DecodeOtprn(block.Otprn())
 	if err != nil {
 		logger.Error("decode otprn", "msg", err)
 		return nil, err
 	}
-
 	var clg *league // current league
 	if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
 		clg = league
 	} else {
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", otprn.HashOtprn().String()))
 	}
-
 	if clg == nil {
 		return nil, errors.New("Current Leageu is nil")
 	}
-
-	if *clg.BlockHash != block.Hash() {
-		return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), block.Hash().String()))
-
-	}
-
-	if *clg.Votehash != block.VoterHash() {
-		return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), block.VoterHash().String()))
-	}
-
-	if clg.Status == types.REQ_FAIRNODE_SIGN {
+	if clg.Status == types.SEND_BLOCK {
+		if *clg.BlockHash != block.Hash() {
+			return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), block.Hash().String()))
+		}
+		if *clg.Votehash != block.VoterHash() {
+			return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), block.VoterHash().String()))
+		}
+		err = rs.db.SaveFinalBlock(block, req.GetBlock())
+		if err != nil {
+			logger.Error("Save Final block", "msg", err)
+			return nil, err
+		}
+		logger.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
+		return &empty.Empty{}, nil
+	} else {
 		return &empty.Empty{}, nil
 	}
-
-	err = rs.db.SaveFinalBlock(block, req.GetBlock())
-	if err != nil {
-		logger.Error("Save Final block", "msg", err)
-		return nil, err
-	}
-
-	logger.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
-	return &empty.Empty{}, nil
 }
 
 func (rs *rpcServer) RequestFairnodeSign(ctx context.Context, reqInfo *proto.ReqFairnodeSign) (*proto.ResFairnodeSign, error) {
