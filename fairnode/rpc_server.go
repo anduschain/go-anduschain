@@ -532,7 +532,7 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 	addr := common.HexToAddress(reqSeal.GetAddress())
 	err := verify.ValidationSignHash(reqSeal.GetSign(), hash, addr)
 	if err != nil {
-		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+		return errors.New(fmt.Sprintf("Sign validation failed msg=%s", err.Error()))
 	}
 
 	otprnHash := common.BytesToHash(reqSeal.GetOtprnHash())
@@ -540,22 +540,22 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 	if league, ok := rs.leagues[otprnHash]; ok {
 		clg = league
 	} else {
-		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", reqSeal.GetOtprnHash()))
+		return errors.New(fmt.Sprintf("This otprn is not matched in league hash=%s", reqSeal.GetOtprnHash()))
 	}
 
 	if clg.Votehash == nil || clg.BlockHash == nil {
-		return errors.New("current league votehash or blockhash is nil")
+		return errors.New("Current League votehash or blockhash is nil")
 	}
 
 	voteHash := common.BytesToHash(reqSeal.GetVoteHash())
 	blockHash := common.BytesToHash(reqSeal.GetBlockHash())
 
 	if *clg.Votehash != voteHash {
-		return errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), voteHash.String()))
+		return errors.New(fmt.Sprintf("Not match current vote hash=%s, req hash=%s", clg.Votehash.String(), voteHash.String()))
 	}
 
 	if *clg.BlockHash != blockHash {
-		return errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), blockHash.String()))
+		return errors.New(fmt.Sprintf("Not match current block hash=%s, req hash=%s", clg.BlockHash.String(), blockHash.String()))
 	}
 
 	makeMsg := func(l *league) *proto.ResConfirmSeal {

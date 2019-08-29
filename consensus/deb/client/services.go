@@ -453,8 +453,11 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 
 	defer stream.CloseSend()
 
-	var stCode proto.ProcessStatus
-	isBlockSend := false
+	var (
+		stCode      proto.ProcessStatus
+		isBlockSend = false
+		reqFnSign   = false
+	)
 
 	for {
 		in, err := stream.Recv()
@@ -489,10 +492,15 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 				isBlockSend = true
 			}
 		case proto.ProcessStatus_REQ_FAIRNODE_SIGN:
+			if reqFnSign {
+				continue
+			}
 			fnSign := dc.requestFairnodeSign(otprn, block)
 			if fnSign == nil {
+				time.Sleep(200 * time.Millisecond)
 				continue
 			} else {
+				reqFnSign = true
 				dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.REQ_FAIRNODE_SIGN, Payload: fnSign})
 				return
 			}
@@ -503,7 +511,7 @@ func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
 }
 
 func (dc *DebClient) sendBlock(block types.Block) error {
-
+	fmt.Println("=============SEND_BLOCK_START==============")
 	var buf bytes.Buffer
 	err := block.EncodeRLP(&buf)
 	if err != nil {
@@ -520,6 +528,8 @@ func (dc *DebClient) sendBlock(block types.Block) error {
 		msg.GetAddress(),
 	})
 
+	fmt.Println("=============SEND_BLOCK_ENCODE==============")
+
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
 		log.Error("send block signature", "msg", err)
@@ -528,11 +538,14 @@ func (dc *DebClient) sendBlock(block types.Block) error {
 
 	msg.Sign = sign
 
+	fmt.Println("=============SEND_BLOCK_SIGN==============")
+
 	_, err = dc.rpc.SendBlock(dc.ctx, &msg)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("=============SEND_BLOCK_END==============")
 	return nil
 }
 

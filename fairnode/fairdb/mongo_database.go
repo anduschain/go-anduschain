@@ -139,7 +139,7 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	}
 
 	conf := new(fntype.Config)
-	err := m.chainConfig.Find(bson.M{}).Sort("-timestamp").One(&conf)
+	err := m.chainConfig.Find(bson.M{}).Sort("-timestamp").One(conf)
 	if err != nil {
 		logger.Error("Get chain conifg", "msg", err)
 		return nil
@@ -177,7 +177,7 @@ func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
 
 func (m *MongoDatabase) CurrentInfo() *types.CurrentInfo {
 	b := new(fntype.BlockHeader)
-	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
+	err := m.blockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(b)
 	if err != nil {
 		logger.Error("Get current info", "database", "mongo", "msg", err)
 		return nil
@@ -190,7 +190,7 @@ func (m *MongoDatabase) CurrentInfo() *types.CurrentInfo {
 
 func (m *MongoDatabase) CurrentBlock() *types.Block {
 	b := new(fntype.Block)
-	err := m.blockChain.Find(bson.M{}).Sort("-header.number").One(b)
+	err := m.blockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(b)
 	if err != nil {
 		if mgo.ErrNotFound != err {
 			logger.Error("Get current block", "database", "mongo", "msg", err)
@@ -201,7 +201,7 @@ func (m *MongoDatabase) CurrentBlock() *types.Block {
 }
 
 func (m *MongoDatabase) CurrentOtprn() *types.Otprn {
-	otprn, err := RecvOtprn(m.otprnList.Find(bson.M{}).Sort("-timestamp"))
+	otprn, err := RecvOtprn(m.otprnList.Find(bson.M{}).Sort("-timestamp").Limit(1))
 	if err != nil {
 		logger.Error("Get otprn", "database", "mongo", "msg", err)
 		return nil
