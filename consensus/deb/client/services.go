@@ -480,6 +480,7 @@ func (dc *DebClient) sendBlock(block types.Block) {
 	err := block.EncodeRLP(&buf)
 	if err != nil {
 		log.Error("Send block EncodeRLP", "msg", err)
+		return
 	}
 	msg := proto.ReqBlock{
 		Block:   buf.Bytes(),
@@ -492,11 +493,13 @@ func (dc *DebClient) sendBlock(block types.Block) {
 	sign, err := dc.wallet.SignHash(dc.miner.Miner, hash.Bytes())
 	if err != nil {
 		log.Error("Send block signature", "msg", err)
+		return
 	}
 	msg.Sign = sign
 	_, err = dc.rpc.SendBlock(dc.ctx, &msg)
 	if err != nil {
 		log.Error("Send block, rpc send", "msg", err)
+		return
 	}
 }
 

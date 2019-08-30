@@ -22,9 +22,10 @@ import (
 // crypto.HexToECDSA("09bfa4fac90f9daade1722027f6350518c0c2a69728793f8753b2d166ada1a9c") - for test private key
 // 0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD - for test addresss
 const (
-	CLEAN_OLD_NODE_TERM    = 3 // per min
-	CHECK_ACTIVE_NODE_TERM = 3 // per sec
-	MIN_LEAGUE_NUM         = 3 // minimum node count
+	CLEAN_OLD_NODE_TERM    = 3      // per min
+	CHECK_ACTIVE_NODE_TERM = 3      // per sec
+	MIN_LEAGUE_NUM         = 3      // minimum node count
+	SEND_BLOCK_TIME_OUT    = 10 * 5 // 200ms * 10 * 5 -> max : 10sec
 )
 
 type league struct {
@@ -354,7 +355,10 @@ func (fn *Fairnode) processManageLoopFollower() {
 // when fairnode leader
 func (fn *Fairnode) processManageLoop() {
 	t := time.NewTicker(500 * time.Millisecond)
-	var status types.FnStatus
+	var (
+		status           types.FnStatus
+		sendBlockAttampt = 0
+	)
 	for {
 		select {
 		case <-t.C:
@@ -414,11 +418,18 @@ func (fn *Fairnode) processManageLoop() {
 							logger.Info("Send Block Complate", "hash", block.Hash())
 							l.Status = types.REQ_FAIRNODE_SIGN
 						} else {
-							logger.Warn("Wait Send Block", "hash", hash.String())
-							time.Sleep(200 * time.Millisecond)
-							continue
+							sendBlockAttampt++
+							logger.Warn("Wait Send Block", "hash", hash.String(), "attampt", sendBlockAttampt)
+							if sendBlockAttampt > SEND_BLOCK_TIME_OUT {
+								logger.Error("Send block wait, timeout")
+								l.Status = types.REJECT
+							} else {
+								time.Sleep(200 * time.Millisecond)
+								continue
+							}
 						}
 					}
+					sendBlockAttampt = 0
 				case types.REQ_FAIRNODE_SIGN:
 					time.Sleep(3 * time.Second)
 					l.Status = types.FINALIZE

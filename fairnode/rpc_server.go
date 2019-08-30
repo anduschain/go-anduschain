@@ -632,10 +632,7 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	} else {
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", otprn.HashOtprn().String()))
 	}
-	if clg == nil {
-		return nil, errors.New("Current Leageu is nil")
-	}
-	if clg.Status == types.SEND_BLOCK {
+	if clg != nil && clg.Status == types.SEND_BLOCK {
 		if *clg.BlockHash != block.Hash() {
 			return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), block.Hash().String()))
 		}
@@ -650,7 +647,7 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 		logger.Info("Save Final Block Success", "hash", reduceStr(block.Hash().String()))
 		return &empty.Empty{}, nil
 	} else {
-		return &empty.Empty{}, nil
+		return nil, errors.New(fmt.Sprintf("Block Send Timeout status=%s", clg.Status.String()))
 	}
 }
 
