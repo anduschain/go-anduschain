@@ -36,7 +36,7 @@ $ godaon --testnet console
 ## Issue report
 You will report the issue, using geth. It will connect github issue site. 
 ```
-$ geth bug
+$ godaon bug
 ```
 
 ## License
