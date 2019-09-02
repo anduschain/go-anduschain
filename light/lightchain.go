@@ -332,12 +332,12 @@ func (self *LightChain) Rollback(chain []common.Hash) {
 func (self *LightChain) postChainEvents(events []interface{}) {
 	for _, event := range events {
 		switch ev := event.(type) {
-		case core.ChainEvent:
+		case types.ChainEvent:
 			if self.CurrentHeader().Hash() == ev.Hash {
-				self.chainHeadFeed.Send(core.ChainHeadEvent{Block: ev.Block})
+				self.chainHeadFeed.Send(types.ChainHeadEvent{Block: ev.Block})
 			}
 			self.chainFeed.Send(ev)
-		case core.ChainSideEvent:
+		case types.ChainSideEvent:
 			self.chainSideFeed.Send(ev)
 		}
 	}
@@ -380,11 +380,11 @@ func (self *LightChain) InsertHeaderChain(chain []*types.Header, checkFreq int) 
 		switch status {
 		case core.CanonStatTy:
 			log.Debug("Inserted new header", "number", header.Number, "hash", header.Hash())
-			events = append(events, core.ChainEvent{Block: types.NewBlockWithHeader(header), Hash: header.Hash()})
+			events = append(events, types.ChainEvent{Block: types.NewBlockWithHeader(header), Hash: header.Hash()})
 
 		case core.SideStatTy:
 			log.Debug("Inserted forked header", "number", header.Number, "hash", header.Hash())
-			events = append(events, core.ChainSideEvent{Block: types.NewBlockWithHeader(header)})
+			events = append(events, types.ChainSideEvent{Block: types.NewBlockWithHeader(header)})
 		}
 		return err
 	}
@@ -475,9 +475,9 @@ func (self *LightChain) SyncCht(ctx context.Context) bool {
 	sections, _, _ := self.odr.ChtIndexer().Sections()
 
 	latest := sections*self.indexerConfig.ChtSize - 1
-	if clique := self.hc.Config().Clique; clique != nil {
-		latest -= latest % clique.Epoch // epoch snapshot for clique
-	}
+	//if clique := self.hc.Config().Clique; clique != nil {
+	//	latest -= latest % clique.Epoch // epoch snapshot for clique
+	//}
 	if head >= latest {
 		return false
 	}
@@ -508,17 +508,17 @@ func (self *LightChain) UnlockChain() {
 }
 
 // SubscribeChainEvent registers a subscription of ChainEvent.
-func (self *LightChain) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
+func (self *LightChain) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return self.scope.Track(self.chainFeed.Subscribe(ch))
 }
 
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
-func (self *LightChain) SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription {
+func (self *LightChain) SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription {
 	return self.scope.Track(self.chainHeadFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
-func (self *LightChain) SubscribeChainSideEvent(ch chan<- core.ChainSideEvent) event.Subscription {
+func (self *LightChain) SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription {
 	return self.scope.Track(self.chainSideFeed.Subscribe(ch))
 }
 
@@ -530,6 +530,6 @@ func (self *LightChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 
 // SubscribeRemovedLogsEvent implements the interface of filters.Backend
 // LightChain does not send core.RemovedLogsEvent, so return an empty subscription.
-func (self *LightChain) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
+func (self *LightChain) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return self.scope.Track(new(event.Feed).Subscribe(ch))
 }

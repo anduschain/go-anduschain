@@ -46,19 +46,20 @@ func (p *headerPack) Stats() string  { return fmt.Sprintf("%d", len(p.headers)) 
 type bodyPack struct {
 	peerID       string
 	transactions [][]*types.Transaction
-	uncles       [][]*types.Header
-	fairnodesig  [][]byte
-	voter        [][]types.Voter
+	voters       [][]*types.Voter
 }
 
 func (p *bodyPack) PeerId() string { return p.peerID }
 func (p *bodyPack) Items() int {
-	if len(p.transactions) <= len(p.uncles) {
-		return len(p.transactions)
-	}
-	return len(p.uncles)
+	//if len(p.genTransactions) <= len(p.uncles) {
+	//	return len(p.transactions)
+	//}
+	//return len(p.uncles)
+	return len(p.transactions)
 }
-func (p *bodyPack) Stats() string { return fmt.Sprintf("%d:%d", len(p.transactions), len(p.uncles)) }
+func (p *bodyPack) Stats() string {
+	return fmt.Sprintf("%d:%d", len(p.transactions), len(p.voters))
+}
 
 // receiptPack is a batch of receipts returned by a peer.
 type receiptPack struct {
@@ -68,7 +69,9 @@ type receiptPack struct {
 
 func (p *receiptPack) PeerId() string { return p.peerID }
 func (p *receiptPack) Items() int     { return len(p.receipts) }
-func (p *receiptPack) Stats() string  { return fmt.Sprintf("%d", len(p.receipts)) }
+func (p *receiptPack) Stats() string {
+	return fmt.Sprintf("%d", len(p.receipts))
+}
 
 // statePack is a batch of states returned by a peer.
 type statePack struct {

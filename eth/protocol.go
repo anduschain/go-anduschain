@@ -22,7 +22,6 @@ import (
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -56,8 +55,8 @@ const (
 	GetBlockBodiesMsg  = 0x05
 	BlockBodiesMsg     = 0x06
 	NewBlockMsg        = 0x07
-	// TODO : andus >> 위닝 블록 관련 package Number msg 추가
 	MakeLeagueBlockMsg = 0x08
+
 	// Protocol messages belonging to eth/63
 	GetNodeDataMsg = 0x0d
 	NodeDataMsg    = 0x0e
@@ -102,11 +101,11 @@ type txPool interface {
 
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
-	Pending() (map[common.Address]types.Transactions, error)
+	Pending() (map[common.Address]types.Transactions, map[common.Address]types.Transactions, error)
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
-	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
+	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
 }
 
 // statusData is the network packet for the status message.
@@ -176,12 +175,11 @@ type newBlockData struct {
 
 // blockBody represents the data content of a single block.
 type blockBody struct {
-	//TODO : andus >> 추가
-	FairNodeSig  []byte
-	Voter        []types.Voter
 	Transactions []*types.Transaction // Transactions contained within a block
-	Uncles       []*types.Header      // Uncles contained within a block
+	Voters       []*types.Voter
 }
 
 // blockBodiesData is the network packet for block content distribution.
+//type blockBodiesData []*blockBody
+
 type blockBodiesData []*blockBody

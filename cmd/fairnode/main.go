@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/server"
-	"github.com/anduschain/go-anduschain/fairnode/server/config"
+	"github.com/anduschain/go-anduschain/fairnode"
+	"github.com/anduschain/go-anduschain/params"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -14,17 +14,19 @@ import (
 	"syscall"
 )
 
-var app *cli.App
-var keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
+var (
+	app     *cli.App
+	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
+	logger  = log.New("fairnode", "cmd")
+)
 
 func init() {
 	var w sync.WaitGroup
 
-	// TODO : andus >> cli 프로그램에서 환경변수 및 운영변수를 세팅 할 수 있도록 구성...
 	app = cli.NewApp()
 	app.Name = "fairnode"
 	app.Usage = "Fairnode for AndUsChain networks"
-	app.Version = config.DefaultConfig.Version
+	app.Version = fairnode.DefaultConfig.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "dbhost",
@@ -52,14 +54,22 @@ func init() {
 			Usage: "default port 60002",
 		},
 		cli.StringFlag{
+			Name:  "subport",
+			Value: "60100",
+			Usage: "default port 60100",
+		},
+		cli.StringFlag{
 			Name:  "keypath",
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
 		},
-		cli.StringFlag{
-			Name:  "nat",
-			Value: "none",
-			Usage: "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
+		cli.BoolFlag{
+			Name:  "mainnet",
+			Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
+		},
+		cli.BoolFlag{
+			Name:  "testnet",
+			Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
 		},
 		cli.Uint64Flag{
 			Name:  "chainID",
@@ -71,8 +81,8 @@ func init() {
 			Usage: "default is false, if true, you will see logs in terminal",
 		},
 		cli.BoolFlag{
-			Name:  "syslog",
-			Usage: "default is false, if true, saving to system log",
+			Name:  "memorydb",
+			Usage: "default is false, if true, running memorydb fairnode",
 		},
 	}
 
@@ -90,47 +100,97 @@ func init() {
 				},
 			},
 		},
+		{
+			Name:      "addChainConfig",
+			Usage:     "add chain config",
+			ArgsUsage: "[ <keyfile> ]",
+			Action:    addChainConfig,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "memorydb",
+					Usage: "for testing memorydb",
+				},
+				cli.StringFlag{
+					Name:  "keypath",
+					Value: os.Getenv("HOME") + "/.fairnode/key",
+					Usage: "file containing a raw private key to encrypt",
+				},
+				cli.StringFlag{
+					Name:  "dbhost",
+					Value: "localhost",
+					Usage: "default dbpath localhost",
+				},
+				cli.StringFlag{
+					Name:  "dbport",
+					Value: "27017",
+					Usage: "default dbport 27017",
+				},
+				cli.StringFlag{
+					Name:  "dbuser",
+					Value: "",
+					Usage: "default user is nil",
+				},
+				cli.StringFlag{
+					Name:  "dbCertPath",
+					Value: "",
+					Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
+				},
+				cli.BoolFlag{
+					Name:  "mainnet",
+					Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
+				},
+				cli.BoolFlag{
+					Name:  "testnet",
+					Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
+				},
+				cli.Uint64Flag{
+					Name:  "chainID",
+					Value: 3355,
+					Usage: "default chainid is 3355",
+				},
+			},
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
+		var dbpass string
 
-		fmt.Println("패어노드 서명키 암호를 입력해 주세요")
+		fmt.Println("Input fairnode keystore password")
 		keypass := promptPassphrase(false)
 
-		fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
-		dbpass := promptPassphrase(false)
+		if !c.GlobalBool("fake") {
+			fmt.Println("Input fairnode database password")
+			dbpass = promptPassphrase(false)
+		}
 
 		// Config Setting
-		config.SetFairConfig(c, keypass, dbpass)
+		fairnode.SetFairConfig(c, keypass, dbpass)
 
-		fn, err := server.New()
+		fn, err := fairnode.NewFairnode()
 		if err != nil {
-			log.Error("Fairnode running", "error", err)
+			logger.Error("new fairnode", "msg", err)
 			return err
 		}
 
-		if err := fn.Start(); err == nil {
-			log.Info("퍠어노드 정상적으로 시작됨")
-		} else {
-			log.Error("퍠어노드 시작 에러", "error", err)
+		if err := fn.Start(); err != nil {
+			logger.Error("failed starting fairnode", "msg", err)
 			w.Done()
 			return err
 		}
 
 		defer fn.Stop()
 
-		w.Wait()
-
 		go func() {
 			sigc := make(chan os.Signal, 1)
-			//signal.Ignore(syscall.SIGTERM)
-			signal.Notify(sigc, syscall.SIGHUP)
+			signal.Notify(sigc, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 			defer signal.Stop(sigc)
 			<-sigc
-			log.Warn("Got sigterm, shutting fairnode down...")
+			logger.Warn("Got sigterm, shutting fairnode down...")
 			w.Done()
 		}()
+
+		w.Wait()
 
 		return nil
 	}
@@ -140,7 +200,8 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
-		log.Error("App Run", "error", os.Stderr, "error", err)
+		logger.Error("App Run error", "msg", err.Error())
 		os.Exit(1)
 	}
+
 }

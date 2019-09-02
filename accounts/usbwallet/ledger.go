@@ -25,15 +25,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
+	"math/big"
 )
 
 // ledgerOpcode is an enumeration encoding the supported Ledger opcodes.
@@ -356,7 +355,7 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx *types.Transaction
 	if err != nil {
 		return common.Address{}, nil, err
 	}
-	sender, err := types.Sender(signer, signed)
+	sender, err := signed.Sender(signer)
 	if err != nil {
 		return common.Address{}, nil, err
 	}

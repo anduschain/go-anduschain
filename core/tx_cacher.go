@@ -62,7 +62,7 @@ func newTxSenderCacher(threads int) *txSenderCacher {
 func (cacher *txSenderCacher) cache() {
 	for task := range cacher.tasks {
 		for i := 0; i < len(task.txs); i += task.inc {
-			types.Sender(task.signer, task.txs[i])
+			task.txs[i].Sender(task.signer)
 		}
 	}
 }
@@ -95,7 +95,7 @@ func (cacher *txSenderCacher) recover(signer types.Signer, txs []*types.Transact
 func (cacher *txSenderCacher) recoverFromBlocks(signer types.Signer, blocks []*types.Block) {
 	count := 0
 	for _, block := range blocks {
-		count += len(block.Transactions())
+		count += block.Transactions().Len()
 	}
 	txs := make([]*types.Transaction, 0, count)
 	for _, block := range blocks {

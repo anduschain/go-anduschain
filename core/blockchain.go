@@ -20,13 +20,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"io"
-	"math/big"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/mclock"
 	"github.com/anduschain/go-anduschain/common/prque"
@@ -44,6 +37,12 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/trie"
 	"github.com/hashicorp/golang-lru"
+	"io"
+	"math/big"
+	mrand "math/rand"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 var (
@@ -170,6 +169,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if err != nil {
 		return nil, err
 	}
+
 	bc.genesisBlock = bc.GetBlockByNumber(0)
 	if bc.genesisBlock == nil {
 		return nil, ErrNoGenesis
@@ -627,17 +627,6 @@ func (bc *BlockChain) GetBlocksFromHash(hash common.Hash, n int) (blocks []*type
 	return
 }
 
-// GetUnclesInChain retrieves all the uncles from a given block backwards until
-// a specific distance is reached.
-func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.Header {
-	uncles := []*types.Header{}
-	for i := 0; block != nil && i < length; i++ {
-		uncles = append(uncles, block.Uncles()...)
-		block = bc.GetBlock(block.ParentHash(), block.NumberU64()-1)
-	}
-	return uncles
-}
-
 // TrieNode retrieves a blob of data associated with a trie node (or code hash)
 // either from ephemeral in-memory cache, or from persistent storage.
 func (bc *BlockChain) TrieNode(hash common.Hash) ([]byte, error) {
@@ -742,7 +731,7 @@ func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts ty
 	signer := types.MakeSigner(config, block.Number())
 
 	transactions, logIndex := block.Transactions(), uint(0)
-	if len(transactions) != len(receipts) {
+	if transactions.Len() != len(receipts) {
 		return errors.New("transaction and receipt count mismatch")
 	}
 
@@ -753,7 +742,7 @@ func SetReceiptsData(config *params.ChainConfig, block *types.Block, receipts ty
 		// The contract address can be derived from the transaction itself
 		if transactions[j].To() == nil {
 			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := types.Sender(signer, transactions[j])
+			from, _ := transactions[j].Sender(signer)
 			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
 		}
 		// The used gas can be calculated based on previous receipts
@@ -799,6 +788,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 	)
 	for i, block := range blockChain {
 		receipts := receiptChain[i]
+
 		// Short circuit insertion if shutting down or processing failed
 		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 			return 0, nil
@@ -816,6 +806,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 		if err := SetReceiptsData(bc.chainConfig, block, receipts); err != nil {
 			return i, fmt.Errorf("failed to set receipts data: %v", err)
 		}
+
 		// Write all the data out into the database
 		rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
 		rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receipts)
@@ -882,14 +873,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
-	// AndusChain, Check Fairnode signature
-	if deb, ok := bc.engine.(*deb.Deb); ok {
-		err, _ := deb.FairNodeSigCheck(block, block.FairNodeSig)
-		if err != nil {
-			return NonStatTy, err
-		}
-	}
-
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -903,12 +886,13 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	log.Debug("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String())
+	log.Trace("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String()) // TODO(hakuna) : before release level to debug
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {
 		return NonStatTy, err
 	}
+
 	rawdb.WriteBlock(bc.db, block)
 
 	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
@@ -971,28 +955,28 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-	//reorg := externTd.Cmp(localTd) > 0
-	//currentBlock = bc.CurrentBlock()
-	//if !reorg && externTd.Cmp(localTd) == 0 {
-	//	// Split same-difficulty blocks by number, then at random
-	//	//reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64() && mrand.Float64() < 0.5)
-	//	reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64())
-	//}
+	reorg := externTd.Cmp(localTd) > 0
 
-	reorg := true
+	currentBlock = bc.CurrentBlock()
+	if !reorg && externTd.Cmp(localTd) == 0 {
+		// Split same-difficulty blocks by number, then at random
+		reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64() && mrand.Float64() < 0.5)
+	}
 
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != currentBlock.Hash() {
-			if err := bc.reorg(currentBlock, block); err != nil {
-				return NonStatTy, err
-			}
-		}
-		// Write the positional metadata for transaction/receipt lookups and preimages
-		rawdb.WriteTxLookupEntries(batch, block)
-		rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages())
+			status = SideStatTy
+			//if err := bc.reorg(currentBlock, block); err != nil {
+			//	return NonStatTy, err
+			//}
+		} else {
+			// Write the positional metadata for transaction/receipt lookups and preimages
+			rawdb.WriteTxLookupEntries(batch, block)
+			rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages())
 
-		status = CanonStatTy
+			status = CanonStatTy
+		}
 	} else {
 		status = SideStatTy
 	}
@@ -1030,18 +1014,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
-
-		if _, ok := bc.engine.(*deb.Deb); ok {
-			// TODO : andus >> 블록의 페어노드 서명이 있는 것만 처리하도록
-			if !deb.ValidationFairSignature(chain[i].Hash(), chain[i].FairNodeSig, bc.chainConfig.Deb.FairAddr) {
-				log.Error("Non fairnode signature block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
-					"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
-
-				return 0, nil, nil, fmt.Errorf("페어노드 서명이 없음 : item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
-					chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
-			}
-		}
-
 		if chain[i].NumberU64() != chain[i-1].NumberU64()+1 || chain[i].ParentHash() != chain[i-1].Hash() {
 			// Chain broke ancestry, log a message (programming error) and skip insertion
 			log.Error("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
@@ -1081,6 +1053,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
 
+	//
 	// Iterate over the blocks and insert when the verifier permits
 	for i, block := range chain {
 		// If the chain is terminating, stop processing blocks
@@ -1174,13 +1147,14 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
-		// TODO : andus >> 스테이트 처리... joinNonce
+
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
+
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		if err != nil {
@@ -1194,14 +1168,15 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
+
 		switch status {
 		case CanonStatTy:
-			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(), "uncles", len(block.Uncles()),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
+			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(),
+				"Txs", block.Transactions().Len(), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			coalescedLogs = append(coalescedLogs, logs...)
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, ChainEvent{block, block.Hash(), logs})
+			events = append(events, types.ChainEvent{block, block.Hash(), logs})
 			lastCanon = block
 
 			// Only count canonical blocks for GC processing time
@@ -1209,10 +1184,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash(), "diff", block.Difficulty(), "elapsed",
-				common.PrettyDuration(time.Since(bstart)), "txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()))
+				common.PrettyDuration(time.Since(bstart)), "Txs", block.Transactions().Len(), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)
-			events = append(events, ChainSideEvent{block})
+			events = append(events, types.ChainSideEvent{block})
 		}
 		stats.processed++
 		stats.usedGas += usedGas
@@ -1222,8 +1197,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
-		events = append(events, ChainHeadEvent{lastCanon})
+		events = append(events, types.ChainHeadEvent{lastCanon})
 	}
+
 	return 0, events, coalescedLogs, nil
 }
 
@@ -1251,10 +1227,10 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 	if index == len(chain)-1 || elapsed >= statsReportLimit {
 		var (
 			end = chain[index]
-			txs = countTransactions(chain[st.lastIndex : index+1])
+			Txs = countTransactions(chain[st.lastIndex : index+1])
 		)
 		context := []interface{}{
-			"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
+			"blocks", st.processed, "Txs", Txs, "mgas", float64(st.usedGas) / 1000000,
 			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
 			"number", end.Number(), "hash", end.Hash(), "cache", cache,
 		}
@@ -1272,7 +1248,7 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 
 func countTransactions(chain []*types.Block) (c int) {
 	for _, b := range chain {
-		c += len(b.Transactions())
+		c += b.Transactions().Len()
 	}
 	return c
 }
@@ -1296,8 +1272,8 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			if number == nil {
 				return
 			}
-			receipts := rawdb.ReadReceipts(bc.db, hash, *number)
-			for _, receipt := range receipts {
+			genReceipts := rawdb.ReadReceipts(bc.db, hash, *number)
+			for _, receipt := range genReceipts {
 				for _, log := range receipt.Logs {
 					del := *log
 					del.Removed = true
@@ -1379,12 +1355,12 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	batch.Write()
 
 	if len(deletedLogs) > 0 {
-		go bc.rmLogsFeed.Send(RemovedLogsEvent{deletedLogs})
+		go bc.rmLogsFeed.Send(types.RemovedLogsEvent{deletedLogs})
 	}
 	if len(oldChain) > 0 {
 		go func() {
 			for _, block := range oldChain {
-				bc.chainSideFeed.Send(ChainSideEvent{Block: block})
+				bc.chainSideFeed.Send(types.ChainSideEvent{Block: block})
 			}
 		}()
 	}
@@ -1402,13 +1378,13 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 	}
 	for _, event := range events {
 		switch ev := event.(type) {
-		case ChainEvent:
+		case types.ChainEvent:
 			bc.chainFeed.Send(ev)
 
-		case ChainHeadEvent:
+		case types.ChainHeadEvent:
 			bc.chainHeadFeed.Send(ev)
 
-		case ChainSideEvent:
+		case types.ChainSideEvent:
 			bc.chainSideFeed.Send(ev)
 		}
 	}
@@ -1452,6 +1428,7 @@ func (bc *BlockChain) reportBlock(block *types.Block, receipts types.Receipts, e
 	for _, receipt := range receipts {
 		receiptString += fmt.Sprintf("\t%v\n", receipt)
 	}
+
 	log.Error(fmt.Sprintf(`
 ########## BAD BLOCK #########
 Chain config: %v
@@ -1584,22 +1561,22 @@ func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
 
 // SubscribeRemovedLogsEvent registers a subscription of RemovedLogsEvent.
-func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- RemovedLogsEvent) event.Subscription {
+func (bc *BlockChain) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return bc.scope.Track(bc.rmLogsFeed.Subscribe(ch))
 }
 
 // SubscribeChainEvent registers a subscription of ChainEvent.
-func (bc *BlockChain) SubscribeChainEvent(ch chan<- ChainEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return bc.scope.Track(bc.chainFeed.Subscribe(ch))
 }
 
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
-func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription {
 	return bc.scope.Track(bc.chainHeadFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
-func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Subscription {
+func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- types.ChainSideEvent) event.Subscription {
 	return bc.scope.Track(bc.chainSideFeed.Subscribe(ch))
 }
 

@@ -730,7 +730,7 @@ running:
 					dialstate.removeStaticID(pd.ID())
 					srv.log.Debug("Removing static node", "node", pd.ID().String())
 				} else {
-					srv.log.Error("delpeer", "msg", pd.err.Error())
+					srv.log.Debug("Delpeer", "msg", pd.err.Error())
 				}
 			}
 

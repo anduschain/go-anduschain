@@ -1,0 +1,138 @@
+syntax = "proto3";
+option go_package = "github.com/anduschain/go-anduschain/protos/common";
+
+package common;
+
+enum Status {
+    SUCCESS = 0;
+    FAIL = 1;
+}
+
+message HeartBeat {
+    string enode = 1;
+    string minerAddress = 2;
+    string chainID = 3;
+    string nodeVersion = 4;
+    string head = 5;
+    int64 port=6;
+    bytes sign = 7;
+}
+
+enum ProcessStatus {
+    WAIT = 0;
+    MAKE_LEAGUE = 1;
+    MAKE_JOIN_TX = 2;
+    MAKE_BLOCK = 3;
+    LEAGUE_BROADCASTING = 4;
+    VOTE_START = 5;
+    VOTE_COMPLETE = 6;
+    REJECT = 7;
+    SEND_BLOCK = 8;
+    SEND_BLOCK_WAIT = 9;
+    REQ_FAIRNODE_SIGN = 10; // 서명 요청해, method terminate
+    FINALIZE = 11;
+}
+
+message Participate {
+    bytes otprnHash = 1;
+    string enode = 2;
+    string minerAddress = 3;
+    bytes sign = 4;
+}
+
+message SyncMessage {
+    bytes otprnHash = 1;
+    ProcessStatus code = 2;
+}
+
+message FairnodeMessage {
+    repeated SyncMessage msg = 1;
+}
+
+message ProcessMessage {
+    ProcessStatus code = 1;
+    bytes currentBlockNum = 2;
+    bytes sign = 3;
+}
+
+// OTRPN 요청
+message ReqOtprn {
+    string enode = 1;
+    string minerAddress = 2;
+    bytes sign = 3;
+}
+
+message ResOtprn {
+    Status result = 1;
+    bytes otprn = 2;
+}
+
+// 리그 요청
+message ReqLeague {
+    bytes otprnHash = 1;
+    string enode = 2;
+    string minerAddress = 3;
+    bytes sign = 4;
+}
+
+message ResLeague {
+    Status result = 1;
+    repeated string enodes = 2;
+    bytes sign = 3;
+}
+
+// 투표
+message Vote {
+    bytes header = 1; // rlp encoded
+    string voterAddress = 2;
+    bytes voterSign = 3;
+}
+
+// 투표 결과 요청
+message ReqVoteResult {
+    bytes otprnHash = 1;
+    string address = 2;
+    bytes sign = 3;
+}
+
+message ResVoteResult {
+    Status result = 1;
+    string blockHash = 2;
+    repeated Vote voters = 3;
+    bytes sign = 4;
+}
+
+// 블록 실링 확인 요청
+message ReqConfirmSeal {
+    bytes otprnHash = 1;
+    bytes blockHash = 2;
+    bytes voteHash = 3;
+    string address = 4;
+    bytes sign = 5;
+}
+
+message ResConfirmSeal {
+    ProcessStatus code = 1;
+    bytes sign = 2;
+}
+
+// 블록 요청
+message ReqBlock {
+    bytes block = 1; // rlp encoded
+    string address = 2;
+    bytes sign = 3;
+}
+
+// 블록 서명 요청
+message ReqFairnodeSign {
+    bytes otprnHash = 1;
+    bytes blockHash = 2;
+    bytes voteHash = 3;
+    string address = 4;
+    bytes sign = 5;
+}
+
+message ResFairnodeSign {
+    bytes signature = 1;
+    bytes sign = 2;
+}

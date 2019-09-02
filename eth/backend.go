@@ -20,21 +20,11 @@ package eth
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"math/big"
-	"runtime"
-	"sync"
-	"sync/atomic"
-
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/clique"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
@@ -53,6 +43,10 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
+	"math/big"
+	"runtime"
+	"sync"
+	"sync/atomic"
 )
 
 type LesServer interface {
@@ -97,19 +91,7 @@ type Ethereum struct {
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 
-	// TODO : andus >> keystore 추가
-	Keystore *keystore.KeyStore
-
-	// TODO : andus >> fairnode client
-	FairnodeClient *fairnodeclient.FairnodeClient
-	Serv           *p2p.Server
-
-	LeagueBlockBroadcastCh chan *fairtypes.VoteBlock
-	ReceiveBlockCh         chan *fairtypes.VoteBlock
-
-	// TODO : andus >> 위닝블록 전송 채널
-	VoteCh       chan *fairtypes.Vote
-	FinalBlockCh chan fairtypes.FinalBlock
+	p2p *p2p.Server
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -117,12 +99,20 @@ func (s *Ethereum) AddLesServer(ls LesServer) {
 	ls.SetBloomBitsIndexer(s.bloomIndexer)
 }
 
+func (s *Ethereum) Server() *p2p.Server {
+	return s.p2p
+}
+
+func (s *Ethereum) Coinbase() common.Address {
+	return s.miner.Coinbase()
+}
+
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
 func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
-		return nil, errors.New("can't run eth.Ethereum in light sync mode, use les.LightEthereum")
+		return nil, errors.New("can't run daon.Anduschain in light sync mode, use daon.LightAnduschain")
 	}
 	if !config.SyncMode.IsValid() {
 		return nil, fmt.Errorf("invalid sync mode %d", config.SyncMode)
@@ -140,7 +130,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig, "fairAddr", chainConfig.Deb.FairAddr.String())
+
+	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	eth := &Ethereum{
 		config:         config,
@@ -148,19 +139,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		chainConfig:    chainConfig,
 		eventMux:       ctx.EventMux,
 		accountManager: ctx.AccountManager,
-		engine:         CreateConsensusEngine(ctx, chainConfig, &config.Ethash, config.MinerNotify, config.MinerNoverify, chainDb),
+		engine:         CreateConsensusEngine(ctx, chainConfig, config.MinerNotify, config.MinerNoverify, chainDb),
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
 		gasPrice:       config.MinerGasPrice,
 		etherbase:      config.Etherbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-
-		// TODO : andus >> 위닝블록 전송 채널
-		LeagueBlockBroadcastCh: make(chan *fairtypes.VoteBlock, 4),
-		ReceiveBlockCh:         make(chan *fairtypes.VoteBlock, 4),
-		VoteCh:                 make(chan *fairtypes.Vote, 1),
-		FinalBlockCh:           make(chan fairtypes.FinalBlock, 1),
 	}
 
 	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
@@ -191,24 +176,15 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
+
 	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
 
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth); err != nil {
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil)
+	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
+
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth.miner); err != nil {
 		return nil, err
 	}
-
-	if debEngine, ok := eth.engine.(*deb.Deb); ok {
-		// TODO : andus >> fairnode client start
-		eth.FairnodeClient = fairnodeclient.New(eth, eth.blockchain, eth.txPool)
-
-		// 각 서비스들이 통신할 채널을 넘겨준다.
-		debEngine.SetChans(eth)
-		debEngine.SetManager(eth.FairnodeClient)
-	}
-
-	// TODO : andus >> miner -> keystore 추가
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, eth, eth)
-	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}
 	gpoParams := config.GPO
@@ -220,23 +196,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	return eth, nil
 }
 
-func (s *Ethereum) IsLeagueRunning() bool { return s.FairnodeClient.IsBlockMine }
-func (s *Ethereum) GetLeagueBlockBroadcastCh() chan *fairtypes.VoteBlock {
-	return s.LeagueBlockBroadcastCh
-}
-func (s *Ethereum) GetReceiveBlockCh() chan *fairtypes.VoteBlock { return s.ReceiveBlockCh }
-func (s *Ethereum) GetWinningBlockCh() chan *fairtypes.Vote      { return s.VoteCh }
-func (s *Ethereum) GetFinalBlockCh() chan fairtypes.FinalBlock   { return s.FinalBlockCh }
-func (s *Ethereum) GetWinningBlockVoteStartCh() chan struct{} {
-	return s.FairnodeClient.WinningBlockVoteStartCh
-}
-
 func makeExtraData(extra []byte) []byte {
 	if len(extra) == 0 {
 		// create default extradata
 		extra, _ = rlp.EncodeToBytes([]interface{}{
 			uint(params.VersionMajor<<16 | params.VersionMinor<<8 | params.VersionPatch),
-			"geth",
+			"godaon",
 			runtime.Version(),
 			runtime.GOOS,
 		})
@@ -260,43 +225,9 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	return db, nil
 }
 
-// CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
-func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
+// CreateConsensusEngine creates the required type of consensus engine instance for an anduschain service
+func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-Deb is requested, set it up
-	// TODO : andus >> consensus
-	//if chainConfig.Deb != nil {
-	//	return deb.New(chainConfig.Deb, db)
-	//} else if chainConfig.Clique != nil {
-	//	return clique.New(chainConfig.Clique, db)
-	//}
-
-	// Otherwise assume proof-of-work
-	//switch config.PowMode {
-	//case ethash.ModeFake:
-	//	log.Warn("Ethash used in fake mode")
-	//	return ethash.NewFaker()
-	//case ethash.ModeTest:
-	//	log.Warn("Ethash used in test mode")
-	//	return ethash.NewTester(nil, noverify)
-	//case ethash.ModeShared:
-	//	log.Warn("Ethash used in shared mode")
-	//	return ethash.NewShared()
-	//default:
-	//
-	//	// TODO : andus >> deb 합의 알고리즘을 디폽트 값으로 셋팅 되로록...
-	//
-	//	engine := ethash.New(ethash.Config{
-	//		CacheDir:       ctx.ResolvePath(config.CacheDir),
-	//		CachesInMem:    config.CachesInMem,
-	//		CachesOnDisk:   config.CachesOnDisk,
-	//		DatasetDir:     config.DatasetDir,
-	//		DatasetsInMem:  config.DatasetsInMem,
-	//		DatasetsOnDisk: config.DatasetsOnDisk,
-	//	}, notify, noverify)
-	//	engine.SetThreads(-1) // Disable CPU mining
-	//	return engine
-	//}
-
 	return deb.New(chainConfig.Deb, db)
 }
 
@@ -377,11 +308,11 @@ func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 			s.etherbase = etherbase
 			s.lock.Unlock()
 
-			log.Info("Etherbase automatically configured", "address", etherbase)
+			log.Info("Coinbase automatically configured", "address", etherbase)
 			return etherbase, nil
 		}
 	}
-	return common.Address{}, fmt.Errorf("etherbase must be explicitly specified")
+	return common.Address{}, fmt.Errorf("Coinbase must be explicitly specified")
 }
 
 // SetEtherbase sets the mining reward address.
@@ -418,36 +349,17 @@ func (s *Ethereum) StartMining(threads int) error {
 
 		// Configure the local mining addess
 		eb, err := s.Etherbase()
-
-		// TODO : andus >> Fair Client Start with etherbase
-		if eb != (common.Address{}) {
-			err := s.FairnodeClient.StartToFairNode(&eb, s.Keystore, s.Serv)
-			if err != nil {
-				return fmt.Errorf("코인베이스를 언락해 주세요: %v", err)
-			}
-			log.Info("StartMining etherbase", "[andus]", eb.String())
-		}
-
 		if err != nil {
-			log.Error("Cannot start mining without etherbase", "err", err)
+			log.Error("Cannot start mining without coinbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
 
-		// TODO : andus >> andus 합의 엔진 추가
-		if _, ok := s.engine.(*deb.Deb); ok {
+		if eb != (common.Address{}) {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err[andus]", err)
+				log.Error("Coinbase account unavailable locally", "err[andus]", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
-
-		} else if clique, ok := s.engine.(*clique.Clique); ok {
-			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
-			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err", err)
-				return fmt.Errorf("signer missing: %v", err)
-			}
-			clique.Authorize(eb, wallet.SignHash)
 		}
 
 		// If mining is started, we can disable the transaction rejection mechanism
@@ -471,7 +383,6 @@ func (s *Ethereum) StopMining() {
 	}
 	// Stop the block creating itself
 	s.miner.Stop()
-	s.FairnodeClient.Stop()
 }
 
 func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }
@@ -488,10 +399,6 @@ func (s *Ethereum) EthVersion() int                    { return int(s.protocolMa
 func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 
-//TODO : andus >> GetKeystore
-func (s *Ethereum) GetKeystore() *keystore.KeyStore               { return s.Keystore }
-func (s *Ethereum) GetFairClient() *fairnodeclient.FairnodeClient { return s.FairnodeClient }
-
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Ethereum) Protocols() []p2p.Protocol {
@@ -507,11 +414,10 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
 
-	// TODO : andus >> P2P server를 fairclient로 넘기기 위해 사용
-	s.Serv = srvr
-
 	// Start the RPC service
 	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.NetVersion())
+
+	s.p2p = srvr // for deb client
 
 	// Figure out a max peers count based on the server limits
 	maxPeers := srvr.MaxPeers

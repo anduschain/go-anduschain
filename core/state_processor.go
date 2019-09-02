@@ -56,17 +56,19 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
 	var (
 		receipts types.Receipts
-		usedGas  = new(uint64)
-		header   = block.Header()
-		allLogs  []*types.Log
-		gp       = new(GasPool).AddGas(block.GasLimit())
+		voters   types.Voters
+
+		usedGas = new(uint64)
+		header  = block.Header()
+		allLogs []*types.Log
+		gp      = new(GasPool).AddGas(block.GasLimit())
 	)
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
 
-	// Iterate over and process the individual transactions
+	// Iterate over and process the individual general transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
@@ -81,8 +83,13 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, receipt.Logs...)
 	}
+
+	for _, voter := range block.Voters() {
+		voters = append(voters, voter)
+	}
+
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts)
+	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), receipts, voters)
 
 	return receipts, allLogs, *usedGas, nil
 }
@@ -107,7 +114,6 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	var failed bool
 
 	_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
-
 	if err != nil {
 		return nil, 0, err
 	}
@@ -133,6 +139,5 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
-
 	return receipt, gas, err
 }

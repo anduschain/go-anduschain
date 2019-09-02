@@ -22,12 +22,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -111,7 +111,7 @@ func (t *BlockTest) Run() error {
 		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", gblock.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
 	}
 
-	chain, err := core.NewBlockChain(db, nil, config, ethash.NewShared(), vm.Config{})
+	chain, err := core.NewBlockChain(db, nil, config, deb.NewShared(), vm.Config{})
 	if err != nil {
 		return err
 	}
@@ -205,9 +205,9 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	if h.Coinbase != h2.Coinbase {
 		return fmt.Errorf("Coinbase: want: %x have: %x", h.Coinbase, h2.Coinbase)
 	}
-	if h.MixHash != h2.MixDigest {
-		return fmt.Errorf("MixHash: want: %x have: %x", h.MixHash, h2.MixDigest)
-	}
+	//if h.MixHash != h2.MixDigest {
+	//	return fmt.Errorf("MixHash: want: %x have: %x", h.MixHash, h2.MixDigest)
+	//}
 	if h.Nonce != h2.Nonce {
 		return fmt.Errorf("Nonce: want: %x have: %x", h.Nonce, h2.Nonce)
 	}
@@ -226,9 +226,9 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	if h.StateRoot != h2.Root {
 		return fmt.Errorf("State hash: want: %x have: %x", h.StateRoot, h2.Root)
 	}
-	if h.UncleHash != h2.UncleHash {
-		return fmt.Errorf("Uncle hash: want: %x have: %x", h.UncleHash, h2.UncleHash)
-	}
+	//if h.UncleHash != h2.UncleHash {
+	//	return fmt.Errorf("Uncle hash: want: %x have: %x", h.UncleHash, h2.UncleHash)
+	//}
 	if !bytes.Equal(h.ExtraData, h2.Extra) {
 		return fmt.Errorf("Extra data: want: %x have: %x", h.ExtraData, h2.Extra)
 	}

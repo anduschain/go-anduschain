@@ -17,8 +17,9 @@
 package types
 
 import (
-	"container/heap"
+	"encoding/binary"
 	"errors"
+	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -44,6 +45,7 @@ type Transaction struct {
 }
 
 type txdata struct {
+	Type         uint64          `json:"type"    gencodec:"required"`
 	AccountNonce uint64          `json:"nonce"    gencodec:"required"`
 	Price        *big.Int        `json:"gasPrice" gencodec:"required"`
 	GasLimit     uint64          `json:"gas"      gencodec:"required"`
@@ -61,6 +63,7 @@ type txdata struct {
 }
 
 type txdataMarshaling struct {
+	Type         hexutil.Uint64
 	AccountNonce hexutil.Uint64
 	Price        *hexutil.Big
 	GasLimit     hexutil.Uint64
@@ -79,11 +82,44 @@ func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPric
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
 }
 
+func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte, coinase common.Address) *Transaction {
+	if len(otprn) > 0 {
+		otprn = common.CopyBytes(otprn)
+	} else {
+		return nil
+	}
+
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, joinNonce)
+	hash := rlpHash([]interface{}{joinNonce, otprn, coinase})
+
+	var payload []byte
+	payload = append(payload, otprn...)
+	payload = append(payload, b...)
+	payload = append(payload, hash.Bytes()...)
+
+	d := txdata{
+		Type:         JoinTx,
+		AccountNonce: nonce,
+		Recipient:    &params.JtxAddress,
+		Payload:      payload,
+		Amount:       new(big.Int),
+		GasLimit:     0,
+		Price:        new(big.Int),
+		V:            new(big.Int),
+		R:            new(big.Int),
+		S:            new(big.Int),
+	}
+
+	return &Transaction{data: d}
+}
+
 func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
 	d := txdata{
+		Type:         GeneralTx,
 		AccountNonce: nonce,
 		Recipient:    to,
 		Payload:      data,
@@ -102,6 +138,37 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 	}
 
 	return &Transaction{data: d}
+}
+
+func (tx *Transaction) TransactionId() uint64 {
+	return tx.data.Type
+}
+
+// for join transaction
+func (tx *Transaction) JoinNonce() (uint64, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return binary.LittleEndian.Uint64(payload[len(payload)-40 : len(payload)-32]), nil
+	}
+	return 0, errors.New("not join transaction")
+}
+
+// for join transaction
+func (tx *Transaction) Otprn() ([]byte, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return payload[:len(payload)-40], nil
+	}
+	return nil, errors.New("not join transaction")
+}
+
+// for join transaction
+func (tx *Transaction) PayloadHash() ([]byte, error) {
+	if tx.data.Type == JoinTx {
+		payload := tx.data.Payload
+		return payload[len(payload)-32:], nil
+	}
+	return nil, errors.New("not join transaction")
 }
 
 // ChainId returns which chain id this transaction was signed for (if at all)
@@ -224,7 +291,7 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	}
 
 	var err error
-	msg.from, err = Sender(s, tx)
+	msg.from, err = tx.Sender(s)
 	return msg, err
 }
 
@@ -251,139 +318,22 @@ func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
 }
 
-// Transactions is a Transaction slice type for basic sorting.
-type Transactions []*Transaction
-
-// Len returns the length of s.
-func (s Transactions) Len() int { return len(s) }
-
-// Swap swaps the i'th and the j'th element in s.
-func (s Transactions) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-// GetRlp implements Rlpable and returns the i'th element of s in rlp.
-func (s Transactions) GetRlp(i int) []byte {
-	enc, _ := rlp.EncodeToBytes(s[i])
-	return enc
-}
-
-// TxDifference returns a new set which is the difference between a and b.
-func TxDifference(a, b Transactions) Transactions {
-	keep := make(Transactions, 0, len(a))
-
-	remove := make(map[common.Hash]struct{})
-	for _, tx := range b {
-		remove[tx.Hash()] = struct{}{}
-	}
-
-	for _, tx := range a {
-		if _, ok := remove[tx.Hash()]; !ok {
-			keep = append(keep, tx)
+func (tx *Transaction) Sender(signer Signer) (common.Address, error) {
+	if sc := tx.from.Load(); sc != nil {
+		sigCache := sc.(sigCache)
+		// If the signer used to derive from in a previous
+		// call is not the same as used current, invalidate
+		// the cache.
+		if sigCache.signer.Equal(signer) {
+			return sigCache.from, nil
 		}
 	}
-
-	return keep
-}
-
-// TxByNonce implements the sort interface to allow sorting a list of transactions
-// by their nonces. This is usually only useful for sorting transactions from a
-// single account, otherwise a nonce comparison doesn't make much sense.
-type TxByNonce Transactions
-
-func (s TxByNonce) Len() int           { return len(s) }
-func (s TxByNonce) Less(i, j int) bool { return s[i].data.AccountNonce < s[j].data.AccountNonce }
-func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-// TxByPrice implements both the sort and the heap interface, making it useful
-// for all at once sorting as well as individually adding and removing elements.
-type TxByPrice Transactions
-
-func (s TxByPrice) Len() int           { return len(s) }
-func (s TxByPrice) Less(i, j int) bool { return s[i].data.Price.Cmp(s[j].data.Price) > 0 }
-func (s TxByPrice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-func (s *TxByPrice) Push(x interface{}) {
-	*s = append(*s, x.(*Transaction))
-}
-
-func (s *TxByPrice) Pop() interface{} {
-	old := *s
-	n := len(old)
-	x := old[n-1]
-	*s = old[0 : n-1]
-	return x
-}
-
-// TransactionsByPriceAndNonce represents a set of transactions that can return
-// transactions in a profit-maximizing sorted order, while supporting removing
-// entire batches of transactions for non-executable accounts.
-type TransactionsByPriceAndNonce struct {
-	txs    map[common.Address]Transactions // Per account nonce-sorted list of transactions
-	heads  TxByPrice                       // Next transaction for each unique account (price heap)
-	signer Signer                          // Signer for the set of transactions
-}
-
-// NewTransactionsByPriceAndNonce creates a transaction set that can retrieve
-// price sorted transactions in a nonce-honouring way.
-//
-// Note, the input map is reowned so the caller should not interact any more with
-// if after providing it to the constructor.
-func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
-	// Initialize a price based heap with the head transactions
-
-	heads := make(TxByPrice, 0, len(txs))
-	for from, accTxs := range txs {
-		heads = append(heads, accTxs[0])
-		// Ensure the sender address is from the signer
-		acc, _ := Sender(signer, accTxs[0])
-		txs[acc] = accTxs[1:]
-		if from != acc {
-			delete(txs, from)
-		}
+	addr, err := signer.Sender(tx)
+	if err != nil {
+		return common.Address{}, err
 	}
-	heap.Init(&heads)
-
-	// Assemble and return the transaction set
-	return &TransactionsByPriceAndNonce{
-		txs:    txs,
-		heads:  heads,
-		signer: signer,
-	}
-}
-
-//지워
-func (ts *TransactionsByPriceAndNonce) Get() Signer {
-	return ts.signer
-}
-
-//지워
-func (ts *TransactionsByPriceAndNonce) Getlen() int {
-	return len(ts.txs)
-}
-
-// Peek returns the next transaction by price.
-func (t *TransactionsByPriceAndNonce) Peek() *Transaction {
-	if len(t.heads) == 0 {
-		return nil
-	}
-	return t.heads[0]
-}
-
-// Shift replaces the current best head with the next one from the same account.
-func (t *TransactionsByPriceAndNonce) Shift() {
-	acc, _ := Sender(t.signer, t.heads[0])
-	if txs, ok := t.txs[acc]; ok && len(txs) > 0 {
-		t.heads[0], t.txs[acc] = txs[0], txs[1:]
-		heap.Fix(&t.heads, 0)
-	} else {
-		heap.Pop(&t.heads)
-	}
-}
-
-// Pop removes the best transaction, *not* replacing it with the next one from
-// the same account. This should be used when a transaction cannot be executed
-// and hence all subsequent ones should be discarded from the same account.
-func (t *TransactionsByPriceAndNonce) Pop() {
-	heap.Pop(&t.heads)
+	tx.from.Store(sigCache{signer: signer, from: addr})
+	return addr, nil
 }
 
 // Message is a fully derived transaction and implements core.Message

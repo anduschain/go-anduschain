@@ -17,11 +17,10 @@
 package keystore
 
 import (
-	"math/big"
-
 	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/core/types"
+	"math/big"
 )
 
 // keystoreWallet implements the accounts.Wallet interface for the original

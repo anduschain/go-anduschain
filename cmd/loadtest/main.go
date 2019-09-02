@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/loadtest"
 	"github.com/anduschain/go-anduschain/cmd/loadtest/util"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
 	"log"
 	"strings"
@@ -14,8 +15,9 @@ import (
 var (
 	connUrl  = flag.String("url", "http://localhost:8545", "rcp connection url")
 	accPath  = flag.String("path", "", "accounts file path")
-	duration = flag.Int64("duration", 20, "send transation term / millisecond")
-	chainID  = flag.Int64("chainID", 1315, "chain ID")
+	duration = flag.Int64("duration", 1000, "send transation term / millisecond")
+	chainID  = flag.Int64("chainID", params.TEST_NETWORK.Int64(), "chain ID")
+	txCnt    = flag.Int64("txCnt", 3000, "transaction send count")
 )
 
 func main() {
@@ -46,13 +48,13 @@ func main() {
 
 	for {
 		for i := range accounts {
-			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainID, endChan)
+			go loadTest(rpcClient, accounts[i].Address, accounts[i].Password, *duration, *chainID, *txCnt, endChan)
 			<-endChan
 		}
 	}
 }
 
-func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, endCh chan struct{}) {
+func loadTest(rc *rpc.Client, addr, pwd string, term, chainid, txCnt int64, endCh chan struct{}) {
 	defer func() {
 		endCh <- struct{}{}
 		log.Println("loadtest killed")
@@ -62,21 +64,21 @@ func loadTest(rc *rpc.Client, addr, pwd string, term, chainid int64, endCh chan 
 	if err := lt.UnlockAccount(); err == nil {
 		err := lt.GetPrivateKey()
 		if err != nil {
-			log.Println(err)
+			log.Println("GetPrivateKey", err)
 			return
 		}
 
 		if err := lt.CheckBalance(); err == nil {
 			err = lt.GetNonce()
 			if err != nil {
-				log.Println(err)
+				log.Println("GetNonce", err)
 				return
 			}
 
-			for i := 0; i < 3000; i++ {
+			for i := 0; i < int(txCnt); i++ {
 				err = lt.SendTransaction()
 				if err != nil {
-					log.Println(err)
+					log.Println("SendTransaction", err)
 					return
 				}
 				log.Println("SendTransaction", "count", i+1)

@@ -24,6 +24,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"io"
 	"math/big"
 
@@ -31,7 +32,6 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/usbwallet/internal/trezor"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/golang/protobuf/proto"
 )
@@ -228,7 +228,7 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx *types.Transaction
 	if err != nil {
 		return common.Address{}, nil, err
 	}
-	sender, err := types.Sender(signer, signed)
+	sender, err := signed.Sender(signer)
 	if err != nil {
 		return common.Address{}, nil, err
 	}

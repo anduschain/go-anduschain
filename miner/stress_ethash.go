@@ -22,6 +22,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/pools/txpool"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -183,7 +184,7 @@ func makeMiner(genesis *core.Genesis, nodes []string) (*node.Node, error) {
 			SyncMode:        downloader.FullSync,
 			DatabaseCache:   256,
 			DatabaseHandles: 256,
-			TxPool:          core.DefaultTxPoolConfig,
+			TxPool:          txpool.DefaultTxPoolConfig,
 			GPO:             eth.DefaultConfig.GPO,
 			Ethash:          eth.DefaultConfig.Ethash,
 			MinerGasFloor:   genesis.GasLimit * 9 / 10,

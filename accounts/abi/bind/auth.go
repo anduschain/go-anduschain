@@ -19,13 +19,12 @@ package bind
 import (
 	"crypto/ecdsa"
 	"errors"
-	"io"
-	"io/ioutil"
-
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
+	"io"
+	"io/ioutil"
 )
 
 // NewTransactor is a utility method to easily create a transaction signer from

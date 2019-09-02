@@ -67,7 +67,7 @@ func (ctx *ServiceContext) Service(service interface{}) error {
 	return ErrServiceUnknown
 }
 
-// TODO : andus >> Node Config
+// return node config
 func (ctx *ServiceContext) GetNodeConfig() *Config {
 	return ctx.config
 }

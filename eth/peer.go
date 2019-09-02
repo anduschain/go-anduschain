@@ -19,7 +19,6 @@ package eth
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
 	"math/big"
 	"sync"
 	"time"
@@ -86,26 +85,30 @@ type peer struct {
 	td   *big.Int
 	lock sync.RWMutex
 
-	knownTxs    mapset.Set                // Set of transaction hashes known to be known by this peer
+	knownTxs     mapset.Set // Set of transaction hashes known to be known by this peer
+	knownJoinTxs mapset.Set // Set of join transaction hashes known to be known by this peer  // TODO(hakuna) : add
+
 	knownBlocks mapset.Set                // Set of block hashes known to be known by this peer
 	queuedTxs   chan []*types.Transaction // Queue of transactions to broadcast to the peer
-	queuedProps chan *propEvent           // Queue of blocks to broadcast to the peer
-	queuedAnns  chan *types.Block         // Queue of blocks to announce to the peer
-	term        chan struct{}             // Termination channel to stop the broadcaster
+
+	queuedProps chan *propEvent   // Queue of blocks to broadcast to the peer
+	queuedAnns  chan *types.Block // Queue of blocks to announce to the peer
+	term        chan struct{}     // Termination channel to stop the broadcaster
 }
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	return &peer{
-		Peer:        p,
-		rw:          rw,
-		version:     version,
-		id:          fmt.Sprintf("%x", p.ID().Bytes()[:8]),
-		knownTxs:    mapset.NewSet(),
-		knownBlocks: mapset.NewSet(),
-		queuedTxs:   make(chan []*types.Transaction, maxQueuedTxs),
-		queuedProps: make(chan *propEvent, maxQueuedProps),
-		queuedAnns:  make(chan *types.Block, maxQueuedAnns),
-		term:        make(chan struct{}),
+		Peer:         p,
+		rw:           rw,
+		version:      version,
+		id:           fmt.Sprintf("%x", p.ID().Bytes()[:8]),
+		knownTxs:     mapset.NewSet(),
+		knownJoinTxs: mapset.NewSet(),
+		knownBlocks:  mapset.NewSet(),
+		queuedTxs:    make(chan []*types.Transaction, maxQueuedTxs),
+		queuedProps:  make(chan *propEvent, maxQueuedProps),
+		queuedAnns:   make(chan *types.Block, maxQueuedAnns),
+		term:         make(chan struct{}),
 	}
 }
 
@@ -196,11 +199,10 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 
 // SendTransactions sends transactions to the peer and includes the hashes
 // in its transaction hash set for future reference.
-func (p *peer) SendTransactions(txs types.Transactions) error {
+func (p *peer) SendTransactions(txs []*types.Transaction) error {
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
 	}
-
 	return p2p.Send(p.rw, TxMsg, txs)
 }
 
@@ -288,9 +290,9 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 	return p2p.Send(p.rw, ReceiptsMsg, receipts)
 }
 
-// TODO : andus >> Send MakeLeagueBlockMsg ( 채굴리그(나포함)가 생성한 블록을 보냄 )
-func (p *peer) SendMakeLeagueBlock(tb fairtypes.VoteBlock) error {
-	return p2p.Send(p.rw, MakeLeagueBlockMsg, tb.GetTsVoteBlock())
+// Send MakeLeagueBlockMsg ( 채굴리그(나포함)가 생성한 블록을 보냄 )
+func (p *peer) SendMakeLeagueBlock(eb *types.NewLeagueBlockEvent) error {
+	return p2p.Send(p.rw, MakeLeagueBlockMsg, eb)
 }
 
 // RequestOneHeader is a wrapper around the header query functions to fetch a

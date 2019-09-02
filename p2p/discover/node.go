@@ -176,9 +176,19 @@ func parseComplete(rawurl string) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid host: %v", err)
 	}
-	if ip = net.ParseIP(host); ip == nil {
-		return nil, errors.New("invalid IP address")
+
+	ip = net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, err
+		}
+		ip = ips[0] // when url will domain case
+		if ip == nil {
+			return nil, errors.New("invalid IP address")
+		}
 	}
+
 	// Ensure the IP is 4 bytes long for IPv4 addresses.
 	if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4

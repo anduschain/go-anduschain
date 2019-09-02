@@ -20,13 +20,10 @@ import (
 	"math/big"
 	"os"
 	"os/user"
-	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/gasprice"
@@ -34,26 +31,16 @@ import (
 )
 
 // DefaultConfig contains default settings for use on the Anduschain test net. -> will change main net
-// TODO : andus >> anduschain main net 컨센서스 선택부분 설정 해야함
 var DefaultConfig = Config{
 	SyncMode: downloader.FastSync,
 
-	// TODO : andus >> 여기서 컨센서스 엔진 부분 교체
-	//Ethash: ethash.Config{
-	//	CacheDir:       "ethash",
-	//	CachesInMem:    2,
-	//	CachesOnDisk:   3,
-	//	DatasetsInMem:  1,
-	//	DatasetsOnDisk: 2,
-	//},
-
-	NetworkId:     102,
+	NetworkId:     params.MAIN_NETWORK.Uint64(),
 	LightPeers:    100,
 	DatabaseCache: 768,
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
 
-	// andus : gaslimite 올림
+	// README(hakuna) : gaslimite 올림
 	MinerGasFloor: 8000000000,
 	MinerGasCeil:  8000000000000000000,
 	MinerGasPrice: big.NewInt(params.GWei),
@@ -72,11 +59,6 @@ func init() {
 		if user, err := user.Current(); err == nil {
 			home = user.HomeDir
 		}
-	}
-	if runtime.GOOS == "windows" {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, "AppData", "Ethash")
-	} else {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, ".ethash")
 	}
 }
 
@@ -112,9 +94,6 @@ type Config struct {
 	MinerGasPrice  *big.Int
 	MinerRecommit  time.Duration
 	MinerNoverify  bool
-
-	// Ethash options
-	Ethash ethash.Config
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig

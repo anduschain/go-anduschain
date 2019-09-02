@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/internal/jsre"
@@ -96,11 +95,8 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &eth.Config{
-		Genesis:   core.DeveloperGenesisBlock(15, common.Address{}),
+		Genesis:   core.DeveloperGenesisBlock(common.HexToAddress(testAddress)),
 		Etherbase: common.HexToAddress(testAddress),
-		Ethash: ethash.Config{
-			PowMode: ethash.ModeTest,
-		},
 	}
 	if confOverride != nil {
 		confOverride(ethConf)

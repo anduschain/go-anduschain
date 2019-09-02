@@ -60,6 +60,20 @@ func FromByteArray(bytesIn []byte) (*big.Int, error) {
 	}
 }
 
+func UnsignedFromByteArray(bytesIn []byte) (*big.Int, error) {
+
+	const MINUS_ONE = -1
+
+	if len(bytesIn) == 0 {
+		err := errors.New("Cannot convert empty array to big.Int.")
+		return nil, err
+	}
+
+	// if positive leave unchanged (additional 0-bytes will be ignored)
+	return new(big.Int).SetBytes(bytesIn), nil
+
+}
+
 /**
  * Returns a byte array containing the two's-complement representation of this big.Int.
  * The byte array will be in big-endian byte-order: the most significant byte is in the

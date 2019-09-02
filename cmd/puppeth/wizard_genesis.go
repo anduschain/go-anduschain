@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -60,8 +61,8 @@ func (w *wizard) makeGenesis() {
 		//genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: common.HexToAddress("0x5922af64E91f4B10AF896De8Fd372075569a1440")}
 
 		fmt.Printf("Input your fairnode address ")
-		if fairNodeAdd := w.readAddress(); fairNodeAdd != nil {
-			genesis.Config.Deb = &params.DebConfig{FairAddr: *fairNodeAdd}
+		if fairNodeAdd := w.readString(); strings.Compare(fairNodeAdd, "") != 0 {
+			genesis.Config.Deb = &params.DebConfig{FairPubKey: fairNodeAdd}
 			genesis.Config.EIP155Block = big.NewInt(0)
 		} else {
 			log.Crit("Invalid fairnode address")

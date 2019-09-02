@@ -21,13 +21,13 @@ package les
 
 import (
 	"crypto/rand"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -114,10 +114,10 @@ func testChainGen(i int, block *core.BlockGen) {
 		// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
 		b2 := block.PrevBlock(1).Header()
 		b2.Extra = []byte("foo")
-		block.AddUncle(b2)
+		//block.AddUncle(b2)
 		b3 := block.PrevBlock(2).Header()
 		b3.Extra = []byte("foo")
-		block.AddUncle(b3)
+		//block.AddUncle(b3)
 		data := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002")
 		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(testBankAddress), testContractAddr, big.NewInt(0), 100000, nil, data), signer, testBankKey)
 		block.AddTx(tx)
@@ -149,7 +149,7 @@ func testRCL() RequestCostList {
 func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *core.BlockGen), odr *LesOdr, peers *peerSet, db ethdb.Database) (*ProtocolManager, error) {
 	var (
 		evmux  = new(event.TypeMux)
-		engine = ethash.NewFaker()
+		engine = deb.NewFaker()
 		gspec  = core.Genesis{
 			Config: params.TestChainConfig,
 			Alloc:  core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
@@ -165,7 +165,7 @@ func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *cor
 		chain, _ = light.NewLightChain(odr, gspec.Config, engine)
 	} else {
 		blockchain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
-		gchain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, blocks, generator)
+		gchain, _, _ := core.GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, blocks, generator)
 		if _, err := blockchain.InsertChain(gchain); err != nil {
 			panic(err)
 		}

@@ -19,6 +19,7 @@ package filters
 import (
 	"context"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -27,7 +28,6 @@ import (
 
 	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
@@ -104,11 +104,11 @@ func (b *testBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types
 	return logs, nil
 }
 
-func (b *testBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+func (b *testBackend) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Subscription {
 	return b.txFeed.Subscribe(ch)
 }
 
-func (b *testBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
+func (b *testBackend) SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription {
 	return b.rmLogsFeed.Subscribe(ch)
 }
 
@@ -116,7 +116,7 @@ func (b *testBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 	return b.logsFeed.Subscribe(ch)
 }
 
-func (b *testBackend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
+func (b *testBackend) SubscribeChainEvent(ch chan<- types.ChainEvent) event.Subscription {
 	return b.chainFeed.Subscribe(ch)
 }
 
@@ -169,12 +169,12 @@ func TestBlockSubscription(t *testing.T) {
 		backend     = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, chainFeed}
 		api         = NewPublicFilterAPI(backend, false)
 		genesis     = new(core.Genesis).MustCommit(db)
-		chain, _    = core.GenerateChain(params.TestChainConfig, genesis, ethash.NewFaker(), db, 10, func(i int, gen *core.BlockGen) {})
-		chainEvents = []core.ChainEvent{}
+		chain, _, _ = core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), db, 10, func(i int, gen *core.BlockGen) {})
+		chainEvents = []types.ChainEvent{}
 	)
 
 	for _, blk := range chain {
-		chainEvents = append(chainEvents, core.ChainEvent{Hash: blk.Hash(), Block: blk})
+		chainEvents = append(chainEvents, types.ChainEvent{Hash: blk.Hash(), Block: blk})
 	}
 
 	chan0 := make(chan *types.Header)
@@ -240,7 +240,7 @@ func TestPendingTxFilter(t *testing.T) {
 	fid0 := api.NewPendingTransactionFilter()
 
 	time.Sleep(1 * time.Second)
-	txFeed.Send(core.NewTxsEvent{Txs: transactions})
+	txFeed.Send(types.NewTxsEvent{Txs: transactions})
 
 	timeout := time.Now().Add(1 * time.Second)
 	for {
@@ -456,7 +456,7 @@ func TestLogFilter(t *testing.T) {
 	if nsend := logsFeed.Send(allLogs); nsend == 0 {
 		t.Fatal("Shoud have at least one subscription")
 	}
-	if err := mux.Post(core.PendingLogsEvent{Logs: allLogs}); err != nil {
+	if err := mux.Post(types.PendingLogsEvent{Logs: allLogs}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -521,7 +521,7 @@ func TestPendingLogsSubscription(t *testing.T) {
 		fourthTopic    = common.HexToHash("0x4444444444444444444444444444444444444444444444444444444444444444")
 		notUsedTopic   = common.HexToHash("0x9999999999999999999999999999999999999999999999999999999999999999")
 
-		allLogs = []core.PendingLogsEvent{
+		allLogs = []types.PendingLogsEvent{
 			{Logs: []*types.Log{{Address: firstAddr, Topics: []common.Hash{}, BlockNumber: 0}}},
 			{Logs: []*types.Log{{Address: firstAddr, Topics: []common.Hash{firstTopic}, BlockNumber: 1}}},
 			{Logs: []*types.Log{{Address: secondAddr, Topics: []common.Hash{firstTopic}, BlockNumber: 2}}},
@@ -535,7 +535,7 @@ func TestPendingLogsSubscription(t *testing.T) {
 			}},
 		}
 
-		convertLogs = func(pl []core.PendingLogsEvent) []*types.Log {
+		convertLogs = func(pl []types.PendingLogsEvent) []*types.Log {
 			var logs []*types.Log
 			for _, l := range pl {
 				logs = append(logs, l.Logs...)

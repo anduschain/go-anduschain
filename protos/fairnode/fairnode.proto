@@ -1,0 +1,23 @@
+syntax = "proto3";
+option go_package = "github.com/anduschain/go-anduschain/protos/fairnode";
+
+package fairnode;
+
+import "common/common.proto";
+import "google/protobuf/empty.proto";
+
+service FairnodeService {
+    rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
+    rpc RequestOtprn(common.ReqOtprn) returns(common.ResOtprn) {}
+    rpc ProcessController(common.Participate) returns (stream common.ProcessMessage) {}
+    rpc RequestLeague(common.ReqLeague) returns (common.ResLeague) {}
+    rpc Vote(common.Vote) returns (google.protobuf.Empty) {}
+    rpc RequestVoteResult(common.ReqVoteResult) returns (common.ResVoteResult) {}
+    rpc SealConfirm(common.ReqConfirmSeal) returns (stream common.ResConfirmSeal) {}
+    rpc SendBlock(common.ReqBlock) returns (google.protobuf.Empty) {}
+    rpc RequestFairnodeSign(common.ReqFairnodeSign) returns (common.ResFairnodeSign) {}
+}
+
+service FairnodeSyncService {
+    rpc SyncController(google.protobuf.Empty) returns (stream common.FairnodeMessage) {}
+}

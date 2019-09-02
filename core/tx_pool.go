@@ -19,25 +19,19 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/client/config"
-	"github.com/anduschain/go-anduschain/fairnode/fairutil"
-	"github.com/anduschain/go-anduschain/rlp"
-	"math"
-	"math/big"
-	"sort"
-	"sync"
-	"time"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/prque"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/event"
-	clientType "github.com/anduschain/go-anduschain/fairnode/client/types"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/params"
+	"math"
+	"math/big"
+	"sort"
+	"sync"
+	"time"
 )
 
 const (
@@ -82,11 +76,7 @@ var (
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
 
-	ErrJoinNonceNotMmatch  = errors.New("JOIN NONCE 값이 올바르지 않습니다.")
-	ErrBlockNumberNotMatch = errors.New("JOIN TX의 생성할 블록 넘버와 맞지 않습니다")
-	ErrTicketPriceNotMatch = errors.New("JOIN TX의 참가비가 올바르지 않습니다.")
-	ErrFairNodeSigNotMatch = errors.New("패어 노드의 서명이 올바르지 않습니다")
-	ErrDecodeOtprn         = errors.New("OTPRN DECODING ERROR")
+	ErrJoinNonceNotMmatch = errors.New("JOIN NONCE not match current state")
 )
 
 var (
@@ -128,8 +118,7 @@ type blockChain interface {
 	CurrentBlock() *types.Block
 	GetBlock(hash common.Hash, number uint64) *types.Block
 	StateAt(root common.Hash) (*state.StateDB, error)
-
-	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
+	SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -200,7 +189,7 @@ type TxPool struct {
 	gasPrice     *big.Int
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
-	chainHeadCh  chan ChainHeadEvent
+	chainHeadCh  chan types.ChainHeadEvent
 	chainHeadSub event.Subscription
 	signer       types.Signer
 	mu           sync.RWMutex
@@ -239,7 +228,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		queue:       make(map[common.Address]*txList),
 		beats:       make(map[common.Address]time.Time),
 		all:         newTxLookup(),
-		chainHeadCh: make(chan ChainHeadEvent, chainHeadChanSize),
+		chainHeadCh: make(chan types.ChainHeadEvent, chainHeadChanSize),
 		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
 	}
 	pool.locals = newAccountSet(pool.signer)
@@ -463,7 +452,7 @@ func (pool *TxPool) Stop() {
 
 // SubscribeNewTxsEvent registers a subscription of NewTxsEvent and
 // starts sending event to the given channel.
-func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- NewTxsEvent) event.Subscription {
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- types.NewTxsEvent) event.Subscription {
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
@@ -539,22 +528,28 @@ func (pool *TxPool) Content() (map[common.Address]types.Transactions, map[common
 // Pending retrieves all currently processable transactions, groupped by origin
 // account and sorted by nonce. The returned transaction set is a copy and can be
 // freely modified by calling code.
-func (pool *TxPool) Pending() (map[common.Address]types.Transactions, error) {
+func (pool *TxPool) Pending() (map[common.Address]types.Transactions, map[common.Address]types.Transactions, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	pending := make(map[common.Address]types.Transactions)
+	pending, pendingJointx := make(map[common.Address]types.Transactions), make(map[common.Address]types.Transactions)
 	for addr, list := range pool.pending {
-		pending[addr] = list.Flatten()
+		txs := list.Flatten()
+		for _, tx := range txs {
+			if tx.TransactionId() == types.JoinTx {
+				pendingJointx[addr] = append(pendingJointx[addr], tx)
+			}
+		}
+		pending[addr] = txs
 	}
-	return pending, nil
+
+	return pending, pendingJointx, nil
 }
 
 // Locals retrieves the accounts currently considered local by the pool.
 func (pool *TxPool) Locals() []common.Address {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
-
 	return pool.locals.flatten()
 }
 
@@ -577,19 +572,6 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
-
-	var joinTx bool
-	var joinTxdata *clientType.JoinTxData
-
-	if tx.To() != nil {
-		if fairutil.CmpAddress(*tx.To(), pool.chainconfig.Deb.FairAddr) {
-			joinTx = true
-			if err := rlp.DecodeBytes(tx.Data(), &joinTxdata); err != nil {
-				return errors.New(fmt.Sprintf("validateTx decode 에러 %s", err.Error()))
-			}
-		}
-	}
-
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	if tx.Size() > 32*1024 {
 		return ErrOversizedData
@@ -604,7 +586,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrGasLimit
 	}
 	// Make sure the transaction is signed properly
-	from, err := types.Sender(pool.signer, tx)
+	from, err := tx.Sender(pool.signer)
 	if err != nil {
 		return ErrInvalidSender
 	}
@@ -620,8 +602,18 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNonceTooLow
 	}
 
-	// JOINTX가 아닌 케이스
-	if !joinTx {
+	if tx.TransactionId() == types.JoinTx {
+		// joinnonde check
+		jnonce, err := tx.JoinNonce()
+		if err != nil {
+			return err
+		}
+
+		if pool.currentState.GetJoinNonce(from) != jnonce {
+			return ErrJoinNonceNotMmatch
+		}
+
+	} else {
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
@@ -635,22 +627,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 
 		if tx.Gas() < intrGas {
 			return ErrIntrinsicGas
-		}
-	} else {
-		// JOINTX 맞는 케이스
-		// nonce가 joinNounc와 같은가?
-		if pool.currentState.GetJoinNonce(from) != joinTxdata.JoinNonce {
-			return ErrJoinNonceNotMmatch
-		}
-
-		// 참가비가 제대로 지정되어 있는가?
-		if tx.Value().Cmp(config.CalPirce(int64(joinTxdata.Otprn.Fee))) != 0 {
-			return ErrTicketPriceNotMatch
-		}
-
-		// fairnode의 서명이 맞는가?
-		if !deb.ValidationFairSignature(joinTxdata.Otprn.HashOtprn(), joinTxdata.FairNodeSig, *tx.To()) {
-			return ErrFairNodeSigNotMatch
 		}
 	}
 
@@ -695,7 +671,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		}
 	}
 	// If the transaction is replacing an already pending one, do directly
-	from, _ := types.Sender(pool.signer, tx) // already validated
+	from, _ := tx.Sender(pool.signer) // already validated
 	if list := pool.pending[from]; list != nil && list.Overlaps(tx) {
 		// Nonce already pending, check if required price bump is met
 		inserted, old := list.Add(tx, pool.config.PriceBump)
@@ -712,11 +688,9 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		pool.all.Add(tx)
 		pool.priced.Put(tx)
 		pool.journalTx(from, tx)
-		log.Info("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
-
+		log.Trace("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 		// We've directly injected a replacement transaction, notify subsystems
-		go pool.txFeed.Send(NewTxsEvent{types.Transactions{tx}})
-
+		go pool.txFeed.Send(types.NewTxsEvent{Txs: types.Transactions{tx}})
 		return old != nil, nil
 	}
 
@@ -735,7 +709,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 	}
 
 	pool.journalTx(from, tx)
-	log.Info("Pooled new future transaction", "hash", hash, "from", from, "to", tx.To())
+	//log.Info("Pooled new future transaction", "hash", hash, "from", from, "to", tx.To())
 	return replace, nil
 }
 
@@ -744,7 +718,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 // Note, this method assumes the pool lock is held!
 func (pool *TxPool) enqueueTx(hash common.Hash, tx *types.Transaction) (bool, error) {
 	// Try to insert the transaction into the future queue
-	from, _ := types.Sender(pool.signer, tx) // already validated
+	from, _ := tx.Sender(pool.signer) // already validated
 	if pool.queue[from] == nil {
 		pool.queue[from] = newTxList(false)
 	}
@@ -859,7 +833,7 @@ func (pool *TxPool) addTx(tx *types.Transaction, local bool) error {
 	}
 	// If we added a new transaction, run promotion checks and return
 	if !replace {
-		from, _ := types.Sender(pool.signer, tx) // already validated
+		from, _ := tx.Sender(pool.signer) // already validated
 		pool.promoteExecutables([]common.Address{from})
 	}
 	return nil
@@ -883,7 +857,7 @@ func (pool *TxPool) addTxsLocked(txs []*types.Transaction, local bool) []error {
 	for i, tx := range txs {
 		var replace bool
 		if replace, errs[i] = pool.add(tx, local); errs[i] == nil && !replace {
-			from, _ := types.Sender(pool.signer, tx) // already validated
+			from, _ := tx.Sender(pool.signer) // already validated
 			dirty[from] = struct{}{}
 		}
 	}
@@ -907,7 +881,7 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 	status := make([]TxStatus, len(hashes))
 	for i, hash := range hashes {
 		if tx := pool.all.Get(hash); tx != nil {
-			from, _ := types.Sender(pool.signer, tx) // already validated
+			from, _ := tx.Sender(pool.signer) // already validated
 			if pool.pending[from] != nil && pool.pending[from].txs.items[tx.Nonce()] != nil {
 				status[i] = TxStatusPending
 			} else {
@@ -932,7 +906,7 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 	if tx == nil {
 		return
 	}
-	addr, _ := types.Sender(pool.signer, tx) // already validated during insertion
+	addr, _ := tx.Sender(pool.signer) // already validated during insertion
 
 	// Remove it from the list of known transactions
 	pool.all.Remove(hash)
@@ -1028,7 +1002,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	}
 	// Notify subsystem for new promoted transactions.
 	if len(promoted) > 0 {
-		go pool.txFeed.Send(NewTxsEvent{promoted})
+		go pool.txFeed.Send(types.NewTxsEvent{promoted})
 	}
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)
@@ -1226,7 +1200,7 @@ func (as *accountSet) contains(addr common.Address) bool {
 // containsTx checks if the sender of a given tx is within the set. If the sender
 // cannot be derived, this method returns false.
 func (as *accountSet) containsTx(tx *types.Transaction) bool {
-	if addr, err := types.Sender(as.signer, tx); err == nil {
+	if addr, err := tx.Sender(as.signer); err == nil {
 		return as.contains(addr)
 	}
 	return false

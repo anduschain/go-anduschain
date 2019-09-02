@@ -20,7 +20,7 @@ package utils
 import (
 	"compress/gzip"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/server/db/export"
+	"github.com/anduschain/go-anduschain/fairnode/fairdb/export"
 	"io"
 	"os"
 	"os/signal"

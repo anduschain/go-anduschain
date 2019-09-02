@@ -19,12 +19,7 @@ package miner
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"sync/atomic"
-	"time"
-
+	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core"
@@ -33,19 +28,19 @@ import (
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/params"
+	"sync/atomic"
+	"time"
 )
 
 // Backend wraps all methods required for mining.
 type Backend interface {
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
-}
-
-// TODO : andus >> DebBackend interface type 추가 ( andus deb 전용 인터페이스 )
-type DebBackend interface {
-	GetKeystore() *keystore.KeyStore
-	GetFairClient() *fairnodeclient.FairnodeClient
+	AccountManager() *accounts.Manager
+	Server() *p2p.Server
+	Coinbase() common.Address
 }
 
 // Miner creates blocks and searches for proof-of-work values.
@@ -61,19 +56,22 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, chans fairtypes.Channals) *Miner {
+func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64) *Miner {
 	miner := &Miner{
-		eth:    eth,
-		mux:    mux,
-		engine: engine,
-		exitCh: make(chan struct{}),
-		// TODO : andus >> andus keystore 추가
-		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, debBackend, chans),
+		eth:      eth,
+		mux:      mux,
+		engine:   engine,
+		exitCh:   make(chan struct{}),
+		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil),
 		canStart: 1,
 	}
 	go miner.update()
 
 	return miner
+}
+
+func (self *Miner) Worker() *worker {
+	return self.worker
 }
 
 // update keeps track of the downloader events. Please be aware that this is a one shot type of update loop.
@@ -116,7 +114,6 @@ func (self *Miner) update() {
 }
 
 func (self *Miner) Start(coinbase common.Address) {
-	log.Debug("Miner.Start")
 	atomic.StoreInt32(&self.shouldStart, 1)
 	self.SetEtherbase(coinbase)
 
@@ -178,4 +175,8 @@ func (self *Miner) PendingBlock() *types.Block {
 func (self *Miner) SetEtherbase(addr common.Address) {
 	self.coinbase = addr
 	self.worker.setEtherbase(addr)
+}
+
+func (self *Miner) Coinbase() common.Address {
+	return self.coinbase
 }

@@ -18,27 +18,25 @@ package miner
 
 import (
 	"bytes"
-	"errors"
-	"github.com/anduschain/go-anduschain/accounts/keystore"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/fairnode/client"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
-	"math/big"
-	"sync"
-	"sync/atomic"
-	"time"
-
+	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/deckarep/golang-set"
+	"math/big"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -59,7 +57,7 @@ const (
 	resubmitAdjustChanSize = 10
 
 	// miningLogAtDepth is the number of confirmations before logging successful mining.
-	miningLogAtDepth = 7
+	miningLogAtDepth = 1 // README(hakuna) : confirm just in time.
 
 	// minRecommitInterval is the minimal time interval to recreate the mining block with
 	// any newly arrived transactions.
@@ -78,7 +76,7 @@ const (
 	intervalAdjustBias = 200 * 1000.0 * 1000.0
 
 	// staleThreshold is the maximum depth of the acceptable stale block.
-	staleThreshold = 7
+	staleThreshold = 1 // README(hakuna) : confirm just in time.
 )
 
 // environment is the worker's current environment and holds all of the current state information.
@@ -88,9 +86,9 @@ type environment struct {
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
 	family    mapset.Set     // family set (used for checking uncle invalidity)
-	uncles    mapset.Set     // uncle set
-	tcount    int            // tx count in cycle
-	gasPool   *core.GasPool  // available gas used to pack transactions
+
+	count   int           // tx count in cycle
+	gasPool *core.GasPool // available gas used to pack transactions
 
 	header   *types.Header
 	txs      []*types.Transaction
@@ -99,7 +97,8 @@ type environment struct {
 
 // task contains all information for consensus engine sealing and result submitting.
 type task struct {
-	receipts  []*types.Receipt
+	receipts []*types.Receipt
+
 	state     *state.StateDB
 	block     *types.Block
 	createdAt time.Time
@@ -124,6 +123,12 @@ type intervalAdjust struct {
 	inc   bool
 }
 
+type NewLeagueBlockData struct {
+	Block *types.Block
+	Addr  common.Address
+	Sign  []byte
+}
+
 // worker is the main object which takes care of submitting new work to consensus engine
 // and gathering the sealing result.
 type worker struct {
@@ -137,11 +142,11 @@ type worker struct {
 
 	// Subscriptions
 	mux          *event.TypeMux
-	txsCh        chan core.NewTxsEvent
+	txsCh        chan types.NewTxsEvent
 	txsSub       event.Subscription
-	chainHeadCh  chan core.ChainHeadEvent
+	chainHeadCh  chan types.ChainHeadEvent
 	chainHeadSub event.Subscription
-	chainSideCh  chan core.ChainSideEvent
+	chainSideCh  chan types.ChainSideEvent
 	chainSideSub event.Subscription
 
 	// Channels
@@ -153,9 +158,10 @@ type worker struct {
 	resubmitIntervalCh chan time.Duration
 	resubmitAdjustCh   chan *intervalAdjust
 
-	current        *environment                 // An environment for current running cycle.
-	possibleUncles map[common.Hash]*types.Block // A set of side blocks as the possible uncle blocks.
-	unconfirmed    *unconfirmedBlocks           // A set of locally mined blocks pending canonicalness confirmations.
+	current *environment // An environment for current running cycle.
+
+	possibleUncles map[common.Hash]*types.Block // A set of side blocks as the possible uncle blocks. TODO(hakuna) : will be removed
+	unconfirmed    *unconfirmedBlocks           // A set of locally mined blocks pending canonicalness confirmations. TODO(hakuna) : will be removed
 
 	mu       sync.RWMutex // The lock used to protect the coinbase and extra fields
 	coinbase common.Address
@@ -178,14 +184,31 @@ type worker struct {
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
 
-	// TODO : andus >> keystore
-	ks         *keystore.KeyStore
-	fairclient *fairnodeclient.FairnodeClient
-	chans      fairtypes.Channals
-	isVoting   *bool
+	// TODO(hakuna) : added new version
+	scope              event.SubscriptionScope
+	newLeagueBlockFeed event.Feed
+
+	debClient        *client.DebClient
+	fnStatusCh       chan types.FairnodeStatusEvent
+	fnStatusdSub     event.Subscription
+	fnClientCloseCh  chan types.ClientClose
+	fnClientCLoseSub event.Subscription
+
+	fnStatus types.FnStatus
+
+	leagueBlockCh      chan *types.NewLeagueBlockEvent
+	voteResultCh       chan types.Voters
+	submitBlockCh      chan *types.Block
+	fnSignCh           chan []byte
+	leagueBroadCastCh  chan struct{}
+	possibleWinning    *types.Block // A set of possible winning block
+	possibleFinalBlock *types.Block // A set of possible winning block
+
+	finalBlock *types.Block
+	finalizeCh chan struct{}
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, debBackend DebBackend, chans fairtypes.Channals) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
 	worker := &worker{
 		config:             config,
 		engine:             engine,
@@ -197,9 +220,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		possibleUncles:     make(map[common.Hash]*types.Block),
 		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		pendingTasks:       make(map[common.Hash]*task),
-		txsCh:              make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
+		txsCh:              make(chan types.NewTxsEvent, txChanSize),
+		chainHeadCh:        make(chan types.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:        make(chan types.ChainSideEvent, chainSideChanSize),
 		newWorkCh:          make(chan *newWorkReq),
 		taskCh:             make(chan *task),
 		resultCh:           make(chan *types.Block, resultQueueSize),
@@ -208,20 +231,23 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 
-		chans:    chans,
-		isVoting: new(bool),
-	}
+		// for deb client
+		fnStatusCh:      make(chan types.FairnodeStatusEvent), // non async channel
+		fnClientCloseCh: make(chan types.ClientClose),
 
-	*worker.isVoting = false
+		leagueBlockCh:     make(chan *types.NewLeagueBlockEvent),
+		leagueBroadCastCh: make(chan struct{}),
+		voteResultCh:      make(chan types.Voters),
+		submitBlockCh:     make(chan *types.Block),
+		fnSignCh:          make(chan []byte),
+		finalizeCh:        make(chan struct{}),
+	}
 
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 	// Subscribe events for blockchain
 	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
 	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
-
-	worker.ks = debBackend.GetKeystore()
-	worker.fairclient = debBackend.GetFairClient()
 
 	// Sanitize recommit interval if the user-specified one is too short.
 	if recommit < minRecommitInterval {
@@ -234,10 +260,120 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
+	worker.debClient = client.NewDebClient(config, worker.exitCh)
+	// TODO(hakuna) : new version miner process, event receiver
+	worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
+	worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
+
+	go worker.clientStatusLoop() // client close check and mininig canceled
+	go worker.leagueStatusLoop() // for league status message
+
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
 
 	return worker
+}
+
+func (w *worker) leagueStatusLoop() {
+	defer log.Warn("leagueStatusLoop was dead")
+	defer w.fnStatusdSub.Unsubscribe()
+
+	for {
+		select {
+		case ev := <-w.fnStatusCh:
+			if w.fnStatus != ev.Status {
+				w.fnStatus = ev.Status
+			}
+			switch w.fnStatus {
+			case types.MAKE_BLOCK:
+				if otprn, ok := ev.Payload.(types.Otprn); ok {
+					if engine, ok := w.engine.(*deb.Deb); ok {
+						engine.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
+						engine.SetOtprn(&otprn)        // deb consensus engine setting otprn
+					}
+					w.startCh <- struct{}{}
+				}
+			case types.LEAGUE_BROADCASTING:
+				// league broadcasting
+				w.leagueBroadCastCh <- struct{}{}
+			case types.VOTE_START:
+				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
+					if w.possibleWinning == nil {
+						log.Error("leagueStatusLoop possible winning block was nil")
+						continue
+					}
+					block := w.possibleWinning
+					bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+					acc := accounts.Account{Address: w.coinbase}
+					wallet, err := w.eth.AccountManager().Find(acc)
+					if err != nil {
+						log.Error("wallet not fount", "msg", err)
+						continue
+					}
+
+					sign, err := wallet.SignHash(acc, bHash.Bytes())
+					if err != nil {
+						log.Error("Block Sign Hash", "msg", err)
+						continue
+					}
+
+					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
+				}
+			case types.VOTE_COMPLETE:
+				if payload, ok := ev.Payload.([]interface{}); ok {
+					if voters, ok := payload[0].(types.Voters); ok {
+						w.voteResultCh <- voters
+					}
+					if submitBlockCh, ok := payload[1].(chan *types.Block); ok {
+						w.submitBlockCh = submitBlockCh
+					}
+				}
+			case types.REQ_FAIRNODE_SIGN:
+				if fnSign, ok := ev.Payload.([]byte); ok {
+					w.fnSignCh <- fnSign
+				}
+			case types.FINALIZE:
+				if w.finalBlock == nil {
+					continue
+				}
+				w.finalizeCh <- struct{}{}
+			default:
+				log.Info("leagueStatusLoop", "pos", "miner.worker", "status", ev.Status.String())
+			}
+		case <-w.fnStatusdSub.Err():
+			return
+		}
+	}
+}
+
+func (w *worker) clientStatusLoop() {
+	defer log.Warn("fair client was dead and worker exited")
+	defer w.fnClientCLoseSub.Unsubscribe()
+
+	for {
+		select {
+		case <-w.fnClientCloseCh:
+			log.Warn("deb client was close")
+			w.debClient.Stop()
+			time.AfterFunc(10*time.Second, func() {
+				if w.isRunning() {
+					log.Info("Retry Mining")
+					w.debStart()
+				}
+			})
+		case <-w.fnClientCLoseSub.Err():
+			return
+		}
+	}
+}
+
+// leauge new block subscribe
+func (w *worker) SubscribeNewLeagueBlockEvent(ch chan<- types.NewLeagueBlockEvent) event.Subscription {
+	return w.scope.Track(w.newLeagueBlockFeed.Subscribe(ch))
+}
+
+func (w *worker) LeagueBlockCh() chan *types.NewLeagueBlockEvent {
+	return w.leagueBlockCh
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -278,15 +414,28 @@ func (w *worker) pendingBlock() *types.Block {
 	return w.snapshotBlock
 }
 
+func (w *worker) debStart() {
+	if err := w.debClient.Start(w.eth); err == nil {
+		w.startCh <- struct{}{}
+	} else {
+		log.Error("deb client start", "msg", err)
+		return
+	}
+}
+
 // start sets the running status as 1 and triggers new work submitting.
 func (w *worker) start() {
+	if w.isRunning() {
+		return
+	}
 	atomic.StoreInt32(&w.running, 1)
-	w.startCh <- struct{}{}
+	w.debStart()
 }
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
+	w.debClient.Stop()
 }
 
 // isRunning returns an indicator whether worker is running or not.
@@ -350,27 +499,28 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 				delete(w.pendingTasks, h)
 			}
 		}
+		w.possibleFinalBlock = nil
+		w.possibleWinning = nil
+		w.finalBlock = nil
 		w.pendingMu.Unlock()
 	}
 
 	for {
 		select {
-		case _, ok := <-w.fairclient.StartCh:
-			log.Debug("블록 생성 시작 채널 호출", "status", ok)
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
-
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
-			commit(false, commitInterruptNewHead)
+
+			//commit(false, commitInterruptNewHead)
 
 		case <-timer.C:
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
-			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0 || w.config.Deb == nil) {
+			if w.isRunning() && w.config.Deb == nil {
 				// Short circuit if no new transaction arrives.
 				if atomic.LoadInt32(&w.newTxs) == 0 {
 					timer.Reset(recommit)
@@ -431,27 +581,6 @@ func (w *worker) mainLoop() {
 			}
 			// Add side block to possible uncle block set.
 			w.possibleUncles[ev.Block.Hash()] = ev.Block
-			// If our mining block contains less than 2 uncle blocks,
-			// add the new uncle block if valid and regenerate a mining block.
-			if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
-				start := time.Now()
-				if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
-					var uncles []*types.Header
-					w.current.uncles.Each(func(item interface{}) bool {
-						hash, ok := item.(common.Hash)
-						if !ok {
-							return false
-						}
-						uncle, exist := w.possibleUncles[hash]
-						if !exist {
-							return false
-						}
-						uncles = append(uncles, uncle.Header())
-						return false
-					})
-					w.commit(uncles, nil, true, start)
-				}
-			}
 
 		case ev := <-w.txsCh:
 			// Apply transactions to the pending state if we're not mining.
@@ -466,7 +595,7 @@ func (w *worker) mainLoop() {
 
 				txs := make(map[common.Address]types.Transactions)
 				for _, tx := range ev.Txs {
-					acc, _ := types.Sender(w.current.signer, tx)
+					acc, _ := tx.Sender(w.current.signer)
 					txs[acc] = append(txs[acc], tx)
 				}
 				txset := types.NewTransactionsByPriceAndNonce(w.current.signer, txs)
@@ -474,9 +603,7 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				//if w.config.Clique != nil && w.config.Clique.Period == 0 {
-				//	w.commitNewWork(nil, false, time.Now().Unix())
-				//}
+				// w.commitNewWork(nil, false, time.Now().Unix())
 			}
 			atomic.AddInt32(&w.newTxs, int32(len(ev.Txs)))
 
@@ -546,6 +673,10 @@ func (w *worker) resultLoop() {
 	for {
 		select {
 		case block := <-w.resultCh:
+			if w.fnStatus != types.MAKE_BLOCK {
+				continue
+			}
+
 			// Short circuit when receiving empty result.
 			if block == nil {
 				continue
@@ -567,71 +698,163 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
-			//var (
-			//	receipts = make([]*types.Receipt, len(task.receipts))
-			//	logs     []*types.Log
-			//)
-			//for i, receipt := range task.receipts {
-			//	receipts[i] = new(types.Receipt)
-			//	*receipts[i] = *receipt
-			//	// Update the block hash in all logs since it is now available and not when the
-			//	// receipt/log of individual transactions were created.
-			//	for _, log := range receipt.Logs {
-			//		log.BlockHash = hash
-			//	}
-			//	logs = append(logs, receipt.Logs...)
-			//}
 
-			// 블록 투표
+			w.pendingMu.Lock()
+			w.possibleWinning = block // made for me, saving possible block
+			w.pendingMu.Unlock()
 
-			debEngine, ok := w.engine.(*deb.Deb)
-			if !ok {
-				// Deb engine check
+			log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+
+		case <-w.leagueBroadCastCh:
+			if w.fnStatus != types.LEAGUE_BROADCASTING {
 				continue
 			}
 
-			sig, err := debEngine.SignBlockHeader(block.Header().Hash().Bytes())
+			if w.possibleWinning == nil {
+				continue
+			}
+
+			block := w.possibleWinning
+
+			bHash := rlpHash(block) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+			acc := accounts.Account{Address: w.coinbase}
+			wallet, err := w.eth.AccountManager().Find(acc)
 			if err != nil {
-				log.Error("Block found but fail signature", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				log.Error("wallet not fount", "msg", err)
 				continue
 			}
 
-			err = debEngine.ValidationVoteBlock(w.chain, block)
+			sign, err := wallet.SignHash(acc, bHash.Bytes())
 			if err != nil {
-				log.Error("Block found but don't able to vote block", "number", block.Number(), "sealhash", sealhash, "hash", hash, "err", err)
+				log.Error("Block Sign Hash", "msg", err)
 				continue
 			}
 
-			vb := fairtypes.VoteBlock{
-				Block:      block,
-				HeaderHash: block.Header().Hash(),
-				Sig:        sig,
-				OtprnHash:  w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn(),
-				Voter:      w.coinbase,
-				//Receipts:   receipts,
+			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
+			log.Info("Possible Block broadcasting", "hash", block.Hash())
+		case ev := <-w.leagueBlockCh:
+			bypass := true
+			switch w.fnStatus {
+			case types.MAKE_BLOCK, types.LEAGUE_BROADCASTING:
+				bypass = false
 			}
 
-			// 블록 투표 ( 블록 해시, 블록 번호, otprnhash, sign, address )
-
-			// 0. 생성한 블록 브로드케스팅 ( 마이너 노들에게 )
-			w.chans.GetLeagueBlockBroadcastCh() <- &vb
-			log.Debug("Block broadcasting to league", "number", block.Number(), "hash", hash)
-
-			// 2. 블록 교체 ( 위닝 블록 선정 ) and 블록 투표
-			if !*w.isVoting {
-				*w.isVoting = true
-				go debEngine.SendMiningBlockAndVoting(w.chain, &vb, w.isVoting)
-			}
-
-		case finalBlock := <-w.chans.GetFinalBlockCh():
-			block := finalBlock.Block
-
-			debEngine, ok := w.engine.(*deb.Deb)
-			if !ok {
-				// Deb engine check
+			if bypass {
 				continue
 			}
+
+			bHash := rlpHash(ev.Block)
+			if err := verify.ValidationSignHash(ev.Sign, bHash, ev.Address); err != nil {
+				log.Error("VerifySignature", "msg", err)
+				continue
+			}
+
+			rblock := ev.Block // received block
+
+			if err := w.engine.VerifyHeader(w.chain, rblock.Header(), false); err != nil {
+				log.Error("Received league block verifyHeader", "msg", err, "hash", rblock.Header().Hash())
+				continue
+			}
+
+			var wBlock *types.Block
+
+			if engine, ok := w.engine.(*deb.Deb); ok {
+				if err := engine.ValidationLeagueBlock(w.chain, rblock); err != nil {
+					log.Error("Received league block Validation League Block", "msg", err, "hash", rblock.Header().Hash())
+					continue
+				}
+
+				if wBlock = engine.SelectWinningBlock(w.possibleWinning, rblock); w.possibleWinning == nil {
+					log.Error("SelectWinningBlock", "msg", "selected block was nil")
+					continue
+				}
+			}
+
+			if wBlock.Hash() == w.possibleWinning.Hash() {
+				continue
+			}
+
+			w.pendingMu.Lock()
+			w.possibleWinning = wBlock
+			w.pendingMu.Unlock()
+
+			bHash = rlpHash(w.possibleWinning) // 리그 브로드케스팅 블록 해시 (전체를 해시 한다)
+			acc := accounts.Account{Address: w.coinbase}
+			wallet, err := w.eth.AccountManager().Find(acc)
+			if err != nil {
+				log.Error("wallet not fount", "msg", err)
+				continue
+			}
+
+			sign, err := wallet.SignHash(acc, bHash.Bytes())
+			if err != nil {
+				log.Error("Block Sign Hash", "msg", err)
+				continue
+			}
+
+			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: w.possibleWinning, Address: w.coinbase, Sign: sign}) // league block for broadcasting
+			log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash())
+
+		case voters := <-w.voteResultCh:
+			if w.fnStatus != types.VOTE_COMPLETE {
+				continue
+			}
+
+			pBlock := w.possibleWinning
+			if pBlock == nil {
+				continue
+			}
+
+			fbHash := verify.ValidationFinalBlockHash(voters)
+			if fbHash != pBlock.Hash() {
+				log.Error("Vote result final block hash difference", "fbHash", fbHash, "pHash", pBlock.Hash())
+				continue
+			}
+
+			w.pendingMu.Lock()
+			w.possibleFinalBlock = pBlock.WithVoter(voters) // add voters in block
+			w.submitBlockCh <- w.possibleFinalBlock         // pass votershash
+			w.possibleWinning = nil
+			w.pendingMu.Unlock()
+
+		case fnSign := <-w.fnSignCh:
+			if w.fnStatus != types.REQ_FAIRNODE_SIGN {
+				continue
+			}
+
+			if w.possibleFinalBlock == nil {
+				log.Error("Possible final block is nil")
+				continue
+			}
+
+			if bytes.Compare(fnSign, []byte{}) == 0 {
+				log.Error("Empty fairnode signature")
+				continue
+			}
+
+			block := w.possibleFinalBlock.WithFairnodeSign(fnSign) // fairnode sign add
+
+			if engine, ok := w.engine.(*deb.Deb); ok {
+				err := engine.VerifyFairnodeSign(block.Header())
+				if err != nil {
+					log.Error("Verify fairnode signature", "msg", err)
+					continue
+				}
+			}
+
+			w.finalBlock = block
+			log.Info("Make Final Block for Finalize", "hash", w.finalBlock.Hash())
+		case <-w.finalizeCh:
+			if w.fnStatus != types.FINALIZE {
+				continue
+			}
+
+			if w.finalBlock == nil {
+				log.Error("Final Block is nil")
+				continue
+			}
+
+			block := w.finalBlock
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -643,17 +866,9 @@ func (w *worker) resultLoop() {
 				continue
 			}
 
-			// AndusChain check fairnode signature
-			err, _ := debEngine.FairNodeSigCheck(block, block.FairNodeSig)
-			if err != nil {
-				log.Error("Block found but no fairnode signature", "number", block.Number(), "sealhash", sealhash, "hash", hash, "error", err)
-				continue
-			}
-
 			bstart := time.Now()
 
 			// finalblock 검증 및 commit block
-
 			var parent *types.Block
 			parent = w.chain.GetBlock(block.ParentHash(), block.NumberU64()-1)
 
@@ -685,27 +900,30 @@ func (w *worker) resultLoop() {
 				"elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			// Broadcast the block and announce chain insertion event
-			w.mux.Post(core.NewMinedBlockEvent{Block: block})
+			w.mux.Post(types.NewMinedBlockEvent{Block: block})
 
 			var CanonStatTy, SideStatTy bool
 			var events []interface{}
 			switch stat {
 			case core.CanonStatTy:
 				CanonStatTy = true
-				events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
-				events = append(events, core.ChainHeadEvent{Block: block})
+				events = append(events, types.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
+				events = append(events, types.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
-				events = append(events, core.ChainSideEvent{Block: block})
+				//events = append(events, types.ChainSideEvent{Block: block})
 			}
 
 			log.Trace("WriteBlockWithState", "current", w.current.header.Number.String(), "CanonStatTy", CanonStatTy, "SideStatTy", SideStatTy)
-
 			w.chain.PostChainEvents(events, logs)
 
 			// Insert the block into the set of pending ones to resultLoop for confirmations
 			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 
+			w.pendingMu.Lock()
+			w.possibleFinalBlock = nil
+			w.finalBlock = nil
+			w.pendingMu.Unlock()
 		case <-w.exitCh:
 			return
 		}
@@ -723,41 +941,18 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		state:     state,
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
-		uncles:    mapset.NewSet(),
 		header:    header,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
 	for _, ancestor := range w.chain.GetBlocksFromHash(parent.Hash(), 7) {
-		for _, uncle := range ancestor.Uncles() {
-			env.family.Add(uncle.Hash())
-		}
 		env.family.Add(ancestor.Hash())
 		env.ancestors.Add(ancestor.Hash())
 	}
 
 	// Keep track of transactions which return debErrors so they can be removed
-	env.tcount = 0
+	env.count = 0
 	w.current = env
-	return nil
-}
-
-// commitUncle adds the given block to uncle block set, returns error if failed to add.
-func (w *worker) commitUncle(env *environment, uncle *types.Header) error {
-	hash := uncle.Hash()
-	if env.uncles.Contains(hash) {
-		return errors.New("uncle not unique")
-	}
-	if env.header.ParentHash == uncle.ParentHash {
-		return errors.New("uncle is sibling")
-	}
-	if !env.ancestors.Contains(uncle.ParentHash) {
-		return errors.New("uncle's parent unknown")
-	}
-	if env.family.Contains(hash) {
-		return errors.New("uncle already included")
-	}
-	env.uncles.Add(uncle.Hash())
 	return nil
 }
 
@@ -767,25 +962,11 @@ func (w *worker) updateSnapshot() {
 	w.snapshotMu.Lock()
 	defer w.snapshotMu.Unlock()
 
-	var uncles []*types.Header
-	w.current.uncles.Each(func(item interface{}) bool {
-		hash, ok := item.(common.Hash)
-		if !ok {
-			return false
-		}
-		uncle, exist := w.possibleUncles[hash]
-		if !exist {
-			return false
-		}
-		uncles = append(uncles, uncle.Header())
-		return false
-	})
-
 	w.snapshotBlock = types.NewBlock(
 		w.current.header,
 		w.current.txs,
-		uncles,
 		w.current.receipts,
+		[]*types.Voter{},
 	)
 
 	w.snapshotState = w.current.state.Copy()
@@ -793,7 +974,6 @@ func (w *worker) updateSnapshot() {
 
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
-
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
@@ -801,7 +981,6 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	}
 
 	w.current.txs = append(w.current.txs, tx)
-
 	w.current.receipts = append(w.current.receipts, receipt)
 
 	return receipt.Logs, nil
@@ -854,17 +1033,16 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// during transaction acceptance is the transaction pool.
 		//
 		// We use the eip155 signer regardless of the current hf.
-		from, _ := types.Sender(w.current.signer, tx)
+		from, _ := tx.Sender(w.current.signer)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
 		if tx.Protected() && !w.config.IsEIP155(w.current.header.Number) {
 			log.Info("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.config.EIP155Block)
-
 			txs.Pop()
 			continue
 		}
 		// Start executing the transaction
-		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
+		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.count)
 
 		logs, err := w.commitTransaction(tx, coinbase)
 		switch err {
@@ -886,7 +1064,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		case nil:
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
-			w.current.tcount++
+			w.current.count++
 			txs.Shift()
 
 		default:
@@ -910,7 +1088,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			cpy[i] = new(types.Log)
 			*cpy[i] = *l
 		}
-		go w.mux.Post(core.PendingLogsEvent{Logs: cpy})
+		go w.mux.Post(types.PendingLogsEvent{Logs: cpy})
 	}
 	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
 	// than the user-specified one.
@@ -947,19 +1125,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       big.NewInt(timestamp),
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() && w.fairclient.Running && w.fairclient.GetUsingOtprnWithSig() != nil {
+	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
-			log.Error("Refusing to mine without etherbase")
+			log.Error("Refusing to mine without coinbase")
 			return
 		}
 
 		header.Coinbase = w.coinbase
-
-		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			header.Extra = w.fairclient.GetUsingOtprnWithSig().Otprn.HashOtprn().Bytes()
-			// 엔진에 서명키 셋팅
-			debEngine.SetSignKey(&w.fairclient.CoinBasePrivateKey)
-		}
 
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
@@ -996,31 +1168,26 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				delete(w.possibleUncles, hash)
 			}
 		}
-		uncles := make([]*types.Header, 0, 2)
-		for hash, uncle := range w.possibleUncles {
-			if len(uncles) == 2 {
-				break
-			}
-			if err := w.commitUncle(env, uncle.Header()); err != nil {
-				log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
-			} else {
-				log.Debug("Committing new uncle to block", "hash", hash)
-				uncles = append(uncles, uncle.Header())
-			}
-		}
 
 		// Fill the block with all available pending transactions.
-		pending, err := w.eth.TxPool().Pending()
+		pending, pendingJoinTx, err := w.eth.TxPool().Pending()
 		if err != nil {
 			log.Error("Failed to fetch pending transactions", "err", err)
 			return
 		}
 		// Short circuit if there is no available pending transactions
-
-		if len(pending) == 0 {
+		if len(pending) == 0 || len(pendingJoinTx) == 0 {
 			w.updateSnapshot()
 			return
 		}
+
+		// miner's join transaction is empty
+		if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+			log.Error("miner's join transaction is empty")
+			w.updateSnapshot()
+			return
+		}
+
 		// Split the pending transactions into locals and remotes
 		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
 		for _, account := range w.eth.TxPool().Locals() {
@@ -1029,6 +1196,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
+
 		if len(localTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
@@ -1042,14 +1210,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		w.commit(uncles, w.fullTaskHook, true, tstart)
+		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
+			log.Error("Failed commit for mining", "err", err, "update", true)
+			return
+		}
 	}
 
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
+func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := make([]*types.Receipt, len(w.current.receipts))
 	for i, l := range w.current.receipts {
@@ -1057,22 +1228,20 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		*receipts[i] = *l
 	}
 	s := w.current.state.Copy()
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
+	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.receipts, []*types.Voter{})
 	if err != nil {
 		return err
 	}
+
+	if engine, ok := w.engine.(*deb.Deb); ok {
+		if err := engine.ValidationLeagueBlock(w.chain, block); err != nil {
+			return err
+		}
+	}
+
 	if w.isRunning() {
 		if interval != nil {
 			interval()
-		}
-
-		// finalblock joinTx 여부 확인
-		if debEngine, ok := w.engine.(*deb.Deb); ok {
-			err := debEngine.ValidationBlockWidthJoinTx(w.chain.Config().ChainID, block, w.current.state.GetJoinNonce(block.Coinbase()))
-			if err != nil {
-				log.Error("Commit new mining work", "number", block.Number(), "mag", err.Error())
-				return err
-			}
 		}
 
 		select {
@@ -1080,13 +1249,12 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 			w.unconfirmed.Shift(block.NumberU64() - 1)
 
 			feesWei := new(big.Int)
+			// general transaction fee
 			for i, tx := range block.Transactions() {
 				feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
 			}
 			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Daon)))
-
-			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"uncles", len(uncles), "txs", w.current.tcount, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
+			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()), "txs", w.current.count, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:
 			log.Info("Worker has exited")

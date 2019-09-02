@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 )
@@ -68,7 +68,7 @@ type ttTransactionMarshaling struct {
 }
 
 func (tt *TransactionTest) Run(config *params.ChainConfig) error {
-	tx := new(types.Transaction)
+	var tx *types.Transaction
 	if err := rlp.DecodeBytes(tt.json.RLP, tx); err != nil {
 		if tt.json.Transaction == nil {
 			return nil
@@ -77,7 +77,7 @@ func (tt *TransactionTest) Run(config *params.ChainConfig) error {
 	}
 	// Check sender derivation.
 	signer := types.MakeSigner(config, new(big.Int).SetUint64(uint64(tt.json.BlockNumber)))
-	sender, err := types.Sender(signer, tx)
+	sender, err := tx.Sender(signer)
 	if err != nil {
 		return err
 	}

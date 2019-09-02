@@ -66,7 +66,7 @@ func TestBodyStorage(t *testing.T) {
 	db := ethdb.NewMemDatabase()
 
 	// Create a test body to move around the database and make sure it's really new
-	body := &types.Body{Uncles: []*types.Header{{Extra: []byte("test header")}}}
+	body := &types.Body{}
 
 	hasher := sha3.NewKeccak256()
 	rlp.Encode(hasher, body)
@@ -105,8 +105,8 @@ func TestBlockStorage(t *testing.T) {
 
 	// Create a test block to move around the database and make sure it's really new
 	block := types.NewBlockWithHeader(&types.Header{
-		Extra:       []byte("test block"),
-		UncleHash:   types.EmptyUncleHash,
+		Extra: []byte("test block"),
+		//UncleHash:   types.EmptyUncleHash,
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 	})
@@ -133,7 +133,7 @@ func TestBlockStorage(t *testing.T) {
 	}
 	if entry := ReadBody(db, block.Hash(), block.NumberU64()); entry == nil {
 		t.Fatalf("Stored body not found")
-	} else if types.DeriveSha(types.Transactions(entry.Transactions)) != types.DeriveSha(block.Transactions()) || types.CalcUncleHash(entry.Uncles) != types.CalcUncleHash(block.Uncles()) {
+	} else if types.DeriveSha(types.Transactions(entry.Transactions)) != types.DeriveSha(block.Transactions()) {
 		t.Fatalf("Retrieved body mismatch: have %v, want %v", entry, block.Body())
 	}
 	// Delete the block and verify the execution
@@ -153,8 +153,8 @@ func TestBlockStorage(t *testing.T) {
 func TestPartialBlockStorage(t *testing.T) {
 	db := ethdb.NewMemDatabase()
 	block := types.NewBlockWithHeader(&types.Header{
-		Extra:       []byte("test block"),
-		UncleHash:   types.EmptyUncleHash,
+		Extra: []byte("test block"),
+		//UncleHash:   types.EmptyUncleHash,
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 	})

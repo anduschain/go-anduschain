@@ -25,64 +25,80 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
-	TestnetGenesisHash = common.HexToHash("0x604ea1d408dccdeaafa8eaa146cf0378b18827873297efb10cefe6025a6dbc0d")
+	MainnetGenesisHash = common.HexToHash("0x851246e107c9fa8f0b0954066cc1a69ecaee616cec7f3bbcac9f7cb1bd74d913")
+	TestnetGenesisHash = common.HexToHash("0x45ba54287c71d0a90897930cef95e7bf494be2f2aafbbe6b7c79d27d0a75c821")
 
-	MainNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
-	TestNetFairAddress = common.HexToAddress("0x5aeab10a26ce20fe8f463682ffc3cf72d2580c3c")
+	//FIXME(hakuna) : this is sample, you must modify is public key.
+	MainNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode
+	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"
+)
+
+// chainID rule = 0xdao700 -> to dec 14288640 // mainnet
+// chainID rule = 0xdao701 -> to dec 14288641 // testnet
+// chainID rule = 0xdao702 -> to dec 14288640 // ...
+
+var (
+	MAIN_NETWORK = big.NewInt(14288640)
+	TEST_NETWORK = big.NewInt(14288641)
+	DEB_NETWORK  = big.NewInt(14288642)
 )
 
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1315), // now Same
-		HomesteadBlock:      nil,
+		ChainID:             MAIN_NETWORK,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
-		EIP150Block:         nil,
+		EIP150Block:         big.NewInt(0),
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{MainNetFairAddress},
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		Deb:                 &DebConfig{FairPubKey: MainNetPubKey},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1315),
-		HomesteadBlock:      nil,
+		ChainID:             TEST_NETWORK,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
-		EIP150Block:         nil,
+		EIP150Block:         big.NewInt(0),
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{TestNetFairAddress},
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		Deb:                 &DebConfig{FairPubKey: TestNetPubKey},
 	}
 
-	// TODO : andus >> consensus 추가
+	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
 	DebChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3356),
-		HomesteadBlock:      nil,
+		ChainID:             DEB_NETWORK,
+		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
 		EIP150Block:         nil,
 		EIP150Hash:          common.Hash{},
 		EIP155Block:         big.NewInt(0),
-		EIP158Block:         nil,
-		ByzantiumBlock:      nil,
-		ConstantinopleBlock: nil,
-		Deb:                 &DebConfig{},
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		Deb:                 &DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"},
 	}
 
-	TestChainConfig = &ChainConfig{big.NewInt(335589), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{}}
-	TestRules       = TestChainConfig.Rules(new(big.Int))
+	TestChainConfig = &ChainConfig{
+		big.NewInt(3357), big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
 
-	AllDebProtocolChanges = &ChainConfig{big.NewInt(33558), nil, nil, true, nil, common.Hash{}, big.NewInt(0), nil, nil, nil, nil, nil, &DebConfig{}}
+	AllDebProtocolChanges = &ChainConfig{
+		big.NewInt(3358), big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -109,48 +125,21 @@ type ChainConfig struct {
 	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
-	Ethash *EthashConfig `json:"ethash,omitempty"`
-	Clique *CliqueConfig `json:"clique,omitempty"`
-	Deb    *DebConfig    `json:"deb,omitempty"`
+	Deb *DebConfig `json:"deb,omitempty"`
 }
 
-// TODO : andus >> consensus 추가
 type DebConfig struct {
-	//Epoch    uint64         `json:"epoch"`
-	FairAddr common.Address `json:"fairnode_address"`
+	FairPubKey string `json:"fairPubKey"`
 }
 
 func (c *DebConfig) String() string {
 	return "deb"
 }
 
-// EthashConfig is the consensus engine configs for proof-of-work based sealing.
-type EthashConfig struct{}
-
-// String implements the stringer interface, returning the consensus engine details.
-func (c *EthashConfig) String() string {
-	return "ethash"
-}
-
-// CliqueConfig is the consensus engine configs for proof-of-authority based sealing.
-type CliqueConfig struct {
-	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
-	Epoch  uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
-}
-
-// String implements the stringer interface, returning the consensus engine details.
-func (c *CliqueConfig) String() string {
-	return "clique"
-}
-
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
 	var engine interface{}
 	switch {
-	case c.Ethash != nil:
-		engine = c.Ethash
-	case c.Clique != nil:
-		engine = c.Clique
 	case c.Deb != nil:
 		engine = c.Deb
 	default:
@@ -168,6 +157,17 @@ func (c *ChainConfig) String() string {
 		c.ConstantinopleBlock,
 		engine,
 	)
+}
+
+// return newtork type
+func (c *ChainConfig) NetworkType() uint64 {
+	if c.ChainID.Cmp(MAIN_NETWORK) == 0 {
+		return 0
+	}
+	if c.ChainID.Cmp(TEST_NETWORK) == 0 {
+		return 1
+	}
+	return 2
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
@@ -336,7 +336,7 @@ func (err *ConfigCompatError) Error() string {
 type Rules struct {
 	ChainID                                   *big.Int
 	IsHomestead, IsEIP150, IsEIP155, IsEIP158 bool
-	IsByzantium                               bool
+	IsByzantium, IsConstantinople             bool
 }
 
 // Rules ensures c's ChainID is not nil.
@@ -345,5 +345,13 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 	if chainID == nil {
 		chainID = new(big.Int)
 	}
-	return Rules{ChainID: new(big.Int).Set(chainID), IsHomestead: c.IsHomestead(num), IsEIP150: c.IsEIP150(num), IsEIP155: c.IsEIP155(num), IsEIP158: c.IsEIP158(num), IsByzantium: c.IsByzantium(num)}
+	return Rules{
+		ChainID:          new(big.Int).Set(chainID),
+		IsHomestead:      c.IsHomestead(num),
+		IsEIP150:         c.IsEIP150(num),
+		IsEIP155:         c.IsEIP155(num),
+		IsEIP158:         c.IsEIP158(num),
+		IsByzantium:      c.IsByzantium(num),
+		IsConstantinople: c.IsConstantinople(num),
+	}
 }

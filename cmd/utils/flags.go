@@ -25,10 +25,8 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/fdlimit"
-	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/consensus/ethash"
+	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -39,7 +37,6 @@ import (
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/ethstats"
-	fairconfig "github.com/anduschain/go-anduschain/fairnode/client/config"
 	"github.com/anduschain/go-anduschain/les"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
@@ -132,10 +129,9 @@ var (
 	}
 	NetworkIdFlag = cli.Uint64Flag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, null=MainNet, 3355=Testnet(andusChain))",
+		Usage: "Network identifier (integer, 14288640=MainNet(not opening), 14288641=Testnet)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
-	// TODO : andus >> consensus
 	DebFlag = cli.BoolFlag{
 		Name:  "deb",
 		Usage: "deb network: andus Chain test network",
@@ -144,10 +140,6 @@ var (
 		Name:  "testnet",
 		Usage: "AndusChain test network: pre-configured proof-of-deb test network",
 	}
-	//RinkebyFlag = cli.BoolFlag{
-	//	Name:  "rinkeby",
-	//	Usage: "Rinkeby network: pre-configured proof-of-authority test network",
-	//}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-deb network with a pre-funded developer account, mining enabled",
@@ -156,10 +148,6 @@ var (
 		Name:  "solo",
 		Usage: "To make proof-of-deb solo network",
 	}
-	//DeveloperPeriodFlag = cli.IntFlag{
-	//	Name:  "dev.period",
-	//	Usage: "Block period to use in developer mode (0 = mine only if transaction pending)",
-	//}
 	IdentityFlag = cli.StringFlag{
 		Name:  "identity",
 		Usage: "Custom node name",
@@ -214,36 +202,6 @@ var (
 		Usage: "Dashboard metrics collection refresh rate",
 		Value: dashboard.DefaultConfig.Refresh,
 	}
-	// Ethash settings
-	//EthashCacheDirFlag = DirectoryFlag{
-	//	Name:  "ethash.cachedir",
-	//	Usage: "Directory to store the ethash verification caches (default = inside the datadir)",
-	//}
-	//EthashCachesInMemoryFlag = cli.IntFlag{
-	//	Name:  "ethash.cachesinmem",
-	//	Usage: "Number of recent ethash caches to keep in memory (16MB each)",
-	//	Value: eth.DefaultConfig.Ethash.CachesInMem,
-	//}
-	//EthashCachesOnDiskFlag = cli.IntFlag{
-	//	Name:  "ethash.cachesondisk",
-	//	Usage: "Number of recent ethash caches to keep on disk (16MB each)",
-	//	Value: eth.DefaultConfig.Ethash.CachesOnDisk,
-	//}
-	//EthashDatasetDirFlag = DirectoryFlag{
-	//	Name:  "ethash.dagdir",
-	//	Usage: "Directory to store the ethash mining DAGs (default = inside home folder)",
-	//	Value: DirectoryString{eth.DefaultConfig.Ethash.DatasetDir},
-	//}
-	//EthashDatasetsInMemoryFlag = cli.IntFlag{
-	//	Name:  "ethash.dagsinmem",
-	//	Usage: "Number of recent ethash mining DAGs to keep in memory (1+GB each)",
-	//	Value: eth.DefaultConfig.Ethash.DatasetsInMem,
-	//}
-	//EthashDatasetsOnDiskFlag = cli.IntFlag{
-	//	Name:  "ethash.dagsondisk",
-	//	Usage: "Number of recent ethash mining DAGs to keep on disk (1+GB each)",
-	//	Value: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-	//}
 	// Transaction pool settings
 	TxPoolLocalsFlag = cli.StringFlag{
 		Name:  "txpool.locals",
@@ -410,10 +368,6 @@ var (
 	EthStatsURLFlag = cli.StringFlag{
 		Name:  "ethstats",
 		Usage: "Reporting URL of a ethstats service (nodename:secret@host:port)",
-	}
-	FakePoWFlag = cli.BoolFlag{
-		Name:  "fakepow",
-		Usage: "Disables proof-of-work verification",
 	}
 	NoCompactionFlag = cli.BoolFlag{
 		Name:  "nocompaction",
@@ -623,13 +577,6 @@ var (
 		Value: "localhost",
 	}
 
-	// andus >> FairclientFlag, UDP, TCP port
-	FairclientPort = cli.StringFlag{
-		Name:  "clientPort",
-		Usage: "fairnode port",
-		Value: "50002",
-	}
-
 	FairserverIP = cli.StringFlag{
 		Name:  "serverHost",
 		Usage: "fairnode connection IP",
@@ -712,8 +659,6 @@ func setNodeUserIdent(ctx *cli.Context, cfg *node.Config) {
 // flags, reverting to pre-configured ones if none have been specified.
 func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 	urls := params.MainnetBootnodes
-	//AndusChain TestNetBootNode
-	//urls := params.AndusChainBootnodes
 	switch {
 	case ctx.GlobalIsSet(BootnodesFlag.Name) || ctx.GlobalIsSet(BootnodesV4Flag.Name):
 		if ctx.GlobalIsSet(BootnodesV4Flag.Name) {
@@ -722,7 +667,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 			urls = strings.Split(ctx.GlobalString(BootnodesFlag.Name), ",")
 		}
 	case ctx.GlobalBool(TestnetFlag.Name):
-		urls = params.AndusChainBootnodes
+		urls = params.TestnetBootnodes
 	case ctx.GlobalBool(SoloFlag.Name):
 		return
 	case cfg.BootstrapNodes != nil:
@@ -1236,7 +1181,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	switch {
 	case ctx.GlobalBool(TestnetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 102
+			cfg.NetworkId = params.TEST_NETWORK.Uint64() // chain id and network id equal
 		}
 		cfg.Genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
@@ -1269,7 +1214,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 			Fatalf("Failed to setting dev anduschain : %v", errors.New("fail to read fairnode address"))
 		}
 
-		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address, *fairAddr)
+		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address)
 		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
 			cfg.MinerGasPrice = big.NewInt(1)
 		}
@@ -1311,24 +1256,11 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 	cfg.Refresh = ctx.GlobalDuration(DashboardRefreshFlag.Name)
 }
 
-// andus >> SetFairNodeConfig 추가
-func SetFairNodeConfig(ctx *cli.Context, cfg *fairconfig.Config) {
-	if ctx.GlobalBool(TestnetFlag.Name) {
-		// Testnet fairnode Addr
-		// FIXME : mainnet 런칭할때 변경
-		cfg.FairServerHost = cfg.GetHost("test")
-	} else if ctx.GlobalBool(SoloFlag.Name) || ctx.GlobalBool(DebFlag.Name) {
-		cfg.FairServerHost = ctx.GlobalString("serverHost")
-	} else {
-		// Mainnet fairnode Addr
-		cfg.FairServerHost = cfg.GetHost("main")
-	}
-
+// setting fairnode connection config
+func SetFairnodeConfig(ctx *cli.Context, cfg *client.Config) {
+	cfg.FairServerHost = ctx.GlobalString("serverHost")
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
-	cfg.ClientPort = ctx.GlobalString("clientPort")
-	cfg.NAT = ctx.GlobalString("nat")
-
-	fairconfig.DefaultConfig = cfg
+	client.DefaultConfig = *cfg
 }
 
 // RegisterEthService adds an Anduschain client to the stack.
@@ -1447,24 +1379,9 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 	if err != nil {
 		Fatalf("%v", err)
 	}
-	var engine consensus.Engine
-	if config.Deb != nil {
-		engine = deb.New(config.Deb, chainDb)
-	} else if config.Clique != nil {
-		engine = clique.New(config.Clique, chainDb)
-	} else {
-		engine = ethash.NewFaker()
-		if !ctx.GlobalBool(FakePoWFlag.Name) {
-			engine = ethash.New(ethash.Config{
-				CacheDir:       stack.ResolvePath(eth.DefaultConfig.Ethash.CacheDir),
-				CachesInMem:    eth.DefaultConfig.Ethash.CachesInMem,
-				CachesOnDisk:   eth.DefaultConfig.Ethash.CachesOnDisk,
-				DatasetDir:     stack.ResolvePath(eth.DefaultConfig.Ethash.DatasetDir),
-				DatasetsInMem:  eth.DefaultConfig.Ethash.DatasetsInMem,
-				DatasetsOnDisk: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-			}, nil, false)
-		}
-	}
+
+	engine := deb.New(config.Deb, chainDb) // TODO : change concensus enine deb
+
 	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}

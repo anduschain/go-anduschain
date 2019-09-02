@@ -1,3 +1,5 @@
+# !!!!!DO NOT BUILD not complated !!!!!!!!
+
 ## Go Anduschain
 
 Official golang implementation of the andusdeb protocol.

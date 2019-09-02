@@ -60,15 +60,15 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	}
 	// Header validity is known at this point, check the uncles and transactions
 	header := block.Header()
-	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
-		return err
-	}
-	if hash := types.CalcUncleHash(block.Uncles()); hash != header.UncleHash {
-		return fmt.Errorf("uncle root hash mismatch: have %x, want %x", hash, header.UncleHash)
-	}
+
 	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
 	}
+
+	if hash := types.DeriveSha(block.Voters()); hash != header.VoteHash {
+		return fmt.Errorf("voters hash mismatch: have %x, want %x", hash, header.VoteHash)
+	}
+
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
 
-	//TODO : 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
+	// 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
 	if statedb.GetJoinNonce(block.Coinbase()) != 0 {
 		return fmt.Errorf("invalid Joinnonce (remote: %d local: 0)", block.Nonce())
 	}
@@ -97,6 +97,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}
+
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
 	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {

@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/fairnode/fairtypes"
+	"github.com/anduschain/go-anduschain/miner"
 	"math"
 	"math/big"
 	"sync"
@@ -37,7 +37,6 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
-	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
@@ -51,6 +50,8 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
+
+	newLeagueBlockChanSize = 1024 // TODO(hakuna) : added new version
 )
 
 var (
@@ -82,9 +83,10 @@ type ProtocolManager struct {
 
 	SubProtocols []p2p.Protocol
 
-	eventMux      *event.TypeMux
-	txsCh         chan core.NewTxsEvent
-	txsSub        event.Subscription
+	eventMux *event.TypeMux
+	txsCh    chan types.NewTxsEvent
+	txsSub   event.Subscription
+
 	minedBlockSub *event.TypeMuxSubscription
 
 	// channels for fetcher, syncer, txsyncLoop
@@ -93,19 +95,19 @@ type ProtocolManager struct {
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
-	// TODO : andus >> 채굴리그에서 수신된 블록
-	chans fairtypes.Channals
-
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
 
-	logger logger.Logger
+	//TODO(hakuna) : new version added
+	newLeagueBlockCh  chan types.NewLeagueBlockEvent
+	newLeagueBlockSub event.Subscription
+	miner             *miner.Miner
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, chans fairtypes.Channals) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, miner *miner.Miner) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -118,9 +120,8 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
-		// TODO : andus >> miner/worker.go 와 블록을 주고받기 위한 채널 receiveblock : 외부에서 들어옴 , LBB : 채굴하여 보낼 블록
-		chans:  chans,
-		logger: logger.New("CORE", "ProtocolManager"),
+
+		miner: miner,
 	}
 	// Figure out whether to allow fast sync or not
 	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
@@ -214,35 +215,39 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
 	// broadcast transactions
-	pm.txsCh = make(chan core.NewTxsEvent, txChanSize)
+	pm.txsCh = make(chan types.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
 	go pm.txBroadcastLoop()
 
 	// broadcast mined blocks
-	pm.minedBlockSub = pm.eventMux.Subscribe(core.NewMinedBlockEvent{})
+	pm.minedBlockSub = pm.eventMux.Subscribe(types.NewMinedBlockEvent{})
 	go pm.minedBroadcastLoop()
 
 	// start sync handlers
 	go pm.syncer()
 	go pm.txsyncLoop()
 
-	// TODO : andus >> 리그들에게 블록 브로드 케스팅 루프
+	// for anduschain league
+	pm.newLeagueBlockCh = make(chan types.NewLeagueBlockEvent, newLeagueBlockChanSize)
+	pm.newLeagueBlockSub = pm.miner.Worker().SubscribeNewLeagueBlockEvent(pm.newLeagueBlockCh)
 	go pm.leagueBroadCast()
 }
 
-// TODO : andus >> 리그들에게 블록 브로드 케스팅
+// league broadcasting loop
 func (pm *ProtocolManager) leagueBroadCast() {
 	for {
 		select {
-		case block := <-pm.chans.GetLeagueBlockBroadcastCh():
-			pm.logger.Debug("리그 브로드 캐스팅", "연결된 피어 수", len(pm.peers.peers))
+		case ev := <-pm.newLeagueBlockCh:
+			log.Debug("broadcasting league", "peerCount", len(pm.peers.peers), "hash", ev.Block.Hash())
 			for _, peer := range pm.peers.peers {
-				pm.logger.Info("브로드캐스팅", "피어", peer.Peer.String(), "version", peer.String())
-				err := peer.SendMakeLeagueBlock(*block)
+				log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+				err := peer.SendMakeLeagueBlock(&ev)
 				if err != nil {
-					pm.logger.Error("sendvoteblock err!!", err)
+					log.Error("peer broadcasting", "msg", err)
 				}
 			}
+		case <-pm.newLeagueBlockSub.Err():
+			return
 		}
 	}
 }
@@ -252,6 +257,8 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
+
+	pm.newLeagueBlockSub.Unsubscribe() // quits leaguebroadcastloop
 
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
@@ -537,26 +544,24 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		// Deliver them all to the downloader for queuing
 		transactions := make([][]*types.Transaction, len(request))
-		uncles := make([][]*types.Header, len(request))
-		voter := make([][]types.Voter, len(request))
-		fairnodesig := make([][]byte, len(request))
+		voters := make([][]*types.Voter, len(request))
 
 		for i, body := range request {
 			transactions[i] = body.Transactions
-			uncles[i] = body.Uncles
-			voter[i] = body.Voter
-			fairnodesig[i] = body.FairNodeSig
+			voters[i] = body.Voters
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
-		filter := len(transactions) > 0 || len(uncles) > 0
-		if filter {
-			transactions, uncles = pm.fetcher.FilterBodies(p.id, transactions, uncles, time.Now())
-		}
-		if len(transactions) > 0 || len(uncles) > 0 || !filter {
+		filter := len(transactions) > 0 || len(voters) > 0
 
-			err := pm.downloader.DeliverBodies(p.id, transactions, uncles, fairnodesig, voter)
+		if filter {
+			transactions, voters = pm.fetcher.FilterBodies(p.id, transactions, voters, time.Now())
+		}
+
+		if len(transactions) > 0 || len(voters) > 0 || !filter {
+			err := pm.downloader.DeliverBodies(p.id, transactions, voters)
 			if err != nil {
 				log.Debug("Failed to deliver bodies", "err", err)
 			}
@@ -622,7 +627,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// Retrieve the requested block's receipts, skipping if unknown to us
 			results := pm.blockchain.GetReceiptsByHash(hash)
 			if results == nil {
-				if header := pm.blockchain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyRootHash {
+				if header := pm.blockchain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyReceiptHash {
 					continue
 				}
 			}
@@ -639,9 +644,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
 		var receipts [][]*types.Receipt
+
 		if err := msg.Decode(&receipts); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		// Deliver all to the downloader
 		if err := pm.downloader.DeliverReceipts(p.id, receipts); err != nil {
 			log.Debug("Failed to deliver receipts", "err", err)
@@ -673,8 +680,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
-
-		log.Debug("NewBlockMsg", "blockNum", request.Block.Number().String(), "miner", request.Block.Coinbase().String(), "voterCount", len(request.Block.Voter))
 
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
@@ -712,6 +717,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+
 		for i, tx := range txs {
 			// Validate and mark the remote transaction
 			if tx == nil {
@@ -722,13 +728,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.txpool.AddRemotes(txs)
 
 	case msg.Code == MakeLeagueBlockMsg:
-		tb := &fairtypes.TsVoteBlock{}
-		if err := msg.Decode(&tb); err != nil {
+		var request types.NewLeagueBlockEvent
+		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		if pm.chans.IsLeagueRunning() {
-			pm.chans.GetReceiveBlockCh() <- tb.GetVoteBlock()
+		if pm.miner.Mining() {
+			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 
 	default:
@@ -782,7 +788,6 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
 		}
-
 		log.Trace("Broadcast transaction", "hash", tx.Hash(), "recipients", len(peers))
 
 	}
@@ -796,7 +801,7 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
 	for obj := range pm.minedBlockSub.Chan() {
-		if ev, ok := obj.Data.(core.NewMinedBlockEvent); ok {
+		if ev, ok := obj.Data.(types.NewMinedBlockEvent); ok {
 			pm.BroadcastBlock(ev.Block, true)  // First propagate block to peers
 			pm.BroadcastBlock(ev.Block, false) // Only then announce to the rest
 		}
@@ -806,9 +811,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 func (pm *ProtocolManager) txBroadcastLoop() {
 	for {
 		select {
-		case event := <-pm.txsCh:
-			pm.BroadcastTxs(event.Txs)
-
+		case ev := <-pm.txsCh:
+			pm.BroadcastTxs(ev.Txs)
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
 			return

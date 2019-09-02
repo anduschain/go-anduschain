@@ -194,6 +194,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	if err != nil {
 		return nil, 0, false, err
 	}
+
+	if *msg.To() == params.JtxAddress {
+		gas = 0
+	}
+
 	if err = st.useGas(gas); err != nil {
 		return nil, 0, false, err
 	}
@@ -211,13 +216,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
-
-		// JOIN_NONCE 처리, non contract
-		//if fairutil.CmpAddress(*msg.To(), st.evm.ChainConfig().Deb.FairAddr) {
-		//	st.state.AddJoinNonce(msg.From())
-		//}
-
 	}
+
 	if vmerr != nil {
 		log.Debug("VM returned with error", "err", vmerr)
 		// The only possible consensus-error would be if there wasn't
