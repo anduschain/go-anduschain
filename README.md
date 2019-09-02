@@ -1,5 +1,3 @@
-# !!!!!DO NOT BUILD not complated !!!!!!!!
-
 ## Go Anduschain
 
 Official golang implementation of the andusdeb protocol.
@@ -7,18 +5,18 @@ Official golang implementation of the andusdeb protocol.
 ## System requirements
 
 ```
-it is recommended to have at least 4 GB of memory available when running anduschain.
+it is recommended to have at least 8 GB of memory available when running anduschain.
 OS : Linux(CentOS, Ubuntu), Mac, Windows
 CPU : least 4 CORE CPU
 ```
 
 ## Building the source
 
-Building geth requires both a Go (version 1.10 or later) and a C compiler.
+Building godaon requires both a Go (version 1.10 or later) and a C compiler.
 You can install them using your favourite package manager.
 Once the dependencies are installed, run
 
-    make geth
+    make godaon
 
 or, to build the full suite of utilities:
 
@@ -31,8 +29,8 @@ We're getting ready to deliver the test coin.
 You can join whenever you want.
 
 ```
-$ geth --testnet console
-> geth version : Geth/v0.6.11-anduschain-unstable
+$ godaon --testnet console
+> godaon version : godaon/v0.6.12-anduschain-unstable
 ```
 
 ## Issue report
