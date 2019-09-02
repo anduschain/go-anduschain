@@ -29,11 +29,11 @@ func TestFromBytes127(t *testing.T) {
 	expectedInt := big.NewInt(127)
 
 	if err != nil {
-		t.Errorf("Unexpected error.")
+		t.Errorf("Unexpected error. %v", err)
 	}
 
 	if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestFromBytesNegLarge(t *testing.T) {
 	actualInt, err := FromByteArray(bytesIn)
 
 	if err != nil {
-		t.Errorf("Unexpected error.")
+		t.Errorf("Unexpected error. %v", err)
 	}
 
 	expectedInt := new(big.Int)
@@ -57,7 +57,7 @@ func TestFromBytesNegLarge(t *testing.T) {
 	expectedInt.SetString(s, 10)
 
 	if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestToBytesNeg1(t *testing.T) {
 	actualBytes := ToByteArray(big.NewInt(-1))
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array: ", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -77,7 +77,7 @@ func TestToBytesZero(t *testing.T) {
 	actualBytes := ToByteArray(big.NewInt(0))
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array: ", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestToBytesPos127(t *testing.T) {
 	actualBytes := ToByteArray(big.NewInt(127))
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array: ", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -97,7 +97,7 @@ func TestToBytesPos128(t *testing.T) {
 	actualBytes := ToByteArray(big.NewInt(128))
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array: ", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -117,7 +117,7 @@ func TestToBytesNegLarge(t *testing.T) {
 	actualBytes := ToByteArray(c)
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array:", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -169,7 +169,7 @@ func TestToBytesPosLarge(t *testing.T) {
 	actualBytes := ToByteArray(c)
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array:", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }
 
@@ -179,6 +179,6 @@ func TestToBytesPos39568(t *testing.T) {
 	actualBytes := ToByteArray(big.NewInt(39568))
 
 	if !reflect.DeepEqual(expectedBytes, actualBytes) {
-		t.Errorf("Assert failure: incorrect byte-array:", actualBytes)
+		t.Errorf("Assert failure: incorrect byte-array: %v", actualBytes)
 	}
 }

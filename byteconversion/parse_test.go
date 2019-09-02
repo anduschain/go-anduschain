@@ -30,7 +30,7 @@ func TestConvertToBigIntEmpty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Assert failure: unexpected error")
 	} else if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 
@@ -42,7 +42,7 @@ func TestConvertToBigInt(t *testing.T) {
 	if err != nil {
 		t.Errorf("Assert failure: unexpected error")
 	} else if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 
@@ -54,7 +54,7 @@ func TestConvertToBigIntSmall(t *testing.T) {
 	if err != nil {
 		t.Errorf("Assert failure: unexpected error")
 	} else if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestConvertToBigIntNegative(t *testing.T) {
 	if err != nil {
 		t.Errorf("Assert failure: unexpected error")
 	} else if actualInt.Cmp(expectedInt) != 0 {
-		t.Errorf("Assert failure: incorrect value: ", actualInt)
+		t.Errorf("Assert failure: incorrect value: %v", actualInt)
 	}
 }
 

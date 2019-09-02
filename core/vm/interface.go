@@ -31,10 +31,9 @@ type StateDB interface {
 	AddBalance(common.Address, *big.Int)
 	GetBalance(common.Address) *big.Int
 
-	// TODO : andus >> JoinNonce 처리하는 부분
-	GetJoinNonce(common.Address) uint64
-	AddJoinNonce(common.Address)
-	ResetJoinNonce(common.Address)
+	GetJoinNonce(common.Address) uint64 // for anduschain
+	AddJoinNonce(common.Address)        // for anduschain
+	ResetJoinNonce(common.Address)      // for anduschain
 
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)

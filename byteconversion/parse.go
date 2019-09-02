@@ -66,3 +66,46 @@ func ConvertToBigInt(in []byte) (*big.Int, error) {
 	i.SetString(s, 10)
 	return i, nil
 }
+
+// Decodes a byte array (ASCII encoding of comma-separated integers) into an array of big integers
+func ParseHexa(in []byte) ([]*big.Int, error) {
+
+	prevIndex := 0
+	var output []*big.Int
+
+	for index, element := range in {
+
+		if element == 44 {
+			newInt, err := ConvertToBigInt(in[prevIndex:index])
+			if err != nil {
+				return nil, err
+			}
+
+			output = append(output, newInt)
+			prevIndex = index + 1
+		}
+	}
+
+	newInt, err := ConvertHexaToBigInt(in[prevIndex:])
+	if err != nil {
+		return nil, err
+	}
+	return append(output, newInt), nil
+}
+
+// Decodes a byte array (ASCII encoding of a signed integer) into a big integer
+func ConvertHexaToBigInt(in []byte) (*big.Int, error) {
+
+	// Validate
+	for index, element := range in {
+		if !((element >= 48 && element <= 57) || (index == 0 && element == 45) ||
+			(element >= 65 && element <= 70) || (element >= 97 && element <= 102)) {
+			return nil, errInvalidBigInteger
+		}
+	}
+
+	s := string(in)
+	i := new(big.Int)
+	i.SetString(s, 16)
+	return i, nil
+}
