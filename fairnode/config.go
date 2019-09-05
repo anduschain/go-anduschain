@@ -14,10 +14,11 @@ type Config struct {
 	FairNodeDir string
 
 	// DB setting
-	DBhost string
-	DBport string
-	DBuser string
-	DBpass string
+	DBhost   string
+	DBport   string
+	DBuser   string
+	DBpass   string
+	DBoption string
 
 	SSL_path string // for connection mongodb using ssl cert
 
@@ -35,12 +36,13 @@ type Config struct {
 }
 
 var (
-	Version       = "1.0.2"
+	Version       = "1.0.3"
 	DefaultConfig = Config{
 		DBhost:   "localhost",
 		DBport:   "27017",
 		DBuser:   "",
 		SSL_path: "",
+		DBoption: "",
 
 		KeyPath: filepath.Join(os.Getenv("HOME"), ".fairnode", "key"),
 
@@ -66,8 +68,8 @@ func init() {
 
 }
 
-func (c *Config) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
-	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path, c.ChainID
+func (c *Config) GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int) {
+	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path, c.DBoption, c.ChainID
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
@@ -92,6 +94,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 		DefaultConfig.DBport = ctx.GlobalString("dbport")
 		DefaultConfig.DBuser = ctx.GlobalString("dbuser")
 		DefaultConfig.SSL_path = ctx.GlobalString("dbCertPath")
+		DefaultConfig.DBoption = ctx.GlobalString("dbOption")
 		DefaultConfig.DBpass = dbpass
 	}
 }

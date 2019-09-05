@@ -45,57 +45,54 @@ type MongoDatabase struct {
 	transactions    *mgo.Collection
 
 	activeFairnode *mgo.Collection
+
+	tlsConfig *tls.Config
 }
 
 type config interface {
-	GetInfo() (host, port, user, pass, ssl string, chainID *big.Int)
+	GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int)
 }
 
 // Mongodb url => mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
 func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
-	host, port, user, pass, ssl, chainID := conf.GetInfo()
+	var err error
+	host, port, user, pass, ssl, option, chainID := conf.GetInfo()
+
+	db.chainID = chainID
+	db.tlsConfig = &tls.Config{}
 	db.dbName = fmt.Sprintf("%s_%s", DbName, chainID.String())
 	if strings.Compare(user, "") != 0 {
-		db.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pass, host, port, db.dbName)
+		opt := fmt.Sprintf("?%s", option)
+		db.url = fmt.Sprintf("mongodb://%s:%s@%s/%s%s", user, pass, host, db.dbName, opt)
 	} else {
 		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, db.dbName)
 	}
 
-	db.chainID = chainID
-
 	// SSL db connection config
 	if strings.Compare(ssl, "") != 0 {
-		tlsConfig := &tls.Config{}
-		tlsConfig.InsecureSkipVerify = true
-
+		db.tlsConfig.InsecureSkipVerify = true
 		roots := x509.NewCertPool()
 		if ca, err := ioutil.ReadFile(ssl); err == nil {
 			roots.AppendCertsFromPEM(ca)
 		}
-
-		tlsConfig.RootCAs = roots
-
-		dialInfo, err := mgo.ParseURL(db.url)
-		if err != nil {
-			return nil, err
-		}
-
-		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
-			return conn, err
-		}
-
-		db.dialInfo = dialInfo
+		db.tlsConfig.RootCAs = roots
 	}
-
+	db.dialInfo, err = mgo.ParseURL(db.url)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("url : %s, msg : %s", db.url, err))
+	}
+	db.dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+		conn, err := tls.Dial("tcp", addr.String(), db.tlsConfig)
+		return conn, err
+	}
 	return &db, nil
 }
 
 func (m *MongoDatabase) Start() error {
 	var session *mgo.Session
 	var err error
-	if m.dialInfo == nil {
+	if strings.Compare(m.dialInfo.Username, "") == 0 {
 		session, err = mgo.Dial(m.url)
 	} else {
 		session, err = mgo.DialWithInfo(m.dialInfo)

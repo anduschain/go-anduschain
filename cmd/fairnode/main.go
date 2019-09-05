@@ -18,16 +18,7 @@ var (
 	app     *cli.App
 	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
 	logger  = log.New("fairnode", "cmd")
-)
-
-func init() {
-	var w sync.WaitGroup
-
-	app = cli.NewApp()
-	app.Name = "fairnode"
-	app.Usage = "Fairnode for AndUsChain networks"
-	app.Version = fairnode.DefaultConfig.Version
-	app.Flags = []cli.Flag{
+	flag    = []cli.Flag{
 		cli.StringFlag{
 			Name:  "dbhost",
 			Value: "localhost",
@@ -47,6 +38,11 @@ func init() {
 			Name:  "dbCertPath",
 			Value: "",
 			Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
+		},
+		cli.StringFlag{
+			Name:  "dbOption",
+			Value: "",
+			Usage: "default dbOption is nil. dbOption for mongodb connection option",
 		},
 		cli.StringFlag{
 			Name:  "port",
@@ -85,7 +81,15 @@ func init() {
 			Usage: "default is false, if true, running memorydb fairnode",
 		},
 	}
+)
 
+func init() {
+	var w sync.WaitGroup
+	app = cli.NewApp()
+	app.Name = "fairnode"
+	app.Usage = "Fairnode for AndUsChain networks"
+	app.Version = fairnode.DefaultConfig.Version
+	app.Flags = flag
 	app.Commands = []cli.Command{
 		{
 			Name:      "generate",
@@ -105,50 +109,7 @@ func init() {
 			Usage:     "add chain config",
 			ArgsUsage: "[ <keyfile> ]",
 			Action:    addChainConfig,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "memorydb",
-					Usage: "for testing memorydb",
-				},
-				cli.StringFlag{
-					Name:  "keypath",
-					Value: os.Getenv("HOME") + "/.fairnode/key",
-					Usage: "file containing a raw private key to encrypt",
-				},
-				cli.StringFlag{
-					Name:  "dbhost",
-					Value: "localhost",
-					Usage: "default dbpath localhost",
-				},
-				cli.StringFlag{
-					Name:  "dbport",
-					Value: "27017",
-					Usage: "default dbport 27017",
-				},
-				cli.StringFlag{
-					Name:  "dbuser",
-					Value: "",
-					Usage: "default user is nil",
-				},
-				cli.StringFlag{
-					Name:  "dbCertPath",
-					Value: "",
-					Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
-				},
-				cli.BoolFlag{
-					Name:  "mainnet",
-					Usage: fmt.Sprintf("mainnet chain id is %s", params.MAIN_NETWORK.String()),
-				},
-				cli.BoolFlag{
-					Name:  "testnet",
-					Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
-				},
-				cli.Uint64Flag{
-					Name:  "chainID",
-					Value: 3355,
-					Usage: "default chainid is 3355",
-				},
-			},
+			Flags:     flag,
 		},
 	}
 

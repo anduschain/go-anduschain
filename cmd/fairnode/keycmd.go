@@ -88,12 +88,12 @@ func makeFairNodeKey(ctx *cli.Context) error {
 }
 
 type dbConfig struct {
-	host, port, user, pass, ssl string
-	chainID                     *big.Int
+	host, port, user, pass, ssl, option string
+	chainID                             *big.Int
 }
 
-func (c *dbConfig) GetInfo() (host, port, user, pass, ssl string, chainID *big.Int) {
-	return c.host, c.port, c.user, c.pass, c.ssl, c.chainID
+func (c *dbConfig) GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int) {
+	return c.host, c.port, c.user, c.pass, c.ssl, c.option, c.chainID
 }
 
 func addChainConfig(ctx *cli.Context) error {
@@ -120,7 +120,6 @@ func addChainConfig(ctx *cli.Context) error {
 	if ctx.GlobalBool("memorydb") {
 		fdb = fairdb.NewMemDatabase()
 	} else {
-
 		chainID := new(big.Int)
 		if ctx.Bool("mainnet") {
 			chainID = params.MAIN_NETWORK
@@ -137,6 +136,7 @@ func addChainConfig(ctx *cli.Context) error {
 			pass:    dbpass,
 			ssl:     ctx.String("dbCertPath"),
 			chainID: chainID,
+			option:  ctx.String("dbOption"),
 		}
 
 		fdb, err = fairdb.NewMongoDatabase(conf)
