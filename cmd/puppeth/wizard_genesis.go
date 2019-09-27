@@ -60,7 +60,7 @@ func (w *wizard) makeGenesis() {
 		genesis.Difficulty = big.NewInt(1)
 		//genesis.Config.Deb = &params.DebConfig{Epoch: 100, FairAddr: common.HexToAddress("0x5922af64E91f4B10AF896De8Fd372075569a1440")}
 
-		fmt.Printf("Input your fairnode address ")
+		fmt.Printf("Input your fairnode pubKey ")
 		if fairNodeAdd := w.readString(); strings.Compare(fairNodeAdd, "") != 0 {
 			genesis.Config.Deb = &params.DebConfig{FairPubKey: fairNodeAdd}
 			genesis.Config.EIP155Block = big.NewInt(0)
