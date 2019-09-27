@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
+	"fmt"
+	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 	"testing"
 
@@ -170,6 +172,9 @@ func TestTransaction_MarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Error("signedGentx transaction MarshalJSON", err)
 	}
+
+	fmt.Println(string(btx))
+
 	newTx2 := new(Transaction)
 	err = newTx2.UnmarshalJSON(btx)
 	if err != nil {
@@ -186,6 +191,68 @@ func TestTransactionSigHash(t *testing.T) {
 	if homestead.Hash(rightvrsTx) != common.HexToHash("fe7a79529ed5f7c3375d06b26b186a8644e0e16c373d7a12be41c62d6042b77a") {
 		t.Errorf("RightVRS transaction hash mismatch, got %x", rightvrsTx.Hash())
 	}
+}
+
+func TestTransacionEncodeDecode(t *testing.T) {
+	pkey, err := crypto.HexToECDSA("abd1374002952e5f3b60fd16293d06521e1557d9dfb9996561568423a26a9cc9")
+	if err != nil {
+		t.Error(err)
+	}
+	signer := NewEIP155Signer(params.TEST_NETWORK)
+	tx := NewTransaction(1, common.HexToAddress("0x160A2189e10Ec349e176d8Fa6Fccf4a19ED6d133"), big.NewInt(1), 200000000, big.NewInt(100), nil)
+	sTx, err := SignTx(tx, signer, pkey)
+	if err != nil {
+		t.Error("tx signedGentx", err)
+	}
+
+	jsonTx, err := sTx.MarshalJSON()
+	if err != nil {
+		t.Error("tx MarshalJSON", err)
+	}
+
+	unTx := new(Transaction)
+	if err := unTx.UnmarshalJSON(jsonTx); err != nil {
+		t.Error("tx UnmarshalJSON", err)
+	}
+
+	t.Log("Signed Transastion", sTx.Hash().String())
+
+	buf := bytes.Buffer{}
+	if err := sTx.EncodeRLP(&buf); err != nil {
+		t.Error("tx EncodeRLP", err)
+	}
+
+	t.Log(common.Bytes2Hex(buf.Bytes()))
+
+	newTx := new(Transaction)
+	if err := newTx.DecodeRLP(rlp.NewStream(&buf, uint64(buf.Len()))); err != nil {
+		t.Error("tx DecodeRLP", err)
+	}
+
+	t.Log("Decoded Transastion", newTx.Hash().String())
+}
+
+func TestTransaction_DecodeRLP(t *testing.T) {
+	encodedTx := "f866800164840bebc20094160a2189e10ec349e176d8fa6fccf4a19ed6d13301808401b40e25a07c91493ca956ccd46cb4b4960244a6e062f71a874157d6191315e40a0e2417d1a00928a8e437c8a37e9280d81601e41e1573e04ebb4fc7fc245913c54613e33073"
+	b := common.Hex2Bytes(encodedTx)
+	newTx := new(Transaction)
+	if err := rlp.DecodeBytes(b, newTx); err != nil {
+		t.Error("tx DecodeRLP", err)
+	}
+
+	jsonTx, err := newTx.MarshalJSON()
+	if err != nil {
+		t.Error("tx MarshalJSON", err)
+	}
+
+	addr, err := newTx.Sender(NewEIP155Signer(params.TEST_NETWORK))
+	if err != nil {
+		t.Error("tx Sender", err)
+	}
+
+	t.Log("Sender :", addr.String())
+	t.Log("JSON : ", string(jsonTx))
+	t.Log("Hash : ", newTx.Hash().String())
 }
 
 //func TestTransactionEncode(t *testing.T) {

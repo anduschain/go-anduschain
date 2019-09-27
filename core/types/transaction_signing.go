@@ -154,6 +154,7 @@ func (s EIP155Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big
 // It does not uniquely identify the transaction.
 func (s EIP155Signer) Hash(tx *Transaction) common.Hash {
 	return rlpHash([]interface{}{
+		tx.data.Type,
 		tx.data.AccountNonce,
 		tx.data.Price,
 		tx.data.GasLimit,
@@ -206,6 +207,7 @@ func (fs FrontierSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v *
 // It does not uniquely identify the transaction.
 func (fs FrontierSigner) Hash(tx *Transaction) common.Hash {
 	return rlpHash([]interface{}{
+		tx.data.Type,
 		tx.data.AccountNonce,
 		tx.data.Price,
 		tx.data.GasLimit,
@@ -240,6 +242,9 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 
 		return common.Address{}, err
 	}
+
+	fmt.Println("Sender PubKey : ", common.Bytes2Hex(pub))
+
 	if len(pub) == 0 || pub[0] != 4 {
 		return common.Address{}, errors.New("invalid public key")
 	}
