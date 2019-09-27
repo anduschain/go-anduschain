@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/console"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -22,6 +23,7 @@ import (
 type outputGenerate struct {
 	Address      string
 	AddressEIP55 string
+	PubKey       string
 }
 
 func promptPassphrase(confirmation bool) string {
@@ -80,9 +82,10 @@ func makeFairNodeKey(ctx *cli.Context) error {
 	// Output some information.
 	out := outputGenerate{
 		Address: key.Address.Hex(),
+		PubKey:  common.Bytes2Hex(crypto.CompressPubkey(&privateKey.PublicKey)),
 	}
 
-	log.Info("Generate Address", "address", out.Address)
+	log.Info("Generate Address", "address", out.Address, "PubKey", out.PubKey)
 
 	return nil
 }
