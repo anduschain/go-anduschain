@@ -40,10 +40,9 @@ var DefaultConfig = Config{
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
 
-	// README(hakuna) : gaslimite 올림
-	MinerGasFloor: 8000000000,
-	MinerGasCeil:  8000000000000000000,
-	MinerGasPrice: big.NewInt(params.GWei),
+	MinerGasFloor: params.MinerGasFloor,
+	MinerGasCeil:  params.MinerGasCeil,
+	MinerGasPrice: new(big.Int).SetUint64(params.MinGasPrice),
 	MinerRecommit: 3 * time.Second,
 
 	TxPool: core.DefaultTxPoolConfig,

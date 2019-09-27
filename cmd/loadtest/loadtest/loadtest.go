@@ -22,7 +22,6 @@ import (
 
 var (
 	price = new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Daon))
-	fee   = 0.00000001 * params.Daon
 )
 
 type Account struct {
@@ -130,8 +129,8 @@ func (l *LoadTest) GetNonce() error {
 
 func (l *LoadTest) SendTransaction() error {
 	value := price
-	gasLimit := uint64(100000000)
-	gasPrice := big.NewInt(40 * params.GWei)
+	gasLimit := 10 * params.TxGas
+	gasPrice := new(big.Int).SetUint64(params.MinGasPrice)
 	toAddress := l.addr
 
 	data := struct {

@@ -45,8 +45,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-const (
-	defaultGasPrice = params.GWei
+var (
+	defaultGasPrice = params.MinGasPrice
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -1104,13 +1104,14 @@ type SendTxArgs struct {
 func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 	if args.Gas == nil {
 		args.Gas = new(hexutil.Uint64)
-		*(*uint64)(args.Gas) = 90000
+		*(*uint64)(args.Gas) = params.TxGas
 	}
 	if args.GasPrice == nil {
-		price, err := b.SuggestPrice(ctx)
-		if err != nil {
-			return err
-		}
+		//price, err := b.SuggestPrice(ctx)
+		//if err != nil {
+		//	return err
+		//}
+		price := new(big.Int).SetUint64(params.MinGasPrice)
 		args.GasPrice = (*hexutil.Big)(price)
 	}
 	if args.Value == nil {

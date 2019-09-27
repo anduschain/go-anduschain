@@ -170,7 +170,6 @@ func (b *bridge) UnlockAccount(call otto.FunctionCall) (response otto.Value) {
 	return val
 }
 
-// TODO : andus >> 코인베이스용 언락 : miner.stop() 일때 잠김
 func (b *bridge) UnlockCoinbase(call otto.FunctionCall) (response otto.Value) {
 	if !call.Argument(0).IsString() {
 		throwJSException("first argument must be the coinbase to unlock")

@@ -242,9 +242,6 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 
 		return common.Address{}, err
 	}
-
-	fmt.Println("Sender PubKey : ", common.Bytes2Hex(pub))
-
 	if len(pub) == 0 || pub[0] != 4 {
 		return common.Address{}, errors.New("invalid public key")
 	}

@@ -145,7 +145,7 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	Journal:   "transactions.rlp",
 	Rejournal: time.Hour,
 
-	PriceLimit: 1,
+	PriceLimit: params.MinGasPrice,
 	PriceBump:  10,
 
 	AccountSlots: 16 * 5,
@@ -616,7 +616,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	} else {
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+		//if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+		//	return ErrUnderpriced
+		//}
+		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
 
@@ -624,7 +627,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if err != nil {
 			return err
 		}
-
 		if tx.Gas() < intrGas {
 			return ErrIntrinsicGas
 		}
