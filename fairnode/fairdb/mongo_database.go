@@ -340,7 +340,7 @@ func (m *MongoDatabase) SaveLeague(otprnHash common.Hash, enode string) {
 		fmt.Println("Save League, Get active node", "database", "mongo", "enode", enode, "msg", err)
 	}
 	updateOpts := options.Update().SetUpsert(true)
-	_, err = m.leagues.UpdateOne(m.context, otprnHash.String(), bson.M{"$addToSet": bson.M{"nodes": node}}, updateOpts)
+	_, err = m.leagues.UpdateOne(m.context, bson.M{"_id":otprnHash.String()}, bson.M{"$addToSet": bson.M{"nodes": node}}, updateOpts)
 	//_, err = m.leagues.UpsertId(otprnHash.String(), bson.M{"$addToSet": bson.M{"nodes": node}})
 	if err != nil {
 		//logger.Error("Save League update or insert", "database", "mongo", "msg", err)
@@ -378,7 +378,7 @@ func (m *MongoDatabase) GetLeagueList(otprnHash common.Hash) []types.HeartBeat {
 func (m *MongoDatabase) SaveVote(otprn common.Hash, blockNum *big.Int, vote *types.Voter) {
 	voteKey := MakeVoteKey(otprn, blockNum)
 	updateOpts := options.Update().SetUpsert(true)
-	_, err := m.leagues.UpdateOne(m.context, voteKey.String(), bson.M{"$addToSet": bson.M{"voters": fntype.Voter{
+	_, err := m.voteAggregation.UpdateOne(m.context, bson.M{"_id":voteKey.String()}, bson.M{"$addToSet": bson.M{"voters": fntype.Voter{
 		Header:   vote.Header,
 		Voter:    vote.Voter.String(),
 		VoteSign: vote.VoteSign,
@@ -554,7 +554,7 @@ func (m *MongoDatabase) UpdateActiveFairnode(nodeKey common.Hash, status uint64)
 	//}
 	node.Status = stType(status).String()
 
-	_, err := m.activeFairnode.UpdateOne(m.context, nodeKey.String(), bson.M{"status": node.Status})
+	_, err := m.activeFairnode.UpdateOne(m.context, bson.M{"_id":nodeKey.String()}, bson.M{"$set":bson.M{"status": node.Status}})
 	//err = m.activeFairnode.UpdateId(nodeKey.String(), node)
 	if err != nil {
 		//logger.Error("Update Active Fairnode", "database", "mongo", "msg", err)
