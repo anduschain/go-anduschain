@@ -233,7 +233,7 @@ func TestTransacionEncodeDecode(t *testing.T) {
 }
 
 func TestTransaction_DecodeRLP(t *testing.T) {
-	encodedTx := "f866800164840bebc20094160a2189e10ec349e176d8fa6fccf4a19ed6d13301808401b40e25a07c91493ca956ccd46cb4b4960244a6e062f71a874157d6191315e40a0e2417d1a00928a8e437c8a37e9280d81601e41e1573e04ebb4fc7fc245913c54613e33073"
+	encodedTx := "f86a80808615a796356d5482520894160a2189e10ec349e176d8fa6fccf4a19ed6d13301808401b40e26a0f59fd9ac915bd2217ae41ed7215762ac92714119d1e87ba3ba8bf42cc0a02a0ca0563dd622c96cec8a6d87b95d3df71b5c5de17149d5b0dfc758f33a5011350c60"
 	b := common.Hex2Bytes(encodedTx)
 	newTx := new(Transaction)
 	if err := rlp.DecodeBytes(b, newTx); err != nil {
