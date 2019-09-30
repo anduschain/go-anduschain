@@ -55,48 +55,43 @@ type MongoDatabase struct {
 type config interface {
 	GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int)
 }
-
+// E11000 duplicate key error
 // reference mgo.IsDup
 func IsDup(err error) bool {
 	switch e := err.(type) {
-	case mongo.CommandError:
-		// E11000 duplicate key error
+	case mongo.CommandError: 
+
 		if e.Code == 11000 {
 			return true
 		}
 		logger.Error("CommandError", e.Code, e.Message)
 	case mongo.WriteError:
-		// E11000 duplicate key error
 		if e.Code == 11000 {
 			return true
 		}
 		logger.Error("WriteError", e.Code, e.Message)
 	case mongo.WriteConcernError:
-		// E11000 duplicate key error
 		if e.Code == 11000 {
 			return true
 		}
 		logger.Error("WriteConcernError", e.Code, e.Message)
 	case mongo.BulkWriteError:
-		// E11000 duplicate key error
 		if e.Code == 11000 {
 			return true
 		}
 		logger.Error("BulkWriteError", e.Code, e.Message)
 	case mongo.WriteException:
 		for _, we := range e.WriteErrors {
-			// E11000 duplicate key error
 			if we.Code == 11000 {
 				return true
 			}
 			logger.Error("WriteException", )
-			logger.Error("we idx : ", we.Index)
+			logger.Error("err idx : ", we.Index)
 			logger.Error("err code : ", we.Code)
 			logger.Error("err msg : ", we.Message)
 		}
 	case mongo.BulkWriteException:
 		for _, we := range e.WriteErrors {
-			// E11000 duplicate key error
 			if we.Code == 11000 {
 				return true
 			}
