@@ -195,7 +195,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		return nil, 0, false, err
 	}
 
-	if *msg.To() == params.JtxAddress {
+	if !contractCreation && *msg.To() == params.JtxAddress {
 		gas = 0
 	}
 
