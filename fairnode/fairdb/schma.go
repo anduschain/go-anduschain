@@ -13,6 +13,12 @@ func TransBlock(block *types.Block) fntype.Block {
 	var voters []fntype.Voter
 
 	for _, tx := range block.Transactions() {
+
+		recipient := "contract"
+		if tx.To() != nil {
+			recipient = tx.To().String()
+		}
+
 		tsx = append(tsx, fntype.Transaction{
 			Hash:      tx.Hash().String(),
 			BlockHash: block.Hash().String(),
@@ -21,7 +27,7 @@ func TransBlock(block *types.Block) fntype.Block {
 				AccountNonce: tx.Nonce(),
 				Price:        tx.GasPrice().String(),
 				GasLimit:     tx.Gas(),
-				Recipient:    tx.To().String(),
+				Recipient:    recipient,
 				Amount:       tx.Value().String(),
 				Payload:      tx.Data(),
 			},
@@ -71,6 +77,11 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection)
 			continue
 		}
 
+		recipient := "contract"
+		if tx.To() != nil {
+			recipient = tx.To().String()
+		}
+
 		err = txC.Insert(fntype.STransaction{
 			Hash:      tx.Hash().String(),
 			BlockHash: block.Hash().String(),
@@ -80,7 +91,7 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection)
 				AccountNonce: tx.Nonce(),
 				Price:        tx.GasPrice().String(),
 				GasLimit:     tx.Gas(),
-				Recipient:    tx.To().String(),
+				Recipient:    recipient,
 				Amount:       tx.Value().String(),
 				Payload:      tx.Data(),
 			},
