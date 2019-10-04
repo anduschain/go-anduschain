@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -115,12 +116,16 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	db.chainID = chainID
 	db.tlsConfig = &tls.Config{}
 	db.dbName = fmt.Sprintf("%s_%s", DbName, chainID.String())
+	opt := fmt.Sprintf("?%s", option)
 	if strings.Compare(user, "") != 0 {
-		opt := fmt.Sprintf("?%s", option)
 		db.url = fmt.Sprintf("mongodb+srv://%s:%s@%s/%s%s", user, pass, host, db.dbName, opt)
 	} else {
-		db.url = fmt.Sprintf("mongodb://%s:%s/%s", host, port, db.dbName)
+		db.url = fmt.Sprintf("mongodb://%s/%s%s", host, db.dbName, opt)
+		//db.url = "mongodb://localhost:27020,localhost:27021,localhost:27022/replSet=replication"
 	}
+	fmt.Println(port)
+//mongodb://127.0.0.1:27017/?gssapiServiceName=mongodb
+//mongodb://localhost:27020,localhost:27021,localhost:27022/admin?replSet=replication
 
 	// SSL db connection config
 	if strings.Compare(ssl, "") != 0 {
@@ -137,7 +142,15 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 		fmt.Println("failed", db.url)
 		return nil, err
 	}
+
 	db.context = context.Background()
+
+	err = db.client.Ping(db.context, readpref.Primary())
+	if err != nil {
+		err.Error()
+	} else {
+		fmt.Println("Successfully Connected to MongoDB!")
+	}
 
 	return &db, nil
 }
@@ -160,7 +173,6 @@ func (m *MongoDatabase) Start() error {
 	m.activeFairnode = m.client.Database(m.dbName).Collection("ActiveFairnode")
 
 	//logger.Debug("Start fairnode mongo database", "chainID", m.chainID.String(), "url", m.url)
-	fmt.Println("Successfully Connected to MongoDB!")
 
 	return nil
 }
