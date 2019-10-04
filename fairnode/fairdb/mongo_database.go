@@ -499,7 +499,7 @@ func (s stType) String() string {
 
 func (m *MongoDatabase) InsertActiveFairnode(nodeKey common.Hash, address string) {
 	//fmt.Println("InsertActiveFairnode")
-	_, err := m.activeFairnode.InsertOne(m.context, fntype.Fairnode{ID: nodeKey.String(), Address: address, Status: PENDING.String()})
+	_, err := m.activeFairnode.InsertOne(m.context, fntype.Fairnode{ID: nodeKey.String(), Address: address, Status: PENDING.String(), Timestamp: time.Now().Unix() })
 	if err != nil {
 		if !IsDup(err) {
 			logger.Error("Insert Active Fairnode", "database", "mongo", "msg", err)
@@ -512,11 +512,16 @@ func (m *MongoDatabase) GetActiveFairnodes() map[common.Hash]map[string]string {
 	res := make(map[common.Hash]map[string]string)
 	var nodes []fntype.Fairnode
 	cur, err := m.activeFairnode.Find(m.context, bson.M{})
-	cur.All(m.context, nodes)
 	if err != nil {
 		logger.Error("Get Active Fairnode", "database", "mongo", "msg", err)
 		return nil
 	}
+	err = cur.All(m.context, &nodes)
+	if err != nil {
+		logger.Error("Get Active Fairnode", "database", "mongo", "msg", err)
+		return nil
+	}
+
 	for _, node := range nodes {
 		res[common.HexToHash(node.ID)] = make(map[string]string)
 		res[common.HexToHash(node.ID)]["ADDRESS"] = node.Address
