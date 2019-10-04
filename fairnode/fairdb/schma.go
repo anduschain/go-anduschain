@@ -1,9 +1,10 @@
 package fairdb
 
 import (
+	"context"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
-	"gopkg.in/mgo.v2"
+	"go.mongodb.org/mongo-driver/mongo"
 	"math/big"
 	"time"
 )
@@ -68,7 +69,7 @@ func TransBlock(block *types.Block) fntype.Block {
 	}
 }
 
-func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection) {
+func TransTransaction(block *types.Block, chainID *big.Int, txC *mongo.Collection) {
 	singer := types.NewEIP155Signer(chainID)
 	for _, tx := range block.Transactions() {
 		from, err := tx.Sender(singer)
@@ -77,12 +78,13 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection)
 			continue
 		}
 
+
 		recipient := "contract"
 		if tx.To() != nil {
 			recipient = tx.To().String()
 		}
 
-		err = txC.Insert(fntype.STransaction{
+		_, err = txC.InsertOne(context.Background(), fntype.STransaction{
 			Hash:      tx.Hash().String(),
 			BlockHash: block.Hash().String(),
 			From:      from.String(),
@@ -98,7 +100,7 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mgo.Collection)
 		})
 
 		if err != nil {
-			if !mgo.IsDup(err) {
+			if !IsDup(err) {
 				logger.Error("Save Transaction, Insert", "database", "mongo", "msg", err)
 				continue
 			}
@@ -133,9 +135,9 @@ func TransOtprn(otprn types.Otprn) (fntype.Otprn, error) {
 	}, nil
 }
 
-func RecvOtprn(q *mgo.Query) (*types.Otprn, error) {
+func RecvOtprn(s *mongo.SingleResult) (*types.Otprn, error) {
 	otp := new(fntype.Otprn)
-	err := q.One(otp)
+	err := s.Decode(otp)
 	if err != nil {
 		return nil, err
 	}

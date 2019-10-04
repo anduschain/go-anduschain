@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/Azure/azure-storage-blob-go v0.7.0
+	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20190712234253-ed1100a1c015
 	github.com/btcsuite/btcd v0.0.0-20190629003639-c26ffa870fd8
 	github.com/cespare/cp v1.1.1
@@ -25,6 +26,7 @@ require (
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/karalabe/hid v1.0.0
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/maruel/panicparse v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.2
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
@@ -42,6 +44,10 @@ require (
 	github.com/rs/cors v1.6.0
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/tidwall/pretty v1.0.0 // indirect
+	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
+	github.com/xdg/stringprep v1.0.0 // indirect
+	go.mongodb.org/mongo-driver v1.1.1
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
