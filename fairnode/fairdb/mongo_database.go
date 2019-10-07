@@ -178,7 +178,7 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	}
 	findOneOpts := options.FindOne().SetSort(bson.M{"timestamp": -1})
 	conf := new(fntype.Config)
-	err := m.chainConfig.FindOne(m.context, bson.M{}, findOneOpts).Decode(&conf)
+	err := m.chainConfig.FindOne(m.context, bson.M{}, findOneOpts).Decode(conf)
 	if err != nil {
 		logger.Error("Get chain conifg", "msg", err)
 		return nil
@@ -219,7 +219,7 @@ func (m *MongoDatabase) CurrentInfo() *types.CurrentInfo {
 	findOneOpts := options.FindOne().SetSort(bson.M{"header.number": -1})
 	b := new(fntype.BlockHeader)
 	//err := m.blockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(b)
-	err := m.blockChain.FindOne(m.context, bson.M{}, findOneOpts).Decode(&b)
+	err := m.blockChain.FindOne(m.context, bson.M{}, findOneOpts).Decode(b)
 	if err != nil {
 		logger.Error("Get current info", "database", "mongo", "msg", err)
 		return nil
@@ -234,7 +234,7 @@ func (m *MongoDatabase) CurrentBlock() *types.Block {
 	//fmt.Println("CurrentBlock")
 	findOneOpts := options.FindOne().SetSort(bson.M{"header.number": -1})
 	b := new(fntype.Block)
-	err := m.blockChain.FindOne(m.context, bson.M{}, findOneOpts).Decode(&b)
+	err := m.blockChain.FindOne(m.context, bson.M{}, findOneOpts).Decode(b)
 	if err != nil {
 		if err != mongo.ErrNoDocuments {
 			logger.Error("Get current block", "database", "mongo", "msg", err)
@@ -447,7 +447,7 @@ func (m *MongoDatabase) SaveFinalBlock(block *types.Block, byteBlock []byte) err
 func (m *MongoDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	//fmt.Println("GetBlock")
 	b := new(fntype.RawBlock)
-	err := m.blockChainRaw.FindOne(m.context, bson.M{"_id": blockHash.String()}).Decode(&b)
+	err := m.blockChainRaw.FindOne(m.context, bson.M{"_id": blockHash.String()}).Decode(b)
 	if err != nil {
 		if err != mongo.ErrNoDocuments {
 			logger.Error("Get block", "database", "mongo", "msg", err)

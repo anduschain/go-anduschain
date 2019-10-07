@@ -7,11 +7,15 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb/fntype"
 	"github.com/anduschain/go-anduschain/rlp"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"context"
 	log "gopkg.in/inconshreveable/log15.v2"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 	"io"
 	"strings"
+	"time"
 )
 
 var (
@@ -21,35 +25,46 @@ var (
 
 type FairNodeDB struct {
 	url           string
-	Mongo         *mgo.Session
-	BlockChain    *mgo.Collection
-	BlockChainRaw *mgo.Collection
+	context       context.Context
+	client        *mongo.Client
+	BlockChain    *mongo.Collection
+	BlockChainRaw *mongo.Collection
 }
 
 func NewSession(host, port, user, pwd string) (*FairNodeDB, error) {
 	var fnb FairNodeDB
+	var err error
 	if strings.Compare(user, "") != 0 {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s", user, pwd, host, port, dbName)
+		fnb.url = fmt.Sprintf("mongodb+srv://%s:%s@%s:%s/%s", user, pwd, host, port, dbName)
 	} else {
 		fnb.url = fmt.Sprintf("mongodb://%s:%s", host, port)
+	}
+
+	fnb.client, err = mongo.NewClient(options.Client().ApplyURI(fnb.url))
+	if err != nil {
+		return nil, err
 	}
 
 	return &fnb, nil
 }
 
 func (fnb *FairNodeDB) Start() error {
-
-	session, err := mgo.Dial(fnb.url)
+	fnb.context = context.Background()
+	err := fnb.client.Connect(fnb.context)
 	if err != nil {
-		logger.Error("Mongo DB Dial", "error", err)
+		logger.Error("Mongo DB Connection fail", "error", err)
 		return fairdb.MongDBConnectError
 	}
 
-	session.SetMode(mgo.Monotonic, true)
+	err = fnb.client.Ping(fnb.context, readpref.Primary())
+	if err != nil {
+		logger.Error("Mongo DB ping fail", "error", err)
+		return fairdb.MongDBPingFail
+	}
 
-	fnb.Mongo = session
-	fnb.BlockChain = session.DB(dbName).C("BlockChain")
-	fnb.BlockChainRaw = session.DB(dbName).C("BlockChainRaw")
+
+	fnb.BlockChain = fnb.client.Database("Anduschain_91386209").Collection("BlockChain")
+	fnb.BlockChainRaw = fnb.client.Database("Anduschain_91386209").Collection("BlockChainRaw")
 
 	logger.Info("connected to database", "url", fnb.url)
 
@@ -57,23 +72,40 @@ func (fnb *FairNodeDB) Start() error {
 }
 
 func (fnb *FairNodeDB) Stop() error {
-	fnb.Mongo.Close()
+	if err := fnb.client.Disconnect(fnb.context); err != nil {
+		fmt.Errorf("%v", err)
+		return err
+	}
+	fmt.Println("successfully disconnected")
 	return nil
 }
 
 func (fnb *FairNodeDB) Export(w io.Writer) error {
-	count, err := fnb.BlockChain.Find(nil).Count()
+	count, err := fnb.BlockChain.EstimatedDocumentCount(fnb.context,
+		options.EstimatedDocumentCount().SetMaxTime(1*time.Second))
 	if err != nil {
 		return err
 	}
+
 	return fnb.ExportN(w, uint64(0), uint64(count))
 }
 
 func (fnb *FairNodeDB) ExportN(w io.Writer, first uint64, last uint64) error {
 	logger.Info("ExportN", "first", first, "last", last)
-	iter := fnb.BlockChain.Find(bson.M{"header.number": bson.M{"$gte": first, "$lte": last}}).Sort("header.number").Iter()
+
+	clientOpts := options.Find().
+		SetSort(bson.M{"header.number":1})
+
+	cur, err := fnb.BlockChain.Find(fnb.context,
+		bson.M{"header.number": bson.M{"$gte": first, "$lte": last}}, clientOpts)
+	fmt.Println(len(cur.Current.String()))
+	fmt.Println("err : ", err)
+	if err != nil {
+		return err
+	}
 	b := new(fntype.Block)
-	for iter.Next(&b) {
+	for cur.Next(fnb.context) {
+		cur.Decode(b)
 		block, err := fnb.GetRawBlock(b.Hash)
 		if err != nil {
 			return err
@@ -88,7 +120,7 @@ func (fnb *FairNodeDB) ExportN(w io.Writer, first uint64, last uint64) error {
 
 func (fnb *FairNodeDB) GetRawBlock(blockHash string) (*types.Block, error) {
 	b := new(fntype.RawBlock)
-	err := fnb.BlockChainRaw.FindId(blockHash).One(b)
+	err := fnb.BlockChainRaw.FindOne(fnb.context, bson.M{"_id":blockHash}).Decode(b)
 	if err != nil {
 		logger.Error("Get block", "database", "mongo", "msg", err)
 		return nil, err
