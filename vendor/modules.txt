@@ -269,12 +269,6 @@ google.golang.org/grpc/internal/syscall
 gopkg.in/check.v1
 # gopkg.in/inconshreveable/log15.v2 v2.0.0-20180818164646-67afb5ed74ec
 gopkg.in/inconshreveable/log15.v2
-# gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
-gopkg.in/mgo.v2
-gopkg.in/mgo.v2/bson
-gopkg.in/mgo.v2/internal/sasl
-gopkg.in/mgo.v2/internal/scram
-gopkg.in/mgo.v2/internal/json
 # gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 gopkg.in/natefinch/npipe.v2
 # gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff
