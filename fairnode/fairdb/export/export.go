@@ -31,15 +31,26 @@ type FairNodeDB struct {
 	BlockChainRaw *mongo.Collection
 }
 
-func NewSession(host, port, user, pwd string) (*FairNodeDB, error) {
+func NewSession(issrv bool, user, pass, host, dbname, dbopt string) (*FairNodeDB, error) {
 	var fnb FairNodeDB
 	var err error
-	if strings.Compare(user, "") != 0 {
-		fnb.url = fmt.Sprintf("mongodb+srv://%s:%s@%s:%s/%s", user, pwd, host, port, dbName)
+	var protocol, userPass, dbName, dbOpt string
+	if issrv {
+		protocol = fmt.Sprint("mongodb+srv")
 	} else {
-		fnb.url = fmt.Sprintf("mongodb://%s:%s", host, port)
+		protocol = fmt.Sprint("mongodb")
 	}
-
+	if strings.Compare(user, "") != 0 {
+		userPass = fmt.Sprintf("%s:%s@", user, pass)
+	}
+	if strings.Compare(dbname, "") != 0 {
+		dbName = fmt.Sprintf("%s", dbname)
+	}
+	if strings.Compare(dbopt, "") != 0 {
+		dbOpt = fmt.Sprintf("?%s", dbopt)
+	}
+	fnb.url = fmt.Sprintf("%s://%s%s/%s%s", protocol, userPass, host, dbName, dbOpt)
+	fmt.Println("aaaaaaaa", fnb.url)
 	fnb.client, err = mongo.NewClient(options.Client().ApplyURI(fnb.url))
 	if err != nil {
 		return nil, err
@@ -61,7 +72,6 @@ func (fnb *FairNodeDB) Start() error {
 		logger.Error("Mongo DB ping fail", "error", err)
 		return fairdb.MongDBPingFail
 	}
-
 
 	fnb.BlockChain = fnb.client.Database("Anduschain_91386209").Collection("BlockChain")
 	fnb.BlockChainRaw = fnb.client.Database("Anduschain_91386209").Collection("BlockChainRaw")

@@ -590,21 +590,27 @@ var (
 	}
 
 	//for DB export file
+	FairIsSRV = cli.BoolFlag{
+		Name:  "issrv",
+		Usage: "fairnode database protocol is srv",
+	}
+	FairDBUser = cli.StringFlag{
+		Name:  "dbuser",
+		Usage: "fairnode database user",
+	}
 	FairDBHost = cli.StringFlag{
 		Name:  "dbhost",
 		Usage: "fairnode database Host",
 		Value: "localhost",
 	}
-
-	FairDBPort = cli.StringFlag{
-		Name:  "dbport",
-		Usage: "fairnode database Port",
-		Value: "27017",
-	}
-
-	FairDBUser = cli.StringFlag{
-		Name:  "dbuser",
+	FairDBName = cli.StringFlag{
+		Name:  "dbname",
 		Usage: "fairnode database user",
+		Value: "Anduschain",
+	}
+	FairDBOpt = cli.StringFlag{
+		Name:  "dbopt",
+		Usage: "fairnode database options",
 	}
 )
 

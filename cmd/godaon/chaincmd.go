@@ -108,9 +108,11 @@ be gzipped.`,
 			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-			utils.FairDBHost,
-			utils.FairDBPort,
+			utils.FairIsSRV,
 			utils.FairDBUser,
+			utils.FairDBHost,
+			utils.FairDBName,
+			utils.FairDBOpt,
 		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
@@ -328,9 +330,11 @@ func dbExportChain(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 
-	dbhost := ctx.GlobalString("dbhost")
-	dbport := ctx.GlobalString("dbport")
+	issrv := ctx.GlobalBool("issrv")
 	dbuser := ctx.GlobalString("dbuser")
+	dbhost := ctx.GlobalString("dbhost")
+	dbname := ctx.GlobalString("dbname")
+	dbopt := ctx.GlobalString("dbopt")
 	var dbpass string
 	if strings.Compare(dbuser, "") != 0 {
 		fmt.Println("패어노드 데이터베이스 암호를 입력해 주세요")
@@ -340,10 +344,11 @@ func dbExportChain(ctx *cli.Context) error {
 		}
 	}
 
-	fdb, err := export.NewSession(dbhost, dbport, dbuser, dbpass) // connection to db
+	fdb, err := export.NewSession(issrv, dbuser, dbpass, dbhost, dbname, dbopt) // connection to db
 	if err != nil {
 		return err
 	}
+	fmt.Println("asdfasdfasdf")
 
 	start := time.Now()
 	fp := ctx.Args().First()

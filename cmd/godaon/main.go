@@ -163,9 +163,11 @@ var (
 	}
 
 	exportDbFlages = []cli.Flag{
-		utils.FairDBHost,
-		utils.FairDBPort,
+		utils.FairIsSRV,
 		utils.FairDBUser,
+		utils.FairDBHost,
+		utils.FairDBName,
+		utils.FairDBOpt,
 	}
 )
 
