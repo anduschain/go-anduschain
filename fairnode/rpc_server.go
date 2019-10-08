@@ -651,7 +651,7 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 			logger.Error("Request Fairnode Signature message", "msg", err)
 			return nil, err
 		}
-		block.WithFairnodeSign(signature)
+		block = block.WithFairnodeSign(signature)
 		var en bytes.Buffer
 		err = block.EncodeRLP(&en)
 		if err != nil {
