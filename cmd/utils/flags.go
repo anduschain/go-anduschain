@@ -1363,9 +1363,9 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 		genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		Fatalf("Developer chains are ephemeral")
-	default:
-		// default anduschain testnet
-		genesis = core.DefaultAndsuChainTestnetGenesisBlock()
+		//default:
+		//	// default anduschain testnet
+		//	genesis = core.DefaultGenesisBlock()
 	}
 	return genesis
 }
@@ -1374,7 +1374,6 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chainDb ethdb.Database) {
 	var err error
 	chainDb = MakeChainDatabase(ctx, stack)
-
 	config, _, err := core.SetupGenesisBlock(chainDb, MakeGenesis(ctx))
 	if err != nil {
 		Fatalf("%v", err)
