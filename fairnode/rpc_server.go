@@ -626,6 +626,7 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 		logger.Error("decode otprn", "msg", err)
 		return nil, err
 	}
+
 	var clg *league // current league
 	if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
 		clg = league
@@ -639,7 +640,25 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 		if *clg.Votehash != block.VoterHash() {
 			return nil, errors.New(fmt.Sprintf("not match current vote hash=%s, req hash=%s", clg.Votehash.String(), block.VoterHash().String()))
 		}
-		err = rs.db.SaveFinalBlock(block, req.GetBlock())
+
+		// block fairnode signature
+		hash = rlpHash([]interface{}{
+			block.Hash(),
+			block.VoterHash(),
+		})
+		signature, err := rs.fn.SignHash(hash.Bytes())
+		if err != nil {
+			logger.Error("Request Fairnode Signature message", "msg", err)
+			return nil, err
+		}
+		block.WithFairnodeSign(signature)
+		var en bytes.Buffer
+		err = block.EncodeRLP(&en)
+		if err != nil {
+			logger.Error("Request Fairnode block EncodeRLP", "msg", err)
+		}
+
+		err = rs.db.SaveFinalBlock(block, en.Bytes())
 		if err != nil {
 			logger.Error("Save Final block", "msg", err)
 			return nil, err
