@@ -345,10 +345,13 @@ func dbExportChain(ctx *cli.Context) error {
 		return err
 	}
 
+	stack := makeFullNode(ctx)
+	chain, _ := utils.MakeChain(ctx, stack)
+
 	start := time.Now()
 	fp := ctx.Args().First()
 	if len(ctx.Args()) < 3 {
-		err = utils.ExportChainFromDb(utils.MakeGenesis(ctx).ToBlock(nil), fdb, fp)
+		err = utils.ExportChainFromDb(chain.GetBlockByNumber(0), fdb, fp)
 	} else {
 		// This can be improved to allow for numbers larger than 9223372036854775807
 		first, ferr := strconv.ParseInt(ctx.Args().Get(1), 10, 64)
