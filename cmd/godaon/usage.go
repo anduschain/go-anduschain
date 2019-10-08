@@ -209,7 +209,7 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "EXPORT BLOCKCHAIN FROM DB",
 		Flags: []cli.Flag{
-			utils.FairIsSRV,
+			utils.FairUseSRV,
 			utils.FairDBUser,
 			utils.FairDBHost,
 			utils.FairDBName,

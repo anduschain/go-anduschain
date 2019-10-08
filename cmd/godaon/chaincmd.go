@@ -108,7 +108,7 @@ be gzipped.`,
 			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-			utils.FairIsSRV,
+			utils.FairUseSRV,
 			utils.FairDBUser,
 			utils.FairDBHost,
 			utils.FairDBName,
@@ -330,7 +330,7 @@ func dbExportChain(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 
-	issrv := ctx.GlobalBool("issrv")
+	usesrv := ctx.GlobalBool("usesrv")
 	dbuser := ctx.GlobalString("dbuser")
 	dbhost := ctx.GlobalString("dbhost")
 	dbname := ctx.GlobalString("dbname")
@@ -344,12 +344,10 @@ func dbExportChain(ctx *cli.Context) error {
 		}
 	}
 
-	fdb, err := export.NewSession(issrv, dbuser, dbpass, dbhost, dbname, dbopt) // connection to db
+	fdb, err := export.NewSession(usesrv, dbuser, dbpass, dbhost, dbname, dbopt) // connection to db
 	if err != nil {
 		return err
 	}
-	fmt.Println("asdfasdfasdf")
-
 	stack := makeFullNode(ctx)
 	chain, _ := utils.MakeChain(ctx, stack)
 

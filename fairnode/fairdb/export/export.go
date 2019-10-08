@@ -31,11 +31,9 @@ type FairNodeDB struct {
 	BlockChainRaw *mongo.Collection
 }
 
-func NewSession(issrv bool, user, pass, host, dbname, dbopt string) (*FairNodeDB, error) {
-	var fnb FairNodeDB
-	var err error
-	var protocol, userPass, dbName, dbOpt string
-	if issrv {
+func NewSession(usesrv bool, user, pass, host, dbname, dbopt string) (*FairNodeDB, error) {
+	var protocol, userPass, dbOpt string
+	if usesrv {
 		protocol = fmt.Sprint("mongodb+srv")
 	} else {
 		protocol = fmt.Sprint("mongodb")
@@ -49,8 +47,10 @@ func NewSession(issrv bool, user, pass, host, dbname, dbopt string) (*FairNodeDB
 	if strings.Compare(dbopt, "") != 0 {
 		dbOpt = fmt.Sprintf("?%s", dbopt)
 	}
+
+	var fnb FairNodeDB
+	var err error
 	fnb.url = fmt.Sprintf("%s://%s%s/%s%s", protocol, userPass, host, dbName, dbOpt)
-	fmt.Println("aaaaaaaa", fnb.url)
 	fnb.client, err = mongo.NewClient(options.Client().ApplyURI(fnb.url))
 	if err != nil {
 		return nil, err
@@ -73,8 +73,8 @@ func (fnb *FairNodeDB) Start() error {
 		return fairdb.MongDBPingFail
 	}
 
-	fnb.BlockChain = fnb.client.Database("Anduschain_91386209").Collection("BlockChain")
-	fnb.BlockChainRaw = fnb.client.Database("Anduschain_91386209").Collection("BlockChainRaw")
+	fnb.BlockChain = fnb.client.Database(dbName).Collection("BlockChain")
+	fnb.BlockChainRaw = fnb.client.Database(dbName).Collection("BlockChainRaw")
 
 	logger.Info("connected to database", "url", fnb.url)
 

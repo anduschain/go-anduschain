@@ -590,8 +590,8 @@ var (
 	}
 
 	//for DB export file
-	FairIsSRV = cli.BoolFlag{
-		Name:  "issrv",
+	FairUseSRV = cli.BoolFlag{
+		Name:  "usesrv",
 		Usage: "fairnode database protocol is srv",
 	}
 	FairDBUser = cli.StringFlag{
