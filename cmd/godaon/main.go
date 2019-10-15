@@ -182,6 +182,7 @@ func init() {
 		importCommand,
 		exportCommand,
 		dbExportCommand,
+		exportBlockRlpCommand,
 		importPreimagesCommand,
 		exportPreimagesCommand,
 		copydbCommand,

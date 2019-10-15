@@ -18,6 +18,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
@@ -466,6 +467,18 @@ func (bc *BlockChain) ExportN(w io.Writer, first uint64, last uint64) error {
 	}
 
 	return nil
+}
+
+func (bc *BlockChain) ExportBlockRlp(number uint64) (string, error) {
+	block := bc.GetBlockByNumber(number)
+	if block == nil {
+		return "", fmt.Errorf("ExportBlockRlp failed on #%d: not found", number)
+	}
+	var b bytes.Buffer
+	if err := block.EncodeRLP(&b); err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(b.Bytes()), nil
 }
 
 // insert injects a new head block into the current block chain. This method
