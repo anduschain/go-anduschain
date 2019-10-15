@@ -280,6 +280,27 @@ func ExportChain(blockchain *core.BlockChain, fn string) error {
 	return nil
 }
 
+func ExportBlockRlp(blockchain *core.BlockChain, number uint64, fn string) error {
+	log.Info("ExportBlockRlp blockchain", "file", fn)
+	// Open the file handle and potentially wrap with a gzip stream
+	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	// Iterate over the blocks and export them
+	rlpStr, err := blockchain.ExportBlockRlp(number)
+	if err != nil {
+		return err
+	}
+	_, err = fh.WriteString(rlpStr)
+	if err != nil {
+		return err
+	}
+	log.Info("ExportBlockRlp", "file", fn)
+	return nil
+}
+
 // ExportAppendChain exports a blockchain into the specified file, appending to
 // the file if data already exists in it.
 func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, last uint64) error {

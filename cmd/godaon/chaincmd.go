@@ -98,6 +98,25 @@ last block to write. In this mode, the file will be appended
 if already existing. If the file ends with .gz, the output will
 be gzipped.`,
 	}
+	// Block save rlp encode string
+	exportBlockRlpCommand = cli.Command{
+		Action:    utils.MigrateFlags(exportBlockRlp),
+		Name:      "exportBlockRlp",
+		Usage:     "ExportBlockRlp blockchain into file",
+		ArgsUsage: "<filename> <blockNum>",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+			utils.CacheFlag,
+			utils.SyncModeFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
+		Description: `
+Requires a first argument of the file to write to.
+Optional second and third arguments control the first and
+last block to write. In this mode, the file will be appended
+if already existing. If the file ends with .gz, the output will
+be gzipped.`,
+	}
 	// 페어노드 DB의 blockchain의 raw데이터를 이용해 파일 생성
 	dbExportCommand = cli.Command{
 		Action:    utils.MigrateFlags(dbExportChain),
@@ -405,6 +424,23 @@ func exportChain(ctx *cli.Context) error {
 		utils.Fatalf("Export error: %v\n", err)
 	}
 	fmt.Printf("Export done in %v\n", time.Since(start))
+	return nil
+}
+
+func exportBlockRlp(ctx *cli.Context) error {
+	if len(ctx.Args()) < 2 {
+		utils.Fatalf("This command requires an argument.")
+	}
+	stack := makeFullNode(ctx)
+	chain, _ := utils.MakeChain(ctx, stack)
+	fp := ctx.Args().First()
+	first, ferr := strconv.ParseInt(ctx.Args().Get(1), 10, 64)
+	if ferr != nil {
+		utils.Fatalf("ExportBlockRlp error in parsing parameters: block number not an integer\n")
+	}
+	if err := utils.ExportBlockRlp(chain, uint64(first), fp); err != nil {
+		utils.Fatalf("ExportBlockRlp error: %v\n", err)
+	}
 	return nil
 }
 
