@@ -290,13 +290,18 @@ func (m *MongoDatabase) SaveActiveNode(node types.HeartBeat) {
 func (m *MongoDatabase) GetActiveNode() []types.HeartBeat {
 	//fmt.Println("GetActiveNode")
 	var nodes []types.HeartBeat
-	sNode := new([]fntype.HeartBeat)
+	var sNode []fntype.HeartBeat
 	cur, err := m.activeNodeCol.Find(m.context, bson.M{})
-	cur.All(m.context, sNode)
 	if err != nil {
 		logger.Error("Get Active Node", "database", "mongo", "msg", err)
+		return nil
 	}
-	for _, node := range *sNode {
+	err = cur.All(m.context, &sNode)
+	if err != nil {
+		logger.Error("Get Active Node", "database", "mongo", "msg fetch all", err)
+		return nil
+	}
+	for _, node := range sNode {
 		nodes = append(nodes, types.HeartBeat{
 			Enode:        node.Enode,
 			MinerAddress: node.MinerAddress,

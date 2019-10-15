@@ -111,6 +111,13 @@ func init() {
 			Action:    addChainConfig,
 			Flags:     flag,
 		},
+		{
+			Name:      "updateSignature",
+			Usage:     "recovery",
+			ArgsUsage: "",
+			Action:    updateSignature,
+			Flags:     flag,
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
