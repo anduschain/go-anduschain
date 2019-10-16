@@ -14,6 +14,7 @@ type Config struct {
 	FairNodeDir string
 
 	// DB setting
+	UseSRV   bool
 	DBhost   string
 	DBport   string
 	DBuser   string
@@ -38,6 +39,7 @@ type Config struct {
 var (
 	Version       = "1.0.3"
 	DefaultConfig = Config{
+		UseSRV:   false,
 		DBhost:   "localhost",
 		DBport:   "27017",
 		DBuser:   "",
@@ -68,8 +70,8 @@ func init() {
 
 }
 
-func (c *Config) GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int) {
-	return c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path, c.DBoption, c.ChainID
+func (c *Config) GetInfo() (useSRV bool, host, port, user, pass, ssl, option string, chainID *big.Int) {
+	return c.UseSRV, c.DBhost, c.DBport, c.DBuser, c.DBpass, c.SSL_path, c.DBoption, c.ChainID
 }
 
 func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
@@ -90,6 +92,7 @@ func SetFairConfig(ctx *cli.Context, keypass, dbpass string) {
 	if ctx.GlobalBool("memorydb") {
 		DefaultConfig.Memorydb = true
 	} else {
+		DefaultConfig.UseSRV = ctx.GlobalBool("usesrv")
 		DefaultConfig.DBhost = ctx.GlobalString("dbhost")
 		DefaultConfig.DBport = ctx.GlobalString("dbport")
 		DefaultConfig.DBuser = ctx.GlobalString("dbuser")

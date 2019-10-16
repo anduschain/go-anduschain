@@ -23,7 +23,7 @@ const DbName = "Anduschain"
 
 var (
 	MongDBConnectError = errors.New("fail to connecting mongo database")
-	MongDBPingFail = errors.New("ping failed")
+	MongDBPingFail     = errors.New("ping failed")
 )
 
 type MongoDatabase struct {
@@ -45,11 +45,11 @@ type MongoDatabase struct {
 	blockChain      *mongo.Collection
 	blockChainRaw   *mongo.Collection
 	transactions    *mongo.Collection
-	activeFairnode 	*mongo.Collection
+	activeFairnode  *mongo.Collection
 }
 
 type config interface {
-	GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int)
+	GetInfo() (useSRV bool, host, port, user, pass, ssl, option string, chainID *big.Int)
 }
 
 // E11000 duplicate key error
@@ -105,19 +105,31 @@ func IsDup(err error) bool {
 func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
 	var err error
-	host, port, user, pass, ssl, option, chainID := conf.GetInfo()
+	var protocol, userPass, dbOpt string
+	useSRV, host, port, user, pass, ssl, option, chainID := conf.GetInfo()
 	// prevent unused
 	_ = ssl
 	_ = port
+
+	if useSRV {
+		protocol = fmt.Sprint("mongodb+srv")
+	} else {
+		protocol = fmt.Sprint("mongodb")
+	}
+	if strings.Compare(user, "") != 0 {
+		userPass = fmt.Sprintf("%s:%s@", user, pass)
+	}
+	//if strings.Compare(dbname, "") != 0 {
+	//	db.dbName = fmt.Sprintf("%s", dbname)
+	//}
+	if strings.Compare(option, "") != 0 {
+		dbOpt = fmt.Sprintf("?%s", option)
+	}
 	db.chainID = chainID
 	db.dbName = fmt.Sprintf("%s_%s", DbName, chainID.String())
-	opt := fmt.Sprintf("?%s", option)
-	if strings.Compare(user, "") != 0 {
-		db.url = fmt.Sprintf("mongodb+srv://%s:%s@%s/%s%s", user, pass, host, db.dbName, opt)
-	} else {
-		db.url = fmt.Sprintf("mongodb://%s/%s%s", host, db.dbName, opt)
-		//db.url = "mongodb://localhost:27020,localhost:27021,localhost:27022/AndusChain_91386209?replSet=replication"
-	}
+
+	//db.url = "mongodb://localhost:27020,localhost:27021,localhost:27022/AndusChain_91386209?replSet=replication"
+	db.url = fmt.Sprintf("%s://%s%s/%s%s", protocol, userPass, host, db.dbName, dbOpt)
 
 	// 필요시 ApplyURI() 대신 직접 options.Client()을 Set...() 을 수행
 	db.client, err = mongo.NewClient(options.Client().ApplyURI(db.url))
@@ -504,7 +516,7 @@ func (s stType) String() string {
 
 func (m *MongoDatabase) InsertActiveFairnode(nodeKey common.Hash, address string) {
 	//fmt.Println("InsertActiveFairnode")
-	_, err := m.activeFairnode.InsertOne(m.context, fntype.Fairnode{ID: nodeKey.String(), Address: address, Status: PENDING.String(), Timestamp: time.Now().Unix() })
+	_, err := m.activeFairnode.InsertOne(m.context, fntype.Fairnode{ID: nodeKey.String(), Address: address, Status: PENDING.String(), Timestamp: time.Now().Unix()})
 	if err != nil {
 		if !IsDup(err) {
 			logger.Error("Insert Active Fairnode", "database", "mongo", "msg", err)

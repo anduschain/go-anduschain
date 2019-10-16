@@ -31,9 +31,9 @@ type FairNodeDB struct {
 	BlockChainRaw *mongo.Collection
 }
 
-func NewSession(usesrv bool, user, pass, host, dbname, dbopt string) (*FairNodeDB, error) {
+func NewSession(useSRV bool, user, pass, host, dbname, dbopt string) (*FairNodeDB, error) {
 	var protocol, userPass, dbOpt string
-	if usesrv {
+	if useSRV {
 		protocol = fmt.Sprint("mongodb+srv")
 	} else {
 		protocol = fmt.Sprint("mongodb")

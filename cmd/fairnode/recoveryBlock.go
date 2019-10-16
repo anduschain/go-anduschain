@@ -47,6 +47,7 @@ func recoveryBlock(ctx *cli.Context) error {
 	}
 
 	conf := &dbConfig{
+		useSRV:  ctx.GlobalBool("usesrv"),
 		host:    ctx.String("dbhost"),
 		port:    ctx.String("dbport"),
 		user:    ctx.String("dbuser"),
