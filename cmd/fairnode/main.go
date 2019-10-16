@@ -80,6 +80,10 @@ var (
 			Name:  "memorydb",
 			Usage: "default is false, if true, running memorydb fairnode",
 		},
+		cli.StringFlag{
+			Name:  "filepath",
+			Usage: "input file path for recovery block",
+		},
 	}
 )
 
@@ -112,10 +116,10 @@ func init() {
 			Flags:     flag,
 		},
 		{
-			Name:      "updateSignature",
-			Usage:     "recovery",
+			Name:      "recoveryBlock",
+			Usage:     "recovery block from node rlp file",
 			ArgsUsage: "",
-			Action:    updateSignature,
+			Action:    recoveryBlock,
 			Flags:     flag,
 		},
 	}
