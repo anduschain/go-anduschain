@@ -50,7 +50,7 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
 	"github.com/pkg/errors"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 	"io/ioutil"
 	"math/big"
 	"os"

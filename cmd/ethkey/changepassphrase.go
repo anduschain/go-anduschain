@@ -7,7 +7,7 @@ import (
 
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/cmd/utils"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 var newPassphraseFlag = cli.StringFlag{

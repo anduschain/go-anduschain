@@ -24,7 +24,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/crypto"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 type outputInspect struct {

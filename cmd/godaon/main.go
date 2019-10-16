@@ -40,7 +40,7 @@ import (
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/elastic/gosigar"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -188,8 +188,6 @@ func init() {
 		copydbCommand,
 		removedbCommand,
 		dumpCommand,
-		// See monitorcmd.go:
-		monitorCommand,
 		// See accountcmd.go:
 		accountCommand,
 		walletCommand,

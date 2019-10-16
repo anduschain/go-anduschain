@@ -28,7 +28,7 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/tests"
 
-	cli "gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 var stateTestCommand = cli.Command{

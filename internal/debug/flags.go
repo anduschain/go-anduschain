@@ -30,7 +30,7 @@ import (
 	"github.com/anduschain/go-anduschain/metrics/exp"
 	"github.com/fjl/memsize/memsizeui"
 	"github.com/mattn/go-colorable"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 var Memsize memsizeui.Handler

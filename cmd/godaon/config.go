@@ -26,7 +26,7 @@ import (
 	"reflect"
 	"unicode"
 
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/dashboard"

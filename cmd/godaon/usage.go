@@ -26,7 +26,7 @@ import (
 
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/internal/debug"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 // AppHelpTemplate is the test template for the default, global app help topic.

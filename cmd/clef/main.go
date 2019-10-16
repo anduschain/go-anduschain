@@ -44,7 +44,7 @@ import (
 	"github.com/anduschain/go-anduschain/signer/core"
 	"github.com/anduschain/go-anduschain/signer/rules"
 	"github.com/anduschain/go-anduschain/signer/storage"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md

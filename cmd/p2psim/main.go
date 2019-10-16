@@ -51,7 +51,7 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/simulations"
 	"github.com/anduschain/go-anduschain/p2p/simulations/adapters"
 	"github.com/anduschain/go-anduschain/rpc"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 var client *simulations.Client

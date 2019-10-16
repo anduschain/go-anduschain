@@ -30,7 +30,7 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 
 	"github.com/anduschain/go-anduschain/cmd/utils"
-	cli "gopkg.in/urfave/cli.v1"
+	cli "github.com/urfave/cli"
 )
 
 var bugCommand = cli.Command{

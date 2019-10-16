@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/anduschain/go-anduschain/cmd/utils"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 const (

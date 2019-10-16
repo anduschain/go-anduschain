@@ -39,7 +39,7 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/trie"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli"
 )
 
 var (
