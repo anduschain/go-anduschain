@@ -91,12 +91,13 @@ func makeFairNodeKey(ctx *cli.Context) error {
 }
 
 type dbConfig struct {
+	useSRV                              bool
 	host, port, user, pass, ssl, option string
 	chainID                             *big.Int
 }
 
-func (c *dbConfig) GetInfo() (host, port, user, pass, ssl, option string, chainID *big.Int) {
-	return c.host, c.port, c.user, c.pass, c.ssl, c.option, c.chainID
+func (c *dbConfig) GetInfo() (useSRV bool, host, port, user, pass, ssl, option string, chainID *big.Int) {
+	return c.useSRV, c.host, c.port, c.user, c.pass, c.ssl, c.option, c.chainID
 }
 
 func addChainConfig(ctx *cli.Context) error {
@@ -133,6 +134,7 @@ func addChainConfig(ctx *cli.Context) error {
 		}
 
 		conf := &dbConfig{
+			useSRV:  ctx.GlobalBool("usesrv"),
 			host:    ctx.String("dbhost"),
 			port:    ctx.String("dbport"),
 			user:    ctx.String("dbuser"),

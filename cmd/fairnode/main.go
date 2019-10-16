@@ -84,6 +84,10 @@ var (
 			Name:  "filepath",
 			Usage: "input file path for recovery block",
 		},
+		cli.BoolFlag{
+			Name:  "usesrv",
+			Usage: "use 'mongodb+srv://' instead of 'mongodb://'",
+		},
 	}
 )
 

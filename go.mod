@@ -13,7 +13,9 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/elastic/gosigar v0.10.4
 	github.com/fatih/color v1.7.0
+	github.com/fjl/gencodec v0.0.0-20180327115531-408615857a2d // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
+	github.com/garslo/gogen v0.0.0-20170307003452-d6ebae628c7c // indirect
 	github.com/gizak/termui v2.3.0+incompatible
 	github.com/go-stack/stack v1.8.0
 	github.com/golang/mock v1.3.1
@@ -53,7 +55,7 @@ require (
 	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7
-	golang.org/x/tools v0.0.0-20190724185037-8aa4eac1a7c1
+	golang.org/x/tools v0.0.0-20191015211201-9c6d90b5a7d0
 	google.golang.org/grpc v1.22.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/inconshreveable/log15.v2 v2.0.0-20180818164646-67afb5ed74ec
