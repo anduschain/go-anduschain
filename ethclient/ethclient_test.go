@@ -16,7 +16,15 @@
 
 package ethclient
 
-import "github.com/anduschain/go-anduschain"
+import (
+	"bytes"
+	"context"
+	"github.com/anduschain/go-anduschain"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/rpc"
+	"math/big"
+	"testing"
+)
 
 // Verify that Client implements the ethereum interfaces.
 var (
@@ -32,3 +40,39 @@ var (
 	// _ = ethereum.PendingStateEventer(&Client{})
 	_ = ethereum.PendingContractCaller(&Client{})
 )
+
+func connectRpc() (*rpc.Client, *Client, error) {
+	conn := "http://localhost:8545"
+	con, err := rpc.Dial(conn)
+	if err != nil {
+		return nil, nil, err
+	}
+	return con, NewClient(con), nil
+}
+
+func TestClient_BlockByNumber(t *testing.T) {
+	rc, ec, err := connectRpc()
+	if err != nil {
+		t.Error(err)
+	}
+	defer rc.Close()
+
+	block, err := ec.BlockByNumber(context.Background(), big.NewInt(10))
+	if err != nil {
+		t.Error(err)
+	}
+
+	js, err := block.Header().MarshalJSON()
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("Header MarshalJSON", string(js))
+
+	var b bytes.Buffer
+	err = block.EncodeRLP(&b)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("rlp string : ", common.Bytes2Hex(b.Bytes()))
+}

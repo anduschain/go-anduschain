@@ -65,7 +65,7 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("BlockNonce", input, n[:])
 }
 
-//go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
+//go:generate gencodec -dir . -type Header -field-override headerMarshaling -out gen_header_json.go
 
 // Header represents a block header in the Anduschain blockchain.
 type Header struct {
@@ -75,7 +75,7 @@ type Header struct {
 	Root     common.Hash    `json:"stateRoot"        gencodec:"required"`
 
 	TxHash   common.Hash `json:"transactionsRoot" gencodec:"required"`
-	VoteHash common.Hash `json:"voteRoot" gencodec:"required"` // TODO : add - voteRoot, not import header hash - from fairnode
+	VoteHash common.Hash `json:"voteRoot" gencodec:"required"`
 
 	ReceiptHash common.Hash `json:"receiptsRoot"     gencodec:"required"`
 	Bloom       Bloom       `json:"logsBloom"        gencodec:"required"`
