@@ -81,7 +81,8 @@ func (ec *Client) BlockByNumber(ctx context.Context, number *big.Int) (*types.Bl
 type rpcBlock struct {
 	Hash         common.Hash      `json:"hash"`
 	Transactions []rpcTransaction `json:"transactions"`
-	UncleHashes  []common.Hash    `json:"uncles"`
+	Voters       []types.Voter    `json:"voters"`
+	//UncleHashes  []common.Hash    `json:"uncles"`
 }
 
 func (ec *Client) getBlock(ctx context.Context, method string, args ...interface{}) (*types.Block, error) {
