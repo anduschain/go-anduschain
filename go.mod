@@ -26,8 +26,6 @@ require (
 	github.com/karalabe/hid v1.0.0
 	github.com/mattn/go-colorable v0.1.0
 	github.com/mattn/go-isatty v0.0.10 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/naoina/toml v0.1.1
