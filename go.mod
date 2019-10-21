@@ -24,6 +24,7 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v1.0.0
+	github.com/karalabe/xgo v0.0.0-20190301120235-2d6d1848fb02 // indirect
 	github.com/mattn/go-colorable v0.1.0
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826

@@ -239,7 +239,7 @@ func (pm *ProtocolManager) leagueBroadCast() {
 		select {
 		case ev := <-pm.newLeagueBlockCh:
 			log.Debug("broadcasting league", "peerCount", len(pm.peers.peers), "hash", ev.Block.Hash())
-			for _, peer := range pm.peers.peers {
+			for _, peer := range pm.peers.PeersWithoutBlock(ev.Block.Hash()) {
 				log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
 				err := peer.SendMakeLeagueBlock(&ev)
 				if err != nil {
