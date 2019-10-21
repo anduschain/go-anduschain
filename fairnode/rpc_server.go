@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,6 +37,7 @@ func errorEmpty(key string) error {
 
 // fairnode rpc method implemented
 type rpcServer struct {
+	mu		sync.Mutex
 	fn      fnNode
 	db      fairdb.FairnodeDB
 	leagues map[common.Hash]*league
@@ -170,13 +172,16 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 		}
 
 		var clg *league // current league
+		rs.mu.Lock()
 		if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
 			clg = league
 		} else {
+			rs.mu.Unlock()
 			return &proto.ResOtprn{
 				Result: proto.Status_FAIL,
 			}, nil
 		}
+		rs.mu.Unlock()
 
 		if clg.Status != types.PENDING {
 			return &proto.ResOtprn{
@@ -298,11 +303,14 @@ func (rs *rpcServer) ProcessController(nodeInfo *proto.Participate, stream fairn
 
 	otprnHash := common.BytesToHash(nodeInfo.GetOtprnHash())
 	var clg *league // current league
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprnHash]; ok {
 		clg = league
 	} else {
+		rs.mu.Unlock()
 		return errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", nodeInfo.GetOtprnHash()))
 	}
+	rs.mu.Unlock()
 
 	makeMsg := func(l *league) *proto.ProcessMessage {
 		var msg proto.ProcessMessage
@@ -386,11 +394,14 @@ func (rs *rpcServer) Vote(ctx context.Context, vote *proto.Vote) (*empty.Empty, 
 
 	var l *league // current block number
 	otprnHash := otprn.HashOtprn()
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprnHash]; ok {
 		l = league
 	} else {
+		rs.mu.Unlock()
 		return nil, errors.New(fmt.Sprintf("this vote is not matched in any league hash=%s", otprnHash.String()))
 	}
+	rs.mu.Unlock()
 
 	if l.Current.Uint64()+1 != header.Number.Uint64() { // check block number
 		return nil, errors.New(fmt.Sprintf("invalid block number current=%d vote=%d", l.Current.Uint64(), header.Number.Uint64()))
@@ -439,11 +450,14 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 
 	otprnHash := common.BytesToHash(res.GetOtprnHash())
 	var clg *league // current league
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprnHash]; ok {
 		clg = league
 	} else {
+		rs.mu.Unlock()
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", res.GetOtprnHash()))
 	}
+	rs.mu.Unlock()
 
 	voteKey := fairdb.MakeVoteKey(otprnHash, new(big.Int).Add(clg.Current, big.NewInt(1)))
 	voters := rs.db.GetVoters(voteKey)
@@ -534,11 +548,14 @@ func (rs *rpcServer) SealConfirm(reqSeal *proto.ReqConfirmSeal, stream fairnode.
 
 	otprnHash := common.BytesToHash(reqSeal.GetOtprnHash())
 	var clg *league // current league
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprnHash]; ok {
 		clg = league
 	} else {
+		rs.mu.Unlock()
 		return errors.New(fmt.Sprintf("This otprn is not matched in league hash=%s", reqSeal.GetOtprnHash()))
 	}
+	rs.mu.Unlock()
 
 	if clg.Votehash == nil || clg.BlockHash == nil {
 		return errors.New("Current League votehash or blockhash is nil")
@@ -628,11 +645,14 @@ func (rs *rpcServer) SendBlock(ctx context.Context, req *proto.ReqBlock) (*empty
 	}
 
 	var clg *league // current league
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprn.HashOtprn()]; ok {
 		clg = league
 	} else {
+		rs.mu.Unlock()
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", otprn.HashOtprn().String()))
 	}
+	rs.mu.Unlock()
 	if clg != nil && clg.Status == types.SEND_BLOCK {
 		if *clg.BlockHash != block.Hash() {
 			return nil, errors.New(fmt.Sprintf("not match current block hash=%s, req hash=%s", clg.BlockHash.String(), block.Hash().String()))
@@ -706,11 +726,14 @@ func (rs *rpcServer) RequestFairnodeSign(ctx context.Context, reqInfo *proto.Req
 
 	otprnHash := common.BytesToHash(reqInfo.GetOtprnHash())
 	var clg *league // current league
+	rs.mu.Lock()
 	if league, ok := rs.leagues[otprnHash]; ok {
 		clg = league
 	} else {
+		rs.mu.Unlock()
 		return nil, errors.New(fmt.Sprintf("this otprn is not matched in league hash=%s", reqInfo.GetOtprnHash()))
 	}
+	rs.mu.Unlock()
 
 	if clg.Votehash == nil || clg.BlockHash == nil {
 		return nil, errors.New("current league votehash or blockhash is nil")
