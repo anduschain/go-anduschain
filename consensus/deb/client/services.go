@@ -110,12 +110,12 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 				if err := otprn.ValidateSignature(); err != nil {
 					return err
 				}
-
+				dc.mu.Lock()
 				if _, ok := dc.otprn[otprn.HashOtprn()]; ok {
+					dc.mu.Unlock()
 					log.Debug("already, have been had otprn", "msg", err)
 					return nil
 				} else {
-					dc.mu.Lock()
 					dc.otprn[otprn.HashOtprn()] = otprn // otprn save
 					dc.mu.Unlock()
 					go dc.receiveFairnodeStatusLoop(*otprn)
