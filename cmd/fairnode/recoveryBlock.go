@@ -70,7 +70,7 @@ func recoveryBlock(ctx *cli.Context) error {
 	}
 	defer db.Stop()
 
-	filePath := ctx.String("filepath")
+	filePath := ctx.String("fromfile")
 	fmt.Println("filePath :", filePath)
 	if err := SaveBlockUsingRLPForm(db, filePath); err != nil {
 		log.Crit(err.Error())

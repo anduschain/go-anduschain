@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
@@ -110,15 +111,35 @@ func addChainConfig(ctx *cli.Context) error {
 
 	var err error
 
-	fmt.Println("Input fairnode keystore password")
-	passphrase := promptPassphrase(false)
+	//keypass
+	var passphrase string
+	passphrase = ctx.String("keypass")
+	if passphrase != "" {
+		fmt.Println("Use input keystore password")
+	} else {
+		fmt.Println("Input fairnode keystore password")
+		passphrase = promptPassphrase(false)
+	}
 	pk, err := fairnode.GetPriveKey(keyfilePath, passphrase)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Input fairnode database password")
-	dbpass := promptPassphrase(false)
+
+	//dbpass
+	var user string
+	var dbpass string
+	user = ctx.String("dbuser")
+	if user != "" {
+		// 공백을 사용하려면 promptPassphrase를 거쳐야 함
+		dbpass = ctx.GlobalString("dbpass")
+		if dbpass != "" {
+			fmt.Println("use input database password")
+		} else {
+			fmt.Println("Input fairnode database password")
+			dbpass = promptPassphrase(false)
+		}
+	}
 
 	var fdb fairdb.FairnodeDB
 	if ctx.GlobalBool("memorydb") {
@@ -137,7 +158,7 @@ func addChainConfig(ctx *cli.Context) error {
 			useSRV:  ctx.GlobalBool("usesrv"),
 			host:    ctx.String("dbhost"),
 			port:    ctx.String("dbport"),
-			user:    ctx.String("dbuser"),
+			user:    user,
 			pass:    dbpass,
 			ssl:     ctx.String("dbCertPath"),
 			chainID: chainID,
@@ -175,63 +196,23 @@ func addChainConfig(ctx *cli.Context) error {
 		NodeVersion: "0.6.12",
 	}
 
-	w := NewWizard()
-	fmt.Printf("Current block number is %d", blockNumber)
-	fmt.Println()
-	// role 지정될 블록 번호
-	fmt.Printf("Input rule apply block number ")
-	if num := w.readInt(); num > blockNumber {
-		config.BlockNumber = big.NewInt(int64(num)).Uint64()
-	} else {
-		log.Crit("block number is more current block number")
-		return nil
-	}
+	//config := new(types.ChainConfig)
+	//config.Epoch = 10
+	//config.Mminer = 100
+	//config.JoinTxPrice = big.NewFloat(1).String()
+	//config.FnFee = big.NewFloat(0.1).String()
+	//config.NodeVersion = "0.6.12"
 
-	// 리그 최대 참여자 (Cminer)
-	fmt.Printf("Input max number for league participate in (default : 100) ")
-	if mMiner := w.readDefaultInt(100); mMiner > 0 {
-		config.Mminer = mMiner
+	filePath := ctx.String("fromfile")
+	if filePath != "" {
+		if configureFromFile(config, filePath, blockNumber) < 0 {
+			return nil
+		}
 	} else {
-		log.Crit("input miner number was wrong")
-		return nil
+		if configureFromPrompt(config, blockNumber) < 0 {
+			return nil
+		}
 	}
-
-	// 리그 생성 블록 주기 (Epoch)
-	fmt.Printf("Input epoch for league change term (default : 10) ")
-	if term := w.readDefaultInt(10); term > 0 {
-		config.Epoch = term
-	} else {
-		log.Crit("input epoch was wrong")
-		return nil
-	}
-
-	// join transaction price
-	fmt.Printf("Input join transaction price (default : 1 Daon) ")
-	if price := w.readDefaultFloat(1); price >= 0 {
-		config.JoinTxPrice = big.NewFloat(price).String()
-	} else {
-		log.Crit("input price was wrong")
-		return nil
-	}
-
-	// fairnode 수수료
-	fmt.Printf("Input fairnode fee percent (default : 0.1) ")
-	if fee := w.readDefaultFloat(0.1); fee >= 0 {
-		config.FnFee = big.NewFloat(fee).String()
-	} else {
-		log.Crit("input fee was wrong")
-		return nil
-	}
-
-	// node version
-	fmt.Printf("Input node version (ex : 0.6.12)")
-	if version := w.readString(); version != "" {
-		config.NodeVersion = version
-	} else {
-		log.Crit("input version was wrong")
-		return nil
-	}
-
 	sign, err := crypto.Sign(config.Hash().Bytes(), pk)
 	if err != nil {
 		log.Crit(fmt.Sprintf("config signature error msg = %s", err.Error()))
@@ -247,4 +228,79 @@ func addChainConfig(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func configureFromFile(config *types.ChainConfig, path string, BlockNumber uint64) int {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Crit(err.Error())
+		return -1
+	}
+	err = json.Unmarshal(b, config)
+	if err != nil {
+		log.Crit(err.Error())
+		return -1
+	}
+	return 1
+}
+
+func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
+	w := NewWizard()
+	fmt.Printf("Current block number is %d", config.BlockNumber)
+	fmt.Println()
+	// role 지정될 블록 번호
+	fmt.Printf("Input rule apply block number ")
+	if num := w.readInt(); num > BlockNumber {
+		config.BlockNumber = big.NewInt(int64(num)).Uint64()
+	} else {
+		log.Crit("block number is lower than current block number")
+		return -1
+	}
+
+	// 리그 최대 참여자 (Cminer)
+	fmt.Printf("Input max number for league participate in (default : 100) ")
+	if mMiner := w.readDefaultInt(100); mMiner > 0 {
+		config.Mminer = mMiner
+	} else {
+		log.Crit("input miner number was wrong")
+		return -1
+	}
+
+	// 리그 생성 블록 주기 (Epoch)
+	fmt.Printf("Input epoch for league change term (default : 10) ")
+	if term := w.readDefaultInt(10); term > 0 {
+		config.Epoch = term
+	} else {
+		log.Crit("input epoch was wrong")
+		return -1
+	}
+
+	// join transaction price
+	fmt.Printf("Input join transaction price (default : 1 Daon) ")
+	if price := w.readDefaultFloat(1); price >= 0 {
+		config.JoinTxPrice = big.NewFloat(price).String()
+	} else {
+		log.Crit("input price was wrong")
+		return -1
+	}
+
+	// fairnode 수수료
+	fmt.Printf("Input fairnode fee percent (default : 0.1) ")
+	if fee := w.readDefaultFloat(0.1); fee >= 0 {
+		config.FnFee = big.NewFloat(fee).String()
+	} else {
+		log.Crit("input fee was wrong")
+		return -1
+	}
+
+	// node version
+	fmt.Printf("Input node version (ex : 0.6.12)")
+	if version := w.readString(); version != "" {
+		config.NodeVersion = version
+	} else {
+		log.Crit("input version was wrong")
+		return -1
+	}
+
+	return 1
 }

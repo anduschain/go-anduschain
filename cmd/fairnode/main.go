@@ -19,6 +19,11 @@ var (
 	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
 	logger  = log.New("fairnode", "cmd")
 	flag    = []cli.Flag{
+		//database options
+		cli.BoolFlag{
+			Name:  "usesrv",
+			Usage: "use 'mongodb+srv://' instead of 'mongodb://'",
+		},
 		cli.StringFlag{
 			Name:  "dbhost",
 			Value: "localhost",
@@ -35,6 +40,11 @@ var (
 			Usage: "default user is nil",
 		},
 		cli.StringFlag{
+			Name:  "dbpass",
+			Value: "",
+			Usage: "default user is nil",
+		},
+		cli.StringFlag{
 			Name:  "dbCertPath",
 			Value: "",
 			Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
@@ -44,6 +54,7 @@ var (
 			Value: "",
 			Usage: "default dbOption is nil. dbOption for mongodb connection option",
 		},
+		//server port
 		cli.StringFlag{
 			Name:  "port",
 			Value: "60002",
@@ -58,6 +69,10 @@ var (
 			Name:  "keypath",
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
+		},
+		cli.StringFlag{
+			Name:  "keypass",
+			Usage: "use password parameter instead of using passphrase",
 		},
 		cli.BoolFlag{
 			Name:  "mainnet",
@@ -81,13 +96,10 @@ var (
 			Usage: "default is false, if true, running memorydb fairnode",
 		},
 		cli.StringFlag{
-			Name:  "filepath",
-			Usage: "input file path for recovery block",
+			Name:  "fromfile",
+			Usage: "input file path for chainconfig or recovery block",
 		},
-		cli.BoolFlag{
-			Name:  "usesrv",
-			Usage: "use 'mongodb+srv://' instead of 'mongodb://'",
-		},
+
 	}
 )
 
