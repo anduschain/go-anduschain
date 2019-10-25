@@ -1,17 +1,17 @@
-FROM ubuntu:xenial
+FROM ubuntu:xenial-20191010
 
-ENV PATH=/usr/lib/go-1.9/bin:$PATH
+ENV PATH=/usr/lib/go/bin:$PATH
 
 RUN \
   apt-get update && apt-get upgrade -q -y && \
-  apt-get install -y --no-install-recommends golang-1.9 git make gcc libc-dev ca-certificates && \
+  apt-get install -y --no-install-recommends golang git make gcc libc-dev ca-certificates && \
   git clone --depth 1 https://github.com/anduschain/go-anduschain && \
-  (cd go-anduschain && make geth) && \
-  cp go-anduschain/build/bin/geth /geth && \
-  apt-get remove -y golang-1.9 git make gcc libc-dev && apt autoremove -y && apt-get clean && \
+  (cd go-anduschain && make godaon) && \
+  cp go-anduschain/build/bin/godaon /godaon && \
+  apt-get remove -y golang git make gcc libc-dev && apt autoremove -y && apt-get clean && \
   rm -rf /go-anduschain
 
 EXPOSE 8545
-EXPOSE 30303
+EXPOSE 50505
 
-ENTRYPOINT ["/geth"]
+ENTRYPOINT ["/godaon"]
