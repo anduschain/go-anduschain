@@ -66,7 +66,16 @@ func makeFairNodeKey(ctx *cli.Context) error {
 		PrivateKey: privateKey,
 	}
 
-	passphrase := promptPassphrase(true)
+	//keypass
+	var passphrase string
+	passphrase = ctx.String("keypass")
+	if passphrase != "" {
+		fmt.Println("Use input keystore password")
+	} else {
+		fmt.Println("Input fairnode keystore password")
+		passphrase = promptPassphrase(true)
+	}
+
 	keyjson, err := keystore.EncryptKey(key, passphrase, keystore.StandardScryptN, keystore.StandardScryptP)
 
 	// Store the file to disk.
@@ -109,8 +118,6 @@ func addChainConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	var err error
-
 	//keypass
 	var passphrase string
 	passphrase = ctx.String("keypass")
@@ -120,11 +127,6 @@ func addChainConfig(ctx *cli.Context) error {
 		fmt.Println("Input fairnode keystore password")
 		passphrase = promptPassphrase(false)
 	}
-	pk, err := fairnode.GetPriveKey(keyfilePath, passphrase)
-	if err != nil {
-		return err
-	}
-
 
 	//dbpass
 	var user string
@@ -139,6 +141,12 @@ func addChainConfig(ctx *cli.Context) error {
 			fmt.Println("Input fairnode database password")
 			dbpass = promptPassphrase(false)
 		}
+	}
+
+	var err error
+	pk, err := fairnode.GetPriveKey(keyfilePath, passphrase)
+	if err != nil {
+		return err
 	}
 
 	var fdb fairdb.FairnodeDB
@@ -195,13 +203,6 @@ func addChainConfig(ctx *cli.Context) error {
 		FnFee:       big.NewFloat(0.1).String(),
 		NodeVersion: "0.6.12",
 	}
-
-	//config := new(types.ChainConfig)
-	//config.Epoch = 10
-	//config.Mminer = 100
-	//config.JoinTxPrice = big.NewFloat(1).String()
-	//config.FnFee = big.NewFloat(0.1).String()
-	//config.NodeVersion = "0.6.12"
 
 	filePath := ctx.String("fromfile")
 	if filePath != "" {

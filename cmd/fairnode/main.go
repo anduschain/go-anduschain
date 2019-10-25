@@ -142,16 +142,32 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
-		var dbpass string
-
-		fmt.Println("Input fairnode keystore password")
-		keypass := promptPassphrase(false)
-
-		if !c.GlobalBool("fake") {
-			fmt.Println("Input fairnode database password")
-			dbpass = promptPassphrase(false)
+		//keypass
+		var keypass string
+		keypass = c.String("keypass")
+		if keypass != "" {
+			fmt.Println("Use input keystore password")
+		} else {
+			fmt.Println("Input fairnode keystore password")
+			keypass = promptPassphrase(false)
 		}
 
+		//dbpass
+		var user string
+		var dbpass string
+		user = c.String("dbuser")
+		if user != "" {
+			// 공백을 사용하려면 promptPassphrase를 거쳐야 함
+			dbpass = c.GlobalString("dbpass")
+			if dbpass != "" {
+				fmt.Println("use input database password")
+			} else {
+				if !c.GlobalBool("fake") {
+					fmt.Println("Input fairnode database password")
+					dbpass = promptPassphrase(false)
+				}
+			}
+		}
 		// Config Setting
 		fairnode.SetFairConfig(c, keypass, dbpass)
 
