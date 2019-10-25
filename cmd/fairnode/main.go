@@ -19,6 +19,11 @@ var (
 	keypath = filepath.Join(os.Getenv("HOME"), ".fairnode", "key")
 	logger  = log.New("fairnode", "cmd")
 	flag    = []cli.Flag{
+		//database options
+		cli.BoolFlag{
+			Name:  "usesrv",
+			Usage: "use 'mongodb+srv://' instead of 'mongodb://'",
+		},
 		cli.StringFlag{
 			Name:  "dbhost",
 			Value: "localhost",
@@ -35,6 +40,11 @@ var (
 			Usage: "default user is nil",
 		},
 		cli.StringFlag{
+			Name:  "dbpass",
+			Value: "",
+			Usage: "default user is nil",
+		},
+		cli.StringFlag{
 			Name:  "dbCertPath",
 			Value: "",
 			Usage: "default dbCertPath is nil. dbCertPath for SSL connection",
@@ -44,6 +54,7 @@ var (
 			Value: "",
 			Usage: "default dbOption is nil. dbOption for mongodb connection option",
 		},
+		//server port
 		cli.StringFlag{
 			Name:  "port",
 			Value: "60002",
@@ -58,6 +69,10 @@ var (
 			Name:  "keypath",
 			Value: keypath,
 			Usage: fmt.Sprintf("default keystore path %s", keypath),
+		},
+		cli.StringFlag{
+			Name:  "keypass",
+			Usage: "use password parameter instead of using passphrase",
 		},
 		cli.BoolFlag{
 			Name:  "mainnet",
@@ -81,13 +96,10 @@ var (
 			Usage: "default is false, if true, running memorydb fairnode",
 		},
 		cli.StringFlag{
-			Name:  "filepath",
-			Usage: "input file path for recovery block",
+			Name:  "fromfile",
+			Usage: "input file path for chainconfig or recovery block",
 		},
-		cli.BoolFlag{
-			Name:  "usesrv",
-			Usage: "use 'mongodb+srv://' instead of 'mongodb://'",
-		},
+
 	}
 )
 
@@ -130,16 +142,32 @@ func init() {
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
-		var dbpass string
-
-		fmt.Println("Input fairnode keystore password")
-		keypass := promptPassphrase(false)
-
-		if !c.GlobalBool("fake") {
-			fmt.Println("Input fairnode database password")
-			dbpass = promptPassphrase(false)
+		//keypass
+		var keypass string
+		keypass = c.String("keypass")
+		if keypass != "" {
+			fmt.Println("Use input keystore password")
+		} else {
+			fmt.Println("Input fairnode keystore password")
+			keypass = promptPassphrase(false)
 		}
 
+		//dbpass
+		var user string
+		var dbpass string
+		user = c.String("dbuser")
+		if user != "" {
+			// 공백을 사용하려면 promptPassphrase를 거쳐야 함
+			dbpass = c.GlobalString("dbpass")
+			if dbpass != "" {
+				fmt.Println("use input database password")
+			} else {
+				if !c.GlobalBool("fake") {
+					fmt.Println("Input fairnode database password")
+					dbpass = promptPassphrase(false)
+				}
+			}
+		}
 		// Config Setting
 		fairnode.SetFairConfig(c, keypass, dbpass)
 

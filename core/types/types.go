@@ -39,12 +39,12 @@ type CurrentInfo struct {
 
 // otprn data
 type ChainConfig struct {
-	BlockNumber uint64 // applying rule starting block number
-	JoinTxPrice string
-	FnFee       string
-	Mminer      uint64 // max node in league
-	Epoch       uint64 // league change term
-	NodeVersion string
+	BlockNumber uint64 `json:"blockNumber"`// applying rule starting block number
+	JoinTxPrice string `json:"joinTransactionPrice"`
+	FnFee       string `json:"fairnodeFee"`
+	Mminer      uint64 `json:"maxMiner"`// max node in league
+	Epoch       uint64 `json:"epoch"`// league change term
+	NodeVersion string `json:"nodeVersion"`
 	Sign        []byte
 }
 

@@ -24,18 +24,36 @@ func recoveryBlock(ctx *cli.Context) error {
 		return err
 	}
 
-	var err error
+	var passphrase string
+	passphrase = ctx.String("keypass")
+	if passphrase != "" {
+		fmt.Println("Use input keystore password")
+	} else {
+		fmt.Println("Input fairnode keystore password")
+		passphrase = promptPassphrase(false)
+	}
 
-	fmt.Println("Input fairnode keystore password")
-	passphrase := promptPassphrase(false)
+	//dbpass
+	var user string
+	var dbpass string
+	user = ctx.String("dbuser")
+	if user != "" {
+		// 공백을 사용하려면 promptPassphrase를 거쳐야 함
+		dbpass = ctx.GlobalString("dbpass")
+		if dbpass != "" {
+			fmt.Println("use input database password")
+		} else {
+			fmt.Println("Input fairnode database password")
+			dbpass = promptPassphrase(false)
+		}
+	}
+
+	var err error
 	pk, err := fairnode.GetPriveKey(keyfilePath, passphrase)
 	if err != nil {
 		return err
 	}
 	_ = pk
-
-	fmt.Println("Input fairnode database password")
-	dbpass := promptPassphrase(false)
 
 	chainID := new(big.Int)
 	if ctx.Bool("mainnet") {
@@ -70,7 +88,7 @@ func recoveryBlock(ctx *cli.Context) error {
 	}
 	defer db.Stop()
 
-	filePath := ctx.String("filepath")
+	filePath := ctx.String("fromfile")
 	fmt.Println("filePath :", filePath)
 	if err := SaveBlockUsingRLPForm(db, filePath); err != nil {
 		log.Crit(err.Error())
