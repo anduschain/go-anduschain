@@ -122,6 +122,10 @@ func init() {
 					Value: os.Getenv("HOME") + "/.fairnode/key/fairkey.json",
 					Usage: "file containing a raw private key to encrypt",
 				},
+				cli.StringFlag{
+					Name:  "keypass",
+					Usage: "use password parameter instead of using passphrase",
+				},
 			},
 		},
 		{
