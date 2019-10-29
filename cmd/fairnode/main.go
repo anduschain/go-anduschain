@@ -162,7 +162,7 @@ func init() {
 		user = c.String("dbuser")
 		if user != "" {
 			// 공백을 사용하려면 promptPassphrase를 거쳐야 함
-			dbpass = c.GlobalString("dbpass")
+			dbpass = c.String("dbpass")
 			if dbpass != "" {
 				fmt.Println("use input database password")
 			} else {
