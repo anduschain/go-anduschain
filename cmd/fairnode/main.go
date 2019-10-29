@@ -206,7 +206,7 @@ func init() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
+	//signal.Ignore(syscall.SIGTERM, syscall.SIGINT)
 	if err := app.Run(os.Args); err != nil {
 		logger.Error("App Run error", "msg", err.Error())
 		os.Exit(1)

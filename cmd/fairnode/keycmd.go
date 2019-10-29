@@ -135,7 +135,6 @@ func addChainConfig(ctx *cli.Context) error {
 	if user != "" {
 		// 공백을 사용하려면 promptPassphrase를 거쳐야 함
 		dbpass = ctx.String("dbpass")
-		fmt.Println("dbpass : ", dbpass)
 		if dbpass != "" {
 			fmt.Println("use input database password")
 		} else {
