@@ -22,10 +22,11 @@ import (
 // crypto.HexToECDSA("09bfa4fac90f9daade1722027f6350518c0c2a69728793f8753b2d166ada1a9c") - for test private key
 // 0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD - for test addresss
 const (
-	CLEAN_OLD_NODE_TERM    = 3      // per min
-	CHECK_ACTIVE_NODE_TERM = 3      // per sec
-	MIN_LEAGUE_NUM         = 3      // minimum node count
-	SEND_BLOCK_TIME_OUT    = 10 * 5 // 200ms * 10 * 5 -> max : 10sec
+	CLEAN_OLD_NODE_TERM    = 3 // per min
+	CHECK_ACTIVE_NODE_TERM = 3 // per sec
+	//MIN_LEAGUE_NUM         = 1
+	SEND_BLOCK_TIME_OUT  = 10 * 5 // 200ms * 10 * 5 -> max : 10sec
+	LEAGUE_WAIE_TIME_OUT = 5 * 5  // 200ms * 5 * 5 -> max : 5sec
 )
 
 type league struct {
@@ -62,6 +63,8 @@ type Fairnode struct {
 	lastBlock *types.Block
 
 	curRole fs.FnType
+
+	config *types.ChainConfig
 }
 
 func NewFairnode() (*Fairnode, error) {
@@ -145,14 +148,14 @@ func (fn *Fairnode) Start() error {
 		return err
 	}
 
-	if config := fn.db.GetChainConfig(); config == nil {
-		return errors.New("Chain config is nil, please run addChainConfig")
-	}
-
 	if db, ok := fn.db.(*fairdb.MongoDatabase); ok {
 		fn.fnSyncer.Start(db)
 	} else {
 		fn.fnSyncer.Start(nil)
+	}
+
+	if err := fn.changeingChainConfig(); err != nil {
+		return err
 	}
 
 	// get last block
@@ -173,6 +176,15 @@ func (fn *Fairnode) Start() error {
 		logger.Info("Started fairnode")
 		return nil
 	}
+}
+
+func (fn *Fairnode) changeingChainConfig() error {
+	config := fn.db.GetChainConfig()
+	if config == nil {
+		return errors.New("Chain config is nil, please run addChainConfig")
+	}
+	config = fn.config // chain config
+	return nil
 }
 
 func (fn *Fairnode) severLoop() {
@@ -299,6 +311,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 						continue
 					}
 					fn.addLeague(otprn)
+					fn.config = otprn.GetChainConfig()
 				} else {
 					league := fn.leagues[l.OtprnHash]
 					if league.Status != l.Status {
@@ -312,7 +325,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 					case types.VOTE_COMPLETE:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
 						voters := fn.db.GetVoters(voteKey)
-						if len(voters) < (MIN_LEAGUE_NUM - 1) {
+						if uint64(len(voters)) < (fn.config.MinMiner - 1) {
 							continue
 						}
 						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
@@ -356,8 +369,9 @@ func (fn *Fairnode) processManageLoopFollower() {
 func (fn *Fairnode) processManageLoop() {
 	t := time.NewTicker(500 * time.Millisecond)
 	var (
-		status           types.FnStatus
-		sendBlockAttampt = 0
+		status            types.FnStatus
+		sendBlockAttampt  = 0
+		leageuWaitAttampt = 0 // league min count check
 	)
 	for {
 		select {
@@ -373,8 +387,17 @@ func (fn *Fairnode) processManageLoop() {
 				case types.PENDING:
 					// now league connection count check
 					nodes := fn.db.GetLeagueList(*fn.currentLeague)
-					if len(nodes) >= MIN_LEAGUE_NUM {
+					fn.config = l.Otprn.GetChainConfig()
+					if uint64(len(nodes)) >= fn.config.MinMiner {
 						l.Status = types.MAKE_LEAGUE
+					} else {
+						leageuWaitAttampt++
+						logger.Warn("League wait", "attampt", leageuWaitAttampt)
+						if leageuWaitAttampt > LEAGUE_WAIE_TIME_OUT {
+							l.Status = types.REJECT
+						} else {
+							time.Sleep(200 * time.Millisecond)
+						}
 					}
 				case types.MAKE_LEAGUE:
 					time.Sleep(3 * time.Second)
@@ -397,7 +420,7 @@ func (fn *Fairnode) processManageLoop() {
 				case types.VOTE_COMPLETE:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
 					voters := fn.db.GetVoters(voteKey)
-					if len(voters) < (MIN_LEAGUE_NUM - 1) {
+					if uint64(len(voters)) < (fn.config.MinMiner - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
 						l.Status = types.REJECT
 					} else {
@@ -488,9 +511,9 @@ func (fn *Fairnode) makeOtprn() {
 	defer logger.Warn("Make OTPRN was dead")
 	t := time.NewTicker(CHECK_ACTIVE_NODE_TERM * time.Second)
 	newOtprn := func(isCur bool) error {
-		if nodes := fn.db.GetActiveNode(); len(nodes) >= MIN_LEAGUE_NUM {
-			config := fn.db.GetChainConfig()                                      // 체인 관련 설정값 읽어옴
-			otprn := types.NewOtprn(uint64(len(nodes)), fn.GetAddress(), *config) // OTPRN 생성
+		config := fn.db.GetChainConfig()
+		if nodes := fn.db.GetActiveNode(); uint64(len(nodes)) >= config.MinMiner {
+			otprn := types.NewOtprn(uint64(len(nodes)), fn.GetAddress(), *config) // 체인 관련 설정값 읽고, OTPRN 생성
 			err := otprn.SignOtprn(fn.privKey)                                    // OTPRN 서명
 			if err != nil {
 				return err
@@ -516,7 +539,7 @@ func (fn *Fairnode) makeOtprn() {
 			logger.Info("Made League otprn", "hash", otpHash.String())
 			return nil
 		} else {
-			return errors.New(fmt.Sprintf("Not enough active node minimum=%d count=%d", MIN_LEAGUE_NUM, len(nodes)))
+			return errors.New(fmt.Sprintf("Not enough active node minimum=%d count=%d", config.MinMiner, len(nodes)))
 		}
 	}
 

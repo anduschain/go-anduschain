@@ -46,6 +46,10 @@ func (otprn *Otprn) GetValue() (cMiner uint64, mMiner uint64, rand [20]byte) {
 	return otprn.Cminer, otprn.Data.Mminer, otprn.Rand
 }
 
+func (otprn *Otprn) GetChainConfig() *ChainConfig {
+	return &otprn.Data
+}
+
 func (otprn *Otprn) SignOtprn(prv *ecdsa.PrivateKey) error {
 	sign, err := crypto.Sign(otprn.HashOtprn().Bytes(), prv)
 	if err != nil {

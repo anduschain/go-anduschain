@@ -11,7 +11,7 @@ import (
 func TestIsJoinOK(t *testing.T) {
 	addr := common.HexToAddress("0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD")
 	chainConfig := types.ChainConfig{
-		BlockNumber: big.NewInt(1),
+		BlockNumber: big.NewInt(1).Uint64(),
 		FnFee:       big.NewFloat(1.0).String(),
 		JoinTxPrice: big.NewInt(6).String(),
 		Mminer:      100,
@@ -23,6 +23,40 @@ func TestIsJoinOK(t *testing.T) {
 	nodeAddr := common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFd")
 
 	t.Log("node join ok result", verify.IsJoinOK(otprn, nodeAddr)) // true is normal
+}
+
+func TestIsJoinOK2(t *testing.T) {
+	fnAddr := common.HexToAddress("0x10Ca4B84feF9Fce8910cb58aCf77255a1A8b61fD")
+	nodes := []common.Address{
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFa"),
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFb"),
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFc"),
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFd"),
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFe"),
+		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFf"),
+	}
+
+	chainConfig := types.ChainConfig{
+		BlockNumber: big.NewInt(1).Uint64(),
+		FnFee:       big.NewFloat(1.0).String(),
+		JoinTxPrice: big.NewInt(6).String(),
+		Mminer:      3,
+		Epoch:       100,
+	}
+
+	otprn := types.NewOtprn(uint64(len(nodes)), fnAddr, chainConfig)
+
+	for i := 0; i < 10; i++ {
+		sucCnt := 0
+		for _, node := range nodes {
+			res := verify.IsJoinOK(otprn, node)
+			t.Log("TestIsJoinOK2 result", "Node", node.String(), "result", res)
+			if res {
+				sucCnt++
+			}
+		}
+		t.Logf("============== Test Step %d , OK count = %d", i, sucCnt)
+	}
 }
 
 func TestParseIP(t *testing.T) {

@@ -189,19 +189,17 @@ func addChainConfig(ctx *cli.Context) error {
 
 	defer fdb.Stop()
 
-	var blockNumber uint64
-	current := fdb.CurrentInfo()
-	if current == nil {
-		blockNumber = 0
-	} else {
-		blockNumber = current.Number.Uint64()
+	blockNumber := uint64(0)
+	if cur := fdb.CurrentInfo(); cur != nil {
+		blockNumber = cur.Number.Uint64()
 	}
 	config := &types.ChainConfig{
+		MinMiner:    2,
 		Epoch:       10,
-		Mminer:      100,
+		Mminer:      50,
 		JoinTxPrice: big.NewFloat(1).String(),
 		FnFee:       big.NewFloat(0.1).String(),
-		NodeVersion: "0.6.12",
+		NodeVersion: "0.6.21",
 	}
 
 	filePath := ctx.String("fromfile")
@@ -249,7 +247,8 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	w := NewWizard()
 	fmt.Printf("Current block number is %d", config.BlockNumber)
 	fmt.Println()
-	// role 지정될 블록 번호
+
+	// rule 지정될 블록 번호
 	fmt.Printf("Input rule apply block number ")
 	if num := w.readInt(); num > BlockNumber {
 		config.BlockNumber = big.NewInt(int64(num)).Uint64()
@@ -258,9 +257,18 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 		return -1
 	}
 
-	// 리그 최대 참여자 (Cminer)
-	fmt.Printf("Input max number for league participate in (default : 100) ")
-	if mMiner := w.readDefaultInt(100); mMiner > 0 {
+	// 리그 최 참여자 목표 (mininum miner)
+	fmt.Printf("Input mininum number for league participate in (default : 2) ")
+	if min := w.readDefaultInt(2); min > 0 {
+		config.MinMiner = min
+	} else {
+		log.Crit("input miner number was wrong")
+		return -1
+	}
+
+	// 리그 참여자 목표 (target miner)
+	fmt.Printf("Input target number for league participate in (default : 50) ")
+	if mMiner := w.readDefaultInt(50); mMiner > 0 {
 		config.Mminer = mMiner
 	} else {
 		log.Crit("input miner number was wrong")

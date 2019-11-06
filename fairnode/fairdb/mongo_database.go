@@ -81,7 +81,7 @@ func IsDup(err error) bool {
 			if we.Code == 11000 {
 				return true
 			}
-			logger.Error("WriteException", )
+			logger.Error("WriteException")
 			logger.Error("err idx : ", we.Index)
 			logger.Error("err code : ", we.Code)
 			logger.Error("err msg : ", we.Message)
@@ -91,7 +91,7 @@ func IsDup(err error) bool {
 			if we.Code == 11000 {
 				return true
 			}
-			logger.Error("BulkWriteException", )
+			logger.Error("BulkWriteException")
 			logger.Error("err idx : ", we.Index)
 			logger.Error("err code : ", we.Code)
 			logger.Error("err msg : ", we.Message)
@@ -196,6 +196,7 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 		return nil
 	}
 	return &types.ChainConfig{
+		MinMiner:    conf.Config.MinMiner,
 		BlockNumber: conf.Config.BlockNumber,
 		JoinTxPrice: conf.Config.JoinTxPrice,
 		FnFee:       conf.Config.FnFee,
@@ -210,6 +211,7 @@ func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
 	//fmt.Println("SaveChainConfig")
 	_, err := m.chainConfig.InsertOne(m.context, fntype.Config{
 		Config: fntype.ChainConfig{
+			MinMiner:    config.MinMiner,
 			BlockNumber: config.BlockNumber,
 			JoinTxPrice: config.JoinTxPrice,
 			FnFee:       config.FnFee,

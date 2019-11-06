@@ -77,10 +77,11 @@ type VoteAggregation struct {
 }
 
 type ChainConfig struct {
+	MinMiner    uint64 `json:"minMiner" bson:"minMiner"` // minimum node count in league
 	BlockNumber uint64 `json:"blockNumber" bson:"blockNumber"`
 	JoinTxPrice string `json:"joinTransactionPrice" bson:"joinTransactionPrice"`
 	FnFee       string `json:"fairnodeFee" bson:"fairnodeFee"`
-	Mminer      uint64 `json:"maxMiner" bson:"maxMiner"`
+	Mminer      uint64 `json:"targetMiner" bson:"targetMiner"`
 	Epoch       uint64 `json:"epoch" bson:"epoch"`
 	NodeVersion string `json:"nodeVersion" bson:"nodeVersion"`
 	Sign        []byte `json:"sign" bson:"sign"`

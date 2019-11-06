@@ -39,17 +39,19 @@ type CurrentInfo struct {
 
 // otprn data
 type ChainConfig struct {
-	BlockNumber uint64 `json:"blockNumber"`// applying rule starting block number
+	MinMiner    uint64 `json:"minMiner"`    // max node in league
+	BlockNumber uint64 `json:"blockNumber"` // applying rule starting block number
 	JoinTxPrice string `json:"joinTransactionPrice"`
 	FnFee       string `json:"fairnodeFee"`
-	Mminer      uint64 `json:"maxMiner"`// max node in league
-	Epoch       uint64 `json:"epoch"`// league change term
+	Mminer      uint64 `json:"mMiner"` // target node count in league
+	Epoch       uint64 `json:"epoch"`  // league change term
 	NodeVersion string `json:"nodeVersion"`
 	Sign        []byte
 }
 
 func (cf *ChainConfig) Hash() common.Hash {
 	return rlpHash([]interface{}{
+		cf.MinMiner,
 		cf.BlockNumber,
 		cf.JoinTxPrice,
 		cf.FnFee,
