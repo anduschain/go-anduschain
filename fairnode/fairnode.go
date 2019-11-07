@@ -399,8 +399,10 @@ func (fn *Fairnode) processManageLoop() {
 							l.Status = types.REJECT
 						} else {
 							time.Sleep(200 * time.Millisecond)
+							continue
 						}
 					}
+					leageuWaitAttampt = 0
 				case types.MAKE_LEAGUE:
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX

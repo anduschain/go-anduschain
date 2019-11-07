@@ -21,7 +21,7 @@ import (
 
 const (
 	HEART_BEAT_TERM = 3 // per min
-	REQ_OTPRN_TERM  = 5 // per sec
+	REQ_OTPRN_TERM  = 3 // per sec
 )
 
 var (
