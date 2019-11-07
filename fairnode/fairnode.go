@@ -110,6 +110,8 @@ func NewFairnode() (*Fairnode, error) {
 }
 
 func (fn *Fairnode) Leagues() map[common.Hash]*fs.Leagues {
+	fn.mu.Lock()
+	defer fn.mu.Unlock()
 	res := make(map[common.Hash]*fs.Leagues)
 	for key, league := range fn.leagues {
 		res[key] = &fs.Leagues{
