@@ -9,6 +9,8 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
+	"math"
+	"math/big"
 	mrand "math/rand"
 )
 
@@ -119,13 +121,16 @@ func IsJoinOK(otprn *types.Otprn, addr common.Address) bool {
 	cMiner, mMiner, rand := otprn.GetValue()
 
 	if mMiner > 0 {
-		div := uint64(cMiner / mMiner)
+		div := math.Ceil(float64(cMiner) / float64(mMiner))
 		source := mrand.NewSource(makeSeed(rand, addr))
-		rnd := mrand.New(source)
-		rand := rnd.Int()%int(cMiner) + 1
+		rnd := big.NewInt(mrand.New(source).Int63())
+		randMod := new(big.Int).Mod(rnd, big.NewInt(int64(cMiner)))
+		rand := new(big.Int).Add(randMod, big.NewInt(1))
+
+		//fmt.Println(fmt.Sprintf("div=%f rnd=%d randMod=%d rand=%d cMiner=%d mMiner=%d", div, rnd.Uint64(), randMod.Uint64(), rand.Uint64(), cMiner, mMiner))
 
 		if div > 0 {
-			if uint64(rand)%div == 0 {
+			if rand.Uint64()%uint64(div) == 0 {
 				return true
 			} else {
 				return false

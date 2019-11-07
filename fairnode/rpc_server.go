@@ -37,7 +37,7 @@ func errorEmpty(key string) error {
 
 // fairnode rpc method implemented
 type rpcServer struct {
-	mu		sync.RWMutex
+	mu      sync.RWMutex
 	fn      fnNode
 	db      fairdb.FairnodeDB
 	leagues map[common.Hash]*league
@@ -102,6 +102,14 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
 	}
 
+	if config := rs.db.GetChainConfig(); config != nil {
+		if config.NodeVersion != nodeInfo.GetNodeVersion() {
+			return nil, errors.New(fmt.Sprintf("node version differnet config=%s node=%s ", config.NodeVersion, nodeInfo.GetNodeVersion()))
+		}
+	} else {
+		return nil, errors.New("chain config not exist")
+	}
+
 	if current := rs.db.CurrentInfo(); current != nil {
 		if current.Hash != common.HexToHash(nodeInfo.GetHead()) {
 			if block := rs.db.GetBlock(common.HexToHash(nodeInfo.GetHead())); block != nil {
@@ -123,6 +131,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		Port:         nodeInfo.GetPort(),
 		Head:         common.HexToHash(nodeInfo.GetHead()),
 		Time:         big.NewInt(time.Now().Unix()),
+		Sign:         nodeInfo.GetSign(),
 	})
 
 	defer logger.Info("HeartBeat received", "enode", reduceStr(nodeInfo.GetEnode()))

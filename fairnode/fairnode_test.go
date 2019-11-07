@@ -33,7 +33,7 @@ func TestIsJoinOK2(t *testing.T) {
 		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFc"),
 		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFd"),
 		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFe"),
-		common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFf"),
+		//common.HexToAddress("0xD0308a634c4C3570754f463af8fF7CF98fAd3DFf"),
 	}
 
 	chainConfig := types.ChainConfig{
@@ -44,10 +44,9 @@ func TestIsJoinOK2(t *testing.T) {
 		Epoch:       100,
 	}
 
-	otprn := types.NewOtprn(uint64(len(nodes)), fnAddr, chainConfig)
-
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		sucCnt := 0
+		otprn := types.NewOtprn(uint64(len(nodes)), fnAddr, chainConfig)
 		for _, node := range nodes {
 			res := verify.IsJoinOK(otprn, node)
 			t.Log("TestIsJoinOK2 result", "Node", node.String(), "result", res)
@@ -55,7 +54,7 @@ func TestIsJoinOK2(t *testing.T) {
 				sucCnt++
 			}
 		}
-		t.Logf("============== Test Step %d , OK count = %d", i, sucCnt)
+		t.Logf("==== Test Step %d , OK count = %d, otprn=%s", i, sucCnt, otprn.HashOtprn().String())
 	}
 }
 
