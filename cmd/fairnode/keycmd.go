@@ -163,7 +163,7 @@ func addChainConfig(ctx *cli.Context) error {
 		}
 
 		conf := &dbConfig{
-			useSRV:  ctx.GlobalBool("usesrv"),
+			useSRV:  ctx.Bool("usesrv"),
 			host:    ctx.String("dbhost"),
 			port:    ctx.String("dbport"),
 			user:    user,
