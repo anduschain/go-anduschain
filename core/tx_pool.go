@@ -76,7 +76,8 @@ var (
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
 
-	ErrJoinNonceNotMmatch = errors.New("JOIN NONCE not match current state")
+	ErrJoinNonceNotMmatch        = errors.New("JOIN NONCE not match current state")
+	ErrNotSupportTransactionType = errors.New("net support transaction type")
 )
 
 var (
@@ -602,7 +603,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNonceTooLow
 	}
 
-	if tx.TransactionId() == types.JoinTx {
+	switch tx.TransactionId() {
+	case types.JoinTx:
 		// joinnonde check
 		jnonce, err := tx.JoinNonce()
 		if err != nil {
@@ -612,8 +614,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if pool.currentState.GetJoinNonce(from) != jnonce {
 			return ErrJoinNonceNotMmatch
 		}
-
-	} else {
+	case types.GeneralTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 		//if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
@@ -630,6 +631,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if tx.Gas() < intrGas {
 			return ErrIntrinsicGas
 		}
+	default:
+		return ErrNotSupportTransactionType
 	}
 
 	return nil
