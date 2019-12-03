@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/anduschain/go-anduschain/pools/txpool"
 	"io/ioutil"
 	"math/big"
 	"math/rand"

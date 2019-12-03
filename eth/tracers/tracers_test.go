@@ -34,7 +34,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/rlp"
-	"github.com/anduschain/go-anduschain/tests"
 )
 
 // To generate a new callTracer test, copy paste the makeTest method below into
