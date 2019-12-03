@@ -1,5 +1,12 @@
-# This is the official list of go-ethereum authors for copyright purposes.
+# This is the official list of go-anduschain authors for copyright purposes.
 
+#go-anduschain
+Kwangmin Ha(Hakuna86) <kwangmin010@gmail.com>
+metanonia <>
+kinggigo <>
+jhp <>
+
+# go-ethereum
 Afri Schoedon <5chdn@users.noreply.github.com>
 Agustin Armellini Fischer <armellini13@gmail.com>
 Airead <fgh1987168@gmail.com>
