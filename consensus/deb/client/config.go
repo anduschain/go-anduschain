@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	MainnetFairHost = "mainfair.anduschain.io"
-	//TestnetFairHost = "testfair.anduschain.io"
-	TestnetFairHost = "fairnode.testnet.anduschain.io:60002" // FIXME(hauka) : change elb
+	DefaultPort     = "60002" // service port
+	MainnetFairHost = "fairnode.mainnet.anduschain.io"
+	TestnetFairHost = "fairnode.testnet.anduschain.io"
 )
 
 type Config struct {
@@ -24,9 +24,9 @@ var DefaultConfig = Config{
 func (c *Config) FairnodeEndpoint(network types.Network) string {
 	switch network {
 	case types.MAIN_NETWORK:
-		return MainnetFairHost
+		return fmt.Sprintf("%s:%s", MainnetFairHost, DefaultPort)
 	case types.TEST_NETWORK:
-		return TestnetFairHost
+		return fmt.Sprintf("%s:%s", TestnetFairHost, DefaultPort)
 	default:
 		return fmt.Sprintf("%s:%s", c.FairServerHost, c.FairServerPort)
 	}
