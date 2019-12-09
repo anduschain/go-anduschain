@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
+	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/console"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -30,16 +31,16 @@ type outputGenerate struct {
 func promptPassphrase(confirmation bool) string {
 	passphrase, err := console.Stdin.PromptPassword("Passphrase: ")
 	if err != nil {
-		log.Error("Failed to read passphrase", "error", err)
+		utils.Fatalf("Failed to read passphrase: %v", err)
 	}
 
 	if confirmation {
 		confirm, err := console.Stdin.PromptPassword("Repeat passphrase: ")
 		if err != nil {
-			log.Error("Failed to read passphrase confirmation", "error", err)
+			utils.Fatalf("Failed to read passphrase confirmation: %v", err)
 		}
 		if passphrase != confirm {
-			log.Error("Passphrases do not match")
+			utils.Fatalf("Failed: %v", errors.New("Passphrases do not match"))
 		}
 	}
 

@@ -37,7 +37,7 @@ type Config struct {
 }
 
 var (
-	Version       = "1.0.3"
+	Version       = "1.0.5"
 	DefaultConfig = Config{
 		UseSRV:   false,
 		DBhost:   "localhost",

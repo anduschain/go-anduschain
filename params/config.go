@@ -25,12 +25,11 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x851246e107c9fa8f0b0954066cc1a69ecaee616cec7f3bbcac9f7cb1bd74d913")
+	MainnetGenesisHash = common.HexToHash("0xdc7f171932f323d54b23d405ac540e0d9b24f88eb397286fac5ea213552a7c2d")
 	TestnetGenesisHash = common.HexToHash("0x45ba54287c71d0a90897930cef95e7bf494be2f2aafbbe6b7c79d27d0a75c821")
 
-	//FIXME(hakuna) : this is sample, you must modify is public key.
-	MainNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode
-	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"
+	MainNetPubKey = "034580929e08a3b34319ce9429d64f4aa403e572b37c79780d2c5ca116221cd79c" // from fairnode-mainnet
+	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode-testnet
 )
 
 // chainID rule = 0xdao700 -> to dec 14288640 // mainnet

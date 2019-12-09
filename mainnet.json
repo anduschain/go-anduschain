@@ -1,0 +1,38 @@
+{
+  "config": {
+    "chainId": 14288640,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "deb": {
+      "fairPubKey": "034580929e08a3b34319ce9429d64f4aa403e572b37c79780d2c5ca116221cd79c"
+    }
+  },
+  "nonce": "0x0",
+  "timestamp": "0x16ee900abf4",
+  "extraData": "0x",
+  "gasLimit": "0x118244f00",
+  "difficulty": "0x1",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "alloc": {
+    "1af23d539855d32fdb70606079e1717c8e67c1ef" : {
+      "balance": "0x5F5E100"
+    },
+    "1386d01b704a429e5cc302f0870dc9bb20f47fd4": {
+      "balance": "0x5F5E100"
+    },
+    "8a77ae9660512d7f6e14b7ccffb7b12fb77a3767": {
+      "balance": "0x5F5E100"
+    },
+    "ec904cef80d139e8cc2dfc29a6fa5d6138cdaf9b": {
+      "balance": "0x2422A4100"
+    }
+  },
+  "number": "0x0",
+  "gasUsed": "0x0",
+  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+}

@@ -306,8 +306,8 @@ func DefaultGenesisBlock() *Genesis {
 		Nonce:      0,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(1),
-		//Alloc:      decodePrealloc(MainnetAllocData), // TODO(hakuna) : mainnet open will setted.
-		ExtraData: []byte(fmt.Sprintf("anduschain-mainnet-%s", params.MAIN_NETWORK.String())),
+		Alloc:      decodePrealloc(MainnetAllocData),
+		ExtraData:  []byte(fmt.Sprintf("anduschain-mainnet-%s", params.MAIN_NETWORK.String())),
 	}
 }
 
