@@ -22,6 +22,18 @@ or, to build the full suite of utilities:
 
     make all
     
+## A Full node on the Anduschain main network
+
+You need to get DAON coin for mining in Anduschain network.
+We're getting ready to deliver the test coin.
+You can join whenever you want.
+
+```
+$ godaon --testnet
+> godaon version : godaon/v0.7.0-anduschain
+```
+
+    
 ## A Full node on the Anduschain test network
 
 You need to get DAON coin for mining in Anduschain network.
@@ -29,8 +41,8 @@ We're getting ready to deliver the test coin.
 You can join whenever you want.
 
 ```
-$ godaon --testnet console
-> godaon version : godaon/v0.6.12-anduschain-unstable
+$ godaon --testnet
+> godaon version : godaon/v0.7.0-anduschain
 ```
 
 ## Issue report
