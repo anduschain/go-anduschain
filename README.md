@@ -33,7 +33,18 @@ $ godaon
 > godaon version : godaon/v0.7.0-anduschain
 ```
 
-## GoDaon Option
+## A Full node on the Anduschain test network
+
+You need to get DAON coin for mining in Anduschain network.
+We're getting ready to deliver the test coin.
+You can join whenever you want.
+
+```
+$ godaon --testnet
+> godaon version : godaon/v0.7.0-anduschain
+```
+
+## GoDaon options
 ```
 NAME:
    godaon - the go-anduschain command line interface
@@ -217,17 +228,6 @@ MISC OPTIONS:
 
 COPYRIGHT:
    Copyright 2018 The go-anduschain Authors
-```
-    
-## A Full node on the Anduschain test network
-
-You need to get DAON coin for mining in Anduschain network.
-We're getting ready to deliver the test coin.
-You can join whenever you want.
-
-```
-$ godaon --testnet
-> godaon version : godaon/v0.7.0-anduschain
 ```
 
 ## Issue report
