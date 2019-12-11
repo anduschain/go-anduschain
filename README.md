@@ -80,9 +80,9 @@ COMMANDS:
    help, h           Shows a list of commands or help for one command
    
 ANDUS CHAIN OPTIONS:
-  --deb      deb network: andus Chain test network
+  --deb      deb network: andus Chain test network [ will deprecated ]
   --testnet  AndusChain test network: pre-configured proof-of-deb test network
-  --solo     To make proof-of-deb solo network
+  --solo     To make proof-of-deb solo network [ will deprecated ]
   
 DEB CLIENT OPTIONS:
   --serverHost value  fairnode connection IP (default: "localhost")
