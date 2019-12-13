@@ -78,7 +78,6 @@ func TransTransaction(block *types.Block, chainID *big.Int, txC *mongo.Collectio
 			continue
 		}
 
-
 		recipient := "contract"
 		if tx.To() != nil {
 			recipient = tx.To().String()
@@ -122,12 +121,16 @@ func TransOtprn(otprn types.Otprn) (fntype.Otprn, error) {
 		Cminer: otprn.Cminer,
 		Data: fntype.ChainConfig{
 			BlockNumber: otprn.Data.BlockNumber,
-			JoinTxPrice: otprn.Data.JoinTxPrice,
 			FnFee:       otprn.Data.FnFee,
 			Mminer:      otprn.Data.Mminer,
 			Epoch:       otprn.Data.Epoch,
 			NodeVersion: otprn.Data.NodeVersion,
 			Sign:        otprn.Data.Sign,
+			Price: fntype.Price{
+				GasLimit:    otprn.Data.Price.GasLimit,
+				GasPrice:    otprn.Data.Price.GasPrice,
+				JoinTxPrice: otprn.Data.Price.JoinTxPrice,
+			},
 		},
 		Sign:      otprn.Sign,
 		Timestamp: time.Now().Unix(),

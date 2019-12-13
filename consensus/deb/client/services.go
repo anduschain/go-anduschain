@@ -216,7 +216,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				coinbase := dc.miner.Miner.Address
 				// balance check
 				epoch := new(big.Float).SetUint64(otprn.Data.Epoch)                  // block count which league will be made
-				fee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)           // join transaction fee
+				fee, _ := new(big.Float).SetString(otprn.Data.Price.JoinTxPrice)     // join transaction fee
 				price := new(big.Float).Mul(big.NewFloat(params.Daon), fee)          // join transaction price ( fee * 10e18) - unit : daon
 				limitBalance := math.FloatToBigInt(new(big.Float).Mul(price, epoch)) // minimum balance for participate in league.
 				balance := state.GetBalance(coinbase)                                // current balance

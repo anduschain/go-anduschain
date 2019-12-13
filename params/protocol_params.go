@@ -23,6 +23,9 @@ const (
 	MinGasLimit          uint64 = 5000    // Minimum the gas limit may ever be.
 	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
 
+	// add : for anduschain
+	MinimumGenesisGasPrice uint64 = 9523809523809 // Minimum Gas Price of the Genesis block. --> for deb struct, start 0.2 Daon per Tx ( sample transfer )
+
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
 	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
 	SloadGas              uint64 = 50    // Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.

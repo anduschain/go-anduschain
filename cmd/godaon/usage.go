@@ -67,9 +67,9 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "ANDUS CHAIN",
 		Flags: []cli.Flag{
-			utils.DebFlag,
 			utils.TestnetFlag,
 			utils.SoloFlag,
+			utils.DebFlag,
 		},
 	},
 	{
@@ -109,7 +109,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.TxPoolNoLocalsFlag,
 			utils.TxPoolJournalFlag,
 			utils.TxPoolRejournalFlag,
-			utils.TxPoolPriceLimitFlag,
 			utils.TxPoolPriceBumpFlag,
 			utils.TxPoolAccountSlotsFlag,
 			utils.TxPoolGlobalSlotsFlag,
@@ -179,8 +178,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.MinerThreadsFlag,
 			utils.MinerNotifyFlag,
 			utils.MinerGasPriceFlag,
-			utils.MinerGasTargetFlag,
-			utils.MinerGasLimitFlag,
 			utils.MinerEtherbaseFlag,
 			utils.MinerExtraDataFlag,
 			utils.MinerRecommitIntervalFlag,
@@ -233,13 +230,9 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: whisperFlags,
 	},
 	{
-		Name: "DEPRECATED",
+		Name:  "DEPRECATED",
 		Flags: []cli.Flag{
-			utils.MinerLegacyThreadsFlag,
-			utils.MinerLegacyGasTargetFlag,
-			utils.MinerLegacyGasPriceFlag,
-			utils.MinerLegacyEtherbaseFlag,
-			utils.MinerLegacyExtraDataFlag,
+			// deprecated
 		},
 	},
 	{

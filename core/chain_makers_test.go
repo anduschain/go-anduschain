@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
@@ -58,7 +59,7 @@ func ExampleGenerateChain() {
 			gen.SetCoinbase(addr2)
 			// In block 1, addr1 sends addr2 some ether.
 			tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), params.TxGas, nil, nil), signer, key1)
-			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn")), signer, key2)
+			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
 			gen.AddTx(tx)
 			gen.AddTx(jtx)
 		case 1:
@@ -68,8 +69,8 @@ func ExampleGenerateChain() {
 			tx1, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), params.TxGas, nil, nil), signer, key1)
 			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
 
-			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr2), []byte("otprn")), signer, key3)
-			jtx2, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn")), signer, key2)
+			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key3)
+			jtx2, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
 			gen.AddTx(tx1)
 			gen.AddTx(tx2)
 			gen.AddTx(jtx)

@@ -56,7 +56,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: MainNetPubKey},
+		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
@@ -71,7 +71,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: TestNetPubKey},
+		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice},
 	}
 
 	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
@@ -129,6 +129,8 @@ type ChainConfig struct {
 
 type DebConfig struct {
 	FairPubKey string `json:"fairPubKey"`
+	GasLimit   uint64 `json:"gasLimit"`
+	GasPrice   uint64 `json:"gasPrice"`
 }
 
 func (c *DebConfig) String() string {

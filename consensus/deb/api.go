@@ -5,25 +5,19 @@ package deb
 
 import (
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/log"
 )
 
 // API is a user facing RPC API to allow controlling the signer and voting
 // mechanisms of the proof-of-deb scheme.
-type API struct {
+type PrivateDebApi struct {
 	chain consensus.ChainReader
 	deb   *Deb
 }
 
-func (api *API) GetJoinNonce() uint64 {
-	current := api.chain.CurrentHeader()
-	state, err := api.chain.StateAt(current.Hash())
-	if err != nil {
-		log.Error("GetJoinNonce", "error", err)
-	}
-	return state.GetJoinNonce(api.chain.CurrentHeader().Coinbase)
+func NewPrivateDebApi(chain consensus.ChainReader, deb *Deb) *PrivateDebApi {
+	return &PrivateDebApi{chain, deb}
 }
 
-func (api *API) GetFairnodeAddress() string {
+func (api *PrivateDebApi) GetFairnodePubKey() string {
 	return api.deb.config.FairPubKey
 }

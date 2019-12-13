@@ -42,7 +42,7 @@ var DefaultConfig = Config{
 
 	MinerGasFloor: params.MinerGasFloor,
 	MinerGasCeil:  params.MinerGasCeil,
-	MinerGasPrice: new(big.Int).SetUint64(params.MinGasPrice),
+	MinerGasPrice: new(big.Int).SetUint64(params.MinimumGenesisGasPrice),
 	MinerRecommit: 3 * time.Second,
 
 	TxPool: core.DefaultTxPoolConfig,

@@ -99,10 +99,6 @@ func NewFullFaker() *Deb {
 	return &Deb{}
 }
 
-func NewShared() *Deb {
-	return &Deb{}
-}
-
 func (c *Deb) SetCoinbase(coinbase common.Address) {
 	c.coinbase = coinbase
 }
@@ -411,7 +407,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 		return err
 	}
 
-	jtxFee, _ := new(big.Float).SetString(otprn.Data.JoinTxPrice)
+	jtxFee, _ := new(big.Float).SetString(otprn.Data.Price.JoinTxPrice)
 	price := new(big.Float).Mul(big.NewFloat(params.Daon), jtxFee) // join transaction price ( fee * 10e18) - unit : daon
 	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee)     // percent
 	fnAddr := otprn.FnAddr
@@ -510,7 +506,7 @@ func (c *Deb) APIs(chain consensus.ChainReader) []rpc.API {
 	return []rpc.API{{
 		Namespace: "deb",
 		Version:   "1.0",
-		Service:   &API{chain: chain, deb: c},
-		Public:    false,
+		Service:   NewPrivateDebApi(chain, c),
+		Public:    true,
 	}}
 }

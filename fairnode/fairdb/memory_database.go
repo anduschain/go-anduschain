@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 	"sync"
 )
@@ -44,12 +45,16 @@ func (m *MemDatabase) Stop() {
 func (m *MemDatabase) GetChainConfig() *types.ChainConfig {
 	// sample
 	return &types.ChainConfig{
-		BlockNumber: big.NewInt(1).Uint64(),
-		FnFee:       big.NewFloat(1.0).String(), // 1%
-		JoinTxPrice: big.NewFloat(6).String(),   // 6 daon
-		Mminer:      100,
+		MinMiner:    3,
 		Epoch:       10,
-		NodeVersion: "0.6.12",
+		Mminer:      50,
+		FnFee:       big.NewFloat(10).String(),
+		NodeVersion: params.Version,
+		Price: types.Price{
+			JoinTxPrice: "1",
+			GasPrice:    params.MinimumGenesisGasPrice,
+			GasLimit:    params.GenesisGasLimit,
+		},
 	}
 }
 

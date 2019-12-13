@@ -13,5 +13,5 @@ const (
 
 var (
 	JtxAddress  = common.HexToAddress(jtsAddrStr)
-	MinGasPrice = uint64(math.Ceil(0.5e18/21000) - 4000)
+	MinGasPrice = uint64(math.Ceil(0.2e18 / 21000))
 )

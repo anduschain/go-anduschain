@@ -71,7 +71,6 @@ var (
 		utils.TxPoolNoLocalsFlag,
 		utils.TxPoolJournalFlag,
 		utils.TxPoolRejournalFlag,
-		utils.TxPoolPriceLimitFlag,
 		utils.TxPoolPriceBumpFlag,
 		utils.TxPoolAccountSlotsFlag,
 		utils.TxPoolGlobalSlotsFlag,
@@ -92,17 +91,10 @@ var (
 		utils.MaxPendingPeersFlag,
 		utils.MiningEnabledFlag,
 		utils.MinerThreadsFlag,
-		utils.MinerLegacyThreadsFlag,
 		utils.MinerNotifyFlag,
-		utils.MinerGasTargetFlag,
-		utils.MinerLegacyGasTargetFlag,
-		utils.MinerGasLimitFlag,
 		utils.MinerGasPriceFlag,
-		utils.MinerLegacyGasPriceFlag,
 		utils.MinerEtherbaseFlag,
-		utils.MinerLegacyEtherbaseFlag,
 		utils.MinerExtraDataFlag,
-		utils.MinerLegacyExtraDataFlag,
 		utils.MinerRecommitIntervalFlag,
 		utils.MinerNoVerfiyFlag,
 		utils.NATFlag,
@@ -347,20 +339,6 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		var ethereum *eth.Ethereum
 		if err := stack.Service(&ethereum); err != nil {
 			utils.Fatalf("Anduschaion service not running: %v", err)
-		}
-		// Set the gas price to the limits from the CLI and start mining
-		gasprice := utils.GlobalBig(ctx, utils.MinerLegacyGasPriceFlag.Name)
-		if ctx.IsSet(utils.MinerGasPriceFlag.Name) {
-			gasprice = utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
-		}
-		ethereum.TxPool().SetGasPrice(gasprice)
-
-		threads := ctx.GlobalInt(utils.MinerLegacyThreadsFlag.Name)
-		if ctx.GlobalIsSet(utils.MinerThreadsFlag.Name) {
-			threads = ctx.GlobalInt(utils.MinerThreadsFlag.Name)
-		}
-		if err := ethereum.StartMining(threads); err != nil {
-			utils.Fatalf("Failed to start mining: %v", err)
 		}
 	}
 }

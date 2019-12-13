@@ -221,11 +221,11 @@ var (
 		Usage: "Time interval to regenerate the local transaction journal",
 		Value: core.DefaultTxPoolConfig.Rejournal,
 	}
-	TxPoolPriceLimitFlag = cli.Uint64Flag{
-		Name:  "txpool.pricelimit",
-		Usage: "Minimum gas price limit to enforce for acceptance into the pool",
-		Value: eth.DefaultConfig.TxPool.PriceLimit,
-	}
+	//TxPoolPriceLimitFlag = cli.Uint64Flag{
+	//	Name:  "txpool.pricelimit",
+	//	Usage: "Minimum gas price limit to enforce for acceptance into the pool",
+	//	Value: eth.DefaultConfig.TxPool.PriceLimit,
+	//}
 	TxPoolPriceBumpFlag = cli.Uint64Flag{
 		Name:  "txpool.pricebump",
 		Usage: "Price bump percentage to replace an already existing transaction",
@@ -287,38 +287,13 @@ var (
 		Usage: "Number of CPU threads to use for mining",
 		Value: 0,
 	}
-	MinerLegacyThreadsFlag = cli.IntFlag{
-		Name:  "minerthreads",
-		Usage: "Number of CPU threads to use for mining (deprecated, use --miner.threads)",
-		Value: 0,
-	}
 	MinerNotifyFlag = cli.StringFlag{
 		Name:  "miner.notify",
 		Usage: "Comma separated HTTP URL list to notify of new work packages",
 	}
-	MinerGasTargetFlag = cli.Uint64Flag{
-		Name:  "miner.gastarget",
-		Usage: "Target gas floor for mined blocks",
-		Value: eth.DefaultConfig.MinerGasFloor,
-	}
-	MinerLegacyGasTargetFlag = cli.Uint64Flag{
-		Name:  "targetgaslimit",
-		Usage: "Target gas floor for mined blocks (deprecated, use --miner.gastarget)",
-		Value: eth.DefaultConfig.MinerGasFloor,
-	}
-	MinerGasLimitFlag = cli.Uint64Flag{
-		Name:  "miner.gaslimit",
-		Usage: "Target gas ceiling for mined blocks",
-		Value: eth.DefaultConfig.MinerGasCeil,
-	}
 	MinerGasPriceFlag = BigFlag{
 		Name:  "miner.gasprice",
 		Usage: "Minimal gas price for mining a transactions",
-		Value: eth.DefaultConfig.MinerGasPrice,
-	}
-	MinerLegacyGasPriceFlag = BigFlag{
-		Name:  "gasprice",
-		Usage: "Minimal gas price for mining a transactions (deprecated, use --miner.gasprice)",
 		Value: eth.DefaultConfig.MinerGasPrice,
 	}
 	MinerEtherbaseFlag = cli.StringFlag{
@@ -326,18 +301,9 @@ var (
 		Usage: "Public address for block mining rewards (default = first account)",
 		Value: "0",
 	}
-	MinerLegacyEtherbaseFlag = cli.StringFlag{
-		Name:  "etherbase",
-		Usage: "Public address for block mining rewards (default = first account, deprecated, use --miner.etherbase)",
-		Value: "0",
-	}
 	MinerExtraDataFlag = cli.StringFlag{
 		Name:  "miner.extradata",
 		Usage: "Block extra data set by the miner (default = client version)",
-	}
-	MinerLegacyExtraDataFlag = cli.StringFlag{
-		Name:  "extradata",
-		Usage: "Block extra data set by the miner (default = client version, deprecated, use --miner.extradata)",
 	}
 	MinerRecommitIntervalFlag = cli.DurationFlag{
 		Name:  "miner.recommit",
@@ -853,9 +819,6 @@ func MakeAddress(ks *keystore.KeyStore, account string) (accounts.Account, error
 func setEtherbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *eth.Config) {
 	// Extract the current etherbase, new flag overriding legacy one
 	var etherbase string
-	if ctx.GlobalIsSet(MinerLegacyEtherbaseFlag.Name) {
-		etherbase = ctx.GlobalString(MinerLegacyEtherbaseFlag.Name)
-	}
 	if ctx.GlobalIsSet(MinerEtherbaseFlag.Name) {
 		etherbase = ctx.GlobalString(MinerEtherbaseFlag.Name)
 	}
@@ -1012,9 +975,6 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	if ctx.GlobalIsSet(TxPoolRejournalFlag.Name) {
 		cfg.Rejournal = ctx.GlobalDuration(TxPoolRejournalFlag.Name)
 	}
-	if ctx.GlobalIsSet(TxPoolPriceLimitFlag.Name) {
-		cfg.PriceLimit = ctx.GlobalUint64(TxPoolPriceLimitFlag.Name)
-	}
 	if ctx.GlobalIsSet(TxPoolPriceBumpFlag.Name) {
 		cfg.PriceBump = ctx.GlobalUint64(TxPoolPriceBumpFlag.Name)
 	}
@@ -1033,27 +993,6 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	if ctx.GlobalIsSet(TxPoolLifetimeFlag.Name) {
 		cfg.Lifetime = ctx.GlobalDuration(TxPoolLifetimeFlag.Name)
 	}
-}
-
-func setEthash(ctx *cli.Context, cfg *eth.Config) {
-	//if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
-	//	cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
-	//}
-	//if ctx.GlobalIsSet(EthashDatasetDirFlag.Name) {
-	//	cfg.Ethash.DatasetDir = ctx.GlobalString(EthashDatasetDirFlag.Name)
-	//}
-	//if ctx.GlobalIsSet(EthashCachesInMemoryFlag.Name) {
-	//	cfg.Ethash.CachesInMem = ctx.GlobalInt(EthashCachesInMemoryFlag.Name)
-	//}
-	//if ctx.GlobalIsSet(EthashCachesOnDiskFlag.Name) {
-	//	cfg.Ethash.CachesOnDisk = ctx.GlobalInt(EthashCachesOnDiskFlag.Name)
-	//}
-	//if ctx.GlobalIsSet(EthashDatasetsInMemoryFlag.Name) {
-	//	cfg.Ethash.DatasetsInMem = ctx.GlobalInt(EthashDatasetsInMemoryFlag.Name)
-	//}
-	//if ctx.GlobalIsSet(EthashDatasetsOnDiskFlag.Name) {
-	//	cfg.Ethash.DatasetsOnDisk = ctx.GlobalInt(EthashDatasetsOnDiskFlag.Name)
-	//}
 }
 
 // checkExclusive verifies that only a single instance of the provided flags was
@@ -1117,7 +1056,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setEtherbase(ctx, ks, cfg)
 	setGPO(ctx, &cfg.GPO)
 	setTxPool(ctx, &cfg.TxPool)
-	setEthash(ctx, cfg)
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)
@@ -1150,24 +1088,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(DocRootFlag.Name) {
 		cfg.DocRoot = ctx.GlobalString(DocRootFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerLegacyExtraDataFlag.Name) {
-		cfg.MinerExtraData = []byte(ctx.GlobalString(MinerLegacyExtraDataFlag.Name))
-	}
-	if ctx.GlobalIsSet(MinerExtraDataFlag.Name) {
-		cfg.MinerExtraData = []byte(ctx.GlobalString(MinerExtraDataFlag.Name))
-	}
-	if ctx.GlobalIsSet(MinerLegacyGasTargetFlag.Name) {
-		cfg.MinerGasFloor = ctx.GlobalUint64(MinerLegacyGasTargetFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerGasTargetFlag.Name) {
-		cfg.MinerGasFloor = ctx.GlobalUint64(MinerGasTargetFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerGasLimitFlag.Name) {
-		cfg.MinerGasCeil = ctx.GlobalUint64(MinerGasLimitFlag.Name)
-	}
-	if ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
-		cfg.MinerGasPrice = GlobalBig(ctx, MinerLegacyGasPriceFlag.Name)
 	}
 	if ctx.GlobalIsSet(MinerGasPriceFlag.Name) {
 		cfg.MinerGasPrice = GlobalBig(ctx, MinerGasPriceFlag.Name)
@@ -1221,9 +1141,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 
 		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address)
-		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
-			cfg.MinerGasPrice = big.NewInt(1)
-		}
 	}
 	// TODO(fjl): move trie cache generations into config
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {

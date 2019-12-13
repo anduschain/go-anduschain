@@ -30,12 +30,16 @@ var Modules = map[string]string{
 	"deb":      Deb_JS,
 }
 
-// TODO : andus >> consensus
 const Deb_JS = `
 web3._extend({
 	property: 'deb',
 	methods: [],
-	properties: []
+	properties: [
+		new web3._extend.Property({
+			name: 'getFairnodePubKey',
+			getter: 'deb_getFairnodePubKey'
+		}),
+	]
 });
 `
 

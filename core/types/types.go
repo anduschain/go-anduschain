@@ -37,23 +37,29 @@ type CurrentInfo struct {
 	Hash   common.Hash // block hash
 }
 
+type Price struct {
+	JoinTxPrice string `json:"joinTransactionPrice"` // join transaction price, UNIT Daon ex) 1 ==> 1Daon
+	GasPrice    uint64 `json:"gasPrice"`             // gas limit
+	GasLimit    uint64 `json:"gasLimit"`             // gas price
+}
+
 // otprn data
 type ChainConfig struct {
-	MinMiner    uint64 `json:"minMiner"`    // max node in league
+	MinMiner    uint64 `json:"minMiner"`    // minimum count node for making block in league
 	BlockNumber uint64 `json:"blockNumber"` // applying rule starting block number
-	JoinTxPrice string `json:"joinTransactionPrice"`
 	FnFee       string `json:"fairnodeFee"`
 	Mminer      uint64 `json:"mMiner"` // target node count in league
 	Epoch       uint64 `json:"epoch"`  // league change term
 	NodeVersion string `json:"nodeVersion"`
-	Sign        []byte
+	Price       Price  `json:"price"`
+	Sign        []byte `json:"sign"`
 }
 
 func (cf *ChainConfig) Hash() common.Hash {
 	return rlpHash([]interface{}{
 		cf.MinMiner,
 		cf.BlockNumber,
-		cf.JoinTxPrice,
+		cf.Price,
 		cf.FnFee,
 		cf.Mminer,
 		cf.Epoch,

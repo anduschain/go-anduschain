@@ -12,7 +12,7 @@ import (
 )
 
 // cMiner : currnet active user count
-// mMiner : max league participate in count
+// mMiner : target count participate in league
 
 type Otprn struct {
 	Rand   [20]byte

@@ -198,12 +198,16 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	return &types.ChainConfig{
 		MinMiner:    conf.Config.MinMiner,
 		BlockNumber: conf.Config.BlockNumber,
-		JoinTxPrice: conf.Config.JoinTxPrice,
 		FnFee:       conf.Config.FnFee,
 		Mminer:      conf.Config.Mminer,
 		Epoch:       conf.Config.Epoch,
 		NodeVersion: conf.Config.NodeVersion,
 		Sign:        conf.Config.Sign,
+		Price: types.Price{
+			GasLimit:    conf.Config.Price.GasLimit,
+			GasPrice:    conf.Config.Price.GasPrice,
+			JoinTxPrice: conf.Config.Price.JoinTxPrice,
+		},
 	}
 }
 
@@ -213,12 +217,16 @@ func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
 		Config: fntype.ChainConfig{
 			MinMiner:    config.MinMiner,
 			BlockNumber: config.BlockNumber,
-			JoinTxPrice: config.JoinTxPrice,
 			FnFee:       config.FnFee,
 			Mminer:      config.Mminer,
 			Epoch:       config.Epoch,
 			NodeVersion: config.NodeVersion,
 			Sign:        config.Sign,
+			Price: fntype.Price{
+				GasLimit:    config.Price.GasLimit,
+				GasPrice:    config.Price.GasPrice,
+				JoinTxPrice: config.Price.JoinTxPrice,
+			},
 		},
 		Timestamp: time.Now().Unix(),
 	})

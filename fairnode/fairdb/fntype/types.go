@@ -76,10 +76,16 @@ type VoteAggregation struct {
 	Voters  []Voter `json:"voters" bson:"voters"`
 }
 
+type Price struct {
+	JoinTxPrice string `json:"joinTransactionPrice"` // join transaction price, UNIT Daon ex) 1 ==> 1Daon
+	GasPrice    uint64 `json:"gasPrice"`             // gas limit
+	GasLimit    uint64 `json:"gasLimit"`             // gas price
+}
+
 type ChainConfig struct {
 	MinMiner    uint64 `json:"minMiner" bson:"minMiner"` // minimum node count in league
 	BlockNumber uint64 `json:"blockNumber" bson:"blockNumber"`
-	JoinTxPrice string `json:"joinTransactionPrice" bson:"joinTransactionPrice"`
+	Price       Price  `json:"price" bson:"price"`
 	FnFee       string `json:"fairnodeFee" bson:"fairnodeFee"`
 	Mminer      uint64 `json:"targetMiner" bson:"targetMiner"`
 	Epoch       uint64 `json:"epoch" bson:"epoch"`

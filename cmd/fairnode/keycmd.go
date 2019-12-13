@@ -198,9 +198,13 @@ func addChainConfig(ctx *cli.Context) error {
 		MinMiner:    2,
 		Epoch:       10,
 		Mminer:      50,
-		JoinTxPrice: big.NewFloat(1).String(),
-		FnFee:       big.NewFloat(0.1).String(),
-		NodeVersion: "0.6.21",
+		FnFee:       big.NewFloat(10).String(),
+		NodeVersion: params.Version,
+		Price: types.Price{
+			JoinTxPrice: "1",
+			GasPrice:    params.MinimumGenesisGasPrice,
+			GasLimit:    params.GenesisGasLimit,
+		},
 	}
 
 	filePath := ctx.String("fromfile")
@@ -246,11 +250,10 @@ func configureFromFile(config *types.ChainConfig, path string, BlockNumber uint6
 
 func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	w := NewWizard()
-	fmt.Printf("Current block number is %d", config.BlockNumber)
 	fmt.Println()
 
 	// rule 지정될 블록 번호
-	fmt.Printf("Input rule apply block number ")
+	fmt.Printf("Input rule apply block number %s", fmt.Sprintf("Current block number is %d", config.BlockNumber))
 	if num := w.readInt(); num > BlockNumber {
 		config.BlockNumber = big.NewInt(int64(num)).Uint64()
 	} else {
@@ -259,7 +262,7 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// 리그 최 참여자 목표 (mininum miner)
-	fmt.Printf("Input mininum number for league participate in (default : 2) ")
+	fmt.Printf("Input mininum number for league participate in (default : %d) ", config.MinMiner)
 	if min := w.readDefaultInt(2); min > 0 {
 		config.MinMiner = min
 	} else {
@@ -268,7 +271,7 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// 리그 참여자 목표 (target miner)
-	fmt.Printf("Input target number for league participate in (default : 50) ")
+	fmt.Printf("Input target number for league participate in (default : %d) ", config.Mminer)
 	if mMiner := w.readDefaultInt(50); mMiner > 0 {
 		config.Mminer = mMiner
 	} else {
@@ -277,8 +280,8 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// 리그 생성 블록 주기 (Epoch)
-	fmt.Printf("Input epoch for league change term (default : 10) ")
-	if term := w.readDefaultInt(10); term > 0 {
+	fmt.Printf("Input epoch for league change term (default : %d) ", config.Epoch)
+	if term := w.readDefaultInt(int(config.Epoch)); term > 0 {
 		config.Epoch = term
 	} else {
 		log.Crit("input epoch was wrong")
@@ -286,17 +289,35 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// join transaction price
-	fmt.Printf("Input join transaction price (default : 1 Daon) ")
+	fmt.Printf("Input join transaction price (default : %s Daon) ", config.Price.JoinTxPrice)
 	if price := w.readDefaultFloat(1); price >= 0 {
-		config.JoinTxPrice = big.NewFloat(price).String()
+		config.Price.JoinTxPrice = big.NewFloat(price).String()
 	} else {
 		log.Crit("input price was wrong")
 		return -1
 	}
 
-	// fairnode 수수료
-	fmt.Printf("Input fairnode fee percent (default : 0.1) ")
-	if fee := w.readDefaultFloat(0.1); fee >= 0 {
+	// join transaction price
+	fmt.Printf("Input gas price (default : %d)", params.MinimumGenesisGasPrice)
+	if gasprice := w.readDefaultInt(int(params.MinimumGenesisGasPrice)); gasprice >= 0 {
+		config.Price.GasPrice = gasprice
+	} else {
+		log.Crit("input price was wrong")
+		return -1
+	}
+
+	// join transaction price
+	fmt.Printf("Input gas limit (default : %d)", params.GenesisGasLimit)
+	if gaslimit := w.readDefaultInt(int(params.GenesisGasLimit)); gaslimit >= 0 {
+		config.Price.GasLimit = gaslimit
+	} else {
+		log.Crit("input price was wrong")
+		return -1
+	}
+
+	// fairnode price
+	fmt.Printf("Input fairnode fee percent (default : %s) ", config.FnFee)
+	if fee := w.readDefaultFloat(10); fee >= 0 {
 		config.FnFee = big.NewFloat(fee).String()
 	} else {
 		log.Crit("input fee was wrong")
@@ -304,7 +325,7 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// node version
-	fmt.Printf("Input node version (ex : 0.6.12)")
+	fmt.Printf("Input node version (ex : %s)", config.NodeVersion)
 	if version := w.readString(); version != "" {
 		config.NodeVersion = version
 	} else {
