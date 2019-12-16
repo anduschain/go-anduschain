@@ -2,7 +2,6 @@ package params
 
 import (
 	"github.com/anduschain/go-anduschain/common"
-	"math"
 )
 
 const (
@@ -12,6 +11,5 @@ const (
 )
 
 var (
-	JtxAddress  = common.HexToAddress(jtsAddrStr)
-	MinGasPrice = uint64(math.Ceil(0.2e18 / 21000))
+	JtxAddress = common.HexToAddress(jtsAddrStr)
 )

@@ -130,7 +130,7 @@ func (l *LoadTest) GetNonce() error {
 func (l *LoadTest) SendTransaction() error {
 	value := price
 	gasLimit := 10 * params.TxGas
-	gasPrice := new(big.Int).SetUint64(params.MinGasPrice)
+	gasPrice, _ := l.ec.SuggestGasPrice(context.Background())
 	toAddress := l.addr
 
 	data := struct {

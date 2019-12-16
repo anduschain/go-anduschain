@@ -29,6 +29,7 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
+	"math/big"
 	"sync"
 	"time"
 )
@@ -130,6 +131,22 @@ func (pool *TxPool) GetNonce(ctx context.Context, addr common.Address) (uint64, 
 		pool.nonce[addr] = nonce
 	}
 	return nonce, nil
+}
+
+func (pool *TxPool) GasPrice() *big.Int {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	header := pool.chain.CurrentHeader()
+	// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
+	if header.Number.Cmp(big.NewInt(100)) > 0 {
+		otprn, err := types.DecodeOtprn(header.Otprn)
+		if err != nil {
+			return nil
+		}
+		return big.NewInt(int64(otprn.Data.Price.GasPrice))
+	}
+	return big.NewInt(int64(pool.config.Deb.GasPrice))
 }
 
 // txStateChanges stores the recent changes between pending/mined states of

@@ -257,6 +257,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()
+	go pool.updateGasPrice()
 
 	return pool
 }
@@ -338,6 +339,23 @@ func (pool *TxPool) loop() {
 					log.Warn("Failed to rotate local tx journal", "err", err)
 				}
 				pool.mu.Unlock()
+			}
+		}
+	}
+}
+
+func (pool *TxPool) updateGasPrice() {
+	for {
+		select {
+		case <-time.NewTicker(time.Second * 10).C:
+			currnet := pool.chain.CurrentBlock()
+			// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
+			if currnet.Number().Cmp(big.NewInt(100)) > 0 {
+				otprn, err := types.DecodeOtprn(currnet.Otprn())
+				if err != nil {
+					continue
+				}
+				pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
 			}
 		}
 	}

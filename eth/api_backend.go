@@ -193,6 +193,10 @@ func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (
 	return b.eth.txPool.State().GetNonce(addr), nil
 }
 
+func (b *EthAPIBackend) GasPrice() *big.Int {
+	return b.eth.txPool.GasPrice()
+}
+
 func (b *EthAPIBackend) Stats() (pending int, queued int) {
 	return b.eth.txPool.Stats()
 }

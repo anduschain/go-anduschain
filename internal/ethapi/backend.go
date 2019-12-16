@@ -66,6 +66,7 @@ type Backend interface {
 	Stats() (pending int, queued int)
 	TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions)
 	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
+	GasPrice() *big.Int
 
 	ChainConfig() *params.ChainConfig
 	CurrentBlock() *types.Block

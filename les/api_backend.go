@@ -131,6 +131,10 @@ func (b *LesApiBackend) GetPoolNonce(ctx context.Context, addr common.Address) (
 	return b.eth.txPool.GetNonce(ctx, addr)
 }
 
+func (b *LesApiBackend) GasPrice() *big.Int {
+	return b.eth.txPool.GasPrice()
+}
+
 func (b *LesApiBackend) Stats() (pending int, queued int) {
 	return b.eth.txPool.Stats(), 0
 }

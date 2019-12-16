@@ -46,7 +46,7 @@ import (
 )
 
 var (
-	defaultGasPrice = params.MinGasPrice
+	defaultGasPrice = params.MinimumGenesisGasPrice
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -535,32 +535,35 @@ func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, blockHash comm
 	return nil, err
 }
 
-// GetUncleByBlockNumberAndIndex returns the uncle block for the given block hash and index. When fullTx is true
-// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
-func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) (map[string]interface{}, error) {
-	block, err := s.b.BlockByNumber(ctx, blockNr)
-	if block != nil {
-		// TODO : deprecated uncle
-		//uncles := block.Uncles()
-		//if index >= hexutil.Uint(len(uncles)) {
-		//	log.Debug("Requested uncle not found", "number", blockNr, "hash", block.Hash(), "index", index)
-		//	return nil, nil
-		//}
-		//block = types.NewBlockWithHeader(uncles[index])
-		return s.rpcOutputBlock(block, false, false)
-	}
-	return nil, err
-}
+// deprecated
+//// GetUncleByBlockNumberAndIndex returns the uncle block for the given block hash and index. When fullTx is true
+//// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
+//func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) (map[string]interface{}, error) {
+//	block, err := s.b.BlockByNumber(ctx, blockNr)
+//	if block != nil {
+//		// TODO : deprecated uncle
+//		//uncles := block.Uncles()
+//		//if index >= hexutil.Uint(len(uncles)) {
+//		//	log.Debug("Requested uncle not found", "number", blockNr, "hash", block.Hash(), "index", index)
+//		//	return nil, nil
+//		//}
+//		//block = types.NewBlockWithHeader(uncles[index])
+//		return s.rpcOutputBlock(block, false, false)
+//	}
+//	return nil, err
+//}
+//
 
-// GetUncleByBlockHashAndIndex returns the uncle block for the given block hash and index. When fullTx is true
-// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
-func (s *PublicBlockChainAPI) GetUncleByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) (map[string]interface{}, error) {
-	block, err := s.b.GetBlock(ctx, blockHash)
-	if block != nil {
-		return s.rpcOutputBlock(block, false, false)
-	}
-	return nil, err
-}
+// deprecated
+//// GetUncleByBlockHashAndIndex returns the uncle block for the given block hash and index. When fullTx is true
+//// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
+//func (s *PublicBlockChainAPI) GetUncleByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) (map[string]interface{}, error) {
+//	block, err := s.b.GetBlock(ctx, blockHash)
+//	if block != nil {
+//		return s.rpcOutputBlock(block, false, false)
+//	}
+//	return nil, err
+//}
 
 // GetCode returns the code stored at the given address in the state for the given block number.
 func (s *PublicBlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
@@ -616,7 +619,11 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 		gas = math.MaxUint64 / 2
 	}
 	if gasPrice.Sign() == 0 {
-		gasPrice = new(big.Int).SetUint64(defaultGasPrice)
+		price, err := s.b.SuggestPrice(ctx)
+		if err != nil {
+			gasPrice = big.NewInt(int64(defaultGasPrice))
+		}
+		gasPrice = price
 	}
 
 	// Create new call message
@@ -1117,11 +1124,10 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 		*(*uint64)(args.Gas) = params.TxGas
 	}
 	if args.GasPrice == nil {
-		//price, err := b.SuggestPrice(ctx)
-		//if err != nil {
-		//	return err
-		//}
-		price := new(big.Int).SetUint64(params.MinGasPrice)
+		price, err := b.SuggestPrice(ctx)
+		if err != nil {
+			return err
+		}
 		args.GasPrice = (*hexutil.Big)(price)
 	}
 	if args.Value == nil {
