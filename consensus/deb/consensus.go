@@ -363,6 +363,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return err
 	}
 
+	header.GasLimit = c.otprn.Data.Price.GasLimit
 	header.Otprn = bOtprn
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
 	header.Time = big.NewInt(time.Now().Unix())

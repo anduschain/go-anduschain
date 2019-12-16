@@ -1,0 +1,15 @@
+{
+  "config" : {
+    "minMiner": 3,
+    "blockNumber": 1,
+    "price": {
+      "jointxprice": "1",
+      "gasprice": 9523809523809,
+      "gaslimit": 12600000
+    },
+    "fairnodeFee": "10",
+    "targetMiner": 50,
+    "epoch": 10,
+    "nodeVersion": "0.7.0"
+  }
+}

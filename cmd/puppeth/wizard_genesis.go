@@ -36,8 +36,8 @@ func (w *wizard) makeGenesis() {
 	// Construct a default genesis block
 	genesis := &core.Genesis{
 		Timestamp:  uint64(time.Now().Unix()),
-		GasLimit:   4700000000,
-		Difficulty: big.NewInt(524288),
+		GasLimit:   params.GenesisGasLimit,
+		Difficulty: big.NewInt(0),
 		Alloc:      make(core.GenesisAlloc),
 		Config: &params.ChainConfig{
 			HomesteadBlock: big.NewInt(1),
@@ -54,7 +54,6 @@ func (w *wizard) makeGenesis() {
 
 	choice := w.read()
 	switch {
-	// TODO : andus >> consensus
 	case choice == "" || choice == "1":
 		// In the case of Deb, configure the consensus parameters
 		genesis.Difficulty = big.NewInt(1)
@@ -66,6 +65,20 @@ func (w *wizard) makeGenesis() {
 			genesis.Config.EIP155Block = big.NewInt(0)
 		} else {
 			log.Crit("Invalid fairnode address")
+		}
+
+		fmt.Printf("Input your GasPrise (default : %d )", params.MinimumGenesisGasPrice)
+		if gasPrice := w.readDefaultInt(int(params.MinimumGenesisGasPrice)); gasPrice > 0 {
+			genesis.Config.Deb.GasPrice = uint64(gasPrice)
+		} else {
+			log.Crit("Invalid Genesis GasPrise")
+		}
+
+		fmt.Printf("Input your GasLimit (default : %d )", params.GenesisGasLimit)
+		if gasLimit := w.readDefaultInt(int(params.GenesisGasLimit)); gasLimit > 0 {
+			genesis.Config.Deb.GasLimit = uint64(gasLimit)
+		} else {
+			log.Crit("Invalid Genesis GasLimit")
 		}
 
 	default:

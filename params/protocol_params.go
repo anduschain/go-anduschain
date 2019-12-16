@@ -19,9 +19,9 @@ package params
 import "math/big"
 
 const (
-	GasLimitBoundDivisor uint64 = 1024    // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 5000    // Minimum the gas limit may ever be.
-	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
+	GasLimitBoundDivisor uint64 = 1024  // The bound divisor of the gas limit, used in update calculations.
+	MinGasLimit          uint64 = 5000  // Minimum the gas limit may ever be.
+	GenesisGasLimit      uint64 = 126e5 // Gas limit of the Genesis block.
 
 	// add : for anduschain
 	MinimumGenesisGasPrice uint64 = 9523809523809 // Minimum Gas Price of the Genesis block. --> for deb struct, start 0.2 Daon per Tx ( sample transfer )

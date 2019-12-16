@@ -68,8 +68,6 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "ANDUS CHAIN",
 		Flags: []cli.Flag{
 			utils.TestnetFlag,
-			utils.SoloFlag,
-			utils.DebFlag,
 		},
 	},
 	{

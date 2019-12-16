@@ -30,6 +30,8 @@ var (
 
 	MainNetPubKey = "034580929e08a3b34319ce9429d64f4aa403e572b37c79780d2c5ca116221cd79c" // from fairnode-mainnet
 	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode-testnet
+
+	TestPubKey = "028fb2276965f6a47de9cb36407eb2c9e158e2d4d93e5661e19b7d7b61209e1f87" // file in Projcet fiarkey.json, [ only using for testing ]
 )
 
 // chainID rule = 0xdao700 -> to dec 14288640 // mainnet
@@ -74,7 +76,6 @@ var (
 		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice},
 	}
 
-	//key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291") // fake deb pkey
 	DebChainConfig = &ChainConfig{
 		ChainID:             DEB_NETWORK,
 		HomesteadBlock:      big.NewInt(0),
@@ -86,18 +87,30 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"},
+		Deb: &DebConfig{
+			FairPubKey: TestPubKey,
+			GasLimit:   GenesisGasLimit,
+			GasPrice:   MinimumGenesisGasPrice,
+		},
 	}
 
 	TestChainConfig = &ChainConfig{
 		big.NewInt(3357), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
+		&DebConfig{
+			FairPubKey: TestPubKey,
+			GasLimit:   GenesisGasLimit,
+			GasPrice:   MinimumGenesisGasPrice,
+		}}
 
 	AllDebProtocolChanges = &ChainConfig{
 		big.NewInt(3358), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{FairPubKey: "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79"}}
+		&DebConfig{
+			FairPubKey: TestPubKey,
+			GasLimit:   GenesisGasLimit,
+			GasPrice:   MinimumGenesisGasPrice,
+		}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.

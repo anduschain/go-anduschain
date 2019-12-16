@@ -18,7 +18,6 @@
 package utils
 
 import (
-	"bufio"
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
@@ -49,10 +48,8 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/netutil"
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -132,10 +129,6 @@ var (
 		Usage: "Network identifier (integer, 14288640=MainNet(not opening), 14288641=Testnet)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
-	DebFlag = cli.BoolFlag{
-		Name:  "deb",
-		Usage: "deb network: andus Chain test network",
-	}
 	TestnetFlag = cli.BoolFlag{
 		Name:  "testnet",
 		Usage: "AndusChain test network: pre-configured proof-of-deb test network",
@@ -143,10 +136,6 @@ var (
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-deb network with a pre-funded developer account, mining enabled",
-	}
-	SoloFlag = cli.BoolFlag{
-		Name:  "solo",
-		Usage: "To make proof-of-deb solo network",
 	}
 	IdentityFlag = cli.StringFlag{
 		Name:  "identity",
@@ -640,7 +629,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		}
 	case ctx.GlobalBool(TestnetFlag.Name):
 		urls = params.TestnetBootnodes
-	case ctx.GlobalBool(SoloFlag.Name):
+	case ctx.GlobalBool(DeveloperFlag.Name):
 		return
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
@@ -669,7 +658,7 @@ func setBootstrapNodesV5(ctx *cli.Context, cfg *p2p.Config) {
 		}
 	case cfg.BootstrapNodesV5 != nil:
 		return // already set, don't apply defaults.
-	case ctx.GlobalBool(SoloFlag.Name):
+	case ctx.GlobalBool(DeveloperFlag.Name):
 		return
 	}
 
@@ -1111,12 +1100,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		cfg.Genesis = core.DefaultAndsuChainTestnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
-		//Fatalf("Run Develop mode Error %s", "not support")
-
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 133756
-		}
 		// Create new developer account or reuse existing one
+		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
+			cfg.NetworkId = params.DEB_NETWORK.Uint64() // chain id and network id equal
+		}
 		var (
 			developer accounts.Account
 			err       error
@@ -1134,41 +1121,11 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		log.Info("Using developer account", "address", developer.Address)
 
-		fmt.Printf("Input your fairnode address ")
-		fairAddr := readAddress()
-		if fairAddr == nil {
-			Fatalf("Failed to setting dev anduschain : %v", errors.New("fail to read fairnode address"))
-		}
-
 		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address)
 	}
 	// TODO(fjl): move trie cache generations into config
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
-	}
-}
-
-func readAddress() *common.Address {
-	in := bufio.NewReader(os.Stdin)
-
-	for {
-		// Read the address from the user
-		fmt.Printf("> 0x")
-		text, err := in.ReadString('\n')
-		if err != nil {
-			log.Crit("Failed to read user input", "err", err)
-		}
-		if text = strings.TrimSpace(text); text == "" {
-			return nil
-		}
-		// Make sure it looks ok and return it if so
-		if len(text) != 40 {
-			log.Error("Invalid address length, please retry")
-			continue
-		}
-		bigaddr, _ := new(big.Int).SetString(text, 16)
-		address := common.BigToAddress(bigaddr)
-		return &address
 	}
 }
 

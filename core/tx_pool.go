@@ -349,10 +349,10 @@ func (pool *TxPool) updateGasPrice() {
 	for {
 		select {
 		case <-time.NewTicker(time.Second * 10).C:
-			currnet := pool.chain.CurrentBlock()
+			current := pool.chain.CurrentBlock()
 			// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
-			if currnet.Number().Cmp(big.NewInt(100)) > 0 {
-				block := pool.chain.GetBlockByNumber(currnet.Number().Uint64() - 100)
+			if current.Number().Cmp(big.NewInt(100)) > 0 {
+				block := pool.chain.GetBlockByNumber(current.Number().Uint64() - 100)
 				otprn, err := types.DecodeOtprn(block.Otprn())
 				if err != nil {
 					continue

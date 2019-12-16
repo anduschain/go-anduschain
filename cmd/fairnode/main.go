@@ -95,11 +95,6 @@ var (
 			Name:  "memorydb",
 			Usage: "default is false, if true, running memorydb fairnode",
 		},
-		cli.StringFlag{
-			Name:  "fromfile",
-			Usage: "input file path for chainconfig or recovery block",
-		},
-
 	}
 )
 

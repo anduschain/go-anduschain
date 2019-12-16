@@ -1,0 +1,4 @@
+fairnode: ../build/bin/fairnode --keypath ./fairnode --keypass '11111' --chainID 14288642 --debug
+node1: ../build/bin/godaon --dev --datadir ./node1 --serverHost localhost --rpc --rpcport 8545 --rpcapi "admin, eth, miner, txpool, personal, web3, net"
+node2: ../build/bin/godaon --dev --datadir ./node2 --serverHost localhost --rpc --rpcport 8546 --rpcapi "admin, eth, miner, txpool, personal, web3, net"
+node3: ../build/bin/godaon --dev --datadir ./node3 --serverHost localhost --rpc --rpcport 8547 --rpcapi "admin, eth, miner, txpool, personal, web3, net"

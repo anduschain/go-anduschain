@@ -22,6 +22,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
+	"math/big"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -111,38 +112,21 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 // to keep the baseline gas above the provided floor, and increase it towards the
 // ceil if the blocks are full. If the ceil is exceeded, it will always decrease
 // the gas allowance.
-func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
-	//// contrib = (parentGasUsed * 3 / 2) / 1024
-	//contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
-	//
-	//// decay = parentGasLimit / 1024 -1
-	//decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
-	//
-	///*
-	//	strategy: gasLimit of block-to-mine is set based on parent's
-	//	gasUsed value.  if parentGasUsed > parentGasLimit * (2/3) then we
-	//	increase it, otherwise lower it (or leave it unchanged if it's right
-	//	at that usage) the amount increased/decreased depends on how far away
-	//	from parentGasLimit * (2/3) parentGasUsed is.
-	//*/
-	//limit := parent.GasLimit() - decay + contrib
-	//if limit < params.MinGasLimit {
-	//	limit = params.MinGasLimit
-	//}
-	//// If we're outside our allowed gas range, we try to hone towards them
-	//if limit < gasFloor {
-	//	limit = parent.GasLimit() + decay
-	//	if limit > gasFloor {
-	//		limit = gasFloor
-	//	}
-	//} else if limit > gasCeil {
-	//	limit = parent.GasLimit() - decay
-	//	if limit < gasCeil {
-	//		limit = gasCeil
-	//	}
-	//}
+func CalcGasLimit(chain consensus.ChainReader) uint64 {
+	limit := params.GenesisGasLimit
+	if chain == nil {
+		return limit
+	}
 
-	limit := uint64(9000000000000)
+	current := chain.CurrentHeader()
+	if current.Number.Cmp(big.NewInt(100)) > 0 {
+		header := chain.GetHeaderByNumber(current.Number.Uint64() - 100)
+		otprn, err := types.DecodeOtprn(header.Otprn)
+		if err != nil {
+			return limit
+		}
+		return otprn.Data.Price.GasLimit
+	}
 
 	return limit
 }
