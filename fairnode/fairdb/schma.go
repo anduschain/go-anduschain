@@ -120,6 +120,7 @@ func TransOtprn(otprn types.Otprn) (fntype.Otprn, error) {
 		FnAddr: otprn.FnAddr.String(),
 		Cminer: otprn.Cminer,
 		Data: fntype.ChainConfig{
+			MinMiner:    otprn.Data.MinMiner,
 			BlockNumber: otprn.Data.BlockNumber,
 			FnFee:       otprn.Data.FnFee,
 			Mminer:      otprn.Data.Mminer,
