@@ -118,6 +118,7 @@ const (
 type blockChain interface {
 	CurrentBlock() *types.Block
 	GetBlock(hash common.Hash, number uint64) *types.Block
+	GetBlockByNumber(number uint64) *types.Block
 	StateAt(root common.Hash) (*state.StateDB, error)
 	SubscribeChainHeadEvent(ch chan<- types.ChainHeadEvent) event.Subscription
 }
@@ -351,7 +352,8 @@ func (pool *TxPool) updateGasPrice() {
 			currnet := pool.chain.CurrentBlock()
 			// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
 			if currnet.Number().Cmp(big.NewInt(100)) > 0 {
-				otprn, err := types.DecodeOtprn(currnet.Otprn())
+				block := pool.chain.GetBlockByNumber(currnet.Number().Uint64() - 100)
+				otprn, err := types.DecodeOtprn(block.Otprn())
 				if err != nil {
 					continue
 				}

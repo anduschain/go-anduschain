@@ -207,6 +207,8 @@ func addChainConfig(ctx *cli.Context) error {
 		},
 	}
 
+	config.BlockNumber = blockNumber
+
 	filePath := ctx.String("fromfile")
 	if filePath != "" {
 		if configureFromFile(config, filePath, blockNumber) < 0 {
@@ -246,6 +248,17 @@ func configureFromFile(config *types.ChainConfig, path string, BlockNumber uint6
 		return -1
 	}
 	return 1
+}
+
+func calGasPrice(fee float64) *big.Int {
+	t := int64((1 - fee) * params.Daon)
+	// cost == V + GP * GL
+	cost := new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Daon))
+	GL := big.NewInt(21000)
+	V := big.NewInt(t)               // value
+	sub := new(big.Int).Sub(cost, V) // cost - v
+	GP := new(big.Int).Div(sub, GL)  // cost - v / GL
+	return GP
 }
 
 func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
@@ -298,9 +311,9 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 	}
 
 	// join transaction price
-	fmt.Printf("Input gas price (default : %d)", params.MinimumGenesisGasPrice)
-	if gasprice := w.readDefaultInt(int(params.MinimumGenesisGasPrice)); gasprice >= 0 {
-		config.Price.GasPrice = gasprice
+	fmt.Printf("Input gas price (default => fee : %f Daon,  Price : %d)", 0.2, params.MinimumGenesisGasPrice)
+	if gasprice := w.readDefaultFloat(0.2); gasprice >= 0 {
+		config.Price.GasPrice = calGasPrice(gasprice).Uint64()
 	} else {
 		log.Crit("input price was wrong")
 		return -1

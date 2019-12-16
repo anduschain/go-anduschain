@@ -140,7 +140,8 @@ func (pool *TxPool) GasPrice() *big.Int {
 	header := pool.chain.CurrentHeader()
 	// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
 	if header.Number.Cmp(big.NewInt(100)) > 0 {
-		otprn, err := types.DecodeOtprn(header.Otprn)
+		h := pool.chain.GetHeaderByNumber(header.Number.Uint64() - 100)
+		otprn, err := types.DecodeOtprn(h.Otprn)
 		if err != nil {
 			return nil
 		}

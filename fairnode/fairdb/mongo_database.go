@@ -237,10 +237,8 @@ func (m *MongoDatabase) SaveChainConfig(config *types.ChainConfig) error {
 }
 
 func (m *MongoDatabase) CurrentInfo() *types.CurrentInfo {
-	//fmt.Println("CurrentInfo")
 	findOneOpts := options.FindOne().SetSort(bson.M{"header.number": -1})
 	b := new(fntype.BlockHeader)
-	//err := m.blockChain.Find(bson.M{}).Sort("-header.number").Limit(1).One(b)
 	err := m.blockChain.FindOne(m.context, bson.M{}, findOneOpts).Decode(b)
 	if err != nil {
 		logger.Error("Get current info", "database", "mongo", "msg", err)
