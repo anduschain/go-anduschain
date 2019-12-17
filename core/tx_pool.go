@@ -258,7 +258,6 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()
-	go pool.updateGasPrice()
 
 	return pool
 }
@@ -296,8 +295,9 @@ func (pool *TxPool) loop() {
 				}
 				pool.reset(head.Header(), ev.Block.Header())
 				head = ev.Block
-
 				pool.mu.Unlock()
+
+				pool.UpdateGasPrice(head.Header())
 			}
 		// Be unsubscribed due to system stopped
 		case <-pool.chainHeadSub.Err():
@@ -345,21 +345,15 @@ func (pool *TxPool) loop() {
 	}
 }
 
-func (pool *TxPool) updateGasPrice() {
-	for {
-		select {
-		case <-time.NewTicker(time.Second * 10).C:
-			current := pool.chain.CurrentBlock()
-			// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
-			if current.Number().Cmp(big.NewInt(100)) > 0 {
-				block := pool.chain.GetBlockByNumber(current.Number().Uint64() - 100)
-				otprn, err := types.DecodeOtprn(block.Otprn())
-				if err != nil {
-					continue
-				}
-				pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
-			}
+func (pool *TxPool) UpdateGasPrice(header *types.Header) {
+	// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
+	if header.Number.Cmp(big.NewInt(100)) > 0 {
+		block := pool.chain.GetBlockByNumber(header.Number.Uint64() - 100)
+		otprn, err := types.DecodeOtprn(block.Otprn())
+		if err != nil {
+			return
 		}
+		pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
 	}
 }
 

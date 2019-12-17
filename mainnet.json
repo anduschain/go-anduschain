@@ -20,16 +20,26 @@
   "coinbase": "0x0000000000000000000000000000000000000000",
   "alloc": {
     "1af23d539855d32fdb70606079e1717c8e67c1ef" : {
-      "balance": "0x52b7d2dcc80cd400000000"
+      "balance": "0x52b7d2dcc80cd2e4000000"
     },
     "1386d01b704a429e5cc302f0870dc9bb20f47fd4": {
-      "balance": "0x52b7d2dcc80cd400000000"
+      "balance": "0x52b7d2dcc80cd2e4000000"
     },
     "8a77ae9660512d7f6e14b7ccffb7b12fb77a3767": {
-      "balance": "0x52b7d2dcc80cd400000000"
+      "balance": "0x52b7d2dcc80cd2e4000000"
+    },
+    "b02394632364e71ee1c22ac2e0d10dbb4e3f60ca": {
+      "balance": "0x52b7d2dcc80cd2e4000000"
+    },
+    "4aeaf12cd90f42f85851f8e79c3f1c898b1e5634": {
+      "balance": "0x52b7d2dcc80cd2e4000000"
+    },
+    "cf3045f6b7a6b0a0487902229bd03fb7501b40e2": {
+      "balance": "0x52b7d2dcc80cd2e4000000"
     },
     "ec904cef80d139e8cc2dfc29a6fa5d6138cdaf9b": {
-      "balance": "0x1f57a6e5a7ccdc0000000000"
+      "balance": "0x1e5f7f6d1174b56fb8000000"
+
     }
   },
   "number": "0x0",

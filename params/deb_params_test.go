@@ -2,6 +2,7 @@ package params
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/common/hexutil"
 	"math/big"
 	"testing"
 )
@@ -16,4 +17,9 @@ func TestMinGasPrice(t *testing.T) {
 	GP := new(big.Int).Div(sub, GL)
 
 	fmt.Println(GP.String())
+}
+
+func TestCalBnToHex(t *testing.T) {
+	fmt.Println(hexutil.EncodeBig(new(big.Int).Mul(big.NewInt(94e8), big.NewInt(Daon))))
+	fmt.Println(hexutil.EncodeBig(new(big.Int).Mul(big.NewInt(1e8), big.NewInt(Daon))))
 }

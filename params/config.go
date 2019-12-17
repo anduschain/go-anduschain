@@ -25,7 +25,7 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x50c33c0997dd43d6d0d72dce4fd13855cde34521af89c9f8133622a501e23e66")
+	MainnetGenesisHash = common.HexToHash("0x31f745fdf518ba6c94a215f8a2f1c556a72bc742d05517b21037651692ed5b1e")
 	TestnetGenesisHash = common.HexToHash("0x2e673ece7dd30d2b04ede22c800f816c0c9ef2fe43433337565fa4e4c8405d67")
 
 	MainNetPubKey = "034580929e08a3b34319ce9429d64f4aa403e572b37c79780d2c5ca116221cd79c" // from fairnode-mainnet
