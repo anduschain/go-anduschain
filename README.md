@@ -12,8 +12,6 @@ CPU : least 4 CORE CPU
 
 ## Building the source
 
-go get -d github.com/anduschain/go-anduschain
-
 Building godaon requires both a Go (version 1.10 or later) and a C compiler.
 You can install them using your favourite package manager.
 Once the dependencies are installed, run
