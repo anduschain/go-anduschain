@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/log"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain"
@@ -62,6 +63,7 @@ func (ec *Client) Close() {
 // Blockchain Access
 // ChainId retrieves the current chain ID for transaction replay protection.
 func (ec *Client) ChainID(ctx context.Context) (*big.Int, error) {
+	log.Info("AAAAAAAAAAAAAAAAAA")
 	var result hexutil.Big
 	err := ec.c.CallContext(ctx, &result, "eth_chainId")
 	if err != nil {

@@ -110,7 +110,7 @@ func ValidationSignHash(sign []byte, hash common.Hash, sAddr common.Address) err
 	}
 	addr := crypto.PubkeyToAddress(*fpKey)
 	if addr != sAddr {
-		return errors.New(fmt.Sprintf("not matched address %v", sAddr))
+		return errors.New(fmt.Sprintf("validate: not matched address %v(%s:%s)", sAddr, addr.Hex(), sAddr.Hex()))
 	}
 
 	return nil

@@ -546,6 +546,7 @@ func (c *Client) dispatch(conn net.Conn) {
 		// Read path.
 		case batch := <-c.readResp:
 			for _, msg := range batch {
+				log.Info("XXXXXXXXXXXXXXXX:" + msg.String())
 				switch {
 				case msg.isNotification():
 					log.Trace("", "msg", log.Lazy{Fn: func() string {
@@ -584,6 +585,7 @@ func (c *Client) dispatch(conn net.Conn) {
 
 		// Send path.
 		case op := <-requestOpLock:
+			log.Info("YYYYYYYYYYYYYYY")
 			// Stop listening for further send ops until the current one is done.
 			requestOpLock = nil
 			lastOp = op
