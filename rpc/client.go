@@ -585,7 +585,6 @@ func (c *Client) dispatch(conn net.Conn) {
 
 		// Send path.
 		case op := <-requestOpLock:
-			log.Info("YYYYYYYYYYYYYYY")
 			// Stop listening for further send ops until the current one is done.
 			requestOpLock = nil
 			lastOp = op
