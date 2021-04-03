@@ -110,16 +110,16 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	// prevent unused
 	_ = ssl
 	_ = port
-	_ = userPass
+	//_ = userPass
 
 	if useSRV {
 		protocol = fmt.Sprint("mongodb+srv")
 	} else {
 		protocol = fmt.Sprint("mongodb")
 	}
-	//if strings.Compare(user, "") != 0 {
-	//	userPass = fmt.Sprintf("%s:%s@", user, pass)
-	//}
+	if strings.Compare(user, "") != 0 {
+		userPass = fmt.Sprintf("%s:%s@", user, pass)
+	}
 	//if strings.Compare(dbname, "") != 0 {
 	//	db.dbName = fmt.Sprintf("%s", dbname)
 	//}
@@ -129,17 +129,17 @@ func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	db.chainID = chainID
 	db.dbName = fmt.Sprintf("%s_%s", DbName, chainID.String())
 
-	//db.url = "mongodb://localhost:27020,localhost:27021,localhost:27022/AndusChain_91386209?replSet=replication"
-	//db.url = fmt.Sprintf("%s://%s%s/%s%s", protocol, userPass, host, db.dbName, dbOpt)
-	db.url = fmt.Sprintf("%s://%s/%s%s", protocol, host, db.dbName, dbOpt)
+	db.url = "mongodb://localhost:27020,localhost:27021,localhost:27022/AndusChain_91386209?replSet=replication"
+	db.url = fmt.Sprintf("%s://%s%s/%s%s", protocol, userPass, host, db.dbName, dbOpt)
+	//db.url = fmt.Sprintf("%s://%s/%s%s", protocol, host, db.dbName, dbOpt)
 
 	// 필요시 ApplyURI() 대신 직접 options.Client()을 Set...() 을 수행
-	credential := options.Credential{
-		Username: user,
-		Password: pass,
-	}
+	//credential := options.Credential{
+	//	Username: user,
+	//	Password: pass,
+	//}
 	log.Println(db.url, user, pass)
-	db.client, err = mongo.NewClient(options.Client().ApplyURI(db.url).SetAuth(credential))
+	db.client, err = mongo.NewClient(options.Client().ApplyURI(db.url))
 	if err != nil {
 		log.Fatal(err)
 		return nil, err

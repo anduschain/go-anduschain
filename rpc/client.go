@@ -546,7 +546,6 @@ func (c *Client) dispatch(conn net.Conn) {
 		// Read path.
 		case batch := <-c.readResp:
 			for _, msg := range batch {
-				log.Info("XXXXXXXXXXXXXXXX:" + msg.String())
 				switch {
 				case msg.isNotification():
 					log.Trace("", "msg", log.Lazy{Fn: func() string {

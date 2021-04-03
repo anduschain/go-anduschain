@@ -25,10 +25,10 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x31f745fdf518ba6c94a215f8a2f1c556a72bc742d05517b21037651692ed5b1e")
+	MainnetGenesisHash = common.HexToHash("0x0d0122cb7ec8feb39a66a292cb657730abc87ee096bb84d4cd038b1d66a71d77")
 	TestnetGenesisHash = common.HexToHash("0x2e673ece7dd30d2b04ede22c800f816c0c9ef2fe43433337565fa4e4c8405d67")
 
-	MainNetPubKey = "034580929e08a3b34319ce9429d64f4aa403e572b37c79780d2c5ca116221cd79c" // from fairnode-mainnet
+	MainNetPubKey = "034911d106851a0d857cb6aeaf39a06ce3d7a13f73195c8a58874156bb28d2ad0e" // from fairnode-mainnet
 	TestNetPubKey = "02c5ec32bf37887175010ff7f8d89723fa7fe584408f4e39c51d9f26f685d50b79" // from fairnode-testnet
 
 	TestPubKey = "028fb2276965f6a47de9cb36407eb2c9e158e2d4d93e5661e19b7d7b61209e1f87" // file in Projcet fiarkey.json, [ only using for testing ]
