@@ -337,5 +337,11 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		if err := stack.Service(&ethereum); err != nil {
 			utils.Fatalf("Anduschaion service not running: %v", err)
 		}
+
+		// start mining
+		threads := ctx.GlobalInt(utils.MinerThreadsFlag.Name)
+		if err := ethereum.StartMining(threads); err != nil {
+			utils.Fatalf("Failed to start mining: %v", err)
+		}
 	}
 }
