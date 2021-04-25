@@ -1232,7 +1232,14 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encodedTx hexutil.Bytes) (common.Hash, error) {
 	var tx *types.Transaction
 	if err := rlp.DecodeBytes(encodedTx, &tx); err != nil {
-		return common.Hash{}, err
+		//return common.Hash{}, err
+		var ethTx *types.TransactionEth
+		if err:= rlp.DecodeBytes(encodedTx, &ethTx); err != nil {
+			return common.Hash{}, err
+		}else {
+			V, R, S := ethTx.RawSignatureValues()
+			tx = types.ConvertEthTransaction(ethTx.Nonce(), ethTx.To(), ethTx.Value(), ethTx.Gas(), ethTx.GasPrice(), ethTx.Data(), R, S, V)
+		}
 	}
 	return submitTransaction(ctx, s.b, tx)
 }

@@ -25,6 +25,7 @@ import (
 const (
 	GeneralTx uint64 = iota
 	JoinTx
+	EthTx
 )
 
 // Transactions is a Transaction slice type for basic sorting.

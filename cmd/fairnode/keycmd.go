@@ -310,10 +310,11 @@ func configureFromPrompt(config *types.ChainConfig, BlockNumber uint64) int {
 		return -1
 	}
 
-	// join transaction price
-	fmt.Printf("Input gas price (default => fee : %f Daon,  Price : %d)", 0.2, params.MinimumGenesisGasPrice)
-	if gasprice := w.readDefaultFloat(0.2); gasprice >= 0 {
-		config.Price.GasPrice = calGasPrice(gasprice).Uint64()
+	// otprn gasPrice
+	fmt.Printf("Input gas price (default => Price : %d)", params.MinimumGenesisGasPrice)
+	if gasprice := w.readDefaultInt(int(params.MinimumGenesisGasPrice)); gasprice >= 0 {
+		//config.Price.GasPrice = calGasPrice(gasprice).Uint64()
+		config.Price.GasPrice = big.NewInt(int64(gasprice)).Uint64()
 	} else {
 		log.Crit("input price was wrong")
 		return -1
