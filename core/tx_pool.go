@@ -347,14 +347,20 @@ func (pool *TxPool) loop() {
 
 func (pool *TxPool) UpdateGasPrice(header *types.Header) {
 	// upto 100 ( block number ) , ex) 101 -> 1, 200 -> 100
-	if header.Number.Cmp(big.NewInt(100)) > 0 {
-		block := pool.chain.GetBlockByNumber(header.Number.Uint64() - 100)
-		otprn, err := types.DecodeOtprn(block.Otprn())
-		if err != nil {
-			return
-		}
-		pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
+	//if header.Number.Cmp(big.NewInt(100)) > 0 {
+	//	block := pool.chain.GetBlockByNumber(header.Number.Uint64() - 100)
+	//	otprn, err := types.DecodeOtprn(block.Otprn())
+	//	if err != nil {
+	//		return
+	//	}
+	//	pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
+	//}
+	block := pool.chain.GetBlockByNumber(header.Number.Uint64())
+	otprn, err := types.DecodeOtprn(block.Otprn())
+	if err != nil {
+		return
 	}
+	pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
 }
 
 // lockedReset is a wrapper around reset to allow calling it in a thread safe
@@ -628,7 +634,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		if pool.currentState.GetJoinNonce(from) != jnonce {
 			return ErrJoinNonceNotMmatch
 		}
-	case types.GeneralTx:
+	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 		//if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {

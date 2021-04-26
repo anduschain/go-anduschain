@@ -30,7 +30,7 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
-//go:generate gencodec -type txdata -field-override txdataMarshaling -out gen_tx_json.go
+//go:generate gencodec -dir . -type txdata -field-override txdataMarshaling -out gen_tx_json.go
 
 var (
 	ErrInvalidSig = errors.New("invalid transaction v, r, s values")
@@ -80,6 +80,33 @@ func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit u
 
 func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
+}
+
+
+func ConvertEthTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, R, S, V *big.Int) *Transaction {
+	if len(data) > 0 {
+		data = common.CopyBytes(data)
+	}
+	d := txdata{
+		Type:         EthTx,
+		AccountNonce: nonce,
+		Recipient:    to,
+		Payload:      data,
+		Amount:       new(big.Int),
+		GasLimit:     gasLimit,
+		Price:        new(big.Int),
+		V:            V,
+		R:            R,
+		S:            S,
+	}
+	if amount != nil {
+		d.Amount.Set(amount)
+	}
+	if gasPrice != nil {
+		d.Price.Set(gasPrice)
+	}
+
+	return &Transaction{data: d}
 }
 
 func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte, coinase common.Address) *Transaction {
@@ -139,6 +166,7 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 
 	return &Transaction{data: d}
 }
+
 
 func (tx *Transaction) TransactionId() uint64 {
 	return tx.data.Type

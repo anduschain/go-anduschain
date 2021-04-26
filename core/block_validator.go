@@ -22,7 +22,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
-	"math/big"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -118,15 +117,20 @@ func CalcGasLimit(chain consensus.ChainReader) uint64 {
 		return limit
 	}
 
+	//current := chain.CurrentHeader()
+	//if current.Number.Cmp(big.NewInt(100)) > 0 {
+	//	header := chain.GetHeaderByNumber(current.Number.Uint64() - 100)
+	//	otprn, err := types.DecodeOtprn(header.Otprn)
+	//	if err != nil {
+	//		return limit
+	//	}
+	//	return otprn.Data.Price.GasLimit
+	//}
 	current := chain.CurrentHeader()
-	if current.Number.Cmp(big.NewInt(100)) > 0 {
-		header := chain.GetHeaderByNumber(current.Number.Uint64() - 100)
-		otprn, err := types.DecodeOtprn(header.Otprn)
-		if err != nil {
-			return limit
-		}
-		return otprn.Data.Price.GasLimit
+	header := chain.GetHeaderByNumber(current.Number.Uint64())
+	otprn, err := types.DecodeOtprn(header.Otprn)
+	if err != nil {
+		return limit
 	}
-
-	return limit
+	return otprn.Data.Price.GasLimit
 }

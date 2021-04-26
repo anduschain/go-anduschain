@@ -15,8 +15,10 @@ import (
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -107,6 +109,10 @@ func (dc *DebClient) FnAddress() common.Address {
 }
 
 func (dc *DebClient) Start(backend Backend) error {
+	if atomic.LoadInt32(&dc.running) == 1 {
+		return nil
+	}
+
 	var err error
 	dc.fnEndpoint = DefaultConfig.FairnodeEndpoint(types.Network(dc.config.NetworkType()))
 	dc.fnPubKey, err = crypto.DecompressPubkey(common.Hex2Bytes(dc.config.Deb.FairPubKey))
@@ -141,7 +147,12 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
-	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure())
+	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure(), grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time: 10 * time.Second,
+		Timeout: 2 * time.Second,
+		PermitWithoutStream: true,
+	}))
+
 	if err != nil {
 		log.Error("did not connect", "msg", err)
 		return err

@@ -426,6 +426,14 @@ func (fn *Fairnode) processManageLoop() {
 					voters := fn.db.GetVoters(voteKey)
 					if uint64(len(voters)) < (fn.config.MinMiner - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
+						if len(voters) == 0 {
+							// voter count is zero, remove fairnode current Block
+							if l.BlockHash != nil {
+								hash := *l.BlockHash
+								fn.db.RemoveBlock(hash)
+								logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
+							}
+						}
 						l.Status = types.REJECT
 					} else {
 						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
