@@ -25,6 +25,7 @@ const (
 
 	// add : for anduschain
 	MinimumGenesisGasPrice uint64 = 9523809523809 // Minimum Gas Price of the Genesis block. --> for deb struct, start 0.2 Daon per Tx ( sample transfer )
+	DefaultFairnodeFee int64 = 30
 
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
 	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.

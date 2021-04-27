@@ -18,6 +18,7 @@ package params
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -58,7 +59,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice},
+		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
@@ -73,7 +74,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
-		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice},
+		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
 	DebChainConfig = &ChainConfig{
@@ -91,6 +92,7 @@ var (
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
 			GasPrice:   MinimumGenesisGasPrice,
+			FnFeeRate: big.NewInt(DefaultFairnodeFee),
 		},
 	}
 
@@ -101,6 +103,7 @@ var (
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
 			GasPrice:   MinimumGenesisGasPrice,
+			FnFeeRate: big.NewInt(DefaultFairnodeFee),
 		}}
 
 	AllDebProtocolChanges = &ChainConfig{
@@ -110,6 +113,7 @@ var (
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
 			GasPrice:   MinimumGenesisGasPrice,
+			FnFeeRate: big.NewInt(DefaultFairnodeFee),
 		}}
 )
 
@@ -144,6 +148,23 @@ type DebConfig struct {
 	FairPubKey string `json:"fairPubKey"`
 	GasLimit   uint64 `json:"gasLimit"`
 	GasPrice   uint64 `json:"gasPrice"`
+	FnFeeRate      *big.Int  `json:"fairFee"`
+}
+
+func (c *DebConfig) FairAddr() common.Address {
+	fnPubKey, err := crypto.DecompressPubkey(common.Hex2Bytes(c.FairPubKey))
+	if err != nil {
+		return common.Address{}
+	}
+	return crypto.PubkeyToAddress(*fnPubKey)
+}
+
+func (c *DebConfig) SetFnFeeRate(fairFeeRate *big.Int) {
+	c.FnFeeRate = fairFeeRate
+}
+
+func (c *DebConfig) GetFnFeeRate() *big.Int {
+	return c.FnFeeRate
 }
 
 func (c *DebConfig) String() string {

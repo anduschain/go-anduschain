@@ -228,9 +228,24 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		}
 	}
 	st.refundGas()
-	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
-
+	fairAddr := st.evm.ChainConfig().Deb.FairAddr()
+	fairFeeRate := st.evm.ChainConfig().Deb.GetFnFeeRate()
+	fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
+	minerFee, fairFee := fairFee(fee, fairFeeRate)
+	if fee.Cmp(big.NewInt(0)) != 0 {
+		log.Debug("VM fairnode fee process", "total", fee, "fairAddr", fairAddr, "fairFeeRate", fairFeeRate, "minerFee", minerFee, "fairFee", fairFee)
+	}
+	st.state.AddBalance(st.evm.Coinbase, minerFee)
+	st.state.AddBalance(fairAddr, fairFee)
 	return ret, st.gasUsed(), vmerr != nil, err
+}
+
+// return minerfee, fairnode fee
+func fairFee(fee, fnFeeRate *big.Int) (*big.Int, *big.Int) {
+	tmp := new(big.Int).Mul(fee, fnFeeRate)
+	fnFee := new(big.Int).Div(tmp, big.NewInt(100))
+	minerFee := new(big.Int).Sub(fee, fnFee) // miner's reword
+	return minerFee,fnFee
 }
 
 func (st *StateTransition) refundGas() {

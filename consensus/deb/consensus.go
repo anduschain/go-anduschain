@@ -104,6 +104,10 @@ func (c *Deb) SetCoinbase(coinbase common.Address) {
 }
 
 func (c *Deb) SetOtprn(otprn *types.Otprn) {
+	// 변환에 성공하면 fee rate를 바꿔준다
+	//if fnFeeRate, isOK := new(big.Int).SetString(otprn.Data.FnFee, 10); isOK  {
+	//	c.config.SetFnFeeRate(fnFeeRate)
+	//}
 	c.otprn = otprn
 }
 
