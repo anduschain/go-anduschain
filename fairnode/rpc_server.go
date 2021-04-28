@@ -13,7 +13,6 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc/peer"
 	"math/big"
 	"strings"
 	"sync"
@@ -53,11 +52,16 @@ func newServer(fn fnNode) *rpcServer {
 
 // Heart Beat : notify to fairnode, I'm alive.
 func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (*empty.Empty, error) {
-	p, _ := peer.FromContext(ctx)
-	ip, err := ParseIP(p.Addr.String())
-	if err != nil {
-		logger.Error("HeartBeat ParseIP", "msg", err)
-		return nil, err
+	//p, _ := peer.FromContext(ctx)
+	//ip, err := ParseIP(p.Addr.String())
+	//if err != nil {
+	//	logger.Error("HeartBeat ParseIP", "msg", err)
+	//	return nil, err
+	//}
+	var err error
+
+	if nodeInfo.GetIp() == "" {
+		return nil, errorEmpty("ip")
 	}
 
 	if nodeInfo.GetEnode() == "" {
@@ -95,6 +99,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		nodeInfo.GetMinerAddress(),
 		nodeInfo.GetPort(),
 		nodeInfo.GetHead(),
+		nodeInfo.GetIp(),
 	})
 
 	err = verify.ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
@@ -127,7 +132,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 		NodeVersion:  nodeInfo.GetNodeVersion(),
 		ChainID:      nodeInfo.GetChainID(),
 		MinerAddress: nodeInfo.GetMinerAddress(),
-		Host:         ip,
+		Host:         nodeInfo.GetIp(),
 		Port:         nodeInfo.GetPort(),
 		Head:         common.HexToHash(nodeInfo.GetHead()),
 		Time:         big.NewInt(time.Now().Unix()),

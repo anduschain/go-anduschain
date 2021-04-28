@@ -16,6 +16,7 @@ message HeartBeat {
     string head = 5;
     int64 port=6;
     bytes sign = 7;
+    string ip=8;
 }
 
 enum ProcessStatus {

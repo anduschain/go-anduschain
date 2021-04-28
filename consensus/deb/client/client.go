@@ -16,6 +16,7 @@ import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -108,6 +109,17 @@ func (dc *DebClient) FnAddress() common.Address {
 	return crypto.PubkeyToAddress(*dc.fnPubKey)
 }
 
+func getOutBoundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Error("Get OutBound Ip", err.Error())
+		return ""
+	}
+	defer conn.Close()
+	localAddr :=  conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+}
+
 func (dc *DebClient) Start(backend Backend) error {
 	if atomic.LoadInt32(&dc.running) == 1 {
 		return nil
@@ -129,6 +141,7 @@ func (dc *DebClient) Start(backend Backend) error {
 			ChainID:      backend.BlockChain().Config().ChainID.String(),
 			MinerAddress: backend.Coinbase().String(),
 			Port:         int64(backend.Server().NodeInfo().Ports.Listener),
+			Ip:getOutBoundIP(),
 		},
 		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),
