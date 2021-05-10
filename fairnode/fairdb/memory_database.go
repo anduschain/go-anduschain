@@ -222,3 +222,7 @@ func (m *MemDatabase) GetBlock(blockHash common.Hash) *types.Block {
 	}
 	return nil
 }
+
+func (m *MemDatabase) DeletedBlockChangeState(blockHash common.Hash) {
+	// ....
+}

@@ -438,7 +438,7 @@ func (fn *Fairnode) processManageLoop() {
 							curBlock := fn.db.CurrentBlock()
 							if curBlock.Number().Cmp(new(big.Int).Add(l.Current, big.NewInt(1))) == 0 {
 								hash := curBlock.Hash()
-								fn.db.RemoveBlock(hash)
+								fn.db.DeletedBlockChangeState(hash)
 								logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
 							}
 						}
