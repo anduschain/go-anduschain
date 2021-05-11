@@ -508,6 +508,23 @@ func (m *MongoDatabase) RemoveBlock(blockHash common.Hash) {
 	}
 }
 
+// voter가 0일때 블록 번호를 -로 바꿔서 업데이트
+func (m *MongoDatabase) DeletedBlockChangeState(blockHash common.Hash) {
+	b := new(fntype.Block)
+	err := m.blockChain.FindOne(m.context, bson.M{"_id": blockHash.String()}).Decode(b)
+	if err != nil {
+		logger.Error("Delete Block BlockNumber change", "database", "mongo", "msg", err)
+	}
+	update := bson.M{
+		"$set": bson.M{"header.number": 0},
+	}
+	result, err := m.blockChain.UpdateOne(m.context, bson.M{"_id": blockHash.String()}, update)
+	if err != nil {
+		logger.Error("Delete Block BlockNumber change", "database", "mongo", "msg", err)
+	}
+	logger.Warn("DeletedBlockChangeState", "blockNumber", b.Header.Number, "blockHash", blockHash, "ModifiedCount", result.ModifiedCount)
+}
+
 type stType uint64
 
 const (

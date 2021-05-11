@@ -427,10 +427,18 @@ func (fn *Fairnode) processManageLoop() {
 					if uint64(len(voters)) < (fn.config.MinMiner - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
 						if len(voters) == 0 {
+							// TODO: DELETE
+							//if l.BlockHash != nil {
+							//	hash := *l.BlockHash
+							//	fn.db.RemoveBlock(hash)
+							//	logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
+							//}
 							// voter count is zero, remove fairnode current Block
-							if l.BlockHash != nil {
-								hash := *l.BlockHash
-								fn.db.RemoveBlock(hash)
+							// 투표수가 0일때, 현재 블록 정보가 생성될 블록 번호와 같으면 삭제
+							curBlock := fn.db.CurrentBlock()
+							if curBlock.Number().Cmp(new(big.Int).Add(l.Current, big.NewInt(1))) == 0 {
+								hash := curBlock.Hash()
+								fn.db.DeletedBlockChangeState(hash)
 								logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
 							}
 						}
