@@ -16,7 +16,9 @@ import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -116,8 +118,22 @@ func getOutBoundIP() string {
 		return ""
 	}
 	defer conn.Close()
-	localAddr :=  conn.LocalAddr().(*net.UDPAddr)
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP.String()
+}
+
+func getPublicIP() string {
+	resp, err := http.Get("https://api.ipify.org")
+	if err != nil {
+		return ""
+	}
+
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func (dc *DebClient) Start(backend Backend) error {
@@ -134,6 +150,16 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
+	// 어떤 ip를 사용할지 세팅값을 가져와야 함 CSW
+	outboundIp := getOutBoundIP()
+
+	if backend.Server().IpFind {
+		str := getPublicIP()
+		if str != "" {
+			outboundIp = str
+		}
+	}
+
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{
 			Enode:        backend.Server().NodeInfo().ID,
@@ -141,7 +167,7 @@ func (dc *DebClient) Start(backend Backend) error {
 			ChainID:      backend.BlockChain().Config().ChainID.String(),
 			MinerAddress: backend.Coinbase().String(),
 			Port:         int64(backend.Server().NodeInfo().Ports.Listener),
-			Ip:getOutBoundIP(),
+			Ip:           outboundIp,
 		},
 		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),
@@ -161,8 +187,8 @@ func (dc *DebClient) Start(backend Backend) error {
 	}
 
 	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure(), grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time: 10 * time.Second,
-		Timeout: 2 * time.Second,
+		Time:                10 * time.Second,
+		Timeout:             2 * time.Second,
 		PermitWithoutStream: true,
 	}))
 
