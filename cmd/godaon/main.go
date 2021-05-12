@@ -113,6 +113,7 @@ var (
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
+		utils.IpFindFlag,
 		configFileFlag,
 	}
 

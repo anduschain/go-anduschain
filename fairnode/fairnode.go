@@ -436,7 +436,7 @@ func (fn *Fairnode) processManageLoop() {
 							// voter count is zero, remove fairnode current Block
 							// 투표수가 0일때, 현재 블록 정보가 생성될 블록 번호와 같으면 삭제
 							curBlock := fn.db.CurrentBlock()
-							if curBlock.Number().Cmp(new(big.Int).Add(l.Current, big.NewInt(1))) == 0 {
+							if curBlock.Number().Cmp(l.Current) == 0 {
 								hash := curBlock.Hash()
 								fn.db.DeletedBlockChangeState(hash)
 								logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
