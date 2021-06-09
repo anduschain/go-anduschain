@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  godaon:
+    image: anduslab/godaon:0.3.0
+    restart: unless-stopped
+    ports:
+      - "50505:50505"
+      - "50505:50505/udp"
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - .:/chaindata
+      - ./static-nodes.json:/chaindata/godaon/static-nodes.json
+    stop_signal: SIGINT
+    stop_grace_period: 2m
+    command: "--datadir ./chaindata --rpc --rpcaddr '0.0.0.0' --rpcapi 'admin, eth, miner, txpool, personal, web3, net' --ws --wsaddr '0.0.0.0' --rpcvhosts='*' --rpccorsdomain '*'"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2m"
+        max-file: "10"
