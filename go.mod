@@ -44,7 +44,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/urfave/cli v1.22.1
-	go.mongodb.org/mongo-driver v1.1.2
+	go.mongodb.org/mongo-driver v1.5.1
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
