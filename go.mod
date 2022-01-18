@@ -24,7 +24,6 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v1.0.0
-	github.com/karalabe/xgo v0.0.0-20191115072854-c5ccff8648a7 // indirect
 	github.com/mattn/go-colorable v0.1.0
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -35,18 +34,17 @@ require (
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/pborman/uuid v1.2.0
 	github.com/peterh/liner v1.1.0
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d
 	github.com/rs/cors v1.7.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.6.1
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/urfave/cli v1.22.1
-	go.mongodb.org/mongo-driver v1.1.2
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	go.mongodb.org/mongo-driver v1.5.1
+	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
 	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f

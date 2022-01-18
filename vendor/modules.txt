@@ -4,6 +4,24 @@ github.com/Azure/azure-pipeline-go/pipeline
 github.com/Azure/azure-storage-blob-go/azblob
 # github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
 github.com/aristanetworks/goarista/monotime
+# github.com/aws/aws-sdk-go v1.34.28
+github.com/aws/aws-sdk-go/aws
+github.com/aws/aws-sdk-go/aws/awserr
+github.com/aws/aws-sdk-go/aws/awsutil
+github.com/aws/aws-sdk-go/aws/client/metadata
+github.com/aws/aws-sdk-go/aws/credentials
+github.com/aws/aws-sdk-go/aws/endpoints
+github.com/aws/aws-sdk-go/aws/request
+github.com/aws/aws-sdk-go/aws/signer/v4
+github.com/aws/aws-sdk-go/internal/context
+github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/sdkio
+github.com/aws/aws-sdk-go/internal/sdkmath
+github.com/aws/aws-sdk-go/internal/shareddefaults
+github.com/aws/aws-sdk-go/internal/strings
+github.com/aws/aws-sdk-go/internal/sync/singleflight
+github.com/aws/aws-sdk-go/private/protocol
+github.com/aws/aws-sdk-go/private/protocol/rest
 # github.com/btcsuite/btcd v0.20.1-beta
 github.com/btcsuite/btcd/btcec
 # github.com/cespare/cp v1.1.1
@@ -57,10 +75,18 @@ github.com/influxdata/influxdb/models
 github.com/influxdata/influxdb/pkg/escape
 # github.com/jackpal/go-nat-pmp v1.0.1
 github.com/jackpal/go-nat-pmp
+# github.com/jmespath/go-jmespath v0.4.0
+github.com/jmespath/go-jmespath
 # github.com/julienschmidt/httprouter v1.3.0
 github.com/julienschmidt/httprouter
 # github.com/karalabe/hid v1.0.0
 github.com/karalabe/hid
+# github.com/klauspost/compress v1.9.5
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/snappy
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kr/pretty v0.1.0
 github.com/kr/pretty
 # github.com/kr/text v0.1.0
@@ -86,7 +112,7 @@ github.com/olekukonko/tablewriter
 github.com/pborman/uuid
 # github.com/peterh/liner v1.1.0
 github.com/peterh/liner
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
@@ -108,7 +134,7 @@ github.com/rs/cors
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/stretchr/testify v1.4.0
+# github.com/stretchr/testify v1.6.1
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/syndtr/goleveldb v1.0.0
@@ -126,19 +152,26 @@ github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
 # github.com/urfave/cli v1.22.1
 github.com/urfave/cli
-# github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
-github.com/xdg/scram
-# github.com/xdg/stringprep v1.0.0
-github.com/xdg/stringprep
-# go.mongodb.org/mongo-driver v1.1.2
+# github.com/xdg-go/pbkdf2 v1.0.0
+github.com/xdg-go/pbkdf2
+# github.com/xdg-go/scram v1.0.2
+github.com/xdg-go/scram
+# github.com/xdg-go/stringprep v1.0.2
+github.com/xdg-go/stringprep
+# github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d
+github.com/youmark/pkcs8
+# go.mongodb.org/mongo-driver v1.5.1
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
+go.mongodb.org/mongo-driver/bson/bsonoptions
 go.mongodb.org/mongo-driver/bson/bsonrw
 go.mongodb.org/mongo-driver/bson/bsontype
 go.mongodb.org/mongo-driver/bson/primitive
 go.mongodb.org/mongo-driver/event
 go.mongodb.org/mongo-driver/internal
 go.mongodb.org/mongo-driver/mongo
+go.mongodb.org/mongo-driver/mongo/address
+go.mongodb.org/mongo-driver/mongo/description
 go.mongodb.org/mongo-driver/mongo/options
 go.mongodb.org/mongo-driver/mongo/readconcern
 go.mongodb.org/mongo-driver/mongo/readpref
@@ -148,24 +181,27 @@ go.mongodb.org/mongo-driver/version
 go.mongodb.org/mongo-driver/x/bsonx
 go.mongodb.org/mongo-driver/x/bsonx/bsoncore
 go.mongodb.org/mongo-driver/x/mongo/driver
-go.mongodb.org/mongo-driver/x/mongo/driver/address
 go.mongodb.org/mongo-driver/x/mongo/driver/auth
 go.mongodb.org/mongo-driver/x/mongo/driver/auth/internal/gssapi
 go.mongodb.org/mongo-driver/x/mongo/driver/connstring
-go.mongodb.org/mongo-driver/x/mongo/driver/description
 go.mongodb.org/mongo-driver/x/mongo/driver/dns
+go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt
+go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options
+go.mongodb.org/mongo-driver/x/mongo/driver/ocsp
 go.mongodb.org/mongo-driver/x/mongo/driver/operation
 go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
-# golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+# golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
+golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
-golang.org/x/crypto/internal/chacha20
 golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/ocsp
 golang.org/x/crypto/openpgp
 golang.org/x/crypto/openpgp/armor
 golang.org/x/crypto/openpgp/elgamal
@@ -177,8 +213,9 @@ golang.org/x/crypto/poly1305
 golang.org/x/crypto/ripemd160
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+# golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -191,6 +228,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 golang.org/x/net/websocket
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/syncmap
 # golang.org/x/sys v0.0.0-20191010194322-b09406accb47
@@ -198,7 +236,7 @@ golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.3.0
+# golang.org/x/text v0.3.5
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -209,6 +247,8 @@ golang.org/x/text/encoding/korean
 golang.org/x/text/encoding/simplifiedchinese
 golang.org/x/text/encoding/traditionalchinese
 golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
@@ -312,5 +352,5 @@ gopkg.in/olebedev/go-duktape.v3
 # gopkg.in/sourcemap.v1 v1.0.5
 gopkg.in/sourcemap.v1
 gopkg.in/sourcemap.v1/base64vlq
-# gopkg.in/yaml.v2 v2.2.4
-gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3
