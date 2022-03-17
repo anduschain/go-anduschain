@@ -1,12 +1,11 @@
 module github.com/anduschain/go-anduschain
 
-go 1.12
+go 1.16
 
 require (
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/go-autorest/autorest/adal v0.8.0 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
-	github.com/aws/aws-sdk-go v1.34.28 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
@@ -16,8 +15,6 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/go-stack/stack v1.8.1
-	github.com/gobuffalo/genny v0.1.1 // indirect
-	github.com/gobuffalo/gogen v0.1.1 // indirect
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
@@ -28,7 +25,6 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v1.0.0
 	github.com/karalabe/xgo v0.0.0-20191115072854-c5ccff8648a7 // indirect
-	github.com/karrick/godirwalk v1.10.3 // indirect
 	github.com/mattn/go-colorable v0.1.12
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/naoina/go-stringutil v0.1.0 // indirect
@@ -37,17 +33,14 @@ require (
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/pborman/uuid v1.2.0
-	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/peterh/liner v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d
 	github.com/rs/cors v1.7.0
-	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/urfave/cli v1.22.1
 	go.mongodb.org/mongo-driver v1.8.2
 	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
@@ -62,4 +55,5 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
