@@ -435,12 +435,13 @@ func (fn *Fairnode) processManageLoop() {
 							//}
 							// voter count is zero, remove fairnode current Block
 							// 투표수가 0일때, 현재 블록 정보가 생성될 블록 번호와 같으면 삭제
-							curBlock := fn.db.CurrentBlock()
-							if curBlock.Number().Cmp(l.Current) == 0 {
-								hash := curBlock.Hash()
-								fn.db.DeletedBlockChangeState(hash)
-								logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
-							}
+							// 2022.03.26 Woody 정상적인 경우에도, 삭제되는 경우가 발생하여 처리 막음
+							//curBlock := fn.db.CurrentBlock()
+							//if curBlock.Number().Cmp(l.Current) == 0 {
+							//	hash := curBlock.Hash()
+							//	fn.db.DeletedBlockChangeState(hash)
+							//	logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
+							//}
 						}
 						l.Status = types.REJECT
 					} else {
