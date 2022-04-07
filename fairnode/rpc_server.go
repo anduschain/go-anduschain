@@ -229,6 +229,7 @@ func (rs *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn)
 	}
 }
 
+// 리그를 구축하기 위하여 리그 노드간 연결을 위하여, 연결해야 할 대상 노드들을 전송
 func (rs *rpcServer) RequestLeague(ctx context.Context, nodeInfo *proto.ReqLeague) (*proto.ResLeague, error) {
 	if nodeInfo.GetEnode() == "" {
 		return nil, errorEmpty("enode")
