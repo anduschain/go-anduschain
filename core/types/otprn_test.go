@@ -17,7 +17,6 @@ var (
 	chainConfig = ChainConfig{
 		BlockNumber: big.NewInt(1).Uint64(),
 		FnFee:       big.NewFloat(1.0).String(),
-		JoinTxPrice: big.NewInt(6).String(),
 		Mminer:      100,
 		Epoch:       100,
 	}
