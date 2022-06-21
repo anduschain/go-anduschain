@@ -22,6 +22,7 @@ require (
 	github.com/huin/goupnp v1.0.0
 	github.com/influxdata/influxdb v1.7.8
 	github.com/jackpal/go-nat-pmp v1.0.1
+	github.com/jedisct1/go-minisign v0.0.0-20211028175153-1c139d1cc84b // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v1.0.0
 	github.com/karalabe/xgo v0.0.0-20191115072854-c5ccff8648a7 // indirect
@@ -43,8 +44,8 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli v1.22.1
 	go.mongodb.org/mongo-driver v1.8.2
-	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
 	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f
