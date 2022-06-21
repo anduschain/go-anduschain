@@ -962,5 +962,23 @@ func newFrontierInstructionSet() [256]operation {
 			valid:         true,
 			writes:        true,
 		},
+		CHAINID: {
+			execute:       opChainID,
+			gasCost:       gasChainID,
+			validateStack: makeStackFunc(0, 1),
+			valid:         true,
+		},
+		SELFBALANCE: {
+			execute:       opSelfBalance,
+			gasCost:       gasSelfBalance,
+			validateStack: makeStackFunc(0, 1),
+			valid:         true,
+		},
+		BASEFEE: {
+			execute:       opBaseFee,
+			gasCost:       gasBaseFee,
+			validateStack: makeStackFunc(0, 1),
+			valid:         true,
+		},
 	}
 }

@@ -475,3 +475,16 @@ func gasSwap(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem
 func gasDup(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	return GasFastestStep, nil
 }
+
+func gasChainID(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	return GasQuickStep, nil
+}
+
+func gasSelfBalance(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	return GasFastestStep, nil
+}
+
+// BASEFEE is not supported
+func gasBaseFee(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	return 0, nil
+}

@@ -928,3 +928,25 @@ func makeSwap(size int64) executionFunc {
 		return nil, nil
 	}
 }
+
+// opChainID implements CHAINID opcode
+func opChainID(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
+	chainId := interpreter.evm.chainConfig.ChainID
+	stack.push(chainId)
+	return nil, nil
+}
+
+// opSelfBalance implements SELFBALANCE opcode
+func opSelfBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
+	balance := interpreter.evm.StateDB.GetBalance(contract.Address())
+	stack.push(balance)
+	return nil, nil
+}
+
+// opBaseFee implements BASEFEE opcode
+// baseFee is not supported
+func opBaseFee(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
+	baseFee := big.NewInt(0)
+	stack.push(baseFee)
+	return nil, nil
+}
