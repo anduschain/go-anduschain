@@ -95,12 +95,16 @@ const (
 
 // 0x40 range - block operations.
 const (
-	BLOCKHASH OpCode = 0x40 + iota
-	COINBASE
-	TIMESTAMP
-	NUMBER
-	DIFFICULTY
-	GASLIMIT
+	BLOCKHASH   OpCode = 0x40
+	COINBASE    OpCode = 0x41
+	TIMESTAMP   OpCode = 0x42
+	NUMBER      OpCode = 0x43
+	DIFFICULTY  OpCode = 0x44
+	RANDOM      OpCode = 0x44 // Same as DIFFICULTY
+	GASLIMIT    OpCode = 0x45
+	CHAINID     OpCode = 0x46
+	SELFBALANCE OpCode = 0x47
+	BASEFEE     OpCode = 0x48
 )
 
 // 0x50 range - 'storage' and execution.
@@ -213,8 +217,9 @@ const (
 	CREATE2
 	STATICCALL = 0xfa
 
-	REVERT       = 0xfd
-	SELFDESTRUCT = 0xff
+	REVERT              = 0xfd
+	INVALID      OpCode = 0xfe
+	SELFDESTRUCT        = 0xff
 )
 
 // Since the opcodes aren't all in order we can't use a regular slice.
@@ -271,12 +276,15 @@ var opCodeToString = map[OpCode]string{
 	EXTCODEHASH:    "EXTCODEHASH",
 
 	// 0x40 range - block operations.
-	BLOCKHASH:  "BLOCKHASH",
-	COINBASE:   "COINBASE",
-	TIMESTAMP:  "TIMESTAMP",
-	NUMBER:     "NUMBER",
-	DIFFICULTY: "DIFFICULTY",
-	GASLIMIT:   "GASLIMIT",
+	BLOCKHASH:   "BLOCKHASH",
+	COINBASE:    "COINBASE",
+	TIMESTAMP:   "TIMESTAMP",
+	NUMBER:      "NUMBER",
+	DIFFICULTY:  "DIFFICULTY",
+	GASLIMIT:    "GASLIMIT",
+	CHAINID:     "CHAINID",
+	SELFBALANCE: "SELFBALANCE",
+	BASEFEE:     "BASEFEE",
 
 	// 0x50 range - 'storage' and execution.
 	POP: "POP",
@@ -376,6 +384,7 @@ var opCodeToString = map[OpCode]string{
 	CREATE2:      "CREATE2",
 	STATICCALL:   "STATICCALL",
 	REVERT:       "REVERT",
+	INVALID:      "INVALID",
 	SELFDESTRUCT: "SELFDESTRUCT",
 
 	PUSH: "PUSH",
@@ -428,6 +437,8 @@ var stringToOp = map[string]OpCode{
 	"CALLDATALOAD":   CALLDATALOAD,
 	"CALLDATASIZE":   CALLDATASIZE,
 	"CALLDATACOPY":   CALLDATACOPY,
+	"CHAINID":        CHAINID,
+	"BASEFEE":        BASEFEE,
 	"DELEGATECALL":   DELEGATECALL,
 	"STATICCALL":     STATICCALL,
 	"CODESIZE":       CODESIZE,
@@ -444,6 +455,7 @@ var stringToOp = map[string]OpCode{
 	"NUMBER":         NUMBER,
 	"DIFFICULTY":     DIFFICULTY,
 	"GASLIMIT":       GASLIMIT,
+	"SELFBALANCE":    SELFBALANCE,
 	"POP":            POP,
 	"MLOAD":          MLOAD,
 	"MSTORE":         MSTORE,
@@ -531,6 +543,7 @@ var stringToOp = map[string]OpCode{
 	"RETURN":         RETURN,
 	"CALLCODE":       CALLCODE,
 	"REVERT":         REVERT,
+	"INVALID":        INVALID,
 	"SELFDESTRUCT":   SELFDESTRUCT,
 }
 
