@@ -18,7 +18,6 @@ package types
 
 import (
 	"bytes"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/trie"
@@ -38,4 +37,8 @@ func DeriveSha(list DerivableList) common.Hash {
 		trie.Update(keybuf.Bytes(), list.GetRlp(i))
 	}
 	return trie.Hash()
+}
+
+func RlpHash(x interface{}) (h common.Hash) {
+	return rlpHash(x)
 }

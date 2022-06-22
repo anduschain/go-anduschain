@@ -417,6 +417,18 @@ func (b *Block) Hash() common.Hash {
 	return v
 }
 
+func (b *Block) SetFairnodeSign(fairnodeSing []byte) {
+	b.header.FairnodeSign = fairnodeSing
+}
+
+func (b *Block) SetOtprn(otprn []byte) {
+	b.header.Otprn = otprn
+}
+
+func (b *Block) SetDifficulty(difficulty *big.Int) {
+	b.header.Difficulty = difficulty
+}
+
 type Blocks []*Block
 
 type BlockBy func(b1, b2 *Block) bool

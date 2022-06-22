@@ -5,6 +5,7 @@ package deb
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/common/math"
@@ -69,6 +70,14 @@ type Deb struct {
 	otprn    *types.Otprn
 }
 
+func (c *Deb) Otprn() *types.Otprn {
+	return c.otprn
+}
+
+func (c *Deb) IsDeb() bool {
+	return true
+}
+
 var (
 	logger = log.New("consensus", "Deb")
 )
@@ -83,20 +92,20 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 	return deb
 }
 
-func NewFaker() *Deb {
-	return &Deb{}
+func NewFaker(otprn *types.Otprn) *Deb {
+	return &Deb{otprn: otprn}
 }
 
-func NewFakeFailer(fail uint64) *Deb {
-	return &Deb{}
+func NewFakeFailer(otprn *types.Otprn, fail uint64) *Deb {
+	return &Deb{otprn: otprn}
 }
 
-func NewFakeDelayer(delay time.Duration) *Deb {
-	return &Deb{}
+func NewFakeDelayer(otprn *types.Otprn, delay time.Duration) *Deb {
+	return &Deb{otprn: otprn}
 }
 
-func NewFullFaker() *Deb {
-	return &Deb{}
+func NewFullFaker(otprn *types.Otprn) *Deb {
+	return &Deb{otprn: otprn}
 }
 
 func (c *Deb) SetCoinbase(coinbase common.Address) {
@@ -148,6 +157,20 @@ func (c *Deb) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header
 // looking those up from the database. This is useful for concurrently verifying
 // a batch of new headers.
 func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header, seal bool) error {
+	// Ensure that the header's extra-data section is of a reasonable size
+	if uint64(len(header.Extra)) > params.MaximumExtraDataSize {
+		return fmt.Errorf("extra-data too long: %d > %d", len(header.Extra), params.MaximumExtraDataSize)
+	}
+
+	// Verify that the gas limit is <= 2^63-1
+	if header.GasLimit > params.MaxGasLimit {
+		return fmt.Errorf("invalid gasLimit: have %v, max %v", header.GasLimit, params.MaxGasLimit)
+	}
+	// Verify that the gasUsed is <= gasLimit
+	if header.GasUsed > header.GasLimit {
+		return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
+	}
+
 	if header.Number == nil {
 		return errUnknownBlock
 	}
@@ -169,6 +192,7 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	// otprn check
 	otprn, err := types.DecodeOtprn(header.Otprn)
 	if err != nil {
+		fmt.Println("CSW222", err)
 		return err
 	}
 
@@ -176,8 +200,8 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 		return err
 	}
 
-	if number > 0 {
-		diff := CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
+	if number > 0 && otprn.FnAddr != params.TestFairnodeAddr {
+		diff := calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
 			return errInvalidDifficulty
 		}
@@ -324,6 +348,7 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 func (c *Deb) VerifyFairnodeSign(header *types.Header) error {
 	otp, err := types.DecodeOtprn(header.Otprn)
 	if err != nil {
+		fmt.Println("CSW///", err)
 		return err
 	}
 
@@ -371,7 +396,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Otprn = bOtprn
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
 	header.Time = big.NewInt(time.Now().Unix())
-	header.Difficulty = CalcDifficulty(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
+	header.Difficulty = calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	return nil
 }
 
@@ -401,12 +426,20 @@ func calRewardAndFnFee(jCnt, unit float64, jtxFee, fnFeeRate *big.Float) (*big.I
 
 // 채굴자 보상 : JOINTX 갯수만큼 100% 지금 > TODO : optrn에 부여된 수익율 만큼 지급함
 func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, header *types.Header) error {
+	hexOtprn, _ := hex.DecodeString(params.TestOtprn)
+	pOtprn, _ := types.DecodeOtprn(hexOtprn)
+
+	// for Test
+	if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 {
+		state.AddBalance(header.Coinbase, big.NewInt(2e18))
+		return nil
+	}
+
 	if len(txs) == 0 {
 		return nil
 	}
 
 	var jCnt float64 // count of join transaction
-
 	otprn, err := types.DecodeOtprn(header.Otprn)
 	if err != nil {
 		return err
@@ -473,12 +506,17 @@ func (c *Deb) Seal(chain consensus.ChainReader, block *types.Block, results chan
 func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	cHeader := chain.CurrentHeader()
 	if cHeader.Number.Uint64() > 0 {
-		return CalcDifficulty(cHeader.Nonce.Uint64(), cHeader.Otprn, cHeader.Coinbase, parent.Hash())
+		return calcDifficultyDeb(cHeader.Nonce.Uint64(), cHeader.Otprn, cHeader.Coinbase, parent.Hash())
 	}
 	return big.NewInt(0)
 }
 
-func CalcDifficulty(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
+func (c *Deb) CalcDifficultyDeb(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
+
+	return calcDifficultyDeb(joinNonce, otprn, coinbase, parentHash)
+}
+
+func calcDifficultyDeb(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
 	return big.NewInt(MakeRand(joinNonce, common.BytesToHash(otprn), coinbase, parentHash) + 1)
 }
 

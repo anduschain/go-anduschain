@@ -18,6 +18,7 @@ package miner
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -576,6 +577,7 @@ func (w *worker) mainLoop() {
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
+			fmt.Println("CSW chainSideCh")
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {
 				continue
 			}
@@ -911,6 +913,7 @@ func (w *worker) resultLoop() {
 				events = append(events, types.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
+				fmt.Println("CSW....Side")
 				//events = append(events, types.ChainSideEvent{Block: block})
 			}
 

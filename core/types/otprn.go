@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/pkg/errors"
 	log "gopkg.in/inconshreveable/log15.v2"
+	"strconv"
 )
 
 // cMiner : currnet active user count
@@ -36,6 +38,17 @@ func NewOtprn(cMiner uint64, fnAddr common.Address, data ChainConfig) *Otprn {
 		FnAddr: fnAddr,
 		Data:   data,
 	}
+}
+
+func NewDefaultOtprn() *Otprn {
+	otprn := NewOtprn(0, crypto.PubkeyToAddress(params.TestFairnodeKey.PublicKey), ChainConfig{
+		Price: Price{GasPrice: params.DefaultGasFee, JoinTxPrice: "0", GasLimit: params.MaxGasLimit},
+		FnFee: strconv.FormatInt(params.DefaultFairnodeFee, 10),
+	})
+	otprn.FnAddr = crypto.PubkeyToAddress(params.TestFairnodeKey.PublicKey)
+	otprn.SignOtprn(params.TestFairnodeKey)
+
+	return otprn
 }
 
 func (otprn *Otprn) RandToByte() []byte {

@@ -48,12 +48,12 @@ func ExampleGenerateChain() {
 	}
 
 	genesis := gspec.MustCommit(db)
-
+	otprn := types.NewDefaultOtprn()
 	// This call generates a chain of 5 blocks. The function runs for
 	// each block and adds different features to gen based on the
 	// block index.
 	signer := types.NewEIP155Signer(gspec.Config.ChainID)
-	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, 5, func(i int, gen *BlockGen) {
+	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
 			gen.SetCoinbase(addr2)
@@ -91,7 +91,7 @@ func ExampleGenerateChain() {
 	})
 
 	// Import the chain. This runs all block validation rules.
-	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
+	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(otprn), vm.Config{})
 	defer blockchain.Stop()
 
 	if i, err := blockchain.InsertChain(chain); err != nil {

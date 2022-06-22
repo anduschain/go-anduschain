@@ -97,12 +97,17 @@ type Engine interface {
 	// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 	// that a new block should have.
 	CalcDifficulty(chain ChainReader, time uint64, parent *types.Header) *big.Int
+	CalcDifficultyDeb(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int
 
 	// APIs returns the RPC APIs this consensus engine provides.
 	APIs(chain ChainReader) []rpc.API
 
 	// Close terminates any background threads maintained by the consensus engine.
 	Close() error
+
+	SetOtprn(otprn *types.Otprn)
+	Otprn() *types.Otprn
+	IsDeb() bool
 }
 
 // PoW is a consensus engine based on proof-of-work.

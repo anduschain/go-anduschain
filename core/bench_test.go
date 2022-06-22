@@ -154,11 +154,12 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 		Alloc:  GenesisAlloc{benchRootAddr: {Balance: benchRootFunds}},
 	}
 	genesis := gspec.MustCommit(db)
-	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, b.N, gen)
+	otprn := types.NewDefaultOtprn()
+	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.
-	chainman, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(), vm.Config{})
+	chainman, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(otprn), vm.Config{})
 	defer chainman.Stop()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -168,22 +169,22 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 }
 
 func BenchmarkChainRead_header_10k(b *testing.B) {
-	benchReadChain(b, false, 10000)
+	benchReadChain(b, false, 10000, types.NewDefaultOtprn())
 }
 func BenchmarkChainRead_full_10k(b *testing.B) {
-	benchReadChain(b, true, 10000)
+	benchReadChain(b, true, 10000, types.NewDefaultOtprn())
 }
 func BenchmarkChainRead_header_100k(b *testing.B) {
-	benchReadChain(b, false, 100000)
+	benchReadChain(b, false, 100000, types.NewDefaultOtprn())
 }
 func BenchmarkChainRead_full_100k(b *testing.B) {
-	benchReadChain(b, true, 100000)
+	benchReadChain(b, true, 100000, types.NewDefaultOtprn())
 }
 func BenchmarkChainRead_header_500k(b *testing.B) {
-	benchReadChain(b, false, 500000)
+	benchReadChain(b, false, 500000, types.NewDefaultOtprn())
 }
 func BenchmarkChainRead_full_500k(b *testing.B) {
-	benchReadChain(b, true, 500000)
+	benchReadChain(b, true, 500000, types.NewDefaultOtprn())
 }
 func BenchmarkChainWrite_header_10k(b *testing.B) {
 	benchWriteChain(b, false, 10000)
@@ -248,7 +249,7 @@ func benchWriteChain(b *testing.B, full bool, count uint64) {
 	}
 }
 
-func benchReadChain(b *testing.B, full bool, count uint64) {
+func benchReadChain(b *testing.B, full bool, count uint64, otprn *types.Otprn) {
 	dir, err := ioutil.TempDir("", "eth-chain-bench")
 	if err != nil {
 		b.Fatalf("cannot create temporary directory: %v", err)
@@ -270,7 +271,7 @@ func benchReadChain(b *testing.B, full bool, count uint64) {
 		if err != nil {
 			b.Fatalf("error opening database at %v: %v", dir, err)
 		}
-		chain, err := NewBlockChain(db, nil, params.TestChainConfig, deb.NewFaker(), vm.Config{})
+		chain, err := NewBlockChain(db, nil, params.TestChainConfig, deb.NewFaker(otprn), vm.Config{})
 		if err != nil {
 			b.Fatalf("error creating chain: %v", err)
 		}

@@ -866,5 +866,4 @@ func TestBindings(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to run binding test: %v\n%s", err, out)
 	}
-	fmt.Println("CSW================")
 }

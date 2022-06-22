@@ -127,10 +127,13 @@ func CalcGasLimit(chain consensus.ChainReader) uint64 {
 	//	return otprn.Data.Price.GasLimit
 	//}
 	current := chain.CurrentHeader()
-	header := chain.GetHeaderByNumber(current.Number.Uint64())
-	otprn, err := types.DecodeOtprn(header.Otprn)
-	if err != nil {
-		return limit
+	if current != nil && current.Number != nil {
+		header := chain.GetHeaderByNumber(current.Number.Uint64())
+		otprn, err := types.DecodeOtprn(header.Otprn)
+		if err != nil {
+			return limit
+		}
+		return otprn.Data.Price.GasLimit
 	}
-	return otprn.Data.Price.GasLimit
+	return limit
 }

@@ -17,7 +17,9 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -205,6 +207,23 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			}
 			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
 				panic(fmt.Sprintf("trie write error: %v", err))
+			}
+			if b.engine.IsDeb() {
+				// 테스트용, 자체 OTPRN 생성
+				var otp []byte
+				otp, _ = b.engine.Otprn().EncodeOtprn()
+				block.SetOtprn(otp)
+				if bytes.Compare(b.engine.Otprn().FnAddr.Bytes(), params.TestFairnodeAddr.Bytes()) != 0 {
+					block.SetDifficulty(engine.CalcDifficultyDeb(block.Nonce(), block.Otprn(), block.Coinbase(), block.ParentHash()))
+				}
+
+				hash := types.RlpHash([]interface{}{
+					block.Header().Hash(),
+					block.Header().VoteHash,
+				})
+
+				fairnodeSign, _ := crypto.Sign(hash.Bytes(), params.TestFairnodeKey)
+				block.SetFairnodeSign(fairnodeSign)
 			}
 			return block, b.receipts, b.voters
 		}

@@ -18,6 +18,7 @@ package core
 
 import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/core/types"
 	"math/big"
 	"reflect"
 	"testing"
@@ -29,6 +30,8 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/davecgh/go-spew/spew"
 )
+
+var otprn = types.NewDefaultOtprn()
 
 func TestDefaultGenesisBlock(t *testing.T) {
 	block := DefaultGenesisBlock().ToBlock(nil)
@@ -120,10 +123,10 @@ func TestSetupGenesis(t *testing.T) {
 				// Advance to block #4, past the homestead transition block of customg.
 				genesis := oldcustomg.MustCommit(db)
 
-				bc, _ := NewBlockChain(db, nil, oldcustomg.Config, deb.NewFullFaker(), vm.Config{})
+				bc, _ := NewBlockChain(db, nil, oldcustomg.Config, deb.NewFullFaker(otprn), vm.Config{})
 				defer bc.Stop()
 
-				blocks, _ := GenerateChain(oldcustomg.Config, genesis, deb.NewFaker(), db, 4, nil)
+				blocks, _ := GenerateChain(oldcustomg.Config, genesis, deb.NewFaker(otprn), db, 4, nil)
 				bc.InsertChain(blocks)
 				bc.CurrentBlock()
 				// This should return a compatibility error.
