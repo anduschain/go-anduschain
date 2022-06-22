@@ -17,7 +17,10 @@
 package miner
 
 import (
+	"github.com/anduschain/go-anduschain/accounts"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/p2p"
 	"math/big"
 	"testing"
 	"time"
@@ -76,6 +79,21 @@ type testWorkerBackend struct {
 	chain      *core.BlockChain
 	testTxFeed event.Feed
 	uncleBlock *types.Block
+}
+
+func (b *testWorkerBackend) AccountManager() *accounts.Manager {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *testWorkerBackend) Server() *p2p.Server {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *testWorkerBackend) Coinbase() common.Address {
+	//TODO implement me
+	panic("implement me")
 }
 
 func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, n int) *testWorkerBackend {
@@ -137,7 +155,7 @@ func newTestWorker(t *testing.T, chainConfig *params.ChainConfig, engine consens
 }
 
 func TestPendingStateAndBlockDeb(t *testing.T) {
-	testPendingStateAndBlock(t, debChainConfig, deb.NewFaker())
+	testPendingStateAndBlock(t, debChainConfig, deb.NewFaker(types.NewDefaultOtprn()))
 }
 
 func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {
@@ -165,7 +183,7 @@ func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, eng
 }
 
 func TestEmptyWorkDeb(t *testing.T) {
-	testEmptyWork(t, debChainConfig, deb.NewFaker())
+	testEmptyWork(t, debChainConfig, deb.NewFaker(types.NewDefaultOtprn()))
 }
 
 func testEmptyWork(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {
@@ -222,7 +240,7 @@ func testEmptyWork(t *testing.T, chainConfig *params.ChainConfig, engine consens
 }
 
 func TestRegenerateMiningBlockDeb(t *testing.T) {
-	testRegenerateMiningBlock(t, debChainConfig, deb.NewFaker())
+	testRegenerateMiningBlock(t, debChainConfig, deb.NewFaker(types.NewDefaultOtprn()))
 }
 
 func testRegenerateMiningBlock(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {
@@ -283,7 +301,7 @@ func testRegenerateMiningBlock(t *testing.T, chainConfig *params.ChainConfig, en
 }
 
 func TestAdjustIntervalDeb(t *testing.T) {
-	testAdjustInterval(t, debChainConfig, deb.NewFaker())
+	testAdjustInterval(t, debChainConfig, deb.NewFaker(types.NewDefaultOtprn()))
 }
 
 func testAdjustInterval(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {
