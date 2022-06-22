@@ -637,9 +637,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-		//if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
-		//	return ErrUnderpriced
-		//}
+		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+			return ErrUnderpriced
+		}
 		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
