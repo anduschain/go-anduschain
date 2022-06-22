@@ -71,7 +71,7 @@ func TestWaitDeployed(t *testing.T) {
 			ctx     = context.Background()
 		)
 		go func() {
-			address, err = bind.WaitDeployed(ctx, backend, tx)
+			address, err = bind.WaitDeployed(ctx, backend, *tx)
 			close(mined)
 		}()
 
