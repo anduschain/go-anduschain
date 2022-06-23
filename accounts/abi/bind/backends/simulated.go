@@ -32,9 +32,12 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/eth/filters"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
+	"github.com/anduschain/go-anduschain/miner"
+	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
@@ -63,9 +66,9 @@ type SimulatedMiner struct {
 // SimulatedBackend implements bind.ContractBackend, simulating a blockchain in
 // the background. Its main purpose is to allow easily testing contract bindings.
 type SimulatedBackend struct {
-	database   ethdb.Database   // In memory database to store our testing data
-	blockchain *core.BlockChain // Ethereum blockchain to handle the consensus
-
+	database     ethdb.Database   // In memory database to store our testing data
+	blockchain   *core.BlockChain // Ethereum blockchain to handle the consensus
+	txPool       *core.TxPool
 	mu           sync.Mutex
 	pendingBlock *types.Block   // Currently pending block that will be imported on request
 	pendingState *state.StateDB // Currently pending state that will be the active on on request
@@ -79,23 +82,68 @@ type SimulatedBackend struct {
 	miner          *SimulatedMiner
 }
 
+func (b *SimulatedBackend) BlockChain() *core.BlockChain {
+	return b.blockchain
+}
+
+func (b *SimulatedBackend) TxPool() *core.TxPool {
+	return b.txPool
+}
+
+func (b *SimulatedBackend) AccountManager() *accounts.Manager {
+	return b.accountManager
+}
+
+func (b *SimulatedBackend) Server() *p2p.Server {
+	return b.p2pServer
+}
+
+func (b *SimulatedBackend) Coinbase() common.Address {
+	return b.miner.Miner.Address
+}
+
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
-func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
+func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) (*miner.Miner, *SimulatedBackend) {
+	testMiner, _ := crypto.GenerateKey()
+	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
 	database := ethdb.NewMemDatabase()
 	genesis := core.Genesis{Config: params.AllDebProtocolChanges, GasLimit: gasLimit, Alloc: alloc}
 	genesis.MustCommit(database)
 	otprn := types.NewDefaultOtprn()
 	blockchain, _ := core.NewBlockChain(database, nil, genesis.Config, deb.NewFaker(otprn), vm.Config{})
 
+	stack, _ := node.New(&node.Config{})
+	stack.Start()
+
 	backend := &SimulatedBackend{
-		database:   database,
-		blockchain: blockchain,
-		config:     genesis.Config,
-		events:     filters.NewEventSystem(new(event.TypeMux), &filterBackend{database, blockchain}, false),
+		database:       database,
+		blockchain:     blockchain,
+		config:         genesis.Config,
+		accountManager: stack.AccountManager(),
+		txPool:         core.NewTxPool(core.TxPoolConfig{}, params.DebChainConfig, blockchain),
+		events:         filters.NewEventSystem(new(event.TypeMux), &filterBackend{database, blockchain}, false),
+		p2pServer:      stack.Server(),
+		miner: &SimulatedMiner{
+			Node: proto.HeartBeat{
+				Enode:        stack.Server().NodeInfo().ID,
+				NodeVersion:  params.Version,
+				ChainID:      blockchain.Config().ChainID.String(),
+				MinerAddress: testMinerAddress.Hex(),
+				Port:         int64(stack.Server().NodeInfo().Ports.Listener),
+				Ip:           "127.0.0.1",
+			},
+			Miner: accounts.Account{
+				Address: testMinerAddress,
+			},
+		},
 	}
 	backend.rollback()
-	return backend
+
+	mine := miner.New(backend, params.DebChainConfig, new(event.TypeMux), deb.NewFaker(types.NewDefaultOtprn()), time.Second, params.GenesisGasLimit, params.GenesisGasLimit)
+	mine.Start(testMinerAddress)
+
+	return mine, backend
 }
 
 // Commit imports all the pending transactions as a single block and starts a
@@ -323,7 +371,6 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	if tx.Nonce() != nonce {
 		panic(fmt.Errorf("invalid transaction nonce: got %d, want %d", tx.Nonce(), nonce))
 	}
-
 	blocks, _ := core.GenerateChain(b.config, b.blockchain.CurrentBlock(), deb.NewFaker(b.blockchain.Engine().Otprn()), b.database, 1, func(number int, block *core.BlockGen) {
 		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTxWithChain(b.blockchain, tx)

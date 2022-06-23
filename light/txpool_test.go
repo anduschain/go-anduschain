@@ -87,9 +87,10 @@ func TestTxPool(t *testing.T) {
 		genesis = gspec.MustCommit(sdb)
 	)
 	gspec.MustCommit(ldb)
+	otprn := types.NewDefaultOtprn()
 	// Assemble the test environment
-	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, deb.NewFullFaker(), vm.Config{})
-	gchain, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), sdb, poolTestBlocks, txPoolTestChainGen)
+	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, deb.NewFullFaker(otprn), vm.Config{})
+	gchain, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(otprn), sdb, poolTestBlocks, txPoolTestChainGen)
 	if _, err := blockchain.InsertChain(gchain); err != nil {
 		panic(err)
 	}
@@ -100,7 +101,7 @@ func TestTxPool(t *testing.T) {
 		discard: make(chan int, 1),
 		mined:   make(chan int, 1),
 	}
-	lightchain, _ := NewLightChain(odr, params.TestChainConfig, deb.NewFullFaker())
+	lightchain, _ := NewLightChain(odr, params.TestChainConfig, deb.NewFullFaker(otprn))
 	txPermanent = 50
 	pool := NewTxPool(params.TestChainConfig, lightchain, relay)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
