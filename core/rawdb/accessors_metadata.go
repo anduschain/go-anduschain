@@ -18,7 +18,6 @@ package rawdb
 
 import (
 	"encoding/json"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"

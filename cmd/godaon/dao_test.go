@@ -90,12 +90,6 @@ func TestDAOForkBlockNewChain(t *testing.T) {
 	}{
 		// Test DAO Default Mainnet
 		{"", params.MainnetChainConfig.DAOForkBlock, true},
-		// test DAO Init Old Privnet
-		{daoOldGenesis, nil, false},
-		// test DAO Default No Fork Privnet
-		{daoNoForkGenesis, daoGenesisForkBlock, false},
-		// test DAO Default Pro Fork Privnet
-		{daoProForkGenesis, daoGenesisForkBlock, true},
 	} {
 		testDAOForkBlockNewChain(t, i, arg.genesis, arg.expectBlock, arg.expectVote)
 	}
@@ -120,14 +114,15 @@ func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBloc
 		geth.WaitExit()
 	}
 	// Retrieve the DAO config flag from the database
-	path := filepath.Join(datadir, "geth", "chaindata")
+	path := filepath.Join(datadir, "godaon", "chaindata")
+
 	db, err := ethdb.NewLDBDatabase(path, 0, 0)
 	if err != nil {
 		t.Fatalf("test %d: failed to open test database: %v", test, err)
 	}
 	defer db.Close()
 
-	genesisHash := common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+	genesisHash := params.MainnetGenesisHash
 	if genesis != "" {
 		genesisHash = daoGenesisHash
 	}

@@ -23,9 +23,11 @@ import (
 
 const (
 	testSource = `
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.7;
 contract test {
    /// @notice Will multiply ` + "`a`" + ` by 7.
-   function multiply(uint a) returns(uint d) {
+   function multiply(uint a) public pure returns(uint d) {
        return a * 7;
    }
 }

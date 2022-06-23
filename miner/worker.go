@@ -18,7 +18,6 @@ package miner
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
@@ -918,7 +917,6 @@ func (w *worker) resultLoop() {
 				events = append(events, types.ChainHeadEvent{Block: block})
 			case core.SideStatTy:
 				SideStatTy = true
-				fmt.Println("CSW....Side")
 				//events = append(events, types.ChainSideEvent{Block: block})
 			}
 

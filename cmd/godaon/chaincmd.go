@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb/export"
+	"github.com/anduschain/go-anduschain/params"
 	"os"
 	"runtime"
 	"strconv"
@@ -230,6 +231,9 @@ func initGenesis(ctx *cli.Context) error {
 	genesis := new(core.Genesis)
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
 		utils.Fatalf("invalid genesis file: %v", err)
+	}
+	if genesis.Config == nil {
+		genesis.Config = params.AllDebProtocolChanges
 	}
 	// Open an initialise both full and light databases
 	stack := makeFullNode(ctx)
