@@ -575,9 +575,7 @@ func (w *worker) mainLoop() {
 		select {
 		case req := <-w.newWorkCh:
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
-
 		case ev := <-w.chainSideCh:
-			fmt.Println("CSW chainSideCh")
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {
 				continue
 			}
@@ -1179,16 +1177,28 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 		// Short circuit if there is no available pending transactions
-		if len(pending) == 0 || len(pendingJoinTx) == 0 {
-			w.updateSnapshot()
+		// otprn check
+		otprn, err := types.DecodeOtprn(header.Otprn)
+		if err != nil {
 			return
 		}
 
-		// miner's join transaction is empty
-		if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
-			log.Error("miner's join transaction is empty")
-			w.updateSnapshot()
-			return
+		if otprn.FnAddr == params.TestFairnodeAddr { // TEST
+			if len(pending) == 0 {
+				w.updateSnapshot()
+				return
+			}
+		} else {
+			if len(pending) == 0 || len(pendingJoinTx) == 0 {
+				w.updateSnapshot()
+				return
+			}
+			// miner's join transaction is empty
+			if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+				log.Error("miner's join transaction is empty")
+				w.updateSnapshot()
+				return
+			}
 		}
 
 		// Split the pending transactions into locals and remotes
@@ -1237,8 +1247,19 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	}
 
 	if engine, ok := w.engine.(*deb.Deb); ok {
-		if err := engine.ValidationLeagueBlock(w.chain, block); err != nil {
+		// otprn check
+		otprn, err := types.DecodeOtprn(block.Otprn())
+		if err != nil {
 			return err
+		}
+		if err := otprn.ValidateSignature(); err != nil {
+			return err
+		}
+
+		if otprn.FnAddr != params.TestFairnodeAddr { // TEST CHECK
+			if err := engine.ValidationLeagueBlock(w.chain, block); err != nil {
+				return err
+			}
 		}
 	}
 

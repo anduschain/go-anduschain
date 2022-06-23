@@ -20,7 +20,9 @@ import (
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/p2p"
+	proto "github.com/anduschain/go-anduschain/protos/common"
 	"math/big"
 	"testing"
 	"time"
@@ -72,28 +74,33 @@ func init() {
 	newTxs = append(newTxs, tx2)
 }
 
+type testMiner struct {
+	Node     proto.HeartBeat
+	Miner    accounts.Account
+	Accounts *accounts.Manager
+}
+
 // testWorkerBackend implements worker.Backend interfaces and wraps all information needed during the testing.
 type testWorkerBackend struct {
-	db         ethdb.Database
-	txPool     *core.TxPool
-	chain      *core.BlockChain
-	testTxFeed event.Feed
-	uncleBlock *types.Block
+	db             ethdb.Database
+	txPool         *core.TxPool
+	chain          *core.BlockChain
+	testTxFeed     event.Feed
+	p2pServer      *p2p.Server
+	accountManager *accounts.Manager
+	miner          *testMiner
 }
 
 func (b *testWorkerBackend) AccountManager() *accounts.Manager {
-	//TODO implement me
-	panic("implement me")
+	return b.accountManager
 }
 
 func (b *testWorkerBackend) Server() *p2p.Server {
-	//TODO implement me
-	panic("implement me")
+	return b.p2pServer
 }
 
 func (b *testWorkerBackend) Coinbase() common.Address {
-	//TODO implement me
-	panic("implement me")
+	return b.miner.Miner.Address
 }
 
 func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, n int) *testWorkerBackend {
@@ -112,6 +119,12 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	}
 	genesis := gspec.MustCommit(db)
 
+	stack, err := node.New(&node.Config{DataDir: "./data"})
+	if err != nil {
+		t.Errorf("deb make noode msg = %v", err)
+	}
+	stack.Start()
+
 	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
 	txpool := core.NewTxPool(testTxPoolConfig, chainConfig, chain)
 
@@ -124,19 +137,26 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 			t.Fatalf("failed to insert origin chain: %v", err)
 		}
 	}
-	parent := genesis
-	if n > 0 {
-		parent = chain.GetBlockByHash(chain.CurrentBlock().ParentHash())
-	}
-	blocks, _ := core.GenerateChain(chainConfig, parent, engine, db, 1, func(i int, gen *core.BlockGen) {
-		gen.SetCoinbase(testUserAddress)
-	})
 
 	return &testWorkerBackend{
-		db:         db,
-		chain:      chain,
-		txPool:     txpool,
-		uncleBlock: blocks[0],
+		db:             db,
+		chain:          chain,
+		txPool:         txpool,
+		p2pServer:      stack.Server(),
+		accountManager: stack.AccountManager(),
+		miner: &testMiner{
+			Node: proto.HeartBeat{
+				Enode:        stack.Server().NodeInfo().ID,
+				NodeVersion:  params.Version,
+				ChainID:      chain.Config().ChainID.String(),
+				MinerAddress: "0x5389b8fb1073e49a1fc10b79f99ece2bc5f8e67f",
+				Port:         int64(stack.Server().NodeInfo().Ports.Listener),
+				Ip:           "127.0.0.1",
+			},
+			Miner: accounts.Account{
+				Address: common.HexToAddress("5389b8fb1073e49a1fc10b79f99ece2bc5f8e67f"),
+			},
+		},
 	}
 }
 
@@ -149,8 +169,10 @@ func (b *testWorkerBackend) PostChainEvents(events []interface{}) {
 func newTestWorker(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, blocks int) (*worker, *testWorkerBackend) {
 	backend := newTestWorkerBackend(t, chainConfig, engine, blocks)
 	backend.txPool.AddLocals(pendingTxs)
+
 	w := newWorker(chainConfig, engine, backend, new(event.TypeMux), time.Second, params.GenesisGasLimit, params.GenesisGasLimit)
 	w.setEtherbase(testBankAddress)
+	w.start()
 	return w, backend
 }
 
@@ -163,7 +185,6 @@ func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, eng
 
 	w, b := newTestWorker(t, chainConfig, engine, 0)
 	defer w.close()
-
 	// Ensure snapshot has been updated.
 	time.Sleep(100 * time.Millisecond)
 	block, state := w.pending()

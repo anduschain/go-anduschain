@@ -192,7 +192,6 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	// otprn check
 	otprn, err := types.DecodeOtprn(header.Otprn)
 	if err != nil {
-		fmt.Println("CSW222", err)
 		return err
 	}
 
@@ -348,7 +347,6 @@ func (c *Deb) verifySeal(chain consensus.ChainReader, header *types.Header, pare
 func (c *Deb) VerifyFairnodeSign(header *types.Header) error {
 	otp, err := types.DecodeOtprn(header.Otprn)
 	if err != nil {
-		fmt.Println("CSW///", err)
 		return err
 	}
 

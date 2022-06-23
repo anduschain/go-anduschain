@@ -636,14 +636,15 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		}
 	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
-		local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
+		// account may be local even if the transaction arrived from the network
 		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
-		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
-			return ErrUnderpriced
-		}
-
+		/*
+			if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+				return ErrUnderpriced
+			}
+		*/
 		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
 		if err != nil {
 			return err
@@ -718,7 +719,6 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		go pool.txFeed.Send(types.NewTxsEvent{Txs: types.Transactions{tx}})
 		return old != nil, nil
 	}
-
 	// New transaction isn't replacing a pending one, push into queue
 	replace, err := pool.enqueueTx(hash, tx)
 	if err != nil {
@@ -732,7 +732,6 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 			pool.locals.add(from)
 		}
 	}
-
 	pool.journalTx(from, tx)
 	//log.Info("Pooled new future transaction", "hash", hash, "from", from, "to", tx.To())
 	return replace, nil
