@@ -29,7 +29,6 @@ import (
 // WaitMined waits for tx to be mined on the blockchain.
 // It stops waiting when the context is canceled.
 func WaitMined(ctx context.Context, b DeployBackend, tx types.Transaction) (*types.Receipt, error) {
-	fmt.Println("CSW AAA")
 	queryTicker := time.NewTicker(time.Second)
 	defer queryTicker.Stop()
 
@@ -37,17 +36,13 @@ func WaitMined(ctx context.Context, b DeployBackend, tx types.Transaction) (*typ
 	for {
 		receipt, err := b.TransactionReceipt(ctx, tx.Hash())
 		if receipt != nil {
-			fmt.Println("CSW receipt", receipt)
 			return receipt, nil
 		}
 		if err != nil {
-			fmt.Println("CSW Receipt retrieval failed", "err", err)
 			logger.Trace("Receipt retrieval failed", "err", err)
 		} else {
-			fmt.Println("CSW Transaction not yet mined")
 			logger.Trace("Transaction not yet mined")
 		}
-		fmt.Println("CSW BBB")
 		// Wait for the next round.
 		select {
 		case <-ctx.Done():

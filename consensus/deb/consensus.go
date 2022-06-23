@@ -395,6 +395,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
 	header.Time = big.NewInt(time.Now().Unix())
 	header.Difficulty = calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
+
 	return nil
 }
 
