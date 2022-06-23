@@ -987,6 +987,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		}
 		// Drop all transactions that are deemed too old (low nonce)
 		for _, tx := range list.Forward(pool.currentState.GetNonce(addr)) {
+			fmt.Println("CSW tx", tx.Hash().String(), tx.Value())
 			hash := tx.Hash()
 			log.Trace("Removed old queued transaction", "hash", hash)
 			pool.all.Remove(hash)
@@ -995,6 +996,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		// Drop all transactions that are too costly (low balance or out of gas)
 		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
 		for _, tx := range drops {
+			fmt.Println("CSW drops", tx.Hash().String(), tx.Value())
 			hash := tx.Hash()
 			log.Trace("Removed unpayable queued transaction", "hash", hash)
 			pool.all.Remove(hash)
@@ -1012,6 +1014,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		// Drop all transactions over the allowed limit
 		if !pool.locals.contains(addr) {
 			for _, tx := range list.Cap(int(pool.config.AccountQueue)) {
+				fmt.Println("CSW Drop", tx.Hash().String(), tx.Value())
 				hash := tx.Hash()
 				pool.all.Remove(hash)
 				pool.priced.Removed()

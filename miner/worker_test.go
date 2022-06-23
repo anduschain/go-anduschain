@@ -56,6 +56,8 @@ var (
 	// Test transactions
 	pendingTxs []*types.Transaction
 	newTxs     []*types.Transaction
+
+	stack *node.Node
 )
 
 func init() {
@@ -72,6 +74,9 @@ func init() {
 	pendingTxs = append(pendingTxs, tx1)
 	tx2, _ := types.SignTx(types.NewTransaction(1, testUserAddress, big.NewInt(1000), params.TxGas, nil, nil), types.HomesteadSigner{}, testBankKey)
 	newTxs = append(newTxs, tx2)
+
+	stack, _ = node.New(&node.Config{DataDir: "./data"})
+	stack.Start()
 }
 
 type testMiner struct {
@@ -118,12 +123,6 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 		t.Fatalf("unexpected consensus engine type: %T", engine)
 	}
 	genesis := gspec.MustCommit(db)
-
-	stack, err := node.New(&node.Config{DataDir: "./data"})
-	if err != nil {
-		t.Errorf("deb make noode msg = %v", err)
-	}
-	stack.Start()
 
 	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
 	txpool := core.NewTxPool(testTxPoolConfig, chainConfig, chain)
@@ -212,7 +211,7 @@ func testEmptyWork(t *testing.T, chainConfig *params.ChainConfig, engine consens
 
 	w, _ := newTestWorker(t, chainConfig, engine, 0)
 	defer w.close()
-
+	w.start()
 	var (
 		taskCh    = make(chan struct{}, 2)
 		taskIndex int
@@ -233,7 +232,7 @@ func testEmptyWork(t *testing.T, chainConfig *params.ChainConfig, engine consens
 
 	w.newTaskHook = func(task *task) {
 		if task.block.NumberU64() == 1 {
-			checkEqual(t, task, taskIndex)
+			checkEqual(t, task, 1)
 			taskIndex += 1
 			taskCh <- struct{}{}
 		}
@@ -251,7 +250,7 @@ func testEmptyWork(t *testing.T, chainConfig *params.ChainConfig, engine consens
 	}
 
 	w.start()
-	for i := 0; i < 2; i += 1 {
+	for i := 0; i < 1; i += 1 {
 		select {
 		case <-taskCh:
 		case <-time.NewTimer(time.Second).C:
@@ -304,11 +303,11 @@ func testRegenerateMiningBlock(t *testing.T, chainConfig *params.ChainConfig, en
 
 	w.start()
 	// Ignore the first two works
-	for i := 0; i < 2; i += 1 {
+	for i := 0; i < 1; i += 1 {
 		select {
 		case <-taskCh:
 		case <-time.NewTimer(time.Second).C:
-			t.Error("new task timeout")
+			t.Error("new task1 timeout")
 		}
 	}
 	b.txPool.AddLocals(newTxs)
@@ -317,7 +316,7 @@ func testRegenerateMiningBlock(t *testing.T, chainConfig *params.ChainConfig, en
 	select {
 	case <-taskCh:
 	case <-time.NewTimer(time.Second).C:
-		t.Error("new task timeout")
+		t.Error("new task2 timeout")
 	}
 }
 

@@ -603,7 +603,14 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				// w.commitNewWork(nil, false, time.Now().Unix())
+				if w.engine.IsDeb() {
+					// otprn check
+					otprn := w.engine.Otprn()
+
+					if otprn.FnAddr == params.TestFairnodeAddr { // TEST
+						w.commitNewWork(nil, false, time.Now().Unix())
+					}
+				}
 			}
 			atomic.AddInt32(&w.newTxs, int32(len(ev.Txs)))
 
