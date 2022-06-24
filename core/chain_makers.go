@@ -254,6 +254,13 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 	} else {
 		time = new(big.Int).Add(parent.Time(), big.NewInt(10)) // block time is fixed at 10 seconds
 	}
+	gasLimit := CalcGasLimit(chain)
+
+	if chain.Config().Deb != nil {
+		if chain.Config().Deb.FairAddr() == params.TestFairnodeAddr {
+			gasLimit = parent.GasLimit()
+		}
+	}
 
 	return &types.Header{
 		Root:       state.IntermediateRoot(chain.Config().IsEIP158(parent.Number())),
@@ -265,7 +272,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 			Difficulty: parent.Difficulty(),
 			Coinbase:   parent.Coinbase(),
 		}),
-		GasLimit: CalcGasLimit(chain),
+		GasLimit: gasLimit,
 		Number:   new(big.Int).Add(parent.Number(), common.Big1),
 		Time:     time,
 	}

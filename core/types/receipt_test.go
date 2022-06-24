@@ -136,7 +136,9 @@ func TestDeriveFields(t *testing.T) {
 
 	// Iterate over all the computed fields and check that they're correct
 	signer := MakeSigner(params.TestChainConfig, number)
-
+	if err := receipts.DeriveFields(params.TestChainConfig, hash, number.Uint64(), txs); err != nil {
+		t.Fatalf("DeriveFields(...) = %v, want <nil>", err)
+	}
 	logIndex := uint(0)
 	for i := range receipts {
 		if receipts[i].TxHash != txs[i].Hash() {

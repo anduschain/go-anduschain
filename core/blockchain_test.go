@@ -71,7 +71,6 @@ func newCanonical(engine consensus.Engine, n int, full bool) (ethdb.Database, *B
 
 // Test fork of length N starting from block i
 func testFork(t *testing.T, blockchain *BlockChain, i, n int, full bool, comparator func(td1, td2 *big.Int)) {
-	otprn := types.NewDefaultOtprn()
 	// Copy old chain up to #i into a new db
 	db, blockchain2, err := newCanonical(deb.NewFaker(otprn), i, full)
 	if err != nil {
@@ -222,7 +221,6 @@ func TestExtendCanonicalBlocks(t *testing.T)  { testExtendCanonical(t, true) }
 
 func testExtendCanonical(t *testing.T, full bool) {
 	length := 5
-	otprn := types.NewDefaultOtprn()
 
 	// Make first chain starting from genesis
 	_, processor, err := newCanonical(deb.NewFaker(otprn), length, full)
@@ -1091,7 +1089,7 @@ func TestEIP155Transition(t *testing.T) {
 		funds      = big.NewInt(1000000000)
 		deleteAddr = common.Address{1}
 		gspec      = &Genesis{
-			Config: &params.ChainConfig{ChainID: big.NewInt(1), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int)},
+			Config: &params.ChainConfig{ChainID: big.NewInt(1), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig},
 			Alloc:  GenesisAlloc{address: {Balance: funds}, deleteAddr: {Balance: new(big.Int)}},
 		}
 		genesis = gspec.MustCommit(db)
@@ -1163,7 +1161,7 @@ func TestEIP155Transition(t *testing.T) {
 	}
 
 	// generate an invalid chain id transaction
-	config := &params.ChainConfig{ChainID: big.NewInt(2), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int)}
+	config := &params.ChainConfig{ChainID: big.NewInt(2), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig}
 	blocks, _ = GenerateChain(config, blocks[len(blocks)-1], deb.NewFaker(otprn), db, 4, func(i int, block *BlockGen) {
 		var (
 			tx      *types.Transaction
@@ -1200,6 +1198,7 @@ func TestEIP161AccountRemoval(t *testing.T) {
 				HomesteadBlock: new(big.Int),
 				EIP155Block:    new(big.Int),
 				EIP158Block:    big.NewInt(2),
+				Deb:            params.TestDebConfig,
 			},
 			Alloc: GenesisAlloc{address: {Balance: funds}},
 		}
@@ -1435,7 +1434,7 @@ func benchmarkLargeNumberOfValueToNonexisting(b *testing.B, numTxs, numBlocks in
 			uniq := uint64(i*numTxs + txi)
 			recipient := recipientFn(uniq)
 			//recipient := common.BigToAddress(big.NewInt(0).SetUint64(1337 + uniq))
-			tx, err := types.SignTx(types.NewTransaction(uniq, recipient, big.NewInt(1), params.TxGas, big.NewInt(1), nil), signer, testBankKey)
+			tx, err := types.SignTx(types.NewTransaction(uniq, recipient, big.NewInt(1), params.TxGas, big.NewInt(params.DefaultGasFee), nil), signer, testBankKey)
 			if err != nil {
 				b.Error(err)
 			}

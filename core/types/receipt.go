@@ -18,7 +18,10 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
 	"unsafe"
@@ -222,6 +225,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	}
 	// Assign the implementation fields
 	r.TxHash, r.ContractAddress, r.GasUsed = dec.TxHash, dec.ContractAddress, dec.GasUsed
+	r.Bloom = CreateBloom(Receipts{(*Receipt)(r)})
 	return nil
 }
 
@@ -238,4 +242,47 @@ func (r Receipts) GetRlp(i int) []byte {
 		panic(err)
 	}
 	return bytes
+}
+
+// DeriveFields fills the receipts with their computed fields based on consensus
+// data and contextual infos like containing block and transactions.
+func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, number uint64, txs Transactions) error {
+	signer := MakeSigner(config, new(big.Int).SetUint64(number))
+
+	logIndex := uint(0)
+	if len(txs) != len(rs) {
+		return errors.New("transaction and receipt count mismatch")
+	}
+	for i := 0; i < len(rs); i++ {
+		// The transaction type and hash can be retrieved from the transaction itself
+		rs[i].TxHash = txs[i].Hash()
+
+		// block location fields
+		rs[i].BlockHash = hash
+		rs[i].BlockNumber = new(big.Int).SetUint64(number)
+		rs[i].TransactionIndex = uint(i)
+
+		// The contract address can be derived from the transaction itself
+		if txs[i].To() == nil {
+			// Deriving the signer is expensive, only do if it's actually needed
+			from, _ := Sender(signer, txs[i])
+			rs[i].ContractAddress = crypto.CreateAddress(from, txs[i].Nonce())
+		}
+		// The used gas can be calculated based on previous r
+		if i == 0 {
+			rs[i].GasUsed = rs[i].CumulativeGasUsed
+		} else {
+			rs[i].GasUsed = rs[i].CumulativeGasUsed - rs[i-1].CumulativeGasUsed
+		}
+		// The derived log fields can simply be set from the block and transaction
+		for j := 0; j < len(rs[i].Logs); j++ {
+			rs[i].Logs[j].BlockNumber = number
+			rs[i].Logs[j].BlockHash = hash
+			rs[i].Logs[j].TxHash = rs[i].TxHash
+			rs[i].Logs[j].TxIndex = uint(i)
+			rs[i].Logs[j].Index = logIndex
+			logIndex++
+		}
+	}
+	return nil
 }

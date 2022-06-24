@@ -154,7 +154,6 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 		Alloc:  GenesisAlloc{benchRootAddr: {Balance: benchRootFunds}},
 	}
 	genesis := gspec.MustCommit(db)
-	otprn := types.NewDefaultOtprn()
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, b.N, gen)
 
 	// Time the insertion of the new chain.
@@ -169,22 +168,22 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 }
 
 func BenchmarkChainRead_header_10k(b *testing.B) {
-	benchReadChain(b, false, 10000, types.NewDefaultOtprn())
+	benchReadChain(b, false, 10000, otprn)
 }
 func BenchmarkChainRead_full_10k(b *testing.B) {
-	benchReadChain(b, true, 10000, types.NewDefaultOtprn())
+	benchReadChain(b, true, 10000, otprn)
 }
 func BenchmarkChainRead_header_100k(b *testing.B) {
-	benchReadChain(b, false, 100000, types.NewDefaultOtprn())
+	benchReadChain(b, false, 100000, otprn)
 }
 func BenchmarkChainRead_full_100k(b *testing.B) {
-	benchReadChain(b, true, 100000, types.NewDefaultOtprn())
+	benchReadChain(b, true, 100000, otprn)
 }
 func BenchmarkChainRead_header_500k(b *testing.B) {
-	benchReadChain(b, false, 500000, types.NewDefaultOtprn())
+	benchReadChain(b, false, 500000, otprn)
 }
 func BenchmarkChainRead_full_500k(b *testing.B) {
-	benchReadChain(b, true, 500000, types.NewDefaultOtprn())
+	benchReadChain(b, true, 500000, otprn)
 }
 func BenchmarkChainWrite_header_10k(b *testing.B) {
 	benchWriteChain(b, false, 10000)

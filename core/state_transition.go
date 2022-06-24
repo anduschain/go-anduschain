@@ -245,7 +245,7 @@ func fairFee(fee, fnFeeRate *big.Int) (*big.Int, *big.Int) {
 	tmp := new(big.Int).Mul(fee, fnFeeRate)
 	fnFee := new(big.Int).Div(tmp, big.NewInt(100))
 	minerFee := new(big.Int).Sub(fee, fnFee) // miner's reword
-	return minerFee,fnFee
+	return minerFee, fnFee
 }
 
 func (st *StateTransition) refundGas() {

@@ -93,7 +93,7 @@ func New(config *params.DebConfig, db ethdb.Database) *Deb {
 }
 
 func NewFaker(otprn *types.Otprn) *Deb {
-	return &Deb{otprn: otprn}
+	return &Deb{config: params.TestDebConfig, otprn: otprn}
 }
 
 func NewFakeFailer(otprn *types.Otprn, fail uint64) *Deb {

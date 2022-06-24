@@ -185,11 +185,11 @@ func TestTransaction_MarshalJSON(t *testing.T) {
 
 func TestTransactionSigHash(t *testing.T) {
 	var homestead HomesteadSigner
-	if homestead.Hash(emptyTx) != common.HexToHash("c775b99e7ad12f50d819fcd602390467e28141316969f4b57f0626f74fe3b386") {
-		t.Errorf("empty transaction hash mismatch, got %x", emptyTx.Hash())
+	if homestead.Hash(emptyTx) != common.HexToHash("3c43d24431f4741b7556446e806750fc49b479a48e9a49fe5f5d22e036496078") {
+		t.Errorf("empty transaction hash mismatch, got %x", homestead.Hash(emptyTx))
 	}
-	if homestead.Hash(rightvrsTx) != common.HexToHash("fe7a79529ed5f7c3375d06b26b186a8644e0e16c373d7a12be41c62d6042b77a") {
-		t.Errorf("RightVRS transaction hash mismatch, got %x", rightvrsTx.Hash())
+	if homestead.Hash(rightvrsTx) != common.HexToHash("1367ab79a9e2b141991c33fb8762efc518b5e2f6d5b398fdd17bbb968b75ef7c") {
+		t.Errorf("RightVRS transaction hash mismatch, got %x", homestead.Hash(rightvrsTx))
 	}
 }
 

@@ -92,29 +92,19 @@ var (
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
 			GasPrice:   MinimumGenesisGasPrice,
-			FnFeeRate: big.NewInt(DefaultFairnodeFee),
+			FnFeeRate:  big.NewInt(DefaultFairnodeFee),
 		},
 	}
 
 	TestChainConfig = &ChainConfig{
 		big.NewInt(3357), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{
-			FairPubKey: TestPubKey,
-			GasLimit:   GenesisGasLimit,
-			GasPrice:   MinimumGenesisGasPrice,
-			FnFeeRate: big.NewInt(DefaultFairnodeFee),
-		}}
+		TestDebConfig}
 
 	AllDebProtocolChanges = &ChainConfig{
 		big.NewInt(3358), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		&DebConfig{
-			FairPubKey: TestPubKey,
-			GasLimit:   GenesisGasLimit,
-			GasPrice:   MinimumGenesisGasPrice,
-			FnFeeRate: big.NewInt(DefaultFairnodeFee),
-		}}
+		TestDebConfig}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -145,10 +135,10 @@ type ChainConfig struct {
 }
 
 type DebConfig struct {
-	FairPubKey string `json:"fairPubKey"`
-	GasLimit   uint64 `json:"gasLimit"`
-	GasPrice   uint64 `json:"gasPrice"`
-	FnFeeRate      *big.Int  `json:"fairFee"`
+	FairPubKey string   `json:"fairPubKey"`
+	GasLimit   uint64   `json:"gasLimit"`
+	GasPrice   uint64   `json:"gasPrice"`
+	FnFeeRate  *big.Int `json:"fairFee"`
 }
 
 func (c *DebConfig) FairAddr() common.Address {
