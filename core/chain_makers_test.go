@@ -53,7 +53,9 @@ func ExampleGenerateChain() {
 	// each block and adds different features to gen based on the
 	// block index.
 	signer := types.NewEIP155Signer(gspec.Config.ChainID)
+	fmt.Println("CSW BEFORE GENERATECHAIN=========================================")
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, 5, func(i int, gen *BlockGen) {
+		fmt.Println("CSW Loop===============================", i)
 		switch i {
 		case 0:
 			gen.SetCoinbase(addr2)
@@ -87,11 +89,11 @@ func ExampleGenerateChain() {
 			gen.AddTx(jtx4) // addr3 nonce = 2 joinnonce = 2
 		}
 	})
-
+	fmt.Println("CSW BEFORE NEWBLOCKCHAIN=================================")
 	// Import the chain. This runs all block validation rules.
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(otprn), vm.Config{})
 	defer blockchain.Stop()
-
+	fmt.Println("CSW BEFORE INSERTCHAIN======================================")
 	if i, err := blockchain.InsertChain(chain); err != nil {
 		fmt.Printf("insert error (block %d): %v\n", chain[i].NumberU64(), err)
 		return
