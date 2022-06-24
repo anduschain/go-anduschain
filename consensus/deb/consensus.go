@@ -403,7 +403,6 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 // rewards given, and returns the final block.
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
-
 	if err := c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header); err != nil {
 		return nil, err
 	}
@@ -429,11 +428,12 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	pOtprn, _ := types.DecodeOtprn(hexOtprn)
 
 	// for Test
-	if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 {
+	if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.GeneralId {
 		state.AddBalance(header.Coinbase, big.NewInt(2e18))
 		return nil
+	} else if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.DvlpNetId {
+		header.Otprn, _ = pOtprn.EncodeOtprn()
 	}
-
 	if len(txs) == 0 {
 		return nil
 	}
@@ -443,7 +443,6 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	if err != nil {
 		return err
 	}
-
 	jtxFee, _ := new(big.Float).SetString(otprn.Data.Price.JoinTxPrice)
 	price := new(big.Float).Mul(big.NewFloat(params.Daon), jtxFee) // join transaction price ( fee * 10e18) - unit : daon
 	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee)     // percent
@@ -453,10 +452,13 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	for _, tx := range txs {
 		if tx.TransactionId() == types.JoinTx {
 			from, _ := tx.Sender(signer)
+			before := state.GetJoinNonce(from)
 			state.AddJoinNonce(from)
 			state.SubBalance(from, math.FloatToBigInt(price))
 			logger.Debug("add join transaction nonce", "addr", from.String())
 			logger.Debug("sub join transaction fee", "addr", from.String(), "amount", price.String())
+			after := state.GetJoinNonce(from)
+			fmt.Println("CSW joinNonce", "address", from.String(), "before", before, "after", after)
 			jCnt++
 		}
 	}

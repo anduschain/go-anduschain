@@ -22,6 +22,10 @@ var (
 		FairPubKey: common.Bytes2Hex(crypto.CompressPubkey(&TestFairnodeKey.PublicKey)),
 		GasLimit:   MaxGasLimit,
 		GasPrice:   DefaultGasFee,
-		FnFeeRate:  big.NewInt(DefaultFairnodeFee),
+		FnFeeRate:  big.NewInt(100),
 	}
+	MainNetId = big.NewInt(14288640)
+	TestNetId = big.NewInt(14288641)
+	DvlpNetId = big.NewInt(14288642)
+	GeneralId = big.NewInt(3357)
 )

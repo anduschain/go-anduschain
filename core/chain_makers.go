@@ -199,7 +199,10 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		}
 
 		if b.engine != nil {
-			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.receipts, b.voters)
+			block, err := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.receipts, b.voters)
+			if err != nil {
+				panic(fmt.Sprintf("Finalize error: %v", err))
+			}
 			// Write state changes to db
 			root, err := statedb.Commit(config.IsEIP158(b.header.Number))
 			if err != nil {
@@ -208,6 +211,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
 				panic(fmt.Sprintf("trie write error: %v", err))
 			}
+			fmt.Println("CSW state commit")
 			if b.engine.IsDeb() {
 				// 테스트용, 자체 OTPRN 생성
 				var otp []byte
@@ -275,6 +279,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 		GasLimit: gasLimit,
 		Number:   new(big.Int).Add(parent.Number(), common.Big1),
 		Time:     time,
+		Otprn:    parent.Otprn(),
 	}
 }
 

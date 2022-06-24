@@ -364,8 +364,9 @@ func (self *stateObject) AddJoinNonce() {
 		account: &self.address,
 		prev:    self.data.JoinNonce,
 	})
-
+	fmt.Println("CSW ", "address", self.address.Hex(), "joinNonce", self.data.JoinNonce)
 	self.setJoinNonce(self.data.JoinNonce + 1)
+	fmt.Println("CSW AFTER", "address", self.address.Hex(), "joinNonce", self.data.JoinNonce)
 }
 
 //TODO : andus >> joinNonce를 0으로 처리

@@ -97,7 +97,12 @@ var (
 	}
 
 	TestChainConfig = &ChainConfig{
-		big.NewInt(3357), big.NewInt(0), nil, true,
+		GeneralId, big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		TestDebConfig}
+
+	TestDebChainConfig = &ChainConfig{
+		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		TestDebConfig}
 

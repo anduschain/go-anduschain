@@ -40,7 +40,7 @@ func ExampleGenerateChain() {
 		db      = ethdb.NewMemDatabase()
 	)
 
-	gspec := DefaultGenesisForTesting()
+	gspec := DefaultGenesisForDebTesting()
 	gspec.Alloc = GenesisAlloc{
 		addr1: {Balance: big.NewInt(1000000)},
 		addr2: {Balance: big.NewInt(1000000)},
@@ -60,33 +60,31 @@ func ExampleGenerateChain() {
 			// In block 1, addr1 sends addr2 some ether.
 			tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), params.TxGas, nil, nil), signer, key1)
 			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
-			gen.AddTx(tx)
-			gen.AddTx(jtx)
+			gen.AddTx(tx)  // addr1 nonce = 0
+			gen.AddTx(jtx) // addr2 nonce = 0 joinNonce = 0
 		case 1:
 			// In block 2, addr1 sends some more ether to addr2.
 			// addr2 passes it on to addr3.
 			gen.SetCoinbase(addr3)
 			tx1, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), params.TxGas, nil, nil), signer, key1)
-			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
 
-			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key3)
+			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
 			jtx2, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
-			gen.AddTx(tx1)
-			gen.AddTx(tx2)
-			gen.AddTx(jtx)
-			gen.AddTx(jtx2) // joinnonce == 1
+			gen.AddTx(tx1)  // addr1 nonce = 1
+			gen.AddTx(jtx)  // addr3 nonce = 0 joinnonce = 0
+			gen.AddTx(jtx2) // addr2 nonce = 1 joinnonce == 1
 		case 2:
-			// Block 3 is empty but was mined by addr3.
-			//gen.SetCoinbase(addr3)
-			//gen.SetExtra([]byte("yeehaw"))
+			gen.SetCoinbase(addr3)
+			gen.SetExtra([]byte("yeehaw"))
+			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
+			jtx3, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
+			gen.AddTx(tx2)  // addr2 nonce = 3
+			gen.AddTx(jtx3) //  addr3 nonce = 1 joinnonce = 1
 		case 3:
-			// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
-			//b2 := gen.PrevBlock(1).Header()
-			//b2.Extra = []byte("foo")
-			//gen.AddUncle(b2)
-			//b3 := gen.PrevBlock(2).Header()
-			//b3.Extra = []byte("foo")
-			//gen.AddUncle(b3)
+			gen.SetCoinbase(addr3)
+			gen.SetExtra([]byte("foo"))
+			jtx4, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
+			gen.AddTx(jtx4) // addr3 nonce = 2 joinnonce = 2
 		}
 	})
 

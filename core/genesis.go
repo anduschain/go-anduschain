@@ -348,8 +348,22 @@ func DeveloperGenesisBlock(faucet common.Address) *Genesis {
 	}
 }
 
+// General Testing
 func DefaultGenesisForTesting() *Genesis {
 	config := params.TestChainConfig
+	// Assemble and return the genesis with the precompiles and faucet pre-funded
+	return &Genesis{
+		Config:     config,
+		Nonce:      0,
+		GasLimit:   0x47b760,
+		Difficulty: big.NewInt(1),
+		Alloc:      make(GenesisAlloc),
+	}
+}
+
+// DebAlogrithm Testing
+func DefaultGenesisForDebTesting() *Genesis {
+	config := params.TestDebChainConfig
 	// Assemble and return the genesis with the precompiles and faucet pre-funded
 	return &Genesis{
 		Config:     config,
