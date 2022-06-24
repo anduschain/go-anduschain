@@ -93,7 +93,6 @@ func encodeAsStoredReceiptRLP(want *Receipt) ([]byte, error) {
 	for i, log := range want.Logs {
 		stored.Logs[i] = (*LogForStorage)(log)
 	}
-	stored.Bloom = want.Bloom
 	return rlp.EncodeToBytes(stored)
 }
 
