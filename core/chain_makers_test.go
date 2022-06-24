@@ -78,7 +78,7 @@ func ExampleGenerateChain() {
 			gen.SetExtra([]byte("yeehaw"))
 			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
 			jtx3, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
-			gen.AddTx(tx2)  // addr2 nonce = 3
+			gen.AddTx(tx2)  // addr2 nonce = 2
 			gen.AddTx(jtx3) //  addr3 nonce = 1 joinnonce = 1
 		case 3:
 			gen.SetCoinbase(addr3)
@@ -99,9 +99,13 @@ func ExampleGenerateChain() {
 
 	state, _ := blockchain.State()
 	fmt.Printf("last block: #%d\n", blockchain.CurrentBlock().Number())
-	fmt.Println("balance of addr1:", state.GetBalance(addr1))
-	fmt.Println("balance of addr2:", state.GetBalance(addr2))
-	fmt.Println("balance of addr3:", state.GetBalance(addr3))
+	fmt.Println("balance of addr1:", state.GetBalance(addr1)) // 98900
+	fmt.Println("balance of addr2:", state.GetBalance(addr2)) // 1010000
+	fmt.Println("balance of addr3:", state.GetBalance(addr3)) // 1100
+
+	fmt.Println("nonce of addr1:", state.GetNonce(addr1)) // getNonce = 2
+	fmt.Println("nonce of addr2:", state.GetNonce(addr2)) // getNonce = 3
+	fmt.Println("nonce of addr3:", state.GetNonce(addr3)) // getNonce = 3
 
 	fmt.Println("joinNonce of addr1:", state.GetJoinNonce(addr1))
 	fmt.Println("joinNonce of addr2:", state.GetJoinNonce(addr2))
