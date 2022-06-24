@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-var engine = NewFaker()
+var engine = NewFaker(types.NewDefaultOtprn())
 
 func makeBlock(number, nonce, coinbase, diff int64) *types.Block {
 	h := new(types.Header)
