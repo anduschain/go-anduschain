@@ -13,6 +13,34 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
+var (
+	legacyReceipt = &Receipt{
+		Status:            ReceiptStatusFailed,
+		CumulativeGasUsed: 1,
+		Logs: []*Log{
+			{
+				Address: common.BytesToAddress([]byte{0x11}),
+				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
+				Data:    []byte{0x01, 0x00, 0xff},
+			},
+			{
+				Address: common.BytesToAddress([]byte{0x01, 0x11}),
+				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
+				Data:    []byte{0x01, 0x00, 0xff},
+			},
+		},
+	}
+)
+
+func TestDecodeEmptyTypedReceipt(t *testing.T) {
+	input := []byte{0x80}
+	var r Receipt
+	err := rlp.DecodeBytes(input, &r)
+	if err == nil {
+		t.Fatal("No Error error:", err)
+	}
+}
+
 func TestLegacyReceiptDecoding(t *testing.T) {
 	tests := []struct {
 		name   string

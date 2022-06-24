@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/big"
 	"unsafe"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -55,6 +56,12 @@ type Receipt struct {
 	TxHash          common.Hash    `json:"transactionHash" gencodec:"required"`
 	ContractAddress common.Address `json:"contractAddress"`
 	GasUsed         uint64         `json:"gasUsed" gencodec:"required"`
+
+	// Inclusion information: These fields provide information about the inclusion of the
+	// transaction corresponding to this receipt.
+	BlockHash        common.Hash `json:"blockHash,omitempty"`
+	BlockNumber      *big.Int    `json:"blockNumber,omitempty"`
+	TransactionIndex uint        `json:"transactionIndex"`
 }
 
 type receiptMarshaling struct {
@@ -62,6 +69,8 @@ type receiptMarshaling struct {
 	Status            hexutil.Uint64
 	CumulativeGasUsed hexutil.Uint64
 	GasUsed           hexutil.Uint64
+	BlockNumber       *hexutil.Big
+	TransactionIndex  hexutil.Uint
 }
 
 // receiptRLP is the consensus encoding of a receipt.
@@ -82,6 +91,13 @@ type receiptStorageRLP struct {
 	GasUsed           uint64
 }
 
+// storedReceiptRLP is the storage encoding of a receipt.
+type storedReceiptRLP struct {
+	PostStateOrStatus []byte
+	CumulativeGasUsed uint64
+	Logs              []*LogForStorage
+}
+
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
 func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
 	r := &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: cumulativeGasUsed}
@@ -99,6 +115,11 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &receiptRLP{r.statusEncoding(), r.CumulativeGasUsed, r.Bloom, r.Logs})
 }
 
+// MarshalBinary returns the consensus encoding of the receipt.
+func (r *Receipt) MarshalBinary() ([]byte, error) {
+	return rlp.EncodeToBytes(r)
+}
+
 // DecodeRLP implements rlp.Decoder, and loads the consensus fields of a receipt
 // from an RLP stream.
 func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
@@ -111,6 +132,18 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	}
 	r.CumulativeGasUsed, r.Bloom, r.Logs = dec.CumulativeGasUsed, dec.Bloom, dec.Logs
 	return nil
+}
+
+// UnmarshalBinary decodes the consensus encoding of receipts.
+// It supports legacy RLP receipts and EIP-2718 typed receipts.
+func (r *Receipt) UnmarshalBinary(b []byte) (*receiptRLP, error) {
+	// It's a legacy receipt decode the RLP
+	var data receiptRLP
+	err := rlp.DecodeBytes(b, &data)
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 func (r *Receipt) setStatus(postStateOrStatus []byte) error {
