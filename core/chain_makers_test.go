@@ -53,9 +53,7 @@ func ExampleGenerateChain() {
 	// each block and adds different features to gen based on the
 	// block index.
 	signer := types.NewEIP155Signer(gspec.Config.ChainID)
-	fmt.Println("CSW BEFORE GENERATECHAIN=========================================")
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, 5, func(i int, gen *BlockGen) {
-		fmt.Println("CSW Loop===============================", i)
 		switch i {
 		case 0:
 			gen.SetCoinbase(addr2)
@@ -63,7 +61,7 @@ func ExampleGenerateChain() {
 			tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), params.TxGas, nil, nil), signer, key1)
 			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
 			gen.AddTx(tx)  // addr1 nonce = 0
-			gen.AddTx(jtx) // addr2 nonce = 0 joinNonce = 0
+			gen.AddTx(jtx) // addr2 nonce = 0 joinNonce = 0 (joinNonce reset)
 		case 1:
 			// In block 2, addr1 sends some more ether to addr2.
 			// addr2 passes it on to addr3.
@@ -73,7 +71,7 @@ func ExampleGenerateChain() {
 			jtx, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
 			jtx2, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
 			gen.AddTx(tx1)  // addr1 nonce = 1
-			gen.AddTx(jtx)  // addr3 nonce = 0 joinnonce = 0
+			gen.AddTx(jtx)  // addr3 nonce = 0 joinnonce = 0 (joinNonce reset)
 			gen.AddTx(jtx2) // addr2 nonce = 1 joinnonce == 1
 		case 2:
 			gen.SetCoinbase(addr3)
@@ -81,19 +79,26 @@ func ExampleGenerateChain() {
 			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
 			jtx3, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
 			gen.AddTx(tx2)  // addr2 nonce = 2
-			gen.AddTx(jtx3) //  addr3 nonce = 1 joinnonce = 1
+			gen.AddTx(jtx3) //  addr3 nonce = 1 joinnonce = 0 (joinNonce reset)
 		case 3:
 			gen.SetCoinbase(addr3)
 			gen.SetExtra([]byte("foo"))
 			jtx4, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
-			gen.AddTx(jtx4) // addr3 nonce = 2 joinnonce = 2
+			gen.AddTx(jtx4) // addr3 nonce = 2 joinnonce = 0 (joinNOnce reset)
+		case 4:
+			gen.SetCoinbase(addr3)
+			gen.SetExtra([]byte("zoo"))
+			jtx5, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr1), gen.JoinNonce(addr1), []byte("otprn"), common.Address{}), signer, key1)
+			jtx6, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr2), gen.JoinNonce(addr2), []byte("otprn"), common.Address{}), signer, key2)
+			jtx7, _ := types.SignTx(types.NewJoinTransaction(gen.TxNonce(addr3), gen.JoinNonce(addr3), []byte("otprn"), common.Address{}), signer, key3)
+			gen.AddTx(jtx5) // addr1 nonce = 2 joinnonce = 1
+			gen.AddTx(jtx6) // addr2 nonce = 3 joinnonce = 2
+			gen.AddTx(jtx7) // addr3 nonce = 3 joinnonce = 0 (joinNOnce reset)
 		}
 	})
-	fmt.Println("CSW BEFORE NEWBLOCKCHAIN=================================")
 	// Import the chain. This runs all block validation rules.
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(otprn), vm.Config{})
 	defer blockchain.Stop()
-	fmt.Println("CSW BEFORE INSERTCHAIN======================================")
 	if i, err := blockchain.InsertChain(chain); err != nil {
 		fmt.Printf("insert error (block %d): %v\n", chain[i].NumberU64(), err)
 		return
@@ -118,7 +123,10 @@ func ExampleGenerateChain() {
 	// balance of addr1: 989000
 	// balance of addr2: 1010000
 	// balance of addr3: 1100
-	// joinNonce of addr1: 0
-	// joinNonce of addr2: 1
+	// nonce of addr1: 3
+	// nonce of addr2: 4
+	// nonce of addr3: 4
+	// joinNonce of addr1: 1
+	// joinNonce of addr2: 2
 	// joinNonce of addr3: 0
 }

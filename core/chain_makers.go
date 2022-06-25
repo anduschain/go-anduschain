@@ -211,7 +211,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
 				panic(fmt.Sprintf("trie write error: %v", err))
 			}
-			fmt.Println("CSW state commit")
+
 			if b.engine.IsDeb() {
 				// 테스트용, 자체 OTPRN 생성
 				var otp []byte

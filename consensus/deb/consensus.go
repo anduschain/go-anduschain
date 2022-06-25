@@ -452,13 +452,10 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	for _, tx := range txs {
 		if tx.TransactionId() == types.JoinTx {
 			from, _ := tx.Sender(signer)
-			before := state.GetJoinNonce(from)
 			state.AddJoinNonce(from)
 			state.SubBalance(from, math.FloatToBigInt(price))
 			logger.Debug("add join transaction nonce", "addr", from.String())
 			logger.Debug("sub join transaction fee", "addr", from.String(), "amount", price.String())
-			after := state.GetJoinNonce(from)
-			fmt.Println("CSW joinNonce", "address", from.String(), "before", before, "after", after)
 			jCnt++
 		}
 	}
