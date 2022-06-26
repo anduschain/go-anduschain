@@ -42,6 +42,7 @@ var testTxPoolConfig TxPoolConfig
 func init() {
 	testTxPoolConfig = DefaultTxPoolConfig
 	testTxPoolConfig.Journal = ""
+	testTxPoolConfig.PriceLimit = 1
 }
 
 type testBlockChain struct {
@@ -202,7 +203,12 @@ func TestStateChangeDuringTransactionPoolReset(t *testing.T) {
 		t.Fatalf("Invalid nonce, want 0, got %d", nonce)
 	}
 
-	pool.AddRemotes(types.Transactions{tx0, tx1})
+	errs := pool.AddRemotes(types.Transactions{tx0, tx1})
+	for idx, err := range errs {
+		if err != nil {
+			t.Fatalf("Add remodte %x:%v", idx, err)
+		}
+	}
 
 	nonce = pool.State().GetNonce(address)
 	if nonce != 2 {

@@ -18,7 +18,7 @@ package tracers
 
 import (
 	"encoding/json"
-	"github.com/anduschain/go-anduschain/core/state"
+	"github.com/anduschain/go-anduschain/tests"
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
@@ -143,7 +143,11 @@ func TestCallTracer(t *testing.T) {
 			// Configure a blockchain with the given prestate
 			tx := new(types.Transaction)
 			if err := rlp.DecodeBytes(common.FromHex(test.Input), tx); err != nil {
-				t.Fatalf("failed to parse testcase input: %v", err)
+				tx1 := new(types.TransactionEth)
+				if err1 := rlp.DecodeBytes(common.FromHex(test.Input), tx1); err1 == nil {
+					t.Fatalf("failed to parse testcase input: %v", err1)
+				}
+				tx = tx1.Transaction()
 			}
 			signer := types.MakeSigner(test.Genesis.Config, new(big.Int).SetUint64(uint64(test.Context.Number)))
 			origin, _ := signer.Sender(tx)
@@ -172,10 +176,15 @@ func TestCallTracer(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to prepare transaction for tracing: %v", err)
 			}
-			st := state.NewStateTransition(evm, msg, new(core.GasPool).AddGas(tx.Gas()))
-			if _, _, _, err = st.TransitionDb(); err != nil {
-				t.Fatalf("failed to execute transaction: %v", err)
+
+			_, _, _, err = core.ApplyMessage(evm, msg, nil)
+			if err != nil {
+				t.Fatalf("failed to ApplyMessage: %v", err)
 			}
+
+			// Update the state with pending changes
+			statedb.Finalise(true)
+
 			// Retrieve the trace result and compare against the etalon
 			res, err := tracer.GetResult()
 			if err != nil {

@@ -18,6 +18,7 @@ package vm
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/log"
 	"sync/atomic"
 
 	"github.com/anduschain/go-anduschain/common/math"
@@ -38,7 +39,9 @@ type Config struct {
 	// JumpTable contains the EVM instruction table. This
 	// may be left uninitialised and will be set to the default
 	// table.
-	JumpTable [256]operation
+	JumpTable *JumpTable
+
+	ExtraAips []int // Additional EIPS that are to be enabled
 }
 
 // Interpreter is used to run Ethereum based contracts and will utilise the
@@ -83,16 +86,27 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// We use the STOP instruction whether to see
 	// the jump table was initialised. If it was not
 	// we'll set the default jump table.
-	if !cfg.JumpTable[STOP].valid {
+	if cfg.JumpTable == nil {
 		switch {
+		case evm.ChainConfig().IsPohang(evm.BlockNumber):
+			cfg.JumpTable = &pohangInstructionSet
 		case evm.ChainConfig().IsConstantinople(evm.BlockNumber):
-			cfg.JumpTable = constantinopleInstructionSet
+			cfg.JumpTable = &constantinopleInstructionSet
 		case evm.ChainConfig().IsByzantium(evm.BlockNumber):
-			cfg.JumpTable = byzantiumInstructionSet
+			cfg.JumpTable = &byzantiumInstructionSet
 		case evm.ChainConfig().IsHomestead(evm.BlockNumber):
-			cfg.JumpTable = homesteadInstructionSet
+			cfg.JumpTable = &homesteadInstructionSet
 		default:
-			cfg.JumpTable = frontierInstructionSet
+			cfg.JumpTable = &frontierInstructionSet
+		}
+		for i, aip := range cfg.ExtraAips {
+			copy := *cfg.JumpTable
+			if err := EnableAIP(aip, &copy); err != nil {
+				// Disable it, so caller can check if it's activated or not
+				cfg.ExtraAips = append(cfg.ExtraAips[:i], cfg.ExtraAips[i+1:]...)
+				log.Error("AIP activation failed", "aip", aip, "error", err)
+			}
+			cfg.JumpTable = &copy
 		}
 	}
 
@@ -198,7 +212,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 			return nil, err
 		}
 		// If the operation is valid, enforce and write restrictions
-		if err := in.enforceRestrictions(op, operation, stack); err != nil {
+		if err := in.enforceRestrictions(op, *operation, stack); err != nil {
 			return nil, err
 		}
 

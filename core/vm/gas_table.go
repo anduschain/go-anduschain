@@ -488,3 +488,7 @@ func gasSelfBalance(gt params.GasTable, evm *EVM, contract *Contract, stack *Sta
 func gasBaseFee(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	return 0, nil
 }
+
+func gasInvalidOp(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	return 0, nil
+}

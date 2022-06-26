@@ -64,6 +64,7 @@ func BenchmarkBloomBits32k(b *testing.B) {
 const benchFilterCnt = 2000
 
 func benchmarkBloomBits(b *testing.B, sectionSize uint64) {
+	b.Skip("test disabled: this tests presume (and modify) an existing datadir.")
 	benchDataDir := node.DefaultDataDir() + "/geth/chaindata"
 	fmt.Println("Running bloombits benchmark   section size:", sectionSize)
 
@@ -174,6 +175,7 @@ func clearBloomBits(db ethdb.Database) {
 }
 
 func BenchmarkNoBloomBits(b *testing.B) {
+	b.Skip("test disabled: this tests presume (and modify) an existing datadir.")
 	benchDataDir := node.DefaultDataDir() + "/geth/chaindata"
 	fmt.Println("Running benchmark without bloombits")
 	db, err := ethdb.NewLDBDatabase(benchDataDir, 128, 1024)

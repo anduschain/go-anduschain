@@ -18,6 +18,7 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/params"
@@ -55,38 +56,56 @@ var (
 	homesteadInstructionSet      = newHomesteadInstructionSet()
 	byzantiumInstructionSet      = newByzantiumInstructionSet()
 	constantinopleInstructionSet = newConstantinopleInstructionSet()
+	pohangInstructionSet         = newPohangInstructionSet()
 )
+
+type JumpTable [256]*operation
+
+func validate(jt JumpTable) JumpTable {
+	for i, op := range jt {
+		if op == nil {
+			panic(fmt.Sprintf("op 0x%x is not set", i))
+		}
+	}
+	return jt
+}
+
+func newPohangInstructionSet() JumpTable {
+	instructionSet := newConstantinopleInstructionSet()
+	enable1000(&instructionSet) //Pohang
+	return validate(instructionSet)
+}
 
 // NewConstantinopleInstructionSet returns the frontier, homestead
 // byzantium and contantinople instructions.
-func newConstantinopleInstructionSet() [256]operation {
+func newConstantinopleInstructionSet() JumpTable {
 	// instructions that can be executed during the byzantium phase.
 	instructionSet := newByzantiumInstructionSet()
-	instructionSet[SHL] = operation{
+	instructionSet[SHL] = &operation{
 		execute:       opSHL,
 		gasCost:       constGasFunc(GasFastestStep),
 		validateStack: makeStackFunc(2, 1),
 		valid:         true,
 	}
-	instructionSet[SHR] = operation{
+	instructionSet[SHR] = &operation{
 		execute:       opSHR,
 		gasCost:       constGasFunc(GasFastestStep),
 		validateStack: makeStackFunc(2, 1),
 		valid:         true,
 	}
-	instructionSet[SAR] = operation{
+	instructionSet[SAR] = &operation{
 		execute:       opSAR,
 		gasCost:       constGasFunc(GasFastestStep),
 		validateStack: makeStackFunc(2, 1),
 		valid:         true,
 	}
-	instructionSet[EXTCODEHASH] = operation{
+	instructionSet[EXTCODEHASH] = &operation{
 		execute:       opExtCodeHash,
 		gasCost:       gasExtCodeHash,
 		validateStack: makeStackFunc(1, 1),
 		valid:         true,
 	}
-	instructionSet[CREATE2] = operation{
+	instructionSet[CREATE2] = &operation{
 		execute:       opCreate2,
 		gasCost:       gasCreate2,
 		validateStack: makeStackFunc(4, 1),
@@ -95,15 +114,15 @@ func newConstantinopleInstructionSet() [256]operation {
 		writes:        true,
 		returns:       true,
 	}
-	return instructionSet
+	return validate(instructionSet)
 }
 
 // NewByzantiumInstructionSet returns the frontier, homestead and
 // byzantium instructions.
-func newByzantiumInstructionSet() [256]operation {
+func newByzantiumInstructionSet() JumpTable {
 	// instructions that can be executed during the homestead phase.
 	instructionSet := newHomesteadInstructionSet()
-	instructionSet[STATICCALL] = operation{
+	instructionSet[STATICCALL] = &operation{
 		execute:       opStaticCall,
 		gasCost:       gasStaticCall,
 		validateStack: makeStackFunc(6, 1),
@@ -111,20 +130,20 @@ func newByzantiumInstructionSet() [256]operation {
 		valid:         true,
 		returns:       true,
 	}
-	instructionSet[RETURNDATASIZE] = operation{
+	instructionSet[RETURNDATASIZE] = &operation{
 		execute:       opReturnDataSize,
 		gasCost:       constGasFunc(GasQuickStep),
 		validateStack: makeStackFunc(0, 1),
 		valid:         true,
 	}
-	instructionSet[RETURNDATACOPY] = operation{
+	instructionSet[RETURNDATACOPY] = &operation{
 		execute:       opReturnDataCopy,
 		gasCost:       gasReturnDataCopy,
 		validateStack: makeStackFunc(3, 0),
 		memorySize:    memoryReturnDataCopy,
 		valid:         true,
 	}
-	instructionSet[REVERT] = operation{
+	instructionSet[REVERT] = &operation{
 		execute:       opRevert,
 		gasCost:       gasRevert,
 		validateStack: makeStackFunc(2, 0),
@@ -133,14 +152,14 @@ func newByzantiumInstructionSet() [256]operation {
 		reverts:       true,
 		returns:       true,
 	}
-	return instructionSet
+	return validate(instructionSet)
 }
 
 // NewHomesteadInstructionSet returns the frontier and homestead
 // instructions that can be executed during the homestead phase.
-func newHomesteadInstructionSet() [256]operation {
+func newHomesteadInstructionSet() JumpTable {
 	instructionSet := newFrontierInstructionSet()
-	instructionSet[DELEGATECALL] = operation{
+	instructionSet[DELEGATECALL] = &operation{
 		execute:       opDelegateCall,
 		gasCost:       gasDelegateCall,
 		validateStack: makeStackFunc(6, 1),
@@ -148,13 +167,13 @@ func newHomesteadInstructionSet() [256]operation {
 		valid:         true,
 		returns:       true,
 	}
-	return instructionSet
+	return validate(instructionSet)
 }
 
 // NewFrontierInstructionSet returns the frontier instructions
 // that can be executed during the frontier phase.
-func newFrontierInstructionSet() [256]operation {
-	return [256]operation{
+func newFrontierInstructionSet() JumpTable {
+	tbl := JumpTable{
 		STOP: {
 			execute:       opStop,
 			gasCost:       constGasFunc(0),
@@ -962,23 +981,14 @@ func newFrontierInstructionSet() [256]operation {
 			valid:         true,
 			writes:        true,
 		},
-		CHAINID: {
-			execute:       opChainID,
-			gasCost:       gasChainID,
-			validateStack: makeStackFunc(0, 1),
-			valid:         true,
-		},
-		SELFBALANCE: {
-			execute:       opSelfBalance,
-			gasCost:       gasSelfBalance,
-			validateStack: makeStackFunc(0, 1),
-			valid:         true,
-		},
-		BASEFEE: {
-			execute:       opBaseFee,
-			gasCost:       gasBaseFee,
-			validateStack: makeStackFunc(0, 1),
-			valid:         true,
-		},
 	}
+
+	// Fill all unassigned slots with opUndefined.
+	for i, entry := range tbl {
+		if entry == nil {
+			tbl[i] = &operation{execute: opUndefined, gasCost: gasInvalidOp}
+		}
+	}
+
+	return validate(tbl)
 }

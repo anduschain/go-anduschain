@@ -74,6 +74,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
+		PohangBlock:         big.NewInt(0),
 		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
@@ -88,6 +89,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
+		PohangBlock:         big.NewInt(0),
 		Deb: &DebConfig{
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
@@ -98,17 +100,17 @@ var (
 
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
-		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		TestDebConfig}
 
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
-		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		TestDebConfig}
 
 	AllDebProtocolChanges = &ChainConfig{
 		big.NewInt(3358), big.NewInt(0), nil, true,
-		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		TestDebConfig}
 )
 
@@ -134,6 +136,7 @@ type ChainConfig struct {
 
 	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
 	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
+	PohangBlock         *big.Int `json:"pohangBlock,omitempty"`         // Pohang switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
 	Deb *DebConfig `json:"deb,omitempty"`
@@ -233,6 +236,11 @@ func (c *ChainConfig) IsByzantium(num *big.Int) bool {
 // IsConstantinople returns whether num is either equal to the Constantinople fork block or greater.
 func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 	return isForked(c.ConstantinopleBlock, num)
+}
+
+// IsConstantinople returns whether num is either equal to the Constantinople fork block or greater.
+func (c *ChainConfig) IsPohang(num *big.Int) bool {
+	return isForked(c.PohangBlock, num)
 }
 
 // GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).

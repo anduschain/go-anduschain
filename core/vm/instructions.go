@@ -862,6 +862,10 @@ func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 	return nil, nil
 }
 
+func opUndefined(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
+	return nil, &ErrInvalidOpCode{opcode: OpCode(*pc)}
+}
+
 // following functions are used by the instruction jump  table
 
 // make log instruction function

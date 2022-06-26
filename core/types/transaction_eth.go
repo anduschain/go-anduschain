@@ -17,14 +17,15 @@
 package types
 
 import (
-"io"
-"math/big"
-"sync/atomic"
+	"bytes"
+	"io"
+	"math/big"
+	"sync/atomic"
 
-"github.com/anduschain/go-anduschain/common"
-"github.com/anduschain/go-anduschain/common/hexutil"
-"github.com/anduschain/go-anduschain/crypto"
-"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/rlp"
 )
 
 //go:generate gencodec -dir . -type txEthdata -field-override txEthdataMarshaling -out eth_tx_json.go
@@ -52,6 +53,27 @@ type txEthdata struct {
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash `json:"hash" rlp:"-"`
+}
+
+func (tx txEthdata) TxData() txdata {
+	var rtn txdata
+
+	rtn.Type = EthTx
+	rtn.AccountNonce = tx.AccountNonce
+	rtn.Price = tx.Price
+	rtn.GasLimit = tx.GasLimit
+	rtn.Recipient = tx.Recipient
+	rtn.Amount = tx.Amount
+	rtn.Payload = tx.Payload
+	// Signature values
+	rtn.V = tx.V
+	rtn.R = tx.R
+	rtn.S = tx.S
+
+	// This is only used when marshaling to JSON.
+	rtn.Hash = tx.Hash
+
+	return rtn
 }
 
 type txEthdataMarshaling struct {
@@ -168,4 +190,26 @@ func (tx *TransactionEth) Cost() *big.Int {
 
 func (tx *TransactionEth) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
+}
+
+func (tx *TransactionEth) Transaction() *Transaction {
+	var rtn Transaction
+
+	rtn.data = tx.data.TxData()
+
+	return &rtn
+}
+
+// Transactions implements DerivableList for transactions.
+type EthTransactions []*TransactionEth
+
+// Len returns the length of s.
+func (s EthTransactions) Len() int { return len(s) }
+
+// EncodeIndex encodes the i'th transaction to w. Note that this does not check for errors
+// because we assume that *Transaction will only ever contain valid txs that were either
+// constructed by decoding or via public API in this package.
+func (s EthTransactions) EncodeIndex(i int, w *bytes.Buffer) {
+	tx := s[i]
+	rlp.Encode(w, tx.data)
 }

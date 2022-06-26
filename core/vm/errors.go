@@ -16,7 +16,10 @@
 
 package vm
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // List execution errors
 var (
@@ -28,3 +31,10 @@ var (
 	ErrContractAddressCollision = errors.New("contract address collision")
 	ErrNoCompatibleInterpreter  = errors.New("no compatible interpreter")
 )
+
+// ErrInvalidOpCode wraps an evm error when an invalid opcode is encountered.
+type ErrInvalidOpCode struct {
+	opcode OpCode
+}
+
+func (e *ErrInvalidOpCode) Error() string { return fmt.Sprintf("invalid opcode: %s", e.opcode) }

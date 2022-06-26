@@ -39,6 +39,7 @@ var (
 	testAddress  = crypto.PubkeyToAddress(testKey.PublicKey)
 	genesis      = core.GenesisBlockForTesting(testdb, testAddress, big.NewInt(1000000000))
 	unknownBlock = types.NewBlock(&types.Header{GasLimit: params.GenesisGasLimit}, nil, nil, nil)
+	otprn        = types.NewDefaultOtprn()
 )
 
 // makeChain creates a chain of n blocks starting at and including parent.
@@ -46,7 +47,7 @@ var (
 // contains a transaction and every 5th an uncle to allow testing correct block
 // reassembly.
 func makeChain(n int, seed byte, parent *types.Block) ([]common.Hash, map[common.Hash]*types.Block) {
-	blocks, _ := core.GenerateChain(params.TestChainConfig, parent, deb.NewFaker(), testdb, n, func(i int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.TestChainConfig, parent, deb.NewFaker(otprn), testdb, n, func(i int, block *core.BlockGen) {
 		block.SetCoinbase(common.Address{seed})
 
 		// If the block number is multiple of 3, send a bonus transaction to the miner
@@ -182,16 +183,16 @@ func (f *fetcherTester) makeBodyFetcher(peer string, blocks map[common.Hash]*typ
 	// Create a function that returns blocks from the closure
 	return func(hashes []common.Hash) error {
 		// Gather the block bodies to return
-		transactions := make([]*types.TransactionsSet, 0, len(hashes))
+		transactions := make([][]*types.Transaction, 0, len(hashes))
 		voters := make([][]*types.Voter, 0, len(hashes))
 		//uncles := make([][]*types.Header, 0, len(hashes))
 		//
-		//for _, hash := range hashes {
-		//	if block, ok := closure[hash]; ok {
-		//		transactions = append(transactions, block.Transactions())
-		//		uncles = append(uncles, block.Uncles())
-		//	}
-		//}
+		for _, hash := range hashes {
+			if block, ok := closure[hash]; ok {
+				transactions = append(transactions, block.Transactions())
+				voters = append(voters, block.Voters())
+			}
+		}
 		// Return on a new thread
 		go f.fetcher.FilterBodies(peer, transactions, voters, time.Now().Add(drift))
 
