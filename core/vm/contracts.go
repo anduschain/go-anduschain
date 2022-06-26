@@ -62,6 +62,18 @@ var PrecompiledContractsByzantium = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{6}):   &bn256Add{},
 	common.BytesToAddress([]byte{7}):   &bn256ScalarMul{},
 	common.BytesToAddress([]byte{8}):   &bn256Pairing{},
+	common.BytesToAddress([]byte{101}): &zkpRangeProof{}, // add anduschain, zkrange proof
+}
+
+var PrecompiledContractsPohang = map[common.Address]PrecompiledContract{
+	common.BytesToAddress([]byte{1}):   &ecrecover{},
+	common.BytesToAddress([]byte{2}):   &sha256hash{},
+	common.BytesToAddress([]byte{3}):   &ripemd160hash{},
+	common.BytesToAddress([]byte{4}):   &dataCopy{},
+	common.BytesToAddress([]byte{5}):   &bigModExp{},
+	common.BytesToAddress([]byte{6}):   &bn256Add{},
+	common.BytesToAddress([]byte{7}):   &bn256ScalarMul{},
+	common.BytesToAddress([]byte{8}):   &bn256Pairing{},
 	common.BytesToAddress([]byte{9}):   &blake2F{},
 	common.BytesToAddress([]byte{10}):  &bls12381G1Add{},
 	common.BytesToAddress([]byte{11}):  &bls12381G1Mul{},
