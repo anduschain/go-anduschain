@@ -140,11 +140,12 @@ func TestCallTracer(t *testing.T) {
 			if err := json.Unmarshal(blob, test); err != nil {
 				t.Fatalf("failed to parse testcase: %v", err)
 			}
+
 			// Configure a blockchain with the given prestate
 			tx := new(types.Transaction)
 			if err := rlp.DecodeBytes(common.FromHex(test.Input), tx); err != nil {
 				tx1 := new(types.TransactionEth)
-				if err1 := rlp.DecodeBytes(common.FromHex(test.Input), tx1); err1 == nil {
+				if err1 := rlp.DecodeBytes(common.FromHex(test.Input), tx1); err1 != nil {
 					t.Fatalf("failed to parse testcase input: %v", err1)
 				}
 				tx = tx1.Transaction()
@@ -177,7 +178,7 @@ func TestCallTracer(t *testing.T) {
 				t.Fatalf("failed to prepare transaction for tracing: %v", err)
 			}
 
-			_, _, _, err = core.ApplyMessage(evm, msg, nil)
+			_, _, _, err = core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas()))
 			if err != nil {
 				t.Fatalf("failed to ApplyMessage: %v", err)
 			}
