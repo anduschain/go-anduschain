@@ -82,7 +82,6 @@ func NewContractCreation(nonce uint64, amount *big.Int, gasLimit uint64, gasPric
 	return newTransaction(nonce, nil, amount, gasLimit, gasPrice, data)
 }
 
-
 func ConvertEthTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, R, S, V *big.Int) *Transaction {
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
@@ -167,7 +166,6 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 	return &Transaction{data: d}
 }
 
-
 func (tx *Transaction) TransactionId() uint64 {
 	return tx.data.Type
 }
@@ -197,6 +195,10 @@ func (tx *Transaction) PayloadHash() ([]byte, error) {
 		return payload[len(payload)-32:], nil
 	}
 	return nil, errors.New("not join transaction")
+}
+
+func (tx *Transaction) Payload() []byte {
+	return tx.data.Payload
 }
 
 // ChainId returns which chain id this transaction was signed for (if at all)

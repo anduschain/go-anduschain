@@ -18,6 +18,7 @@ package tracers
 
 import (
 	"encoding/json"
+	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/tests"
 	"io/ioutil"
 	"math/big"
@@ -140,6 +141,7 @@ func TestCallTracer(t *testing.T) {
 			if err := json.Unmarshal(blob, test); err != nil {
 				t.Fatalf("failed to parse testcase: %v", err)
 			}
+			test.Genesis.Config.Deb = params.TestDebConfig
 
 			// Configure a blockchain with the given prestate
 			tx := new(types.Transaction)
@@ -148,8 +150,10 @@ func TestCallTracer(t *testing.T) {
 				if err1 := rlp.DecodeBytes(common.FromHex(test.Input), tx1); err1 != nil {
 					t.Fatalf("failed to parse testcase input: %v", err1)
 				}
-				tx = tx1.Transaction()
+				tx2 := tx1.Transaction()
+				tx = &tx2
 			}
+
 			signer := types.MakeSigner(test.Genesis.Config, new(big.Int).SetUint64(uint64(test.Context.Number)))
 			origin, _ := signer.Sender(tx)
 
@@ -172,7 +176,6 @@ func TestCallTracer(t *testing.T) {
 				t.Fatalf("failed to create call tracer: %v", err)
 			}
 			evm := vm.NewEVM(context, statedb, test.Genesis.Config, vm.Config{Debug: true, Tracer: tracer})
-
 			msg, err := tx.AsMessage(signer)
 			if err != nil {
 				t.Fatalf("failed to prepare transaction for tracing: %v", err)

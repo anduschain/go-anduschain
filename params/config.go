@@ -161,6 +161,10 @@ func (c *DebConfig) SetFnFeeRate(fairFeeRate *big.Int) {
 	c.FnFeeRate = fairFeeRate
 }
 
+func (c *DebConfig) SetFairPubKey(fairPubKey string) {
+	c.FairPubKey = fairPubKey
+}
+
 func (c *DebConfig) GetFnFeeRate() *big.Int {
 	return c.FnFeeRate
 }

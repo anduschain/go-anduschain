@@ -158,6 +158,14 @@ func (tx *TransactionEth) To() *common.Address {
 	return &to
 }
 
+func (tx *TransactionEth) Payload() []byte {
+	return tx.data.Payload
+}
+
+func (tx *TransactionEth) Vrs() (*big.Int, *big.Int, *big.Int) {
+	return tx.data.V, tx.data.R, tx.data.S
+}
+
 // Hash hashes the RLP encoding of tx.
 // It uniquely identifies the transaction.
 func (tx *TransactionEth) Hash() common.Hash {
@@ -192,12 +200,12 @@ func (tx *TransactionEth) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
 }
 
-func (tx *TransactionEth) Transaction() *Transaction {
+func (tx *TransactionEth) Transaction() Transaction {
 	var rtn Transaction
 
 	rtn.data = tx.data.TxData()
 
-	return &rtn
+	return rtn
 }
 
 // Transactions implements DerivableList for transactions.
