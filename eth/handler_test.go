@@ -17,6 +17,7 @@
 package eth
 
 import (
+	"github.com/anduschain/go-anduschain/accounts/abi/bind/backends"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"math"
 	"math/big"
@@ -36,6 +37,8 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/params"
 )
+
+var otprn = types.NewDefaultOtprn()
 
 // Tests that protocol versions and modes of operations are matched up properly.
 func TestProtocolCompatibility(t *testing.T) {
@@ -276,7 +279,7 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 					block := pm.blockchain.GetBlockByNumber(uint64(num))
 					hashes = append(hashes, block.Hash())
 					if len(bodies) < tt.expected {
-						bodies = append(bodies, &blockBody{Transactions: block.Transactions(), Voter: block.Voters()})
+						bodies = append(bodies, &blockBody{Transactions: block.Transactions(), Voters: block.Voters()})
 					}
 					break
 				}
@@ -286,7 +289,7 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 			hashes = append(hashes, hash)
 			if tt.available[j] && len(bodies) < tt.expected {
 				block := pm.blockchain.GetBlockByHash(hash)
-				bodies = append(bodies, &blockBody{Transactions: block.Transactions(), Voter: block.Voters()})
+				bodies = append(bodies, &blockBody{Transactions: block.Transactions(), Voters: block.Voters()})
 			}
 		}
 		// Send the hash request and verify the response
@@ -466,14 +469,18 @@ func testDAOChallenge(t *testing.T, localForked, remoteForked bool, timeout bool
 	// Create a DAO aware protocol manager
 	var (
 		evmux         = new(event.TypeMux)
-		pow           = deb.NewFaker()
+		pow           = deb.NewFaker(otprn)
 		db            = ethdb.NewMemDatabase()
 		config        = &params.ChainConfig{DAOForkBlock: big.NewInt(1), DAOForkSupport: localForked}
 		gspec         = &core.Genesis{Config: config}
 		genesis       = gspec.MustCommit(db)
 		blockchain, _ = core.NewBlockChain(db, nil, config, pow, vm.Config{})
 	)
-	pm, err := NewProtocolManager(config, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, nil)
+	testMiner, _ := crypto.GenerateKey()
+	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
+	miner, _ := backends.NewSimulatedBackend(gspec.Alloc, params.GenesisGasLimit)
+	miner.Start(testMinerAddress)
+	pm, err := NewProtocolManager(config, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, miner)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}
@@ -495,7 +502,7 @@ func testDAOChallenge(t *testing.T, localForked, remoteForked bool, timeout bool
 	}
 	// Create a block to reply to the challenge if no timeout is simulated
 	if !timeout {
-		blocks, _ := core.GenerateChain(&params.ChainConfig{}, genesis, deb.NewFaker(), db, 1, func(i int, block *core.BlockGen) {
+		blocks, _ := core.GenerateChain(&params.ChainConfig{}, genesis, deb.NewFaker(otprn), db, 1, func(i int, block *core.BlockGen) {
 			if remoteForked {
 				block.SetExtra(params.DAOForkBlockExtra)
 			}

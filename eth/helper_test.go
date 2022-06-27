@@ -22,13 +22,9 @@ package eth
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"github.com/anduschain/go-anduschain/consensus/deb"
-	"math/big"
-	"sort"
-	"sync"
-	"testing"
-
+	"github.com/anduschain/go-anduschain/accounts/abi/bind/backends"
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -39,6 +35,10 @@ import (
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
+	"math/big"
+	"sort"
+	"sync"
+	"testing"
 )
 
 var (
@@ -67,7 +67,11 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		panic(err)
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, nil)
+	testMiner, _ := crypto.GenerateKey()
+	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
+	miner, _ := backends.NewSimulatedBackend(gspec.Alloc, params.GenesisGasLimit)
+	miner.Start(testMinerAddress)
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, miner)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,7 +1,8 @@
 package mock_fairnode
 
 //go:generate mockgen -source=$PWD/protos/fairnode/fairnode.pb.go -destination=$PWD/fairnode/mock_fairnode/mock_fairnode.go
-
+//go:generate mockgen -source=$PWD/../../protos/fairnode/fairnode.pb.go -destination=$PWD/mock_fairnode.go
+//go:generate mockgen -source=$PWD/../../protos/fairnode/fairnode_grpc.pb.go -destination=$PWD/mock_fairnode_grpc.go
 import (
 	"context"
 	"github.com/anduschain/go-anduschain/protos/common"

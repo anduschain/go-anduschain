@@ -103,7 +103,7 @@ func DecodeOtprn(otpByte []byte) (*Otprn, error) {
 	otp := new(Otprn)
 	err := rlp.DecodeBytes(otpByte, otp)
 	if err != nil {
-		log.Error("OTPRN DECODE", "msg", err)
+		//log.Info("OTPRN DECODE", "msg", err)
 		return nil, err
 	}
 
