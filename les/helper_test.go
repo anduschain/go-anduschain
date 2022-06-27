@@ -149,7 +149,7 @@ func testRCL() RequestCostList {
 func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *core.BlockGen), odr *LesOdr, peers *peerSet, db ethdb.Database) (*ProtocolManager, error) {
 	var (
 		evmux  = new(event.TypeMux)
-		engine = deb.NewFaker()
+		engine = deb.NewFaker(otprn)
 		gspec  = core.Genesis{
 			Config: params.TestChainConfig,
 			Alloc:  core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
@@ -165,7 +165,7 @@ func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *cor
 		chain, _ = light.NewLightChain(odr, gspec.Config, engine)
 	} else {
 		blockchain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
-		gchain, _, _ := core.GenerateChain(gspec.Config, genesis, deb.NewFaker(), db, blocks, generator)
+		gchain, _ := core.GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, blocks, generator)
 		if _, err := blockchain.InsertChain(gchain); err != nil {
 			panic(err)
 		}

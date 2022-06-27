@@ -38,6 +38,8 @@ import (
 	"github.com/anduschain/go-anduschain/trie"
 )
 
+var otprn = types.NewDefaultOtprn()
+
 func expectResponse(r p2p.MsgReader, msgcode, reqID, bv uint64, data interface{}) error {
 	type resp struct {
 		ReqID, BV uint64
@@ -539,7 +541,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 	test(tx3, false, txStatus{Status: core.TxStatusPending})
 
 	// generate and add a block with tx1 and tx2 included
-	gchain, _ := core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(), db, 1, func(i int, block *core.BlockGen) {
+	gchain, _ := core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(otprn), db, 1, func(i int, block *core.BlockGen) {
 		block.AddTx(tx1)
 		block.AddTx(tx2)
 	})
@@ -563,7 +565,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 	test(tx2, false, txStatus{Status: core.TxStatusIncluded, Lookup: &rawdb.TxLookupEntry{BlockHash: block1hash, BlockIndex: 1, Index: 1}})
 
 	// create a reorg that rolls them back
-	gchain, _ = core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(), db, 2, func(i int, block *core.BlockGen) {})
+	gchain, _ = core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(otprn), db, 2, func(i int, block *core.BlockGen) {})
 	if _, err := chain.InsertChain(gchain); err != nil {
 		panic(err)
 	}

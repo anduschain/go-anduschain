@@ -52,8 +52,8 @@ require (
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
 	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f
-	google.golang.org/grpc v1.27.0
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/grpc v1.32.0
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 	gopkg.in/inconshreveable/log15.v2 v2.0.0-20200109203555-b30bc20e4fd1
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
