@@ -18,7 +18,9 @@ package light
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/big"
 	"testing"
 
@@ -245,6 +247,10 @@ func TestBrokenHeaderChain(t *testing.T) {
 
 func makeHeaderChainWithDiff(genesis *types.Block, d []int, seed byte) []*types.Header {
 	var chain []*types.Header
+	hexOtprn, _ := hex.DecodeString(params.TestOtprn)
+	pOtprn, _ := types.DecodeOtprn(hexOtprn)
+	otp, _ := pOtprn.EncodeOtprn()
+
 	for i, difficulty := range d {
 		header := &types.Header{
 			Coinbase:   common.Address{seed},
@@ -253,12 +259,21 @@ func makeHeaderChainWithDiff(genesis *types.Block, d []int, seed byte) []*types.
 			//UncleHash:   types.EmptyUncleHash,
 			TxHash:      types.EmptyRootHash,
 			ReceiptHash: types.EmptyRootHash,
+			VoteHash:    types.EmptyVoteHash,
+			Otprn:       otp,
 		}
 		if i == 0 {
 			header.ParentHash = genesis.Hash()
 		} else {
 			header.ParentHash = chain[i-1].Hash()
 		}
+		hash := types.RlpHash([]interface{}{
+			header.Hash(),
+			header.VoteHash,
+		})
+		fairnodeSign, _ := crypto.Sign(hash.Bytes(), params.TestFairnodeKey)
+		header.FairnodeSign = fairnodeSign
+
 		chain = append(chain, types.CopyHeader(header))
 	}
 	return chain
@@ -296,7 +311,6 @@ func TestReorgShortHeaders(t *testing.T) {
 
 func testReorg(t *testing.T, first, second []int, td int64) {
 	bc := newTestLightChain()
-
 	// Insert an easy and a difficult chain afterwards
 	bc.InsertHeaderChain(makeHeaderChainWithDiff(bc.genesisBlock, first, 11), 1)
 	bc.InsertHeaderChain(makeHeaderChainWithDiff(bc.genesisBlock, second, 22), 1)

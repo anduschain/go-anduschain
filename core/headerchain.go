@@ -193,7 +193,6 @@ func (hc *HeaderChain) WriteHeader(header *types.Header) (status WriteStatus, er
 
 	hc.headerCache.Add(hash, header)
 	hc.numberCache.Add(hash, number)
-
 	return
 }
 
@@ -244,6 +243,7 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		}
 		// Otherwise wait for headers checks and ensure they pass
 		if err := <-results; err != nil {
+			fmt.Println("CSW result...", err)
 			return i, err
 		}
 	}
