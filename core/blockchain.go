@@ -175,6 +175,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if bc.genesisBlock == nil {
 		return nil, ErrNoGenesis
 	}
+	// CSW CHECK
 	var nilBlock *types.Block
 	bc.currentBlock.Store(nilBlock)
 	bc.currentFastBlock.Store(nilBlock)
@@ -904,7 +905,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	log.Trace("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String()) // TODO(hakuna) : before release level to debug
+	log.Debug("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String())
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {
@@ -984,10 +985,10 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != currentBlock.Hash() {
-			status = SideStatTy
-			//if err := bc.reorg(currentBlock, block); err != nil {
-			//	return NonStatTy, err
-			//}
+			if err := bc.reorg(currentBlock, block); err != nil {
+				return NonStatTy, err
+			}
+			status = CanonStatTy
 		} else {
 			// Write the positional metadata for transaction/receipt lookups and preimages
 			rawdb.WriteTxLookupEntries(batch, block)
@@ -1189,7 +1190,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		switch status {
 		case CanonStatTy:
-			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(),
+			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash().String(),
 				"Txs", block.Transactions().Len(), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			coalescedLogs = append(coalescedLogs, logs...)
@@ -1201,7 +1202,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			bc.gcproc += proctime
 
 		case SideStatTy:
-			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash(), "diff", block.Difficulty(), "elapsed",
+			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash().String(), "diff", block.Difficulty(), "elapsed",
 				common.PrettyDuration(time.Since(bstart)), "Txs", block.Transactions().Len(), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)

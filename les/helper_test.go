@@ -151,8 +151,9 @@ func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *cor
 		evmux  = new(event.TypeMux)
 		engine = deb.NewFaker(otprn)
 		gspec  = core.Genesis{
-			Config: params.TestChainConfig,
-			Alloc:  core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
+			Config:     params.TestChainConfig,
+			Alloc:      core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
+			Difficulty: big.NewInt(10),
 		}
 		genesis = gspec.MustCommit(db)
 		chain   BlockChain

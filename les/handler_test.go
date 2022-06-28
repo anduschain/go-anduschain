@@ -527,7 +527,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 	tx0, _ := types.SignTx(types.NewTransaction(0, acc1Addr, big.NewInt(10000), params.TxGas, nil, nil), signer, testBankKey)
 	test(tx0, true, txStatus{Status: core.TxStatusUnknown, Error: core.ErrUnderpriced.Error()})
 
-	tx1, _ := types.SignTx(types.NewTransaction(0, acc1Addr, big.NewInt(10000), params.TxGas, big.NewInt(100000000000), nil), signer, testBankKey)
+	tx1, _ := types.SignTx(types.NewTransaction(0, acc1Addr, big.NewInt(10000), params.TxGas, big.NewInt(params.DefaultGasFee), nil), signer, testBankKey)
 	test(tx1, false, txStatus{Status: core.TxStatusUnknown}) // query before sending, should be unknown
 	test(tx1, true, txStatus{Status: core.TxStatusPending})  // send valid processable tx, should return pending
 	test(tx1, true, txStatus{Status: core.TxStatusPending})  // adding it again should not return an error
@@ -539,6 +539,16 @@ func TestTransactionStatusLes2(t *testing.T) {
 	test(tx2, true, txStatus{Status: core.TxStatusPending})
 	// query again, now tx3 should be pending too
 	test(tx3, false, txStatus{Status: core.TxStatusPending})
+	// wait until TxPool processes the reorg
+	for i := 0; i < 10; i++ {
+		if pending, _ := txpool.Stats(); pending == 3 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if pending, _ := txpool.Stats(); pending != 3 {
+		t.Fatalf("pending count mismatch: have %d, want 3", pending)
+	}
 
 	// generate and add a block with tx1 and tx2 included
 	gchain, _ := core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(otprn), db, 1, func(i int, block *core.BlockGen) {
@@ -558,14 +568,15 @@ func TestTransactionStatusLes2(t *testing.T) {
 	if pending, _ := txpool.Stats(); pending != 1 {
 		t.Fatalf("pending count mismatch: have %d, want 1", pending)
 	}
-
 	// check if their status is included now
 	block1hash := rawdb.ReadCanonicalHash(db, 1)
 	test(tx1, false, txStatus{Status: core.TxStatusIncluded, Lookup: &rawdb.TxLookupEntry{BlockHash: block1hash, BlockIndex: 1, Index: 0}})
 	test(tx2, false, txStatus{Status: core.TxStatusIncluded, Lookup: &rawdb.TxLookupEntry{BlockHash: block1hash, BlockIndex: 1, Index: 1}})
 
 	// create a reorg that rolls them back
-	gchain, _ = core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), deb.NewFaker(otprn), db, 2, func(i int, block *core.BlockGen) {})
+	first := chain.GetBlockByNumber(0)
+	first.SetDifficulty(big.NewInt(0).Add(first.Difficulty(), big.NewInt(10)))
+	gchain, _ = core.GenerateChain(params.TestChainConfig, first, deb.NewFaker(otprn), db, 2, func(i int, block *core.BlockGen) {})
 	if _, err := chain.InsertChain(gchain); err != nil {
 		panic(err)
 	}

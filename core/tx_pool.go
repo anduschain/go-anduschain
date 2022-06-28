@@ -147,7 +147,7 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	Journal:   "transactions.rlp",
 	Rejournal: time.Hour,
 
-	PriceLimit: params.MinimumGenesisGasPrice,
+	PriceLimit: params.DefaultGasFee,
 	PriceBump:  10,
 
 	AccountSlots: 16 * 5,
@@ -637,14 +637,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		// account may be local even if the transaction arrived from the network
-		if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
+		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
-		/*
-			if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
-				return ErrUnderpriced
-			}
-		*/
 		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
 		if err != nil {
 			return err
@@ -683,7 +678,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 	// If the transaction pool is full, discard underpriced transactions
 	if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
 		// If the new transaction is underpriced, don't accept it
-		if !local && pool.priced.Underpriced(tx, pool.locals) {
+		if pool.priced.Underpriced(tx, pool.locals) {
 			log.Trace("Discarding underpriced transaction", "hash", hash, "price", tx.GasPrice())
 			underpricedTxCounter.Inc(1)
 			return false, ErrUnderpriced

@@ -257,14 +257,14 @@ func testChainOdr(t *testing.T, protocol int, fn odrTestFn) {
 	)
 	gspec.MustCommit(ldb)
 	// Assemble the test environment
-	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, deb.NewFullFaker(), vm.Config{})
-	gchain, _, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(), sdb, 4, testChainGen)
+	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, deb.NewFullFaker(otprn), vm.Config{})
+	gchain, _ := core.GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(otprn), sdb, 4, testChainGen)
 	if _, err := blockchain.InsertChain(gchain); err != nil {
 		t.Fatal(err)
 	}
 
 	odr := &testOdr{sdb: sdb, ldb: ldb, indexerConfig: TestClientIndexerConfig}
-	lightchain, err := NewLightChain(odr, params.TestChainConfig, deb.NewFullFaker())
+	lightchain, err := NewLightChain(odr, params.TestChainConfig, deb.NewFullFaker(otprn))
 	if err != nil {
 		t.Fatal(err)
 	}

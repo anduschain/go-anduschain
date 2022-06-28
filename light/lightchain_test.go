@@ -34,11 +34,12 @@ import (
 var (
 	canonicalSeed = 1
 	forkSeed      = 2
+	otprn         = types.NewDefaultOtprn()
 )
 
 // makeHeaderChain creates a deterministic chain of headers rooted at parent.
 func makeHeaderChain(parent *types.Header, n int, db ethdb.Database, seed int) []*types.Header {
-	blocks, _, _ := core.GenerateChain(params.TestChainConfig, types.NewBlockWithHeader(parent), deb.NewFaker(), db, n, func(i int, b *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.TestChainConfig, types.NewBlockWithHeader(parent), deb.NewFaker(otprn), db, n, func(i int, b *core.BlockGen) {
 		b.SetCoinbase(common.Address{0: byte(seed), 19: byte(i)})
 	})
 	headers := make([]*types.Header, len(blocks))
@@ -55,7 +56,7 @@ func newCanonical(n int) (ethdb.Database, *LightChain, error) {
 	db := ethdb.NewMemDatabase()
 	gspec := core.Genesis{Config: params.TestChainConfig}
 	genesis := gspec.MustCommit(db)
-	blockchain, _ := NewLightChain(&dummyOdr{db: db, indexerConfig: TestClientIndexerConfig}, gspec.Config, deb.NewFaker())
+	blockchain, _ := NewLightChain(&dummyOdr{db: db, indexerConfig: TestClientIndexerConfig}, gspec.Config, deb.NewFaker(otprn))
 
 	// Create and inject the requested chain
 	if n == 0 {
@@ -75,7 +76,7 @@ func newTestLightChain() *LightChain {
 		Config:     params.TestChainConfig,
 	}
 	gspec.MustCommit(db)
-	lc, err := NewLightChain(&dummyOdr{db: db}, gspec.Config, deb.NewFullFaker())
+	lc, err := NewLightChain(&dummyOdr{db: db}, gspec.Config, deb.NewFullFaker(otprn))
 	if err != nil {
 		panic(err)
 	}
@@ -344,7 +345,7 @@ func TestReorgBadHeaderHashes(t *testing.T) {
 	defer func() { delete(core.BadHashes, headers[3].Hash()) }()
 
 	// Create a new LightChain and check that it rolled back the state.
-	ncm, err := NewLightChain(&dummyOdr{db: bc.chainDb}, params.TestChainConfig, deb.NewFaker())
+	ncm, err := NewLightChain(&dummyOdr{db: bc.chainDb}, params.TestChainConfig, deb.NewFaker(otprn))
 	if err != nil {
 		t.Fatalf("failed to create new chain manager: %v", err)
 	}
