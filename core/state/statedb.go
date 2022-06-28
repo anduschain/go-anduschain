@@ -193,7 +193,6 @@ func (self *StateDB) GetBalance(addr common.Address) *big.Int {
 	if stateObject != nil {
 		return stateObject.Balance()
 	}
-	fmt.Println("CSW GetBalance NotFound", addr.String())
 	return common.Big0
 }
 

@@ -20,6 +20,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/influxdata/influxdb/logger"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -28,7 +30,6 @@ import (
 	"testing"
 
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 )
@@ -76,7 +77,7 @@ func TestState(t *testing.T) {
 
 				t.Run(key+"/trie", func(t *testing.T) {
 					withTrace(t, test.gasLimit(subtest), func(vmconfig vm.Config) error {
-						_, _, err := test.Run(subtest, vmconfig, false)
+						_, err := test.Run(subtest, vmconfig)
 						if err != nil && len(test.json.Post[subtest.Fork][subtest.Index].ExpectException) > 0 {
 							// Ignore expected errors (TODO MariusVanDerWijden check error string)
 							return nil
@@ -86,12 +87,7 @@ func TestState(t *testing.T) {
 				})
 				t.Run(key+"/snap", func(t *testing.T) {
 					withTrace(t, test.gasLimit(subtest), func(vmconfig vm.Config) error {
-						snaps, statedb, err := test.Run(subtest, vmconfig, true)
-						if snaps != nil && statedb != nil {
-							if _, err := snaps.Journal(statedb.IntermediateRoot(false)); err != nil {
-								return err
-							}
-						}
+						_, err := test.Run(subtest, vmconfig)
 						if err != nil && len(test.json.Post[subtest.Fork][subtest.Index].ExpectException) > 0 {
 							// Ignore expected errors (TODO MariusVanDerWijden check error string)
 							return nil
@@ -192,17 +188,9 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			}
 			vmconfig.ExtraEips = eips
 			block := t.genesis(config).ToBlock(nil)
-			_, statedb := MakePreState(rawdb.NewMemoryDatabase(), t.json.Pre, false)
+			statedb := MakePreState(ethdb.NewMemDatabase(), t.json.Pre)
 
 			var baseFee *big.Int
-			if config.IsLondon(new(big.Int)) {
-				baseFee = t.json.Env.BaseFee
-				if baseFee == nil {
-					// Retesteth uses `0x10` for genesis baseFee. Therefore, it defaults to
-					// parent - 2 : 0xa as the basefee for 'this' context.
-					baseFee = big.NewInt(0x0a)
-				}
-			}
 			post := t.json.Post[subtest.Fork][subtest.Index]
 			msg, err := t.json.Tx.toMessage(post, baseFee)
 			if err != nil {

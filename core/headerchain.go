@@ -243,7 +243,6 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		}
 		// Otherwise wait for headers checks and ensure they pass
 		if err := <-results; err != nil {
-			fmt.Println("CSW result...", err)
 			return i, err
 		}
 	}
