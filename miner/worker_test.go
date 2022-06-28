@@ -70,9 +70,9 @@ func init() {
 	//	Epoch:  30000,
 	//}
 	debChainConfig = params.TestChainConfig
-	tx1, _ := types.SignTx(types.NewTransaction(0, testUserAddress, big.NewInt(1000), params.TxGas, nil, nil), types.HomesteadSigner{}, testBankKey)
+	tx1, _ := types.SignTx(types.NewTransaction(0, testUserAddress, big.NewInt(1000), params.TxGas, big.NewInt(params.DefaultGasFee), nil), types.HomesteadSigner{}, testBankKey)
 	pendingTxs = append(pendingTxs, tx1)
-	tx2, _ := types.SignTx(types.NewTransaction(1, testUserAddress, big.NewInt(1000), params.TxGas, nil, nil), types.HomesteadSigner{}, testBankKey)
+	tx2, _ := types.SignTx(types.NewTransaction(1, testUserAddress, big.NewInt(1000), params.TxGas, big.NewInt(params.DefaultGasFee), nil), types.HomesteadSigner{}, testBankKey)
 	newTxs = append(newTxs, tx2)
 
 	stack, _ = node.New(&node.Config{DataDir: "./data"})
@@ -183,6 +183,7 @@ func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, eng
 	defer engine.Close()
 
 	w, b := newTestWorker(t, chainConfig, engine, 0)
+
 	defer w.close()
 	// Ensure snapshot has been updated.
 	time.Sleep(100 * time.Millisecond)

@@ -323,6 +323,11 @@ type taskgen struct {
 	doneFunc func(task)
 }
 
+func (tg taskgen) removeStaticID(n discover.NodeID) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (tg taskgen) newTasks(running int, peers map[discover.NodeID]*Peer, now time.Time) []task {
 	return tg.newFunc(running, peers)
 }
