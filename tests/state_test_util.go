@@ -123,26 +123,26 @@ type stTransactionMarshaling struct {
 // The fork definition can be
 // - a plain forkname, e.g. `Byzantium`,
 // - a fork basename, and a list of EIPs to enable; e.g. `Byzantium+1884+1283`.
-func GetChainConfig(forkString string) (baseConfig *params.ChainConfig, eips []int, err error) {
+func GetChainConfig(forkString string) (baseConfig *params.ChainConfig, aips []int, err error) {
 	var (
 		splitForks            = strings.Split(forkString, "+")
 		ok                    bool
-		baseName, eipsStrings = splitForks[0], splitForks[1:]
+		baseName, aipsStrings = splitForks[0], splitForks[1:]
 	)
 	if baseConfig, ok = Forks[baseName]; !ok {
 		return nil, nil, UnsupportedForkError{baseName}
 	}
-	for _, eip := range eipsStrings {
-		if eipNum, err := strconv.Atoi(eip); err != nil {
-			return nil, nil, fmt.Errorf("syntax error, invalid eip number %v", eipNum)
+	for _, aip := range aipsStrings {
+		if aipNum, err := strconv.Atoi(aip); err != nil {
+			return nil, nil, fmt.Errorf("syntax error, invalid aip number %v", aipNum)
 		} else {
-			if !vm.ValidAip(eipNum) {
-				return nil, nil, fmt.Errorf("syntax error, invalid eip number %v", eipNum)
+			if !vm.ValidAip(aipNum) {
+				return nil, nil, fmt.Errorf("syntax error, invalid eip number %v", aipNum)
 			}
-			eips = append(eips, eipNum)
+			aips = append(aips, aipNum)
 		}
 	}
-	return baseConfig, eips, nil
+	return baseConfig, aips, nil
 }
 
 // Subtests returns all valid subtests of the test.

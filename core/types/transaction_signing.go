@@ -286,3 +286,12 @@ func deriveChainId(v *big.Int) *big.Int {
 	v = new(big.Int).Sub(v, big.NewInt(35))
 	return v.Div(v, big.NewInt(2))
 }
+
+func LatestSigner(config *params.ChainConfig) Signer {
+	if config.ChainID != nil {
+		if config.EIP155Block != nil {
+			return NewEIP155Signer(config.ChainID)
+		}
+	}
+	return HomesteadSigner{}
+}

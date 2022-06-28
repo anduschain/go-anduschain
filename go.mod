@@ -22,6 +22,8 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/hashicorp/golang-lru v0.5.3
+	github.com/holiman/bloomfilter/v2 v2.0.3
+    github.com/holiman/uint256 v1.2.0
 	github.com/huin/goupnp v1.0.0
 	github.com/influxdata/influxdb v1.7.8
 	github.com/jackpal/go-nat-pmp v1.0.1

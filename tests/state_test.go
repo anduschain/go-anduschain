@@ -181,12 +181,12 @@ func runBenchmark(b *testing.B, t *StateTest) {
 		b.Run(key, func(b *testing.B) {
 			vmconfig := vm.Config{}
 
-			config, eips, err := GetChainConfig(subtest.Fork)
+			config, aips, err := GetChainConfig(subtest.Fork)
 			if err != nil {
 				b.Error(err)
 				return
 			}
-			vmconfig.ExtraEips = eips
+			vmconfig.ExtraAips = aips
 			block := t.genesis(config).ToBlock(nil)
 			statedb := MakePreState(ethdb.NewMemDatabase(), t.json.Pre)
 
@@ -214,11 +214,8 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			}
 
 			// Prepare the EVM.
-			txContext := core.NewEVMTxContext(msg)
-			context := core.NewEVMBlockContext(block.Header(), nil, &t.json.Env.Coinbase)
-			context.GetHash = vmTestBlockHash
-			context.BaseFee = baseFee
-			evm := vm.NewEVM(context, txContext, statedb, config, vmconfig)
+			context := core.NewEVMContext(msg, block.Header(), nil, &t.json.Env.Coinbase)
+			evm := vm.NewEVM(context, statedb, config, vmconfig)
 
 			// Create "contract" for sender to cache code analysis.
 			sender := vm.NewContract(vm.AccountRef(msg.From()), vm.AccountRef(msg.From()),
