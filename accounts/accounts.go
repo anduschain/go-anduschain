@@ -18,6 +18,8 @@
 package accounts
 
 import (
+	"fmt"
+	"golang.org/x/crypto/sha3"
 	"math/big"
 
 	ethereum "github.com/anduschain/go-anduschain"
@@ -32,6 +34,13 @@ type Account struct {
 	Address common.Address `json:"address"` // Ethereum account address derived from the key
 	URL     URL            `json:"url"`     // Optional resource locator within a backend
 }
+
+const (
+	MimetypeDataWithValidator = "data/validator"
+	MimetypeTypedData         = "data/typed"
+	MimetypeClique            = "application/x-clique-header"
+	MimetypeTextPlain         = "text/plain"
+)
 
 // Wallet represents a software or hardware wallet that might contain one or more
 // accounts (derived from the same seed).
@@ -85,7 +94,25 @@ type Wallet interface {
 	//
 	// You can disable automatic account discovery by calling SelfDerive with a nil
 	// chain state reader.
-	SelfDerive(base DerivationPath, chain ethereum.ChainStateReader)
+	SelfDerive(bases []DerivationPath, chain ethereum.ChainStateReader)
+
+	// SignData requests the wallet to sign the hash of the given data
+	// It looks up the account specified either solely via its address contained within,
+	// or optionally with the aid of any location metadata from the embedded URL field.
+	//
+	// If the wallet requires additional authentication to sign the request (e.g.
+	// a password to decrypt the account, or a PIN code to verify the transaction),
+	// an AuthNeededError instance will be returned, containing infos for the user
+	// about which fields or actions are needed. The user may retry by providing
+	// the needed details via SignDataWithPassphrase, or by other means (e.g. unlock
+	// the account in a keystore).
+	SignData(account Account, mimeType string, data []byte) ([]byte, error)
+
+	// SignDataWithPassphrase is identical to SignData, but also takes a password
+	// NOTE: there's a chance that an erroneous call might mistake the two strings, and
+	// supply password in the mimetype field, or vice versa. Thus, an implementation
+	// should never echo the mimetype or return the mimetype in the error-response
+	SignDataWithPassphrase(account Account, passphrase, mimeType string, data []byte) ([]byte, error)
 
 	// SignHash requests the wallet to sign the given hash.
 	//
@@ -100,6 +127,24 @@ type Wallet interface {
 	// the account in a keystore).
 	SignHash(account Account, hash []byte) ([]byte, error)
 
+	// SignText requests the wallet to sign the hash of a given piece of data, prefixed
+	// by the Ethereum prefix scheme
+	// It looks up the account specified either solely via its address contained within,
+	// or optionally with the aid of any location metadata from the embedded URL field.
+	//
+	// If the wallet requires additional authentication to sign the request (e.g.
+	// a password to decrypt the account, or a PIN code to verify the transaction),
+	// an AuthNeededError instance will be returned, containing infos for the user
+	// about which fields or actions are needed. The user may retry by providing
+	// the needed details via SignTextWithPassphrase, or by other means (e.g. unlock
+	// the account in a keystore).
+	//
+	// This method should return the signature in 'canonical' format, with v 0 or 1.
+	SignText(account Account, text []byte) ([]byte, error)
+
+	// SignTextWithPassphrase is identical to Signtext, but also takes a password
+	SignTextWithPassphrase(account Account, passphrase string, hash []byte) ([]byte, error)
+
 	// SignTx requests the wallet to sign the given transaction.
 	//
 	// It looks up the account specified either solely via its address contained within,
@@ -112,13 +157,6 @@ type Wallet interface {
 	// the needed details via SignTxWithPassphrase, or by other means (e.g. unlock
 	// the account in a keystore).
 	SignTx(account Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
-
-	// SignHashWithPassphrase requests the wallet to sign the given hash with the
-	// given passphrase as extra authentication information.
-	//
-	// It looks up the account specified either solely via its address contained within,
-	// or optionally with the aid of any location metadata from the embedded URL field.
-	SignHashWithPassphrase(account Account, passphrase string, hash []byte) ([]byte, error)
 
 	// SignTxWithPassphrase requests the wallet to sign the given transaction, with the
 	// given passphrase as extra authentication information.
@@ -170,4 +208,30 @@ const (
 type WalletEvent struct {
 	Wallet Wallet          // Wallet instance arrived or departed
 	Kind   WalletEventType // Event type that happened in the system
+}
+
+// TextHash is a helper function that calculates a hash for the given message that can be
+// safely used to calculate a signature from.
+//
+// The hash is calculated as
+//   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
+//
+// This gives context to the signed message and prevents signing of transactions.
+func TextHash(data []byte) []byte {
+	hash, _ := TextAndHash(data)
+	return hash
+}
+
+// TextAndHash is a helper function that calculates a hash for the given message that can be
+// safely used to calculate a signature from.
+//
+// The hash is calculated as
+//   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
+//
+// This gives context to the signed message and prevents signing of transactions.
+func TextAndHash(data []byte) ([]byte, string) {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write([]byte(msg))
+	return hasher.Sum(nil), msg
 }

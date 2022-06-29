@@ -295,3 +295,7 @@ func LatestSigner(config *params.ChainConfig) Signer {
 	}
 	return HomesteadSigner{}
 }
+
+func LatestSignerForChainID(chainID *big.Int) Signer {
+	return HomesteadSigner{}
+}

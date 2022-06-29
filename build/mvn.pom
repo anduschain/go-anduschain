@@ -48,7 +48,7 @@
 
   <issueManagement>
     <system>GitHub Issues</system>
-    <url>https://github.com/ethereum/go-ethereum/issues/</url>
+    <url>https://github.com/anduschain/go-anduschain/issues/</url>
   </issueManagement>
 
   <scm>

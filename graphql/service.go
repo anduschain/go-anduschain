@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/anduschain/go-daon/internal/ethapi"
-	"github.com/anduschain/go-daon/node"
+	"github.com/anduschain/go-anduschain/internal/ethapi"
+	"github.com/anduschain/go-anduschain/node"
 	"github.com/graph-gophers/graphql-go"
 )
 

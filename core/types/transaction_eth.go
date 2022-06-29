@@ -55,8 +55,8 @@ type txEthdata struct {
 	Hash *common.Hash `json:"hash" rlp:"-"`
 }
 
-func (tx txEthdata) TxData() txdata {
-	var rtn txdata
+func (tx txEthdata) TxData() TxData {
+	var rtn TxData
 
 	rtn.Type = EthTx
 	rtn.AccountNonce = tx.AccountNonce

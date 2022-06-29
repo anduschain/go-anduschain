@@ -30,21 +30,21 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
-//go:generate gencodec -dir . -type txdata -field-override txdataMarshaling -out gen_tx_json.go
+//go:generate gencodec -dir . -type TxData -field-override TxDataMarshaling -out gen_tx_json.go
 
 var (
 	ErrInvalidSig = errors.New("invalid transaction v, r, s values")
 )
 
 type Transaction struct {
-	data txdata
+	data TxData
 	// caches
 	hash atomic.Value
 	size atomic.Value
 	from atomic.Value
 }
 
-type txdata struct {
+type TxData struct {
 	Type         uint64          `json:"type"    gencodec:"required"`
 	AccountNonce uint64          `json:"nonce"    gencodec:"required"`
 	Price        *big.Int        `json:"gasPrice" gencodec:"required"`
@@ -62,7 +62,7 @@ type txdata struct {
 	Hash *common.Hash `json:"hash" rlp:"-"`
 }
 
-type txdataMarshaling struct {
+type TxDataMarshaling struct {
 	Type         hexutil.Uint64
 	AccountNonce hexutil.Uint64
 	Price        *hexutil.Big
@@ -72,6 +72,14 @@ type txdataMarshaling struct {
 	V            *hexutil.Big
 	R            *hexutil.Big
 	S            *hexutil.Big
+}
+
+// NewTx creates a new transaction.
+func NewTx(inner TxData) *Transaction {
+	tx := new(Transaction)
+	tx.setDecoded(inner.copy(), 0)
+
+	return tx
 }
 
 func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
@@ -86,7 +94,7 @@ func ConvertEthTransaction(nonce uint64, to *common.Address, amount *big.Int, ga
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
-	d := txdata{
+	d := TxData{
 		Type:         EthTx,
 		AccountNonce: nonce,
 		Recipient:    to,
@@ -124,7 +132,7 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte, coinase common.Ad
 	payload = append(payload, b...)
 	payload = append(payload, hash.Bytes()...)
 
-	d := txdata{
+	d := TxData{
 		Type:         JoinTx,
 		AccountNonce: nonce,
 		Recipient:    &params.JtxAddress,
@@ -144,7 +152,7 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
-	d := txdata{
+	d := TxData{
 		Type:         GeneralTx,
 		AccountNonce: nonce,
 		Recipient:    to,
@@ -246,7 +254,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes the web3 RPC transaction format.
 func (tx *Transaction) UnmarshalJSON(input []byte) error {
-	var dec txdata
+	var dec TxData
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
@@ -267,7 +275,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 // UnmarshalBinary decodes the canonical encoding of transactions.
 // It supports legacy RLP transactions and EIP2718 typed transactions.
 func (tx *Transaction) UnmarshalBinary(b []byte) error {
-	var data txdata
+	var data TxData
 	err := rlp.DecodeBytes(b, &data)
 	if err != nil {
 		return err
@@ -277,7 +285,7 @@ func (tx *Transaction) UnmarshalBinary(b []byte) error {
 }
 
 // setDecoded sets the inner transaction and size after decoding.
-func (tx *Transaction) setDecoded(inner txdata, size int) {
+func (tx *Transaction) setDecoded(inner TxData, size int) {
 	tx.data = inner
 	if size > 0 {
 		tx.size.Store(common.StorageSize(size))
@@ -385,6 +393,38 @@ func (tx *Transaction) Sender(signer Signer) (common.Address, error) {
 	return addr, nil
 }
 
+func (tx *TxData) copy() TxData {
+	cpy := TxData{
+		Type:         tx.Type,
+		AccountNonce: tx.AccountNonce,
+		Recipient:    copyAddressPtr(tx.Recipient),
+		Payload:      common.CopyBytes(tx.Payload),
+		GasLimit:     tx.GasLimit,
+		// These are initialized below.
+		Amount: new(big.Int),
+		Price:  new(big.Int),
+		V:      new(big.Int),
+		R:      new(big.Int),
+		S:      new(big.Int),
+	}
+	if tx.Amount != nil {
+		cpy.Amount.Set(tx.Amount)
+	}
+	if tx.Price != nil {
+		cpy.Price.Set(tx.Price)
+	}
+	if tx.V != nil {
+		cpy.V.Set(tx.V)
+	}
+	if tx.R != nil {
+		cpy.R.Set(tx.R)
+	}
+	if tx.S != nil {
+		cpy.S.Set(tx.S)
+	}
+	return cpy
+}
+
 // Message is a fully derived transaction and implements core.Message
 //
 // NOTE: In a future PR this will be removed.
@@ -420,3 +460,12 @@ func (m Message) Gas() uint64          { return m.gasLimit }
 func (m Message) Nonce() uint64        { return m.nonce }
 func (m Message) Data() []byte         { return m.data }
 func (m Message) CheckNonce() bool     { return m.checkNonce }
+
+// copyAddressPtr copies an address.
+func copyAddressPtr(a *common.Address) *common.Address {
+	if a == nil {
+		return nil
+	}
+	cpy := *a
+	return &cpy
+}

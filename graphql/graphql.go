@@ -423,12 +423,12 @@ func (t *Transaction) Logs(ctx context.Context) (*[]*Log, error) {
 	return &ret, nil
 }
 
-func (t *Transaction) Type(ctx context.Context) (*int32, error) {
+func (t *Transaction) Type(ctx context.Context) (*uint64, error) {
 	tx, err := t.resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
-	txType := int32(tx.TransactionType())
+	txType := tx.TransactionId()
 	return &txType, nil
 }
 
@@ -570,11 +570,11 @@ func (b *Block) GasUsed(ctx context.Context) (Long, error) {
 }
 
 func (b *Block) BaseFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	return (*hexutil.Big)(big.NewInt(params.InitialBaseFee)), nil
+	return (*hexutil.Big)(big.NewInt(params.DefaultGasFee)), nil
 }
 
 func (b *Block) NextBaseFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	return (*hexutil.Big)(big.NewInt(params.InitialBaseFee)), nil
+	return (*hexutil.Big)(big.NewInt(params.DefaultGasFee)), nil
 }
 
 func (b *Block) Parent(ctx context.Context) (*Block, error) {
@@ -605,7 +605,7 @@ func (b *Block) Timestamp(ctx context.Context) (hexutil.Uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return hexutil.Uint64(header.Time), nil
+	return hexutil.Uint64(header.Time.Uint64()), nil
 }
 
 func (b *Block) Nonce(ctx context.Context) (hexutil.Bytes, error) {
@@ -698,7 +698,7 @@ func (b *Block) TotalDifficulty(ctx context.Context) (hexutil.Big, error) {
 		}
 		h = header.Hash()
 	}
-	td := b.backend.GetTd(ctx, h)
+	td := b.backend.GetTd(h)
 	if td == nil {
 		return hexutil.Big{}, fmt.Errorf("total difficulty not found %x", b.hash)
 	}

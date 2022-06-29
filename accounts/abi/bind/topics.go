@@ -19,10 +19,10 @@ package bind
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/accounts/abi"
 	"math/big"
 	"reflect"
 
-	"github.com/anduschain/go-anduschain/accounts/abi"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
 )

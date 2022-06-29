@@ -82,6 +82,16 @@ type SimulatedBackend struct {
 	miner          *SimulatedMiner
 }
 
+func (b *SimulatedBackend) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *SimulatedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (b *SimulatedBackend) BlockChain() *core.BlockChain {
 	return b.blockchain
 }
@@ -467,6 +477,11 @@ func (b *SimulatedBackend) AdjustTime(adjustment time.Duration) error {
 	b.pendingBlock = blocks[0]
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
 
+	return nil
+}
+
+func (b *SimulatedBackend) Close() error {
+	b.blockchain.Stop()
 	return nil
 }
 
