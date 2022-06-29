@@ -119,6 +119,14 @@ type StructLogger struct {
 	err           error
 }
 
+func (l *StructLogger) CaptureEnter(env *EVM, typ OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
+	return nil
+}
+
+func (l *StructLogger) CaptureExit(output []byte, gasUsed uint64, err error) error {
+	return nil
+}
+
 // NewStructLogger returns a new logger
 func NewStructLogger(cfg *LogConfig) *StructLogger {
 	logger := &StructLogger{

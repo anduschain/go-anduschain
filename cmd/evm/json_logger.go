@@ -32,6 +32,15 @@ type JSONLogger struct {
 	cfg     *vm.LogConfig
 }
 
+func (l *JSONLogger) CaptureEnter(env *vm.EVM, typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
+	return nil
+}
+
+func (l *JSONLogger) CaptureExit(output []byte, gasUsed uint64, err error) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewJSONLogger creates a new EVM tracer that prints execution steps as JSON objects
 // into the provided stream.
 func NewJSONLogger(cfg *vm.LogConfig, writer io.Writer) *JSONLogger {

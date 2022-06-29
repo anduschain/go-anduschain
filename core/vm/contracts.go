@@ -20,10 +20,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/anduschain/go-anduschain/byteconversion"
 	"github.com/anduschain/go-anduschain/crypto/blake2b"
 	"github.com/anduschain/go-anduschain/crypto/bls12381"
-	"github.com/anduschain/go-anduschain/zkrangeproof"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -54,37 +52,35 @@ var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{
 // PrecompiledContractsByzantium contains the default set of pre-compiled Ethereum
 // contracts used in the Byzantium release.
 var PrecompiledContractsByzantium = map[common.Address]PrecompiledContract{
-	common.BytesToAddress([]byte{1}):   &ecrecover{},
-	common.BytesToAddress([]byte{2}):   &sha256hash{},
-	common.BytesToAddress([]byte{3}):   &ripemd160hash{},
-	common.BytesToAddress([]byte{4}):   &dataCopy{},
-	common.BytesToAddress([]byte{5}):   &bigModExp{},
-	common.BytesToAddress([]byte{6}):   &bn256Add{},
-	common.BytesToAddress([]byte{7}):   &bn256ScalarMul{},
-	common.BytesToAddress([]byte{8}):   &bn256Pairing{},
-	common.BytesToAddress([]byte{101}): &zkpRangeProof{}, // add anduschain, zkrange proof
+	common.BytesToAddress([]byte{1}): &ecrecover{},
+	common.BytesToAddress([]byte{2}): &sha256hash{},
+	common.BytesToAddress([]byte{3}): &ripemd160hash{},
+	common.BytesToAddress([]byte{4}): &dataCopy{},
+	common.BytesToAddress([]byte{5}): &bigModExp{},
+	common.BytesToAddress([]byte{6}): &bn256Add{},
+	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
+	common.BytesToAddress([]byte{8}): &bn256Pairing{},
 }
 
 var PrecompiledContractsPohang = map[common.Address]PrecompiledContract{
-	common.BytesToAddress([]byte{1}):   &ecrecover{},
-	common.BytesToAddress([]byte{2}):   &sha256hash{},
-	common.BytesToAddress([]byte{3}):   &ripemd160hash{},
-	common.BytesToAddress([]byte{4}):   &dataCopy{},
-	common.BytesToAddress([]byte{5}):   &bigModExp{},
-	common.BytesToAddress([]byte{6}):   &bn256Add{},
-	common.BytesToAddress([]byte{7}):   &bn256ScalarMul{},
-	common.BytesToAddress([]byte{8}):   &bn256Pairing{},
-	common.BytesToAddress([]byte{9}):   &blake2F{},
-	common.BytesToAddress([]byte{10}):  &bls12381G1Add{},
-	common.BytesToAddress([]byte{11}):  &bls12381G1Mul{},
-	common.BytesToAddress([]byte{12}):  &bls12381G1MultiExp{},
-	common.BytesToAddress([]byte{13}):  &bls12381G2Add{},
-	common.BytesToAddress([]byte{14}):  &bls12381G2Mul{},
-	common.BytesToAddress([]byte{15}):  &bls12381G2MultiExp{},
-	common.BytesToAddress([]byte{16}):  &bls12381Pairing{},
-	common.BytesToAddress([]byte{17}):  &bls12381MapG1{},
-	common.BytesToAddress([]byte{18}):  &bls12381MapG2{},
-	common.BytesToAddress([]byte{101}): &zkpRangeProof{}, // add anduschain, zkrange proof
+	common.BytesToAddress([]byte{1}):  &ecrecover{},
+	common.BytesToAddress([]byte{2}):  &sha256hash{},
+	common.BytesToAddress([]byte{3}):  &ripemd160hash{},
+	common.BytesToAddress([]byte{4}):  &dataCopy{},
+	common.BytesToAddress([]byte{5}):  &bigModExp{},
+	common.BytesToAddress([]byte{6}):  &bn256Add{},
+	common.BytesToAddress([]byte{7}):  &bn256ScalarMul{},
+	common.BytesToAddress([]byte{8}):  &bn256Pairing{},
+	common.BytesToAddress([]byte{9}):  &blake2F{},
+	common.BytesToAddress([]byte{10}): &bls12381G1Add{},
+	common.BytesToAddress([]byte{11}): &bls12381G1Mul{},
+	common.BytesToAddress([]byte{12}): &bls12381G1MultiExp{},
+	common.BytesToAddress([]byte{13}): &bls12381G2Add{},
+	common.BytesToAddress([]byte{14}): &bls12381G2Mul{},
+	common.BytesToAddress([]byte{15}): &bls12381G2MultiExp{},
+	common.BytesToAddress([]byte{16}): &bls12381Pairing{},
+	common.BytesToAddress([]byte{17}): &bls12381MapG1{},
+	common.BytesToAddress([]byte{18}): &bls12381MapG2{},
 }
 
 var (
@@ -412,60 +408,6 @@ func (c *bn256Pairing) Run(input []byte) ([]byte, error) {
 	}
 	// Execute the pairing checks and return the results
 	if bn256.PairingCheck(cs, ts) {
-		return true32Byte, nil
-	}
-	return false32Byte, nil
-}
-
-// Andus : ING의 zkrangeproof precompiled contract
-type zkpRangeProof struct{}
-
-func (c *zkpRangeProof) RequiredGas(input []byte) uint64 {
-	return uint64(180000)
-}
-
-var (
-	errInvalidInputRangeProof = errors.New("invalid input to range proof")
-)
-
-func (c *zkpRangeProof) Run(input []byte) ([]byte, error) {
-	const OFFSET = 4
-
-	if len(input) < OFFSET+6*32 {
-		return nil, errInvalidInputRangeProof
-	}
-
-	lower := new(big.Int).SetBytes(input[4:36])
-	upper := new(big.Int).SetBytes(input[36:68])
-	startProof := new(big.Int).SetBytes(input[100:132]).Int64() + OFFSET
-
-	if startProof <= 164 || startProof+32 > int64(len(input)) {
-		return nil, errInvalidInputRangeProof
-	}
-
-	commitmentLength := new(big.Int).SetBytes(input[132:164]).Int64()
-	byteArrayCommitment := input[164:startProof]
-	proofLength := new(big.Int).SetBytes(input[startProof : startProof+32]).Int64()
-	byteArrayProof := input[startProof+32:]
-
-	if commitmentLength <= 0 || proofLength <= 0 || commitmentLength > int64(len(byteArrayCommitment)) || proofLength > int64(len(byteArrayProof)) {
-		return nil, errInvalidInputRangeProof
-	}
-
-	// Strip the padding zero bytes at the end, and parse the result
-	parsedCommitment, err := byteconversion.ParseInput(byteArrayCommitment[:commitmentLength])
-
-	if err != nil {
-		return nil, err
-	}
-
-	parsedProof, err := byteconversion.ParseInput(byteArrayProof[:proofLength])
-
-	if err != nil {
-		return nil, err
-	}
-
-	if zkrangeproof.ValidateRangeProof(lower, upper, parsedCommitment, parsedProof) {
 		return true32Byte, nil
 	}
 	return false32Byte, nil
