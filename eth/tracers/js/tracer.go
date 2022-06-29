@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
-	tracers2 "github.com/anduschain/go-anduschain/eth/tracers"
 	"github.com/anduschain/go-anduschain/eth/tracers/js/internal/tracers"
 	"github.com/anduschain/go-anduschain/log"
 	"gopkg.in/olebedev/go-duktape.v3"
@@ -56,7 +55,7 @@ func init() {
 		name := camel(strings.TrimSuffix(file, ".js"))
 		assetTracers[name] = string(tracers.MustAsset(file))
 	}
-	tracers2.RegisterLookup(true, newJsTracer)
+	tracers.RegisterLookup(true, newJsTracer)
 }
 
 // makeSlice convert an unsafe memory pointer with the given type into a Go byte
@@ -185,7 +184,7 @@ func (sw *stackWrapper) peek(idx int) *big.Int {
 		log.Warn("Tracer accessed out of bound stack", "size", len(sw.stack.Data()), "index", idx)
 		return new(big.Int)
 	}
-	return sw.stack.Back(idx).ToBig()
+	return sw.stack.Back(idx)
 }
 
 // pushObject assembles a JSVM object wrapping a swappable stack and pushes it
@@ -424,12 +423,12 @@ type jsTracer struct {
 // New instantiates a new tracer instance. code specifies a Javascript snippet,
 // which must evaluate to an expression returning an object with 'step', 'fault'
 // and 'result' functions.
-func newJsTracer(code string, ctx *tracers2.Context) (tracers2.Tracer, error) {
+func newJsTracer(code string, ctx *tracers.Context) (tracers.Tracer, error) {
 	if c, ok := assetTracers[code]; ok {
 		code = c
 	}
 	if ctx == nil {
-		ctx = new(tracers2.Context)
+		ctx = new(tracers.Context)
 	}
 	tracer := &jsTracer{
 		vm:              duktape.New(),
@@ -680,7 +679,7 @@ func wrapError(context string, err error) error {
 }
 
 // CaptureStart implements the Tracer interface to initialize the tracing operation.
-func (jst *jsTracer) CaptureStart(env *vm.EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) {
+func (jst *jsTracer) CaptureStart(env *vm.EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
 	jst.env = env
 	jst.ctx["type"] = "CALL"
 	if create {
@@ -690,44 +689,45 @@ func (jst *jsTracer) CaptureStart(env *vm.EVM, from common.Address, to common.Ad
 	jst.ctx["to"] = to
 	jst.ctx["input"] = input
 	jst.ctx["gas"] = gas
-	jst.ctx["gasPrice"] = env.TxContext.GasPrice
+	jst.ctx["gasPrice"] = env.GasPrice
 	jst.ctx["value"] = value
 
 	// Initialize the context
 	jst.ctx["block"] = env.Context.BlockNumber.Uint64()
 	jst.dbWrapper.db = env.StateDB
 	// Update list of precompiles based on current block
-	rules := env.ChainConfig().Rules(env.Context.BlockNumber, env.Context.Random != nil)
+	rules := env.ChainConfig().Rules(env.Context.BlockNumber)
 	jst.activePrecompiles = vm.ActivePrecompiles(rules)
 
 	// Compute intrinsic gas
 	isHomestead := env.ChainConfig().IsHomestead(env.Context.BlockNumber)
-	isIstanbul := env.ChainConfig().IsIstanbul(env.Context.BlockNumber)
-	intrinsicGas, err := core.IntrinsicGas(input, jst.ctx["type"] == "CREATE", isHomestead, isIstanbul)
+	intrinsicGas, err := core.IntrinsicGas(input, jst.ctx["type"] == "CREATE", isHomestead)
 	if err != nil {
-		return
+		return err
 	}
 	jst.ctx["intrinsicGas"] = intrinsicGas
+
+	return nil
 }
 
 // CaptureState implements the Tracer interface to trace a single step of VM execution.
-func (jst *jsTracer) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, rData []byte, depth int, err error) {
+func (jst *jsTracer) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) error {
 	if !jst.traceSteps {
-		return
+		return errors.New("traceSteps is nil")
 	}
 	if jst.err != nil {
-		return
+		return err
 	}
 	// If tracing was interrupted, set the error and stop
 	if atomic.LoadUint32(&jst.interrupt) > 0 {
 		jst.err = jst.reason
 		jst.env.Cancel()
-		return
+		return errors.New("jst.interrupt > 0")
 	}
 	jst.opWrapper.op = op
-	jst.stackWrapper.stack = scope.Stack
-	jst.memoryWrapper.memory = scope.Memory
-	jst.contractWrapper.contract = scope.Contract
+	jst.stackWrapper.stack = stack
+	jst.memoryWrapper.memory = memory
+	jst.contractWrapper.contract = contract
 
 	*jst.pcValue = uint(pc)
 	*jst.gasValue = uint(gas)
@@ -744,12 +744,14 @@ func (jst *jsTracer) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, sco
 	if _, err := jst.call(true, "step", "log", "db"); err != nil {
 		jst.err = wrapError("step", err)
 	}
+
+	return nil
 }
 
 // CaptureFault implements the Tracer interface to trace an execution fault
-func (jst *jsTracer) CaptureFault(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, depth int, err error) {
+func (jst *jsTracer) CaptureFault(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) error {
 	if jst.err != nil {
-		return
+		return err
 	}
 	// Apart from the error, everything matches the previous invocation
 	jst.errorValue = new(string)
@@ -758,10 +760,11 @@ func (jst *jsTracer) CaptureFault(pc uint64, op vm.OpCode, gas, cost uint64, sco
 	if _, err := jst.call(true, "fault", "log", "db"); err != nil {
 		jst.err = wrapError("fault", err)
 	}
+	return nil
 }
 
 // CaptureEnd is called after the call finishes to finalize the tracing.
-func (jst *jsTracer) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+func (jst *jsTracer) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) error {
 	jst.ctx["output"] = output
 	jst.ctx["time"] = t.String()
 	jst.ctx["gasUsed"] = gasUsed
@@ -769,20 +772,21 @@ func (jst *jsTracer) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, 
 	if err != nil {
 		jst.ctx["error"] = err.Error()
 	}
+	return nil
 }
 
 // CaptureEnter is called when EVM enters a new scope (via call, create or selfdestruct).
-func (jst *jsTracer) CaptureEnter(typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
+func (jst *jsTracer) CaptureEnter(env *vm.EVM, typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
 	if !jst.traceCallFrames {
-		return
+		return errors.New("jst.traceCallFrames is nil")
 	}
 	if jst.err != nil {
-		return
+		return jst.err
 	}
 	// If tracing was interrupted, set the error and stop
 	if atomic.LoadUint32(&jst.interrupt) > 0 {
 		jst.err = jst.reason
-		return
+		return jst.err
 	}
 
 	*jst.frame.typ = typ.String()
@@ -798,18 +802,19 @@ func (jst *jsTracer) CaptureEnter(typ vm.OpCode, from common.Address, to common.
 	if _, err := jst.call(true, "enter", "frame"); err != nil {
 		jst.err = wrapError("enter", err)
 	}
+	return nil
 }
 
 // CaptureExit is called when EVM exits a scope, even if the scope didn't
 // execute any code.
-func (jst *jsTracer) CaptureExit(output []byte, gasUsed uint64, err error) {
+func (jst *jsTracer) CaptureExit(output []byte, gasUsed uint64, err error) error {
 	if !jst.traceCallFrames {
-		return
+		return errors.New("jst.traceCallFrames is nil")
 	}
 	// If tracing was interrupted, set the error and stop
 	if atomic.LoadUint32(&jst.interrupt) > 0 {
 		jst.err = jst.reason
-		return
+		return jst.err
 	}
 
 	jst.frameResult.output = common.CopyBytes(output)
@@ -823,6 +828,7 @@ func (jst *jsTracer) CaptureExit(output []byte, gasUsed uint64, err error) {
 	if _, err := jst.call(true, "exit", "frameResult"); err != nil {
 		jst.err = wrapError("exit", err)
 	}
+	return nil
 }
 
 // GetResult calls the Javascript 'result' function and returns its value, or any accumulated error

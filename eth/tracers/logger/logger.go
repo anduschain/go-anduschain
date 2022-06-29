@@ -134,7 +134,7 @@ func (l *StructLogger) Reset() {
 }
 
 // CaptureStart implements the EVMLogger interface to initialize the tracing operation.
-func (l *StructLogger) CaptureStart(from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
+func (l *StructLogger) CaptureStart(env *vm.EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
 	return nil
 }
 
@@ -161,13 +161,7 @@ func (l *StructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, c
 			stck[i] = *xx
 		}
 	}
-	var stackData []uint256.Int
-	stackData = make([]uint256.Int, len(stack.Data()))
-	for i, item := range stack.Data() {
-		xx, _ := uint256.FromBig(item)
-		stackData[i] = *xx
-	}
-	stackLen := len(stackData)
+	stackLen := len(stck)
 	// Copy a snapshot of the current storage to a new container
 	var storage Storage
 	if !l.cfg.DisableStorage && (op == vm.SLOAD || op == vm.SSTORE) {
@@ -179,7 +173,7 @@ func (l *StructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, c
 		// capture SLOAD opcodes and record the read entry in the local storage
 		if op == vm.SLOAD && stackLen >= 1 {
 			var (
-				address = common.Hash(stackData[stackLen-1].Bytes32())
+				address = common.Hash(stck[stackLen-1].Bytes32())
 				value   = l.env.StateDB.GetState(contract.Address(), address)
 			)
 			l.storage[contract.Address()][address] = value
@@ -187,16 +181,15 @@ func (l *StructLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, c
 		} else if op == vm.SSTORE && stackLen >= 2 {
 			// capture SSTORE opcodes and record the written entry in the local storage.
 			var (
-				value   = common.Hash(stackData[stackLen-2].Bytes32())
-				address = common.Hash(stackData[stackLen-1].Bytes32())
+				value   = common.Hash(stck[stackLen-2].Bytes32())
+				address = common.Hash(stck[stackLen-1].Bytes32())
 			)
 			l.storage[contract.Address()][address] = value
 			storage = l.storage[contract.Address()].Copy()
 		}
 	}
-
 	// create a new snapshot of the EVM.
-	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, nil, storage, depth, l.env.StateDB.GetRefund(), err}
+	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, nil, storage, depth, env.StateDB.GetRefund(), err}
 	l.logs = append(l.logs, log)
 	return nil
 }
@@ -217,10 +210,11 @@ func (l *StructLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration
 	return nil
 }
 
-func (l *StructLogger) CaptureEnter(typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
+func (l *StructLogger) CaptureEnter(env *vm.EVM, typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
+	return nil
 }
 
-func (l *StructLogger) CaptureExit(output []byte, gasUsed uint64, err error) {}
+func (l *StructLogger) CaptureExit(output []byte, gasUsed uint64, err error) error { return nil }
 
 // StructLogs returns the captured log entries.
 func (l *StructLogger) StructLogs() []StructLog { return l.logs }
@@ -342,7 +336,8 @@ func (t *mdLogger) CaptureEnd(output []byte, gasUsed uint64, tm time.Duration, e
 		output, gasUsed, err)
 }
 
-func (t *mdLogger) CaptureEnter(typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
+func (t *mdLogger) CaptureEnter(env *vm.EVM, typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
+	return nil
 }
 
-func (t *mdLogger) CaptureExit(output []byte, gasUsed uint64, err error) {}
+func (t *mdLogger) CaptureExit(output []byte, gasUsed uint64, err error) error { return nil }

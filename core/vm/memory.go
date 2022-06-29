@@ -85,6 +85,12 @@ func (m *Memory) Get(offset, size int64) (cpy []byte) {
 	return
 }
 
+// Get returns offset + size as a new slice
+func (m *Memory) GetCopy(offset, size int64) (cpy []byte) {
+
+	return m.Get(offset, size)
+}
+
 // GetPtr returns the offset + size
 func (m *Memory) GetPtr(offset, size int64) []byte {
 	if size == 0 {
