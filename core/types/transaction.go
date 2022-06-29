@@ -264,6 +264,25 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+// UnmarshalBinary decodes the canonical encoding of transactions.
+// It supports legacy RLP transactions and EIP2718 typed transactions.
+func (tx *Transaction) UnmarshalBinary(b []byte) error {
+	var data txdata
+	err := rlp.DecodeBytes(b, &data)
+	if err != nil {
+		return err
+	}
+	tx.setDecoded(data, len(b))
+	return nil
+}
+
+// setDecoded sets the inner transaction and size after decoding.
+func (tx *Transaction) setDecoded(inner txdata, size int) {
+	tx.data = inner
+	if size > 0 {
+		tx.size.Store(common.StorageSize(size))
+	}
+}
 func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
 func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }

@@ -48,13 +48,13 @@ func (l *JSONLogger) CaptureStart(env *vm.EVM, from, to common.Address, create b
 	return nil
 }
 
-func (l *JSONLogger) CaptureFault(env *vm.EVM, pc uint64, op vm.OpCode, gas uint64, cost uint64, memory *vm.Memory, stack *vm.Stack, depth int, err error) error {
+func (l *JSONLogger) CaptureFault(env *vm.EVM, pc uint64, op vm.OpCode, gas uint64, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) error {
 	// TODO: Add rData to this interface as s
 	return l.CaptureState(env, pc, op, gas, cost, memory, stack, nil, depth, err)
 }
 
 // CaptureState outputs state information on the logger.
-func (l *JSONLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, rData []byte, depth int, err error) error {
+func (l *JSONLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) error {
 
 	log := StructLog{
 		Pc:            pc,
@@ -78,16 +78,14 @@ func (l *JSONLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cos
 		}
 		log.Stack = stackData
 	}
-	if l.cfg.EnableReturnData {
-		log.ReturnData = rData
-	}
+
 	l.encoder.Encode(log)
 
 	return nil
 }
 
 // CaptureEnd is triggered at end of execution.
-func (l *JSONLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+func (l *JSONLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) error {
 	type endLog struct {
 		Output  string              `json:"output"`
 		GasUsed math.HexOrDecimal64 `json:"gasUsed"`
@@ -99,6 +97,7 @@ func (l *JSONLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, 
 		errMsg = err.Error()
 	}
 	l.encoder.Encode(endLog{common.Bytes2Hex(output), math.HexOrDecimal64(gasUsed), t, errMsg})
+	return nil
 }
 
 func (l *JSONLogger) CaptureEnter(env *vm.EVM, typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
