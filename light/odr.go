@@ -44,6 +44,7 @@ type OdrBackend interface {
 	BloomTrieIndexer() *core.ChainIndexer
 	BloomIndexer() *core.ChainIndexer
 	Retrieve(ctx context.Context, req OdrRequest) error
+	RetrieveTxStatus(ctx context.Context, req *TxStatusRequest) error
 	IndexerConfig() *IndexerConfig
 }
 
@@ -177,3 +178,19 @@ func (req *BloomRequest) StoreResult(db ethdb.Database) {
 		rawdb.WriteBloomBits(db, req.BitIdx, sectionIdx, sectionHead, req.BloomBits[i])
 	}
 }
+
+// TxStatus describes the status of a transaction
+type TxStatus struct {
+	Status core.TxStatus
+	Lookup *rawdb.TxLookupEntry `rlp:"nil"`
+	Error  string
+}
+
+// TxStatusRequest is the ODR request type for retrieving transaction status
+type TxStatusRequest struct {
+	Hashes []common.Hash
+	Status []TxStatus
+}
+
+// StoreResult stores the retrieved data in local database
+func (req *TxStatusRequest) StoreResult(db ethdb.Database) {}

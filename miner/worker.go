@@ -140,6 +140,9 @@ type worker struct {
 	gasFloor uint64
 	gasCeil  uint64
 
+	// Feeds
+	pendingLogsFeed event.Feed
+
 	// Subscriptions
 	mux          *event.TypeMux
 	txsCh        chan types.NewTxsEvent
@@ -412,6 +415,15 @@ func (w *worker) pendingBlock() *types.Block {
 	w.snapshotMu.RLock()
 	defer w.snapshotMu.RUnlock()
 	return w.snapshotBlock
+}
+
+// pendingBlockAndReceipts returns pending block and corresponding receipts.
+//TODO pendingReceipt not suppoert  CSW
+func (w *worker) pendingBlockAndReceipts() (*types.Block, types.Receipts) {
+	// return a snapshot to avoid contention on currentMu mutex
+	w.snapshotMu.RLock()
+	defer w.snapshotMu.RUnlock()
+	return w.snapshotBlock, nil
 }
 
 func (w *worker) debStart() {
@@ -1094,7 +1106,8 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			cpy[i] = new(types.Log)
 			*cpy[i] = *l
 		}
-		go w.mux.Post(types.PendingLogsEvent{Logs: cpy})
+		// go w.mux.Post(types.PendingLogsEvent{Logs: cpy})
+		w.pendingLogsFeed.Send(cpy)
 	}
 	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
 	// than the user-specified one.

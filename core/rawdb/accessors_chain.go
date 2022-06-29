@@ -373,3 +373,8 @@ func FindCommonAncestor(db DatabaseReader, a, b *types.Header) *types.Header {
 	}
 	return a
 }
+
+type NumberHash struct {
+	Number uint64
+	Hash   common.Hash
+}

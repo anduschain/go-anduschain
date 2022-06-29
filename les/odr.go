@@ -18,7 +18,7 @@ package les
 
 import (
 	"context"
-
+	"errors"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/light"
@@ -126,4 +126,9 @@ func (odr *LesOdr) Retrieve(ctx context.Context, req light.OdrRequest) (err erro
 		log.Debug("Failed to retrieve data from network", "err", err)
 	}
 	return
+}
+
+func (odr *LesOdr) RetrieveTxStatus(ctx context.Context, req *light.TxStatusRequest) error {
+
+	return errors.New("Not Suppoert RetrieveTxStatus")
 }

@@ -19,7 +19,9 @@ package ethapi
 
 import (
 	"context"
+	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/bloombits"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -48,8 +50,15 @@ type Backend interface {
 	// BlockChain API
 	SetHead(number uint64)
 	HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error)
+	HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)                            //add
+	HeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Header, error) //add
+	CurrentHeader() *types.Header                                                                         //add
+	CurrentBlock() *types.Block
 	BlockByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Block, error)
+	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)                            //add
+	BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) //add
 	StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDB, *types.Header, error)
+	StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) // add
 	GetBlock(ctx context.Context, blockHash common.Hash) (*types.Block, error)
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetTd(blockHash common.Hash) *big.Int
@@ -60,6 +69,7 @@ type Backend interface {
 
 	// TxPool API
 	SendTx(ctx context.Context, signedTx *types.Transaction) error
+	GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) // add
 	GetPoolTransactions() (types.Transactions, error)
 	GetPoolTransaction(txHash common.Hash) *types.Transaction
 	GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error)
@@ -68,8 +78,16 @@ type Backend interface {
 	SubscribeNewTxsEvent(chan<- types.NewTxsEvent) event.Subscription
 	GasPrice() *big.Int
 
+	// Filter API
+	BloomStatus() (uint64, uint64)
+	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
+	ServiceFilter(ctx context.Context, session *bloombits.MatcherSession)
+	SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription
+	SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription
+	SubscribeRemovedLogsEvent(ch chan<- types.RemovedLogsEvent) event.Subscription
+
 	ChainConfig() *params.ChainConfig
-	CurrentBlock() *types.Block
+	Engine() consensus.Engine
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {

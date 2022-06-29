@@ -94,19 +94,20 @@ type EventSystem struct {
 	lastHead  *types.Header
 
 	// Subscriptions
-	txsSub        event.Subscription         // Subscription for new transaction event
-	logsSub       event.Subscription         // Subscription for new log event
-	rmLogsSub     event.Subscription         // Subscription for removed log event
-	chainSub      event.Subscription         // Subscription for new chain event
-	pendingLogSub *event.TypeMuxSubscription // Subscription for pending log event
+	txsSub         event.Subscription // Subscription for new transaction event
+	logsSub        event.Subscription // Subscription for new log event
+	rmLogsSub      event.Subscription // Subscription for removed log event
+	chainSub       event.Subscription // Subscription for new chain event
+	pendingLogsSub event.Subscription // Subscription for pending log event
 
 	// Channels
-	install   chan *subscription          // install filter for event notification
-	uninstall chan *subscription          // remove filter for event notification
-	txsCh     chan types.NewTxsEvent      // Channel to receive new transactions event
-	logsCh    chan []*types.Log           // Channel to receive new log event
-	rmLogsCh  chan types.RemovedLogsEvent // Channel to receive removed log event
-	chainCh   chan types.ChainEvent       // Channel to receive new chain event
+	install       chan *subscription          // install filter for event notification
+	uninstall     chan *subscription          // remove filter for event notification
+	txsCh         chan types.NewTxsEvent      // Channel to receive new transactions event
+	logsCh        chan []*types.Log           // Channel to receive new log event
+	pendingLogsCh chan []*types.Log           // Channel to receive new log event
+	rmLogsCh      chan types.RemovedLogsEvent // Channel to receive removed log event
+	chainCh       chan types.ChainEvent       // Channel to receive new chain event
 }
 
 // NewEventSystem creates a new manager that listens for event on the given mux,
@@ -117,15 +118,16 @@ type EventSystem struct {
 // or by stopping the given mux.
 func NewEventSystem(mux *event.TypeMux, backend Backend, lightMode bool) *EventSystem {
 	m := &EventSystem{
-		mux:       mux,
-		backend:   backend,
-		lightMode: lightMode,
-		install:   make(chan *subscription),
-		uninstall: make(chan *subscription),
-		txsCh:     make(chan types.NewTxsEvent, txChanSize),
-		logsCh:    make(chan []*types.Log, logsChanSize),
-		rmLogsCh:  make(chan types.RemovedLogsEvent, rmLogsChanSize),
-		chainCh:   make(chan types.ChainEvent, chainEvChanSize),
+		mux:           mux,
+		backend:       backend,
+		lightMode:     lightMode,
+		install:       make(chan *subscription),
+		uninstall:     make(chan *subscription),
+		txsCh:         make(chan types.NewTxsEvent, txChanSize),
+		logsCh:        make(chan []*types.Log, logsChanSize),
+		rmLogsCh:      make(chan types.RemovedLogsEvent, rmLogsChanSize),
+		pendingLogsCh: make(chan []*types.Log, logsChanSize),
+		chainCh:       make(chan types.ChainEvent, chainEvChanSize),
 	}
 
 	// Subscribe events
@@ -133,12 +135,10 @@ func NewEventSystem(mux *event.TypeMux, backend Backend, lightMode bool) *EventS
 	m.logsSub = m.backend.SubscribeLogsEvent(m.logsCh)
 	m.rmLogsSub = m.backend.SubscribeRemovedLogsEvent(m.rmLogsCh)
 	m.chainSub = m.backend.SubscribeChainEvent(m.chainCh)
-	// TODO(rjl493456442): use feed to subscribe pending log event
-	m.pendingLogSub = m.mux.Subscribe(types.PendingLogsEvent{})
+	m.pendingLogsSub = m.backend.SubscribePendingLogsEvent(m.pendingLogsCh)
 
 	// Make sure none of the subscriptions are empty
-	if m.txsSub == nil || m.logsSub == nil || m.rmLogsSub == nil || m.chainSub == nil ||
-		m.pendingLogSub.Closed() {
+	if m.txsSub == nil || m.logsSub == nil || m.rmLogsSub == nil || m.chainSub == nil || m.pendingLogsSub == nil {
 		log.Crit("Subscribe for event system failed")
 	}
 
@@ -447,7 +447,7 @@ func (es *EventSystem) lightFilterLogs(header *types.Header, addresses []common.
 func (es *EventSystem) eventLoop() {
 	// Ensure all subscriptions get cleaned up
 	defer func() {
-		es.pendingLogSub.Unsubscribe()
+		es.pendingLogsSub.Unsubscribe()
 		es.txsSub.Unsubscribe()
 		es.logsSub.Unsubscribe()
 		es.rmLogsSub.Unsubscribe()
@@ -470,10 +470,7 @@ func (es *EventSystem) eventLoop() {
 			es.broadcast(index, ev)
 		case ev := <-es.chainCh:
 			es.broadcast(index, ev)
-		case ev, active := <-es.pendingLogSub.Chan():
-			if !active { // system stopped
-				return
-			}
+		case ev := <-es.pendingLogsCh:
 			es.broadcast(index, ev)
 
 		case f := <-es.install:

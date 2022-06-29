@@ -611,3 +611,8 @@ func (n *Node) apis() []rpc.API {
 		},
 	}
 }
+
+// Config returns the configuration of node.
+func (n *Node) Config() *Config {
+	return n.config
+}

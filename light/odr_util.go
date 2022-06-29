@@ -19,6 +19,8 @@ package light
 import (
 	"bytes"
 	"context"
+	"errors"
+	"math/big"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
@@ -27,6 +29,11 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/rlp"
 )
+
+// errNonCanonicalHash is returned if the requested chain data doesn't belong
+// to the canonical chain. ODR can only retrieve the canonical chain data covered
+// by the CHT or Bloom trie for verification.
+var errNonCanonicalHash = errors.New("hash is not currently canonical")
 
 var sha3_nil = crypto.Keccak256Hash(nil)
 
@@ -231,4 +238,45 @@ func GetBloomBits(ctx context.Context, odr OdrBackend, bitIdx uint, sectionIdxLi
 		}
 		return result, nil
 	}
+}
+
+// GetTd retrieves the total difficulty corresponding to the number and hash.
+func GetTd(ctx context.Context, odr OdrBackend, hash common.Hash, number uint64) (*big.Int, error) {
+	td := rawdb.ReadTd(odr.Database(), hash, number)
+	if td != nil {
+		return td, nil
+	}
+	header, err := GetHeaderByNumber(ctx, odr, number)
+	if err != nil {
+		return nil, err
+	}
+	if header.Hash() != hash {
+		return nil, errNonCanonicalHash
+	}
+	// <hash, number> -> td mapping already be stored in db, get it.
+	return rawdb.ReadTd(odr.Database(), hash, number), nil
+}
+
+// GetTransaction retrieves a canonical transaction by hash and also returns
+// its position in the chain. There is no guarantee in the LES protocol that
+// the mined transaction will be retrieved back for sure because of different
+// reasons(the transaction is unindexed, the malicous server doesn't reply it
+// deliberately, etc). Therefore, unretrieved transactions will receive a certain
+// number of retrys, thus giving a weak guarantee.
+func GetTransaction(ctx context.Context, odr OdrBackend, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	r := &TxStatusRequest{Hashes: []common.Hash{txHash}}
+	if err := odr.RetrieveTxStatus(ctx, r); err != nil || r.Status[0].Status != core.TxStatusIncluded {
+		return nil, common.Hash{}, 0, 0, err
+	}
+	pos := r.Status[0].Lookup
+	// first ensure that we have the header, otherwise block body retrieval will fail
+	// also verify if this is a canonical block by getting the header by number and checking its hash
+	if header, err := GetHeaderByNumber(ctx, odr, pos.BlockIndex); err != nil || header.Hash() != pos.BlockHash {
+		return nil, common.Hash{}, 0, 0, err
+	}
+	body, err := GetBody(ctx, odr, pos.BlockHash, pos.BlockIndex)
+	if err != nil || uint64(len(body.Transactions)) <= pos.Index || body.Transactions[pos.Index].Hash() != txHash {
+		return nil, common.Hash{}, 0, 0, err
+	}
+	return body.Transactions[pos.Index], pos.BlockHash, pos.BlockIndex, pos.Index, nil
 }

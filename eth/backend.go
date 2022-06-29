@@ -32,7 +32,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/filters"
-	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
@@ -91,7 +90,7 @@ type Ethereum struct {
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 
-	p2p *p2p.Server
+	p2pServer *p2p.Server
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -100,7 +99,7 @@ func (s *Ethereum) AddLesServer(ls LesServer) {
 }
 
 func (s *Ethereum) Server() *p2p.Server {
-	return s.p2p
+	return s.p2pServer
 }
 
 func (s *Ethereum) Coinbase() common.Address {
@@ -109,7 +108,7 @@ func (s *Ethereum) Coinbase() common.Address {
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
-func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
+func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum, error) {
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run daon.Anduschain in light sync mode, use daon.LightAnduschain")
@@ -146,6 +145,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		etherbase:      config.Etherbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
+		p2pServer:      stack.Server(),
 	}
 
 	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
@@ -186,12 +186,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
-	eth.APIBackend = &EthAPIBackend{eth, nil}
+	eth.APIBackend = &EthAPIBackend{stack.Config().ExtRPCEnabled(), stack.Config().AllowUnprotectedTxs, eth}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.MinerGasPrice
 	}
-	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 
 	return eth, nil
 }
@@ -407,27 +406,25 @@ func (s *Ethereum) Protocols() []p2p.Protocol {
 
 // Start implements node.Service, starting all internal goroutines needed by the
 // Ethereum protocol implementation.
-func (s *Ethereum) Start(srvr *p2p.Server) error {
+func (s *Ethereum) Start() error {
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
 
 	// Start the RPC service
-	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.NetVersion())
-
-	s.p2p = srvr // for deb client
+	s.netRPCService = ethapi.NewPublicNetAPI(s.p2pServer, s.NetVersion())
 
 	// Figure out a max peers count based on the server limits
-	maxPeers := srvr.MaxPeers
+	maxPeers := s.p2pServer.MaxPeers
 	if s.config.LightServ > 0 {
-		if s.config.LightPeers >= srvr.MaxPeers {
-			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", s.config.LightPeers, srvr.MaxPeers)
+		if s.config.LightPeers >= s.p2pServer.MaxPeers {
+			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", s.config.LightPeers, s.p2pServer.MaxPeers)
 		}
 		maxPeers -= s.config.LightPeers
 	}
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(maxPeers)
 	if s.lesServer != nil {
-		s.lesServer.Start(srvr)
+		s.lesServer.Start(s.p2pServer)
 	}
 
 	return nil
