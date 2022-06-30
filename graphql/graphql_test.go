@@ -200,21 +200,16 @@ func createNode(t *testing.T, gqlEnabled bool, txEnabled bool) *node.Node {
 
 func createGQLService(t *testing.T, stack *node.Node) {
 	// create backend
-	ethConf := &ethconfig.Config{
+	ethConf := &eth.Config{
 		Genesis: &core.Genesis{
 			Config:     params.AllDebProtocolChanges,
 			GasLimit:   11500000,
 			Difficulty: big.NewInt(1048576),
 		},
-		NetworkId:               1337,
-		TrieCleanCache:          5,
-		TrieCleanCacheJournal:   "triecache",
-		TrieCleanCacheRejournal: 60 * time.Minute,
-		TrieDirtyCache:          5,
-		TrieTimeout:             60 * time.Minute,
-		SnapshotCache:           5,
+		NetworkId:   1337,
+		TrieTimeout: 60 * time.Minute,
 	}
-	ethBackend, err := eth.New(stack, ethConf)
+	ethBackend, err := eth.New(&node.ServiceContext{}, stack, ethConf)
 	if err != nil {
 		t.Fatalf("could not create eth backend: %v", err)
 	}
@@ -239,7 +234,7 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 	funds := big.NewInt(1000000000000000)
 	dad := common.HexToAddress("0x0000000000000000000000000000000000000dad")
 
-	ethConf := &ethconfig.Config{
+	ethConf := &eth.Config{
 		Genesis: &core.Genesis{
 			Config:     params.AllDebProtocolChanges,
 			GasLimit:   11500000,
@@ -259,16 +254,11 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 				},
 			},
 		},
-		NetworkId:               1337,
-		TrieCleanCache:          5,
-		TrieCleanCacheJournal:   "triecache",
-		TrieCleanCacheRejournal: 60 * time.Minute,
-		TrieDirtyCache:          5,
-		TrieTimeout:             60 * time.Minute,
-		SnapshotCache:           5,
+		NetworkId:   1337,
+		TrieTimeout: 60 * time.Minute,
 	}
 
-	ethBackend, err := eth.New(stack, ethConf)
+	ethBackend, err := eth.New(&node.ServiceContext{}, stack, ethConf)
 	if err != nil {
 		t.Fatalf("could not create eth backend: %v", err)
 	}
@@ -279,13 +269,13 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 		Recipient:    &dad,
 		Amount:       big.NewInt(100),
 		GasLimit:     50000,
-		Price:        big.NewInt(params.InitialBaseFee),
+		Price:        big.NewInt(params.DefaultGasFee),
 	})
 	envelopTx, _ := types.SignNewTx(key, signer, types.TxData{
 		AccountNonce: uint64(1),
 		Recipient:    &dad,
 		GasLimit:     30000,
-		Price:        big.NewInt(params.InitialBaseFee),
+		Price:        big.NewInt(params.DefaultGasFee),
 		Amount:       big.NewInt(50),
 	})
 

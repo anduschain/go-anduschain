@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -396,6 +397,10 @@ func (n *Node) stopWS() {
 	}
 }
 
+func (n *Node) Close() error {
+	return n.Stop()
+}
+
 // Stop terminates a running node along with all it's services. In the node was
 // not started, an error is returned.
 func (n *Node) Stop() error {
@@ -615,4 +620,15 @@ func (n *Node) apis() []rpc.API {
 // Config returns the configuration of node.
 func (n *Node) Config() *Config {
 	return n.config
+}
+
+// RegisterHandler mounts a handler on the given path on the canonical HTTP server.
+//
+// The name of the handler is shown in a log message when the HTTP server starts
+// and should be a descriptive term for the service provided by the handler.
+func (n *Node) RegisterHandler(name, path string, handler http.Handler) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	//ToDO registerHandler
 }

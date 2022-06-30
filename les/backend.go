@@ -228,7 +228,7 @@ func (s *LightEthereum) Protocols() []p2p.Protocol {
 
 // Start implements node.Service, starting all internal goroutines needed by the
 // Ethereum protocol implementation.
-func (s *LightEthereum) Start() error {
+func (s *LightEthereum) Start(server *p2p.Server) error {
 	log.Warn("Light client mode is an experimental feature")
 	s.startBloomHandlers(params.BloomBitsBlocksClient)
 	s.netRPCService = ethapi.NewPublicNetAPI(s.p2pServer, s.networkId)

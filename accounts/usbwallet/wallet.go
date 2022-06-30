@@ -118,6 +118,10 @@ type wallet struct {
 	log log.Logger // Contextual logger to tag the base with its id
 }
 
+func (w *wallet) SignHashWithPassphrase(account accounts.Account, passphrase string, hash []byte) ([]byte, error) {
+	return w.SignHash(account, hash)
+}
+
 // URL implements accounts.Wallet, returning the URL of the USB hardware device.
 func (w *wallet) URL() accounts.URL {
 	return *w.url // Immutable, no need for a lock

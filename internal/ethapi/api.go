@@ -111,11 +111,23 @@ func (s *PublicEthereumAPI) Syncing() (interface{}, error) {
 	}
 	// Otherwise gather the block sync stats
 	return map[string]interface{}{
-		"startingBlock": hexutil.Uint64(progress.StartingBlock),
-		"currentBlock":  hexutil.Uint64(progress.CurrentBlock),
-		"highestBlock":  hexutil.Uint64(progress.HighestBlock),
-		"pulledStates":  hexutil.Uint64(progress.PulledStates),
-		"knownStates":   hexutil.Uint64(progress.KnownStates),
+		"startingBlock":       hexutil.Uint64(progress.StartingBlock),
+		"currentBlock":        hexutil.Uint64(progress.CurrentBlock),
+		"highestBlock":        hexutil.Uint64(progress.HighestBlock),
+		"pulledStates":        hexutil.Uint64(progress.PulledStates),
+		"knownStates":         hexutil.Uint64(progress.KnownStates),
+		"syncedAccounts":      hexutil.Uint64(progress.SyncedAccounts),
+		"syncedAccountBytes":  hexutil.Uint64(progress.SyncedAccountBytes),
+		"syncedBytecodes":     hexutil.Uint64(progress.SyncedBytecodes),
+		"syncedBytecodeBytes": hexutil.Uint64(progress.SyncedBytecodeBytes),
+		"syncedStorage":       hexutil.Uint64(progress.SyncedStorage),
+		"syncedStorageBytes":  hexutil.Uint64(progress.SyncedStorageBytes),
+		"healedTrienodes":     hexutil.Uint64(progress.HealedTrienodes),
+		"healedTrienodeBytes": hexutil.Uint64(progress.HealedTrienodeBytes),
+		"healedBytecodes":     hexutil.Uint64(progress.HealedBytecodes),
+		"healedBytecodeBytes": hexutil.Uint64(progress.HealedBytecodeBytes),
+		"healingTrienodes":    hexutil.Uint64(progress.HealingTrienodes),
+		"healingBytecode":     hexutil.Uint64(progress.HealingBytecode),
 	}, nil
 }
 
@@ -1334,43 +1346,6 @@ func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	return tx.Hash(), nil
 }
 
-// SendTransaction creates a transaction for the given argument, sign it and submit it to the
-// transaction pool.
-func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args SendTxArgs) (common.Hash, error) {
-
-	// Look up the wallet containing the requested signer
-	account := accounts.Account{Address: args.From}
-
-	wallet, err := s.b.AccountManager().Find(account)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	if args.Nonce == nil {
-		// Hold the addresse's mutex around signing to prevent concurrent assignment of
-		// the same nonce to multiple accounts.
-		s.nonceLock.LockAddr(args.From)
-		defer s.nonceLock.UnlockAddr(args.From)
-	}
-
-	// Set some sanity defaults and terminate on failure
-	if err := args.setDefaults(ctx, s.b); err != nil {
-		return common.Hash{}, err
-	}
-	// Assemble the transaction and sign with the wallet
-	tx := args.toTransaction()
-
-	var chainID *big.Int
-	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
-		chainID = config.ChainID
-	}
-	signed, err := wallet.SignTx(account, tx, chainID)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return submitTransaction(ctx, s.b, signed)
-}
-
 // SendRawTransaction will add the signed transaction to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
 func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encodedTx hexutil.Bytes) (common.Hash, error) {
@@ -1902,4 +1877,81 @@ func toHexSlice(b [][]byte) []string {
 		r[i] = hexutil.Encode(b[i])
 	}
 	return r
+}
+
+// checkTxFee is an internal function used to check whether the fee of
+// the given transaction is _reasonable_(under the cap).
+func checkTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
+	// Short circuit if there is no cap for transaction fee at all.
+	if cap == 0 {
+		return nil
+	}
+	feeEth := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas))), new(big.Float).SetInt(big.NewInt(params.Ether)))
+	feeFloat, _ := feeEth.Float64()
+	if feeFloat > cap {
+		return fmt.Errorf("tx fee (%.2f ether) exceeds the configured cap (%.2f ether)", feeFloat, cap)
+	}
+	return nil
+}
+
+// SubmitTransaction is a helper function that submits tx to txPool and logs a message.
+func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
+	// If the transaction fee cap is already specified, ensure the
+	// fee of the given transaction is _reasonable_.
+	if err := checkTxFee(tx.GasPrice(), tx.Gas(), b.RPCTxFeeCap()); err != nil {
+		return common.Hash{}, err
+	}
+	if !b.UnprotectedAllowed() && !tx.Protected() {
+		// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
+		return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
+	}
+	if err := b.SendTx(ctx, tx); err != nil {
+		return common.Hash{}, err
+	}
+	// Print a log with full tx details for manual investigations and interventions
+	signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
+	from, err := types.Sender(signer, tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	if tx.To() == nil {
+		addr := crypto.CreateAddress(from, tx.Nonce())
+		log.Info("Submitted contract creation", "hash", tx.Hash().Hex(), "from", from, "nonce", tx.Nonce(), "contract", addr.Hex(), "value", tx.Value())
+	} else {
+		log.Info("Submitted transaction", "hash", tx.Hash().Hex(), "from", from, "nonce", tx.Nonce(), "recipient", tx.To(), "value", tx.Value())
+	}
+	return tx.Hash(), nil
+}
+
+// SendTransaction creates a transaction for the given argument, sign it and submit it to the
+// transaction pool.
+func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) {
+	// Look up the wallet containing the requested signer
+	account := accounts.Account{Address: args.from()}
+
+	wallet, err := s.b.AccountManager().Find(account)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	if args.Nonce == nil {
+		// Hold the addresse's mutex around signing to prevent concurrent assignment of
+		// the same nonce to multiple accounts.
+		s.nonceLock.LockAddr(args.from())
+		defer s.nonceLock.UnlockAddr(args.from())
+	}
+
+	// Set some sanity defaults and terminate on failure
+	if err := args.setDefaults(ctx, s.b); err != nil {
+		return common.Hash{}, err
+	}
+	// Assemble the transaction and sign with the wallet
+	tx := args.toTransaction()
+
+	signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return SubmitTransaction(ctx, s.b, signed)
 }

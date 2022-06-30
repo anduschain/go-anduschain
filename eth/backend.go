@@ -406,7 +406,8 @@ func (s *Ethereum) Protocols() []p2p.Protocol {
 
 // Start implements node.Service, starting all internal goroutines needed by the
 // Ethereum protocol implementation.
-func (s *Ethereum) Start() error {
+func (s *Ethereum) Start(server *p2p.Server) error {
+	s.p2pServer = server
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
 

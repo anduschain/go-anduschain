@@ -32,6 +32,10 @@ type keystoreWallet struct {
 	keystore *KeyStore        // Keystore where the account originates from
 }
 
+func (w *keystoreWallet) SignHashWithPassphrase(account accounts.Account, passphrase string, hash []byte) ([]byte, error) {
+	return w.SignHash(account, hash)
+}
+
 // URL implements accounts.Wallet, returning the URL of the account within.
 func (w *keystoreWallet) URL() accounts.URL {
 	return w.account.URL

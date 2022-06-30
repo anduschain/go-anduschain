@@ -1345,3 +1345,20 @@ func (t *txLookup) Remove(hash common.Hash) {
 
 	delete(t.all, hash)
 }
+
+// ContentFrom retrieves the data content of the transaction pool, returning the
+// pending as well as queued transactions of this address, grouped by nonce.
+func (pool *TxPool) ContentFrom(addr common.Address) (types.Transactions, types.Transactions) {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	var pending types.Transactions
+	if list, ok := pool.pending[addr]; ok {
+		pending = list.Flatten()
+	}
+	var queued types.Transactions
+	if list, ok := pool.queue[addr]; ok {
+		queued = list.Flatten()
+	}
+	return pending, queued
+}

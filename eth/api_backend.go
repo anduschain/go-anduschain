@@ -48,6 +48,10 @@ type EthAPIBackend struct {
 	eth                 *Ethereum
 }
 
+func (b *EthAPIBackend) TxPoolContentFrom(addr common.Address) (types.Transactions, types.Transactions) {
+	return b.eth.TxPool().ContentFrom(addr)
+}
+
 // ChainConfig returns the active chain configuration.
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
 	return b.eth.blockchain.Config()

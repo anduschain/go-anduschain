@@ -25,6 +25,7 @@ import (
 	"math/big"
 	"time"
 
+	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/state"
@@ -41,6 +42,8 @@ import (
 // both full and light clients) with access to necessary functions.
 type Backend interface {
 	// General Ethereum API
+	SyncProgress() ethereum.SyncProgress
+
 	Downloader() *downloader.Downloader
 	ProtocolVersion() int
 	SuggestPrice(ctx context.Context) (*big.Int, error)

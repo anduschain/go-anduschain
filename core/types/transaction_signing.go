@@ -299,3 +299,14 @@ func LatestSigner(config *params.ChainConfig) Signer {
 func LatestSignerForChainID(chainID *big.Int) Signer {
 	return HomesteadSigner{}
 }
+
+// SignNewTx creates a transaction and signs it.
+func SignNewTx(prv *ecdsa.PrivateKey, s Signer, txdata TxData) (*Transaction, error) {
+	tx := NewTx(txdata)
+	h := s.Hash(tx)
+	sig, err := crypto.Sign(h[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return tx.WithSignature(s, sig)
+}

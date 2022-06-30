@@ -119,7 +119,7 @@ func (s *Service) Protocols() []p2p.Protocol { return nil }
 func (s *Service) APIs() []rpc.API { return nil }
 
 // Start implements node.Service, starting up the monitoring and reporting daemon.
-func (s *Service) Start() error {
+func (s *Service) Start(server *p2p.Server) error {
 	go s.loop()
 
 	log.Info("Stats daemon started")

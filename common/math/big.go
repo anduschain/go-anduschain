@@ -224,3 +224,37 @@ func FloatToBigInt(val *big.Float) *big.Int {
 	bigval.Int(result)
 	return result
 }
+
+// Decimal256 unmarshals big.Int as a decimal string. When unmarshalling,
+// it however accepts either "0x"-prefixed (hex encoded) or non-prefixed (decimal)
+type Decimal256 big.Int
+
+// NewHexOrDecimal256 creates a new Decimal256
+func NewDecimal256(x int64) *Decimal256 {
+	b := big.NewInt(x)
+	d := Decimal256(*b)
+	return &d
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (i *Decimal256) UnmarshalText(input []byte) error {
+	bigint, ok := ParseBig256(string(input))
+	if !ok {
+		return fmt.Errorf("invalid hex or decimal integer %q", input)
+	}
+	*i = Decimal256(*bigint)
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (i *Decimal256) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+
+// String implements Stringer.
+func (i *Decimal256) String() string {
+	if i == nil {
+		return "0"
+	}
+	return fmt.Sprintf("%#d", (*big.Int)(i))
+}
