@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/anduschain/go-anduschain/log"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // main is just a boring entry point to set up the CLI app.

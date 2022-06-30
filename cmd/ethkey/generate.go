@@ -26,8 +26,8 @@ import (
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/pborman/uuid"
-	"github.com/urfave/cli"
+	"github.com/google/uuid"
+	"gopkg.in/urfave/cli.v1"
 )
 
 type outputGenerate struct {
@@ -82,7 +82,7 @@ If you want to encrypt an existing private key, it can be specified by setting
 		}
 
 		// Create the keyfile object with a random UUID.
-		id := uuid.NewRandom()
+		id, _ := uuid.NewRandom()
 		key := &keystore.Key{
 			Id:         id,
 			Address:    crypto.PubkeyToAddress(privateKey.PublicKey),

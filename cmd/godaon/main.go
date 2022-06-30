@@ -40,7 +40,7 @@ import (
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/elastic/gosigar"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 const (
@@ -50,6 +50,7 @@ const (
 var (
 	// Git SHA1 commit hash of the release (set via linker flags)
 	gitCommit = ""
+	gitDate   = ""
 	// The app that holds all commands and flags.
 	app = utils.NewApp(gitCommit, "the go-anduschain command line interface")
 	// flags that configure the node
@@ -314,11 +315,12 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 				status, _ := event.Wallet.Status()
 				log.Info("New wallet appeared", "url", event.Wallet.URL(), "status", status)
 
-				derivationPath := accounts.DefaultBaseDerivationPath
+				var derivationPaths []accounts.DerivationPath
 				if event.Wallet.URL().Scheme == "ledger" {
-					derivationPath = accounts.DefaultLedgerBaseDerivationPath
+					derivationPaths = append(derivationPaths, accounts.DefaultLedgerBaseDerivationPath)
 				}
-				event.Wallet.SelfDerive(derivationPath, stateReader)
+				derivationPaths = append(derivationPaths, accounts.DefaultBaseDerivationPath)
+				event.Wallet.SelfDerive(derivationPaths, stateReader)
 
 			case accounts.WalletDropped:
 				log.Info("Old wallet dropped", "url", event.Wallet.URL())

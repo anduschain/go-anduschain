@@ -21,7 +21,7 @@ import (
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 	"os"
 	"runtime"
 	"strings"

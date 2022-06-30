@@ -13,9 +13,9 @@ import (
 	"github.com/anduschain/go-anduschain/fairnode"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/pborman/uuid"
-	"github.com/urfave/cli"
+	"github.com/google/uuid"
 	log "gopkg.in/inconshreveable/log15.v2"
+	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -60,7 +60,7 @@ func makeFairNodeKey(ctx *cli.Context) error {
 		return err
 	}
 
-	id := uuid.NewRandom()
+	id, _ := uuid.NewRandom()
 	key := &keystore.Key{
 		Id:         id,
 		Address:    crypto.PubkeyToAddress(privateKey.PublicKey),

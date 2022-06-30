@@ -25,7 +25,7 @@ import (
 	"github.com/anduschain/go-anduschain/cmd/utils"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 type outputSign struct {

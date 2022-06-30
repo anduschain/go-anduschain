@@ -22,8 +22,8 @@ import (
 
 const (
 	VersionMajor = 0            // Major version component of the current release
-	VersionMinor = 7            // Minor version component of the current release
-	VersionPatch = 6            // Patch version component of the current release
+	VersionMinor = 8            // Minor version component of the current release
+	VersionPatch = 1            // Patch version component of the current release
 	VersionMeta  = "anduschain" // Version metadata to append to the version string
 )
 
@@ -46,7 +46,7 @@ var VersionWithMeta = func() string {
 //      "1.8.13-unstable-21c059b6" for unstable releases
 func ArchiveVersion(gitCommit string) string {
 	vsn := Version
-	if VersionMeta != "stable" {
+	if VersionMeta != "unstable" {
 		vsn += "-" + VersionMeta
 	}
 	if len(gitCommit) >= 8 {

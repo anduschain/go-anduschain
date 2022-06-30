@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/signer/core"
 	"net"
 	"net/url"
 	"os"
@@ -701,10 +700,6 @@ func (c *Client) read(conn net.Conn) error {
 		}
 		c.readResp <- resp
 	}
-}
-
-func (c *Client) RegisterName(s string, api *core.UIServerAPI) {
-	// TODO
 }
 
 func (c *Client) Notify(ctx context.Context, method string, args ...interface{}) error {

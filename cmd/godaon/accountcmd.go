@@ -26,7 +26,7 @@ import (
 	"github.com/anduschain/go-anduschain/console"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var (
