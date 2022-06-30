@@ -26,13 +26,13 @@ import (
 	"sync"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/sync/syncmap"
@@ -97,15 +97,14 @@ func New(cfg *Config) *Whisper {
 	}
 
 	whisper := &Whisper{
-		privateKeys:   make(map[string]*ecdsa.PrivateKey),
-		symKeys:       make(map[string][]byte),
-		envelopes:     make(map[common.Hash]*Envelope),
-		expirations:   make(map[uint32]mapset.Set),
-		peers:         make(map[*Peer]struct{}),
-		messageQueue:  make(chan *Envelope, messageQueueLimit),
-		p2pMsgQueue:   make(chan *Envelope, messageQueueLimit),
-		quit:          make(chan struct{}),
-		syncAllowance: DefaultSyncAllowance,
+		privateKeys:  make(map[string]*ecdsa.PrivateKey),
+		symKeys:      make(map[string][]byte),
+		envelopes:    make(map[common.Hash]*Envelope),
+		expirations:  make(map[uint32]mapset.Set),
+		peers:        make(map[*Peer]struct{}),
+		messageQueue: make(chan *Envelope, messageQueueLimit),
+		p2pMsgQueue:  make(chan *Envelope, messageQueueLimit),
+		quit:         make(chan struct{}),
 	}
 
 	whisper.filters = NewFilters(whisper)
@@ -624,7 +623,7 @@ func (whisper *Whisper) Send(envelope *Envelope) error {
 
 // Start implements node.Service, starting the background data propagation thread
 // of the Whisper protocol.
-func (whisper *Whisper) Start(*p2p.Server) error {
+func (whisper *Whisper) Start() error {
 	log.Info("started whisper v." + ProtocolVersionStr)
 	go whisper.update()
 

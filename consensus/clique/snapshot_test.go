@@ -19,13 +19,12 @@ package clique
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"math/big"
+	"github.com/anduschain/go-anduschain/ethdb"
 	"sort"
 	"testing"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -396,13 +395,13 @@ func TestClique(t *testing.T) {
 		// Create the genesis block with the initial set of signers
 		genesis := &core.Genesis{
 			ExtraData: make([]byte, extraVanity+common.AddressLength*len(signers)+extraSeal),
-			BaseFee:   big.NewInt(params.InitialBaseFee),
+			GasLimit:  params.DefaultGasFee,
 		}
 		for j, signer := range signers {
 			copy(genesis.ExtraData[extraVanity+j*common.AddressLength:], signer[:])
 		}
 		// Create a pristine blockchain with the genesis injected
-		db := rawdb.NewMemoryDatabase()
+		db := ethdb.NewMemDatabase()
 		genesis.Commit(db)
 
 		// Assemble a chain of headers from the cast votes
@@ -450,7 +449,7 @@ func TestClique(t *testing.T) {
 			batches[len(batches)-1] = append(batches[len(batches)-1], block)
 		}
 		// Pass all the headers through clique and ensure tallying succeeds
-		chain, err := core.NewBlockChain(db, nil, &config, engine, vm.Config{}, nil, nil)
+		chain, err := core.NewBlockChain(db, nil, &config, engine, vm.Config{})
 		if err != nil {
 			t.Errorf("test %d: failed to create test chain: %v", i, err)
 			continue

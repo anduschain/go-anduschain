@@ -107,7 +107,7 @@ type Engine interface {
 
 	SetOtprn(otprn *types.Otprn)
 	Otprn() *types.Otprn
-	IsDeb() bool
+	Name() string
 }
 
 // PoW is a consensus engine based on proof-of-work.

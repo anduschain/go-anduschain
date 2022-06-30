@@ -78,6 +78,43 @@ var (
 
 	ErrJoinNonceNotMmatch        = errors.New("JOIN NONCE not match current state")
 	ErrNotSupportTransactionType = errors.New("net support transaction type")
+
+	// ErrNonceMax is returned if the nonce of a transaction sender account has
+	// maximum allowed value and would become invalid if incremented.
+	ErrNonceMax = errors.New("nonce has max value")
+
+	// ErrInsufficientFundsForTransfer is returned if the transaction sender doesn't
+	// have enough funds for transfer(topmost call only).
+	ErrInsufficientFundsForTransfer = errors.New("insufficient funds for transfer")
+
+	// ErrGasUintOverflow is returned when calculating gas usage.
+	ErrGasUintOverflow = errors.New("gas uint64 overflow")
+
+	// ErrTxTypeNotSupported is returned if a transaction is not supported in the
+	// current network configuration.
+	ErrTxTypeNotSupported = errors.New("transaction type not supported")
+
+	// ErrTipAboveFeeCap is a sanity error to ensure no one is able to specify a
+	// transaction with a tip higher than the total fee cap.
+	ErrTipAboveFeeCap = errors.New("max priority fee per gas higher than max fee per gas")
+
+	// ErrTipVeryHigh is a sanity error to avoid extremely big numbers specified
+	// in the tip field.
+	ErrTipVeryHigh = errors.New("max priority fee per gas higher than 2^256-1")
+
+	// ErrFeeCapVeryHigh is a sanity error to avoid extremely big numbers specified
+	// in the fee cap field.
+	ErrFeeCapVeryHigh = errors.New("max fee per gas higher than 2^256-1")
+
+	// ErrFeeCapTooLow is returned if the transaction fee cap is less than the
+	// the base fee of the block.
+	ErrFeeCapTooLow = errors.New("max fee per gas less than block base fee")
+
+	// ErrSenderNoEOA is returned if the sender of a transaction is a contract.
+	ErrSenderNoEOA = errors.New("sender not an eoa")
+
+	ErrSuggestGasTipCap = errors.New("suggest gas tip cap not suport")
+	ErrFeeHistory       = errors.New("fee history not suport")
 )
 
 var (

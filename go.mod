@@ -10,16 +10,19 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v1.13.1
+	github.com/dop251/goja v0.0.0-20200721192441-a695b0cdd498
 	github.com/elastic/gosigar v0.10.5
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff
 	github.com/go-stack/stack v1.8.1
+	github.com/golang-jwt/jwt/v4 v4.3.0
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
 	github.com/google/gofuzz v1.1.1-0.20200604201612-c04b05f3adfa
 	github.com/google/uuid v1.2.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/uint256 v1.2.0
@@ -30,6 +33,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/usb v0.0.2
 	github.com/mattn/go-colorable v0.1.12
+	github.com/mattn/go-isatty v0.0.14
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
@@ -58,4 +62,5 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
+	gopkg.in/urfave/cli.v1 v1.20.0
 )

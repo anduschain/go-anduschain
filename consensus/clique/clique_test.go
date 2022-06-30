@@ -17,12 +17,12 @@
 package clique
 
 import (
+	"github.com/anduschain/go-anduschain/ethdb"
 	"math/big"
 	"testing"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
@@ -38,7 +38,7 @@ import (
 func TestReimportMirroredState(t *testing.T) {
 	// Initialize a Clique chain with a single signer
 	var (
-		db     = rawdb.NewMemoryDatabase()
+		db     = ethdb.NewMemDatabase()
 		key, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 		addr   = crypto.PubkeyToAddress(key.PublicKey)
 		engine = New(params.AllCliqueProtocolChanges.Clique, db)
@@ -49,13 +49,12 @@ func TestReimportMirroredState(t *testing.T) {
 		Alloc: map[common.Address]core.GenesisAccount{
 			addr: {Balance: big.NewInt(10000000000000000)},
 		},
-		BaseFee: big.NewInt(params.InitialBaseFee),
 	}
 	copy(genspec.ExtraData[extraVanity:], addr[:])
 	genesis := genspec.MustCommit(db)
 
 	// Generate a batch of blocks, each properly signed
-	chain, _ := core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{}, nil, nil)
+	chain, _ := core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
 	blocks, _ := core.GenerateChain(params.AllCliqueProtocolChanges, genesis, engine, db, 3, func(i int, block *core.BlockGen) {
@@ -66,7 +65,7 @@ func TestReimportMirroredState(t *testing.T) {
 		// We want to simulate an empty middle block, having the same state as the
 		// first one. The last is needs a state change again to force a reorg.
 		if i != 1 {
-			tx, err := types.SignTx(types.NewTransaction(block.TxNonce(addr), common.Address{0x00}, new(big.Int), params.TxGas, block.BaseFee(), nil), signer, key)
+			tx, err := types.SignTx(types.NewTransaction(block.TxNonce(addr), common.Address{0x00}, new(big.Int), params.TxGas, big.NewInt(params.DefaultGasFee), nil), signer, key)
 			if err != nil {
 				panic(err)
 			}
@@ -86,10 +85,10 @@ func TestReimportMirroredState(t *testing.T) {
 		blocks[i] = block.WithSeal(header)
 	}
 	// Insert the first two blocks and make sure the chain is valid
-	db = rawdb.NewMemoryDatabase()
+	db = ethdb.NewMemDatabase()
 	genspec.MustCommit(db)
 
-	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{}, nil, nil)
+	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
 	if _, err := chain.InsertChain(blocks[:2]); err != nil {
@@ -102,7 +101,7 @@ func TestReimportMirroredState(t *testing.T) {
 	// Simulate a crash by creating a new chain on top of the database, without
 	// flushing the dirty states out. Insert the last block, triggering a sidechain
 	// reimport.
-	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{}, nil, nil)
+	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
 	if _, err := chain.InsertChain(blocks[2:]); err != nil {
@@ -118,7 +117,6 @@ func TestSealHash(t *testing.T) {
 		Difficulty: new(big.Int),
 		Number:     new(big.Int),
 		Extra:      make([]byte, 32+65),
-		BaseFee:    new(big.Int),
 	})
 	want := common.HexToHash("0xbd3d1fa43fbc4c5bfcc91b179ec92e2861df3654de60468beb908ff805359e8f")
 	if have != want {

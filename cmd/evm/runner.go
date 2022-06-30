@@ -37,7 +37,7 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var runCommand = cli.Command{

@@ -40,7 +40,6 @@ import (
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/rpc"
-	"github.com/anduschain/go-anduschain/trie"
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/crypto/sha3"
 )
@@ -63,7 +62,7 @@ var (
 	nonceAuthVote = hexutil.MustDecode("0xffffffffffffffff") // Magic nonce number to vote on adding a new signer
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a signer.
 
-	voterHash = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
+	voterHash = types.EmptyVoteHash
 
 	diffInTurn = big.NewInt(2) // Block difficulty for in-turn signatures
 	diffNoTurn = big.NewInt(1) // Block difficulty for out-of-turn signatures
@@ -184,6 +183,30 @@ type Clique struct {
 
 	// The fields below are for testing only
 	fakeDiff bool // Skip difficulty verifications
+
+	otprn *types.Otprn
+}
+
+func (c *Clique) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Clique) CalcDifficultyDeb(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Clique) SetOtprn(otprn *types.Otprn) {
+	c.otprn = otprn
+}
+
+func (c *Clique) Otprn() *types.Otprn {
+	return c.otprn
+}
+
+func (c *Clique) Name() string {
+	return "clique"
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
@@ -214,14 +237,14 @@ func (c *Clique) Author(header *types.Header) (common.Address, error) {
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
-func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
+func (c *Clique) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
 	return c.verifyHeader(chain, header, nil)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).
-func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (c *Clique) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 
@@ -243,14 +266,14 @@ func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*typ
 // caller may optionally pass in a batch of parents (ascending order) to avoid
 // looking those up from the database. This is useful for concurrently verifying
 // a batch of new headers.
-func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header) error {
+func (c *Clique) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
 	number := header.Number.Uint64()
 
 	// Don't waste time checking blocks from the future
-	if header.Time > uint64(time.Now().Unix()) {
+	if header.Time.Int64() > time.Now().Unix() {
 		return consensus.ErrFutureBlock
 	}
 	// Checkpoint blocks need to enforce zero beneficiary
@@ -280,14 +303,6 @@ func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.H
 	if checkpoint && signersBytes%common.AddressLength != 0 {
 		return errInvalidCheckpointSigners
 	}
-	// Ensure that the mix digest is zero as we don't have fork protection currently
-	if header.MixDigest != (common.Hash{}) {
-		return errInvalidMixDigest
-	}
-	// Ensure that the block doesn't contain any uncles which are meaningless in PoA
-	if header.UncleHash != uncleHash {
-		return errInvalidUncleHash
-	}
 	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
 		if header.Difficulty == nil || (header.Difficulty.Cmp(diffInTurn) != 0 && header.Difficulty.Cmp(diffNoTurn) != 0) {
@@ -310,7 +325,7 @@ func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.H
 // rather depend on a batch of previous headers. The caller may optionally pass
 // in a batch of parents (ascending order) to avoid looking those up from the
 // database. This is useful for concurrently verifying a batch of new headers.
-func (c *Clique) verifyCascadingFields(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header) error {
+func (c *Clique) verifyCascadingFields(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	// The genesis block is the always valid dead-end
 	number := header.Number.Uint64()
 	if number == 0 {
@@ -326,24 +341,12 @@ func (c *Clique) verifyCascadingFields(chain consensus.ChainHeaderReader, header
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
-	if parent.Time+c.config.Period > header.Time {
+	if parent.Time.Uint64()+c.config.Period > header.Time.Uint64() {
 		return errInvalidTimestamp
 	}
 	// Verify that the gasUsed is <= gasLimit
 	if header.GasUsed > header.GasLimit {
 		return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
-	}
-	if !chain.Config().IsLondon(header.Number) {
-		// Verify BaseFee not present before EIP-1559 fork.
-		if header.BaseFee != nil {
-			return fmt.Errorf("invalid baseFee before fork: have %d, want <nil>", header.BaseFee)
-		}
-		if err := misc.VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
-			return err
-		}
-	} else if err := misc.VerifyEip1559Header(chain.Config(), parent, header); err != nil {
-		// Verify the header's EIP-1559 attributes.
-		return err
 	}
 	// Retrieve the snapshot needed to verify this header and cache it
 	snap, err := c.snapshot(chain, number-1, header.ParentHash, parents)
@@ -366,7 +369,7 @@ func (c *Clique) verifyCascadingFields(chain consensus.ChainHeaderReader, header
 }
 
 // snapshot retrieves the authorization snapshot at a given point in time.
-func (c *Clique) snapshot(chain consensus.ChainHeaderReader, number uint64, hash common.Hash, parents []*types.Header) (*Snapshot, error) {
+func (c *Clique) snapshot(chain consensus.ChainReader, number uint64, hash common.Hash, parents []*types.Header) (*Snapshot, error) {
 	// Search for a snapshot in memory or on disk for checkpoints
 	var (
 		headers []*types.Header
@@ -446,15 +449,6 @@ func (c *Clique) snapshot(chain consensus.ChainHeaderReader, number uint64, hash
 	return snap, err
 }
 
-// VerifyUncles implements consensus.Engine, always returning an error for any
-// uncles as this consensus mechanism doesn't permit uncles.
-func (c *Clique) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-	if len(block.Uncles()) > 0 {
-		return errors.New("uncles not allowed")
-	}
-	return nil
-}
-
 // verifySeal checks whether the signature contained in the header satisfies the
 // consensus protocol requirements. The method accepts an optional list of parent
 // headers that aren't yet part of the local blockchain to generate the snapshots
@@ -496,7 +490,7 @@ func (c *Clique) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
-func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
+func (c *Clique) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
 	header.Coinbase = common.Address{}
 	header.Nonce = types.BlockNonce{}
@@ -544,37 +538,35 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	}
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 
-	// Mix digest is reserved for now, set to empty
-	header.MixDigest = common.Hash{}
-
 	// Ensure the timestamp has the correct delay
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-	header.Time = parent.Time + c.config.Period
-	if header.Time < uint64(time.Now().Unix()) {
-		header.Time = uint64(time.Now().Unix())
+	header.Time = big.NewInt(0).Add(parent.Time, new(big.Int).SetUint64(c.config.Period))
+	if header.Time.Int64() < time.Now().Unix() {
+		header.Time = big.NewInt(time.Now().Unix())
 	}
 	return nil
 }
 
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given.
-func (c *Clique) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header) {
+func (c *Clique) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = types.CalcUncleHash(nil)
+	header.VoteHash = types.EmptyVoteHash
+
+	// Assemble and return the final block for sealing
+	return types.NewBlock(header, txs, receipts, voters), nil
 }
 
 // FinalizeAndAssemble implements consensus.Engine, ensuring no uncles are set,
 // nor block rewards given, and returns the final block.
-func (c *Clique) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
+func (c *Clique) FinalizeAndAssemble(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, voters []*types.Voter, receipts []*types.Receipt) (*types.Block, error) {
 	// Finalize block
-	c.Finalize(chain, header, state, txs, uncles)
+	return c.Finalize(chain, header, state, txs, receipts, voters)
 
-	// Assemble and return the final block for sealing
-	return types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil)), nil
 }
 
 // Authorize injects a private key into the consensus engine to mint new blocks
@@ -589,7 +581,7 @@ func (c *Clique) Authorize(signer common.Address, signFn SignerFn) {
 
 // Seal implements consensus.Engine, attempting to create a sealed block using
 // the local signing credentials.
-func (c *Clique) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	header := block.Header()
 
 	// Sealing the genesis block is not supported
@@ -624,7 +616,7 @@ func (c *Clique) Seal(chain consensus.ChainHeaderReader, block *types.Block, res
 		}
 	}
 	// Sweet, the protocol permits us to sign the block, wait for our time
-	delay := time.Unix(int64(header.Time), 0).Sub(time.Now()) // nolint: gosimple
+	delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now()) // nolint: gosimple
 	if header.Difficulty.Cmp(diffNoTurn) == 0 {
 		// It's not our turn explicitly to sign, delay it a bit
 		wiggle := time.Duration(len(snap.Signers)/2+1) * wiggleTime
@@ -661,7 +653,7 @@ func (c *Clique) Seal(chain consensus.ChainHeaderReader, block *types.Block, res
 // that a new block should have:
 // * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
 // * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
-func (c *Clique) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
+func (c *Clique) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
 	if err != nil {
 		return nil
@@ -688,7 +680,7 @@ func (c *Clique) Close() error {
 
 // APIs implements consensus.Engine, returning the user facing RPC API to allow
 // controlling the signer voting.
-func (c *Clique) APIs(chain consensus.ChainHeaderReader) []rpc.API {
+func (c *Clique) APIs(chain consensus.ChainReader) []rpc.API {
 	return []rpc.API{{
 		Namespace: "clique",
 		Version:   "1.0",
@@ -700,8 +692,23 @@ func (c *Clique) APIs(chain consensus.ChainHeaderReader) []rpc.API {
 // SealHash returns the hash of a block prior to it being sealed.
 func SealHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewLegacyKeccak256()
-	encodeSigHeader(hasher, header)
-	hasher.(crypto.KeccakState).Read(hash[:])
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra,
+		header.Nonce,
+		header.Otprn,
+	})
+	hasher.Sum(hash[:0])
 	return hash
 }
 
@@ -721,7 +728,7 @@ func CliqueRLP(header *types.Header) []byte {
 func encodeSigHeader(w io.Writer, header *types.Header) {
 	enc := []interface{}{
 		header.ParentHash,
-		header.UncleHash,
+		header.VoteHash,
 		header.Coinbase,
 		header.Root,
 		header.TxHash,
@@ -733,12 +740,9 @@ func encodeSigHeader(w io.Writer, header *types.Header) {
 		header.GasUsed,
 		header.Time,
 		header.Extra[:len(header.Extra)-crypto.SignatureLength], // Yes, this will panic if extra is too short
-		header.MixDigest,
 		header.Nonce,
 	}
-	if header.BaseFee != nil {
-		enc = append(enc, header.BaseFee)
-	}
+
 	if err := rlp.Encode(w, enc); err != nil {
 		panic("can't encode: " + err.Error())
 	}

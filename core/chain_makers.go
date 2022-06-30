@@ -70,6 +70,18 @@ func (b *BlockGen) SetExtra(data []byte) {
 	b.header.Extra = data
 }
 
+// SetNonce sets the nonce field of the generated block.
+func (b *BlockGen) SetNonce(nonce types.BlockNonce) {
+	b.header.Nonce = nonce
+}
+
+// SetDifficulty sets the difficulty field of the generated block. This method is
+// useful for Clique tests where the difficulty does not depend on time. For the
+// ethash tests, please use OffsetTime, which implicitly recalculates the diff.
+func (b *BlockGen) SetDifficulty(diff *big.Int) {
+	b.header.Difficulty = diff
+}
+
 // AddTx adds a transaction to the generated block. If no coinbase has
 // been set, the block's coinbase is set to the zero address.
 //
@@ -218,7 +230,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 				panic(fmt.Sprintf("trie write error: %v", err))
 			}
 
-			if b.engine.IsDeb() {
+			if b.engine.Name() == "deb" {
 				// 테스트용, 자체 OTPRN 생성
 				var otp []byte
 				otp, _ = b.engine.Otprn().EncodeOtprn()

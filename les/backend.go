@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/filters"
-	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/light"
@@ -75,9 +74,11 @@ type LightEthereum struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	wg sync.WaitGroup
+
+	p2pServer *p2p.Server
 }
 
-func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
+func New(ctx *node.ServiceContext, stack *node.Node, config *eth.Config) (*LightEthereum, error) {
 	chainDb, err := eth.CreateDB(ctx, config, "lightchaindata")
 	if err != nil {
 		return nil, err
@@ -107,6 +108,7 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 		networkId:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   eth.NewBloomIndexer(chainDb, params.BloomBitsBlocksClient, params.HelperTrieConfirmations),
+		p2pServer:      stack.Server(),
 	}
 
 	leth.relay = NewLesTxRelay(peers, leth.reqDist)
@@ -139,12 +141,8 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 	if leth.protocolManager, err = NewProtocolManager(leth.chainConfig, light.DefaultClientIndexerConfig, true, config.NetworkId, leth.eventMux, leth.engine, leth.peers, leth.blockchain, nil, chainDb, leth.odr, leth.relay, leth.serverPool, quitSync, &leth.wg); err != nil {
 		return nil, err
 	}
-	leth.ApiBackend = &LesApiBackend{leth, nil}
-	gpoParams := config.GPO
-	if gpoParams.Default == nil {
-		gpoParams.Default = config.MinerGasPrice
-	}
-	leth.ApiBackend.gpo = gasprice.NewOracle(leth.ApiBackend, gpoParams)
+	leth.ApiBackend = &LesApiBackend{true, true, leth}
+
 	return leth, nil
 }
 
@@ -230,13 +228,13 @@ func (s *LightEthereum) Protocols() []p2p.Protocol {
 
 // Start implements node.Service, starting all internal goroutines needed by the
 // Ethereum protocol implementation.
-func (s *LightEthereum) Start(srvr *p2p.Server) error {
+func (s *LightEthereum) Start() error {
 	log.Warn("Light client mode is an experimental feature")
 	s.startBloomHandlers(params.BloomBitsBlocksClient)
-	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.networkId)
+	s.netRPCService = ethapi.NewPublicNetAPI(s.p2pServer, s.networkId)
 	// clients are searching for the first advertised protocol in the list
 	protocolVersion := AdvertiseProtocolVersions[0]
-	s.serverPool.start(srvr, lesTopic(s.blockchain.Genesis().Hash(), protocolVersion))
+	s.serverPool.start(s.p2pServer, lesTopic(s.blockchain.Genesis().Hash(), protocolVersion))
 	s.protocolManager.Start(s.config.LightPeers)
 	return nil
 }

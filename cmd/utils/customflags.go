@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/anduschain/go-anduschain/common/math"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // Custom type which is registered in the flags library which cli uses for
@@ -237,4 +237,8 @@ func homeDir() string {
 		return usr.HomeDir
 	}
 	return ""
+}
+
+func HomeDir() string {
+	return homeDir()
 }

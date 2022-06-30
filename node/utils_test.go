@@ -31,7 +31,7 @@ type NoopService struct{}
 
 func (s *NoopService) Protocols() []p2p.Protocol { return nil }
 func (s *NoopService) APIs() []rpc.API           { return nil }
-func (s *NoopService) Start(*p2p.Server) error   { return nil }
+func (s *NoopService) Start() error              { return nil }
 func (s *NoopService) Stop() error               { return nil }
 
 func NewNoopService(*ServiceContext) (Service, error) { return new(NoopService), nil }
@@ -53,6 +53,7 @@ type InstrumentedService struct {
 	apis      []rpc.API
 	start     error
 	stop      error
+	server    *p2p.Server
 
 	protocolsHook func()
 	startHook     func(*p2p.Server)
@@ -72,9 +73,9 @@ func (s *InstrumentedService) APIs() []rpc.API {
 	return s.apis
 }
 
-func (s *InstrumentedService) Start(server *p2p.Server) error {
+func (s *InstrumentedService) Start() error {
 	if s.startHook != nil {
-		s.startHook(server)
+		s.startHook(s.server)
 	}
 	return s.start
 }

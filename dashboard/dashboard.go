@@ -34,12 +34,12 @@ import (
 
 	"io"
 
-	"github.com/elastic/gosigar"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/rpc"
+	"github.com/elastic/gosigar"
 	"github.com/mohae/deepcopy"
 	"golang.org/x/net/websocket"
 )
@@ -129,7 +129,7 @@ func (db *Dashboard) APIs() []rpc.API { return nil }
 
 // Start starts the data collection thread and the listening server of the dashboard.
 // Implements the node.Service interface.
-func (db *Dashboard) Start(server *p2p.Server) error {
+func (db *Dashboard) Start() error {
 	log.Info("Starting dashboard")
 
 	db.wg.Add(2)

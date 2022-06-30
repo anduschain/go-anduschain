@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/anduschain/go-anduschain/core/asm"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var disasmCommand = cli.Command{

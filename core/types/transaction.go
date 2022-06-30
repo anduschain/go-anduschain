@@ -17,6 +17,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"github.com/anduschain/go-anduschain/params"
@@ -231,6 +232,18 @@ func isProtectedV(V *big.Int) bool {
 // EncodeRLP implements rlp.Encoder
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &tx.data)
+}
+
+// encodeTyped writes the canonical encoding of a typed transaction to w.
+func (tx *Transaction) encodeTyped(w *bytes.Buffer) error {
+	return rlp.Encode(w, tx.data)
+}
+
+// MarshalBinary returns the canonical encoding of the transaction.
+// For legacy transactions, it returns the RLP encoding. For EIP-2718 typed
+// transactions, it returns the type and payload.
+func (tx *Transaction) MarshalBinary() ([]byte, error) {
+	return rlp.EncodeToBytes(tx.data)
 }
 
 // DecodeRLP implements rlp.Decoder

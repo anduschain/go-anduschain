@@ -24,6 +24,10 @@ var (
 		GasPrice:   DefaultGasFee,
 		FnFeeRate:  big.NewInt(100),
 	}
+	TestCliqueConfig = &CliqueConfig{
+		Period: 1,
+		Epoch:  50,
+	}
 	MainNetId = big.NewInt(14288640)
 	TestNetId = big.NewInt(14288641)
 	DvlpNetId = big.NewInt(14288642)

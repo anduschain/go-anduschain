@@ -113,7 +113,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	var gas uint64
 	var failed bool
 
-	_, gas, failed, err = ApplyMessage(vmenv, msg, gp)
+	_, err = ApplyMessage(vmenv, msg, gp)
 	if err != nil {
 		return nil, 0, err
 	}

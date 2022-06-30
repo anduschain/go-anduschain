@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/node"
 	"math/big"
 	"net"
 	"regexp"
@@ -82,7 +83,7 @@ type Service struct {
 }
 
 // New returns a monitoring service ready for stats reporting.
-func New(url string, ethServ *eth.Ethereum, lesServ *les.LightEthereum) (*Service, error) {
+func New(stack *node.Node, url string, ethServ *eth.Ethereum, lesServ *les.LightEthereum) (*Service, error) {
 	// Parse the netstats connection url
 	re := regexp.MustCompile("([^:@]*)(:([^@]*))?@(.+)")
 	parts := re.FindStringSubmatch(url)
@@ -105,6 +106,7 @@ func New(url string, ethServ *eth.Ethereum, lesServ *les.LightEthereum) (*Servic
 		host:   parts[4],
 		pongCh: make(chan struct{}),
 		histCh: make(chan []uint64, 1),
+		server: stack.Server(),
 	}, nil
 }
 
@@ -117,8 +119,7 @@ func (s *Service) Protocols() []p2p.Protocol { return nil }
 func (s *Service) APIs() []rpc.API { return nil }
 
 // Start implements node.Service, starting up the monitoring and reporting daemon.
-func (s *Service) Start(server *p2p.Server) error {
-	s.server = server
+func (s *Service) Start() error {
 	go s.loop()
 
 	log.Info("Stats daemon started")

@@ -26,14 +26,6 @@ import (
 
 type ErrorType int
 
-// Deb proof-of-Deb protocol constants.
-var (
-	//uncleHash = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
-
-	diffInTurn = big.NewInt(2) // Block difficulty for in-turn signatures
-	diffNoTurn = big.NewInt(1) // Block difficulty for out-of-turn signatures
-)
-
 // Various error messages to mark blocks invalid. These should be private to
 // prevent engine specific debErrors from being referenced in the remainder of the
 // codebase, inherently breaking if the engine is swapped out. Please put common
@@ -72,10 +64,6 @@ type Deb struct {
 
 func (c *Deb) Otprn() *types.Otprn {
 	return c.otprn
-}
-
-func (c *Deb) IsDeb() bool {
-	return true
 }
 
 var (
@@ -118,6 +106,10 @@ func (c *Deb) SetOtprn(otprn *types.Otprn) {
 	//	c.config.SetFnFeeRate(fnFeeRate)
 	//}
 	c.otprn = otprn
+}
+
+func (c *Deb) Name() string {
+	return "deb"
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered

@@ -121,13 +121,13 @@ func init() {
 	cli.CommandHelpTemplate = flags.OriginCommandHelpTemplate
 }
 
-func abigen(c *cli.Context) error {
-	utils.CheckExclusive(c, abiFlag, jsonFlag, solFlag, vyFlag) // Only one source can be selected.
-	if c.GlobalString(pkgFlag.Name) == "" {
+func abigen(ctx *cli.Context) error {
+	utils.CheckExclusive(ctx, abiFlag, jsonFlag, solFlag, vyFlag) // Only one source can be selected.
+	if ctx.GlobalString(pkgFlag.Name) == "" {
 		utils.Fatalf("No destination package specified (--pkg)")
 	}
 	var lang bind.Lang
-	switch c.GlobalString(langFlag.Name) {
+	switch ctx.GlobalString(langFlag.Name) {
 	case "go":
 		lang = bind.LangGo
 	case "java":
@@ -136,7 +136,7 @@ func abigen(c *cli.Context) error {
 		lang = bind.LangObjC
 		utils.Fatalf("Objc binding generation is uncompleted")
 	default:
-		utils.Fatalf("Unsupported destination language \"%s\" (--lang)", c.GlobalString(langFlag.Name))
+		utils.Fatalf("Unsupported destination language \"%s\" (--lang)", ctx.GlobalString(langFlag.Name))
 	}
 	// If the entire solidity code was specified, build and bind based on that
 	var (
@@ -147,13 +147,13 @@ func abigen(c *cli.Context) error {
 		libs    = make(map[string]string)
 		aliases = make(map[string]string)
 	)
-	if c.GlobalString(abiFlag.Name) != "" {
+	if ctx.GlobalString(abiFlag.Name) != "" {
 		// Load up the ABI, optional bytecode and type name from the parameters
 		var (
 			abi []byte
 			err error
 		)
-		input := c.GlobalString(abiFlag.Name)
+		input := ctx.GlobalString(abiFlag.Name)
 		if input == "-" {
 			abi, err = ioutil.ReadAll(os.Stdin)
 		} else {
@@ -165,7 +165,7 @@ func abigen(c *cli.Context) error {
 		abis = append(abis, string(abi))
 
 		var bin []byte
-		if binFile := c.GlobalString(binFlag.Name); binFile != "" {
+		if binFile := ctx.GlobalString(binFlag.Name); binFile != "" {
 			if bin, err = ioutil.ReadFile(binFile); err != nil {
 				utils.Fatalf("Failed to read input bytecode: %v", err)
 			}
@@ -175,28 +175,28 @@ func abigen(c *cli.Context) error {
 		}
 		bins = append(bins, string(bin))
 
-		kind := c.GlobalString(typeFlag.Name)
+		kind := ctx.GlobalString(typeFlag.Name)
 		if kind == "" {
-			kind = c.GlobalString(pkgFlag.Name)
+			kind = ctx.GlobalString(pkgFlag.Name)
 		}
 		types = append(types, kind)
 	} else {
 		// Generate the list of types to exclude from binding
 		exclude := make(map[string]bool)
-		for _, kind := range strings.Split(c.GlobalString(excFlag.Name), ",") {
+		for _, kind := range strings.Split(ctx.GlobalString(excFlag.Name), ",") {
 			exclude[strings.ToLower(kind)] = true
 		}
 		var err error
 		var contracts map[string]*compiler.Contract
 
 		switch {
-		case c.GlobalIsSet(solFlag.Name):
-			contracts, err = compiler.CompileSolidity(c.GlobalString(solcFlag.Name), c.GlobalString(solFlag.Name))
+		case ctx.GlobalIsSet(solFlag.Name):
+			contracts, err = compiler.CompileSolidity(ctx.GlobalString(solcFlag.Name), ctx.GlobalString(solFlag.Name))
 			if err != nil {
 				utils.Fatalf("Failed to build Solidity contract: %v", err)
 			}
-		case c.GlobalIsSet(vyFlag.Name):
-			output, err := compiler.CompileVyper(c.GlobalString(vyperFlag.Name), c.GlobalString(vyFlag.Name))
+		case ctx.GlobalIsSet(vyFlag.Name):
+			output, err := compiler.CompileVyper(ctx.GlobalString(vyperFlag.Name), ctx.GlobalString(vyFlag.Name))
 			if err != nil {
 				utils.Fatalf("Failed to build Vyper contract: %v", err)
 			}
@@ -212,8 +212,8 @@ func abigen(c *cli.Context) error {
 				contracts[name] = contract
 			}
 
-		case c.GlobalIsSet(jsonFlag.Name):
-			jsonOutput, err := ioutil.ReadFile(c.GlobalString(jsonFlag.Name))
+		case ctx.GlobalIsSet(jsonFlag.Name):
+			jsonOutput, err := ioutil.ReadFile(ctx.GlobalString(jsonFlag.Name))
 			if err != nil {
 				utils.Fatalf("Failed to read combined-json from compiler: %v", err)
 			}
@@ -242,28 +242,28 @@ func abigen(c *cli.Context) error {
 		}
 	}
 	// Extract all aliases from the flags
-	if c.GlobalIsSet(aliasFlag.Name) {
+	if ctx.GlobalIsSet(aliasFlag.Name) {
 		// We support multi-versions for aliasing
 		// e.g.
 		//      foo=bar,foo2=bar2
 		//      foo:bar,foo2:bar2
 		re := regexp.MustCompile(`(?:(\w+)[:=](\w+))`)
-		submatches := re.FindAllStringSubmatch(c.GlobalString(aliasFlag.Name), -1)
+		submatches := re.FindAllStringSubmatch(ctx.GlobalString(aliasFlag.Name), -1)
 		for _, match := range submatches {
 			aliases[match[1]] = match[2]
 		}
 	}
 	// Generate the contract binding
-	code, err := bind.Bind(types, abis, bins, sigs, c.GlobalString(pkgFlag.Name), lang, libs, aliases)
+	code, err := bind.Bind(types, abis, bins, sigs, ctx.GlobalString(pkgFlag.Name), lang, libs, aliases)
 	if err != nil {
 		utils.Fatalf("Failed to generate ABI binding: %v", err)
 	}
 	// Either flush it out to a file or display on the standard output
-	if !c.GlobalIsSet(outFlag.Name) {
+	if !ctx.GlobalIsSet(outFlag.Name) {
 		fmt.Printf("%s\n", code)
 		return nil
 	}
-	if err := ioutil.WriteFile(c.GlobalString(outFlag.Name), []byte(code), 0600); err != nil {
+	if err := ioutil.WriteFile(ctx.GlobalString(outFlag.Name), []byte(code), 0600); err != nil {
 		utils.Fatalf("Failed to write ABI binding: %v", err)
 	}
 	return nil

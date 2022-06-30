@@ -22,8 +22,7 @@ import (
 	"io/ioutil"
 
 	"github.com/anduschain/go-anduschain/cmd/evm/internal/compiler"
-
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var compileCommand = cli.Command{

@@ -48,7 +48,8 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/netutil"
 	"github.com/anduschain/go-anduschain/params"
 	whisper "github.com/anduschain/go-anduschain/whisper/whisperv6"
-	"github.com/urfave/cli"
+	pcsclite "github.com/gballet/go-libpcsclite"
+	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -123,6 +124,11 @@ var (
 	NoUSBFlag = cli.BoolFlag{
 		Name:  "nousb",
 		Usage: "Disables monitoring for and managing USB hardware wallets",
+	}
+	SmartCardDaemonPathFlag = cli.StringFlag{
+		Name:  "pcscdpath",
+		Usage: "Path to the smartcard daemon (pcscd) socket file",
+		Value: pcsclite.PCSCDSockName,
 	}
 	NetworkIdFlag = cli.Uint64Flag{
 		Name:  "networkid",
@@ -1155,7 +1161,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	var err error
 	if cfg.SyncMode == downloader.LightSync {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			return les.New(ctx, cfg)
+			return les.New(ctx, stack, cfg)
 		})
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
@@ -1199,7 +1205,7 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 		var lesServ *les.LightEthereum
 		ctx.Service(&lesServ)
 
-		return ethstats.New(url, ethServ, lesServ)
+		return ethstats.New(stack, url, ethServ, lesServ)
 	}); err != nil {
 		Fatalf("Failed to register the Anduschain Stats service: %v", err)
 	}
@@ -1326,4 +1332,57 @@ func MigrateFlags(action func(ctx *cli.Context) error) func(*cli.Context) error 
 		}
 		return action(ctx)
 	}
+}
+
+// CheckExclusive verifies that only a single instance of the provided flags was
+// set by the user. Each flag might optionally be followed by a string type to
+// specialize it further.
+func CheckExclusive(ctx *cli.Context, args ...interface{}) {
+	set := make([]string, 0, 1)
+	for i := 0; i < len(args); i++ {
+		// Make sure the next argument is a flag and skip if not set
+		flag, ok := args[i].(cli.Flag)
+		if !ok {
+			panic(fmt.Sprintf("invalid argument, not cli.Flag type: %T", args[i]))
+		}
+		// Check if next arg extends current and expand its name if so
+		name := flag.GetName()
+
+		if i+1 < len(args) {
+			switch option := args[i+1].(type) {
+			case string:
+				// Extended flag check, make sure value set doesn't conflict with passed in option
+				if ctx.GlobalString(flag.GetName()) == option {
+					name += "=" + option
+					set = append(set, "--"+name)
+				}
+				// shift arguments and continue
+				i++
+				continue
+
+			case cli.Flag:
+			default:
+				panic(fmt.Sprintf("invalid argument, not cli.Flag or string extension: %T", args[i+1]))
+			}
+		}
+		// Mark the flag if it's set
+		if ctx.GlobalIsSet(flag.GetName()) {
+			set = append(set, "--"+name)
+		}
+	}
+	if len(set) > 1 {
+		Fatalf("Flags %v can't be used at the same time", strings.Join(set, ", "))
+	}
+}
+
+// SplitAndTrim splits input separated by a comma
+// and trims excessive white space from the substrings.
+func SplitAndTrim(input string) (ret []string) {
+	l := strings.Split(input, ",")
+	for _, r := range l {
+		if r = strings.TrimSpace(r); r != "" {
+			ret = append(ret, r)
+		}
+	}
+	return ret
 }

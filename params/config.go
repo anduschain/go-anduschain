@@ -101,17 +101,29 @@ var (
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig}
+		TestDebConfig, nil}
 
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig}
+		TestDebConfig, nil}
 
 	AllDebProtocolChanges = &ChainConfig{
 		big.NewInt(3358), big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig}
+		TestDebConfig, nil}
+
+	TestCliqueChainConfig = &ChainConfig{
+		GeneralId, big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		nil, TestCliqueConfig}
+
+	AllCliqueProtocolChanges = &ChainConfig{
+		big.NewInt(1337), big.NewInt(0), nil, false,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		nil, &CliqueConfig{Period: 0, Epoch: 30000}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -139,7 +151,8 @@ type ChainConfig struct {
 	PohangBlock         *big.Int `json:"pohangBlock,omitempty"`         // Pohang switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
-	Deb *DebConfig `json:"deb,omitempty"`
+	Deb    *DebConfig    `json:"deb,omitempty"`
+	Clique *CliqueConfig `json:"clique,omitempty"`
 }
 
 type DebConfig struct {
@@ -171,6 +184,17 @@ func (c *DebConfig) GetFnFeeRate() *big.Int {
 
 func (c *DebConfig) String() string {
 	return "deb"
+}
+
+// CliqueConfig is the consensus engine configs for proof-of-authority based sealing.
+type CliqueConfig struct {
+	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
+	Epoch  uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
+}
+
+// String implements the stringer interface, returning the consensus engine details.
+func (c *CliqueConfig) String() string {
+	return "clique"
 }
 
 // String implements the fmt.Stringer interface.
