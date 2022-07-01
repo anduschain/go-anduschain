@@ -396,6 +396,7 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	if err := c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header); err != nil {
+		fmt.Println("CSW ERROR", err)
 		return nil, err
 	}
 
@@ -418,7 +419,6 @@ func calRewardAndFnFee(jCnt, unit float64, jtxFee, fnFeeRate *big.Float) (*big.I
 func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, header *types.Header) error {
 	hexOtprn, _ := hex.DecodeString(params.TestOtprn)
 	pOtprn, _ := types.DecodeOtprn(hexOtprn)
-
 	// for Test
 	if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.GeneralId {
 		state.AddBalance(header.Coinbase, big.NewInt(2e18))
@@ -452,7 +452,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 		}
 	}
 
-	if jCnt == 0 {
+	if jCnt == 0 && chainid != params.DvlpNetId {
 		return errors.New("join transaction is nil")
 	}
 

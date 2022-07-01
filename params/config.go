@@ -109,7 +109,7 @@ var (
 		TestDebConfig, nil}
 
 	AllDebProtocolChanges = &ChainConfig{
-		big.NewInt(3358), big.NewInt(0), nil, true,
+		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		TestDebConfig, nil}
 

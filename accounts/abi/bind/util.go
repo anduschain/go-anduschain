@@ -32,11 +32,10 @@ import (
 func WaitMined(ctx context.Context, b DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
 	queryTicker := time.NewTicker(time.Second)
 	defer queryTicker.Stop()
-
 	logger := log.New("hash", tx.Hash())
 	for {
 		receipt, err := b.TransactionReceipt(ctx, tx.Hash())
-		if err == nil {
+		if err == nil && receipt != nil {
 			return receipt, nil
 		}
 

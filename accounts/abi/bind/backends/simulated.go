@@ -237,6 +237,7 @@ func (b *SimulatedBackend) StorageAt(ctx context.Context, contract common.Addres
 // TransactionReceipt returns the receipt of a transaction.
 func (b *SimulatedBackend) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	receipt, _, _, _ := rawdb.ReadReceipt(b.database, txHash)
+
 	return receipt, nil
 }
 

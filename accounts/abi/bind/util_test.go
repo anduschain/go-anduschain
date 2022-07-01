@@ -19,6 +19,7 @@ package bind_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -61,12 +62,8 @@ func TestWaitDeployed(t *testing.T) {
 			10000000,
 		)
 		defer backend.Close()
-
 		// Create the transaction
 		gasPrice := big.NewInt(1)
-
-		tx := types.NewContractCreation(0, big.NewInt(0), test.gas, gasPrice, common.FromHex(test.code))
-		tx, _ = types.SignTx(tx, types.HomesteadSigner{}, testKey)
 
 		// Wait for it to get mined in the background.
 		var (
@@ -75,13 +72,19 @@ func TestWaitDeployed(t *testing.T) {
 			mined   = make(chan struct{})
 			ctx     = context.Background()
 		)
+		tx := types.NewContractCreation(0, big.NewInt(0), test.gas, gasPrice, common.FromHex(test.code))
+		tx, err = types.SignTx(tx, types.HomesteadSigner{}, testKey)
+
 		go func() {
 			address, err = bind.WaitDeployed(ctx, backend, tx)
 			close(mined)
 		}()
 
 		// Send and mine the transaction.
-		backend.SendTransaction(ctx, tx)
+		err = backend.SendTransaction(ctx, tx)
+		if err != nil {
+			return
+		}
 		backend.Commit()
 
 		select {
@@ -93,6 +96,7 @@ func TestWaitDeployed(t *testing.T) {
 				t.Errorf("test %q: unexpected contract address %s", name, address.Hex())
 			}
 		case <-time.After(2 * time.Second):
+			fmt.Println("CSW Got timeout")
 			t.Errorf("test %q: timeout", name)
 		}
 	}
