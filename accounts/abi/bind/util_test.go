@@ -19,7 +19,6 @@ package bind_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -96,7 +95,6 @@ func TestWaitDeployed(t *testing.T) {
 				t.Errorf("test %q: unexpected contract address %s", name, address.Hex())
 			}
 		case <-time.After(2 * time.Second):
-			fmt.Println("CSW Got timeout")
 			t.Errorf("test %q: timeout", name)
 		}
 	}

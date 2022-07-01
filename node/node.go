@@ -507,9 +507,6 @@ func (n *Node) RPCHandler() (*rpc.Server, error) {
 // only to inspect fields of the currently running server, life cycle management
 // should be left to this Node entity.
 func (n *Node) Server() *p2p.Server {
-	n.lock.RLock()
-	defer n.lock.RUnlock()
-
 	return n.server
 }
 

@@ -131,7 +131,6 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	}
 
 	log.Info("Initialised chain configuration", "config", chainConfig)
-
 	eth := &Ethereum{
 		config:         config,
 		chainDb:        chainDb,
@@ -147,7 +146,6 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		p2pServer:      stack.Server(),
 	}
-	fmt.Println("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
 	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
 
 	if !config.SkipBcVersionCheck {

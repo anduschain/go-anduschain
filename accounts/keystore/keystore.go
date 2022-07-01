@@ -42,7 +42,7 @@ import (
 var (
 	ErrLocked  = accounts.NewAuthNeededError("password or unlock")
 	ErrNoMatch = errors.New("no key for given address or file")
-	ErrDecrypt = errors.New("could not decrypt key with given password")
+	ErrDecrypt = errors.New("could not decrypt key with given passphrase")
 
 	// ErrAccountAlreadyExists is returned if an account attempted to import is
 	// already present in the keystore.

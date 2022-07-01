@@ -73,11 +73,10 @@ var (
 // New creates a andusChain proof-of-deb consensus engine with the initial
 // signers set to the ones provided by the user.
 func New(config *params.DebConfig, db ethdb.Database) *Deb {
-	deb := &Deb{
+	return &Deb{
 		config: config,
 		db:     db,
 	}
-	return deb
 }
 
 func NewFaker(otprn *types.Otprn) *Deb {
@@ -396,7 +395,6 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, Txs []*types.Transaction, receipts []*types.Receipt, voters []*types.Voter) (*types.Block, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	if err := c.ChangeJoinNonceAndReword(chain.Config().ChainID, state, Txs, header); err != nil {
-		fmt.Println("CSW ERROR", err)
 		return nil, err
 	}
 
