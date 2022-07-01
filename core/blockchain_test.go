@@ -993,10 +993,10 @@ func TestReorgSideEvent(t *testing.T) {
 		replacementBlocks[0].Hash(): true,
 		replacementBlocks[1].Hash(): true,
 		replacementBlocks[2].Hash(): true,
-		replacementBlocks[3].Hash(): true,
-		//chain[0].Hash():             true,
-		//chain[1].Hash():             true,
-		//chain[2].Hash():             true,
+		//replacementBlocks[3].Hash(): true,
+		chain[0].Hash(): true,
+		chain[1].Hash(): true,
+		chain[2].Hash(): true,
 	}
 
 	i := 0
@@ -1020,12 +1020,6 @@ done:
 				break done
 			}
 			timeout.Reset(timeoutDura)
-		case ev := <-chainEventCh:
-			block := ev.Block
-			fmt.Println("CSW got chainEventch", block.Hash().String())
-		case ev := <-chainHeadCh:
-			block := ev.Block
-			fmt.Println("CSW got chainHeadEventCh", block.Hash().String())
 		case <-timeout.C:
 			t.Fatal("Timeout. Possibly not all blocks were triggered for sideevent")
 		}

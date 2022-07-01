@@ -1182,7 +1182,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
-		fmt.Println("CSW status", block.Hash().String(), status)
 		switch status {
 		case CanonStatTy:
 			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash().String(),
@@ -1195,14 +1194,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 			// Only count canonical blocks for GC processing time
 			bc.gcproc += proctime
-			fmt.Println("CSW CanonStatTy", block.Hash().String())
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash().String(), "diff", block.Difficulty(), "elapsed",
 				common.PrettyDuration(time.Since(bstart)), "Txs", block.Transactions().Len(), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)
 			events = append(events, types.ChainSideEvent{block})
-			fmt.Println("CSW SideStatTy", block.Hash().String())
 		}
 		stats.processed++
 		stats.usedGas += usedGas
