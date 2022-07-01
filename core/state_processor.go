@@ -87,10 +87,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	for _, voter := range block.Voters() {
 		voters = append(voters, voter)
 	}
-
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), receipts, voters)
-
 	return receipts, allLogs, *usedGas, nil
 }
 

@@ -83,6 +83,7 @@ func TestReimportMirroredState(t *testing.T) {
 		sig, _ := crypto.Sign(SealHash(header).Bytes(), key)
 		copy(header.Extra[len(header.Extra)-extraSeal:], sig)
 		blocks[i] = block.WithSeal(header)
+
 	}
 	// Insert the first two blocks and make sure the chain is valid
 	db = ethdb.NewMemDatabase()

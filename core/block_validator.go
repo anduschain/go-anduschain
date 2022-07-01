@@ -78,7 +78,6 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // otherwise nil and an error is returned.
 func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
-
 	// 가져온 블록의 생성자가 전에 만든 블록의 확정 생성자일 때 joinnonce가 0이 여야 함
 	if statedb.GetJoinNonce(block.Coinbase()) != 0 {
 		return fmt.Errorf("invalid Joinnonce (remote: %d local: 0)", block.Nonce())

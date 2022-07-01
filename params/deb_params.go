@@ -32,4 +32,5 @@ var (
 	TestNetId = big.NewInt(14288641)
 	DvlpNetId = big.NewInt(14288642)
 	GeneralId = big.NewInt(3357)
+	SideId    = big.NewInt(3358)
 )

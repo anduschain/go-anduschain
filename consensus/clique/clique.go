@@ -704,7 +704,6 @@ func SealHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
-		header.Extra,
 		header.Nonce,
 		header.Otprn,
 	})

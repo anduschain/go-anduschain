@@ -890,7 +890,6 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
-
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -903,7 +902,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	currentBlock := bc.CurrentBlock()
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
-
 	log.Debug("WriteBlockWithState", "localTd", localTd.String(), "externTd", externTd.String())
 
 	// Irrelevant of the canonical status, write the block itself to the database
@@ -1165,14 +1163,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
-
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
-
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		if err != nil {
@@ -1180,13 +1176,13 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		proctime := time.Since(bstart)
-
 		// Write the block to the chain and get the status.
 		status, err := bc.WriteBlockWithState(block, receipts, state)
+
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
-
+		fmt.Println("CSW status", block.Hash().String(), status)
 		switch status {
 		case CanonStatTy:
 			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash().String(),
@@ -1199,13 +1195,14 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 			// Only count canonical blocks for GC processing time
 			bc.gcproc += proctime
-
+			fmt.Println("CSW CanonStatTy", block.Hash().String())
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash().String(), "diff", block.Difficulty(), "elapsed",
 				common.PrettyDuration(time.Since(bstart)), "Txs", block.Transactions().Len(), "gas", block.GasUsed())
 
 			blockInsertTimer.UpdateSince(bstart)
 			events = append(events, types.ChainSideEvent{block})
+			fmt.Println("CSW SideStatTy", block.Hash().String())
 		}
 		stats.processed++
 		stats.usedGas += usedGas
@@ -1397,12 +1394,18 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 	for _, event := range events {
 		switch ev := event.(type) {
 		case types.ChainEvent:
+			block := ev.Block
+			fmt.Println("CSW send ChainEvent", block.Hash().String())
 			bc.chainFeed.Send(ev)
 
 		case types.ChainHeadEvent:
+			block := ev.Block
+			fmt.Println("CSW send ChainHeadEvent", block.Hash().String())
 			bc.chainHeadFeed.Send(ev)
 
 		case types.ChainSideEvent:
+			block := ev.Block
+			fmt.Println("CSW send ChainSideEvent", block.Hash().String())
 			bc.chainSideFeed.Send(ev)
 		}
 	}

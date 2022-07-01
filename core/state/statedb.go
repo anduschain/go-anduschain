@@ -20,16 +20,15 @@ package state
 import (
 	"errors"
 	"fmt"
-	"math/big"
-	"sort"
-	"sync"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/anduschain/go-anduschain/trie"
+	"math/big"
+	"sort"
+	"sync"
 )
 
 type revision struct {

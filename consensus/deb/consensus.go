@@ -418,7 +418,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	hexOtprn, _ := hex.DecodeString(params.TestOtprn)
 	pOtprn, _ := types.DecodeOtprn(hexOtprn)
 	// for Test
-	if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.GeneralId {
+	if chainid == params.GeneralId || chainid == params.SideId {
 		state.AddBalance(header.Coinbase, big.NewInt(2e18))
 		return nil
 	} else if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.DvlpNetId {
@@ -450,7 +450,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 		}
 	}
 
-	if jCnt == 0 && chainid != params.DvlpNetId {
+	if jCnt == 0 && chainid != params.DvlpNetId && chainid != params.GeneralId {
 		return errors.New("join transaction is nil")
 	}
 

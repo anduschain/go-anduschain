@@ -48,11 +48,10 @@ var (
 func newCanonical(engine consensus.Engine, n int, full bool) (ethdb.Database, *BlockChain, error) {
 	var (
 		db      = ethdb.NewMemDatabase()
-		genesis = new(Genesis).MustCommit(db)
+		genesis = (&Genesis{Difficulty: big.NewInt(131072)}).MustCommit(db)
 	)
-
 	// Initialize a fresh chain with only a genesis block
-	blockchain, _ := NewBlockChain(db, nil, params.AllDebProtocolChanges, engine, vm.Config{})
+	blockchain, _ := NewBlockChain(db, nil, params.TestChainConfig, engine, vm.Config{})
 	// Create and inject the requested chain
 	if n == 0 {
 		return db, blockchain, nil
@@ -340,14 +339,12 @@ func TestBrokenHeaderChain(t *testing.T) { testBrokenChain(t, false) }
 func TestBrokenBlockChain(t *testing.T)  { testBrokenChain(t, true) }
 
 func testBrokenChain(t *testing.T, full bool) {
-	otprn := types.NewDefaultOtprn()
 	// Make chain starting from genesis
 	db, blockchain, err := newCanonical(deb.NewFaker(otprn), 10, full)
 	if err != nil {
 		t.Fatalf("failed to make new canonical chain: %v", err)
 	}
 	defer blockchain.Stop()
-
 	// Create a forked chain, and try to insert with a missing link
 	if full {
 		chain := makeBlockChain(blockchain.CurrentBlock(), 5, deb.NewFaker(otprn), db, forkSeed)[1:]
@@ -822,7 +819,6 @@ func TestChainTxReorgs(t *testing.T) {
 	//  - futureAdd: transaction added after the reorg has already finished
 	var pastAdd, freshAdd, futureAdd *types.Transaction
 
-	otprn := types.NewDefaultOtprn()
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, 3, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
@@ -951,21 +947,24 @@ func TestReorgSideEvent(t *testing.T) {
 		key1, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 		addr1   = crypto.PubkeyToAddress(key1.PublicKey)
 		gspec   = &Genesis{
-			Config: params.TestChainConfig,
-			Alloc:  GenesisAlloc{addr1: {Balance: big.NewInt(10000000000000)}},
+			Config:     params.TestChainConfig,
+			Alloc:      GenesisAlloc{addr1: {Balance: big.NewInt(10000000000000)}},
+			Difficulty: big.NewInt(131072),
 		}
 		genesis = gspec.MustCommit(db)
 		signer  = types.NewEIP155Signer(gspec.Config.ChainID)
 	)
-	otprn := types.NewDefaultOtprn()
+
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, deb.NewFaker(otprn), vm.Config{})
 	defer blockchain.Stop()
 
 	chainSideCh := make(chan types.ChainSideEvent, 64)
 	chainEventCh := make(chan types.ChainEvent, 64)
+	chainHeadCh := make(chan types.ChainHeadEvent, 64)
 
 	blockchain.SubscribeChainSideEvent(chainSideCh)
 	blockchain.SubscribeChainEvent(chainEventCh)
+	blockchain.SubscribeChainHeadEvent(chainHeadCh)
 
 	chain, _ := GenerateChain(gspec.Config, genesis, deb.NewFaker(otprn), db, 3, func(i int, gen *BlockGen) {})
 	if _, err := blockchain.InsertChain(chain); err != nil {
@@ -1009,6 +1008,7 @@ done:
 		select {
 		case ev := <-chainSideCh:
 			block := ev.Block
+			fmt.Println("CSW got chainSideCh", block.Hash().String())
 			if _, ok := expectedSideHashes[block.Hash()]; !ok {
 				t.Errorf("%d: didn't expect %x to be in side chain", i, block.Hash())
 			}
@@ -1020,7 +1020,12 @@ done:
 				break done
 			}
 			timeout.Reset(timeoutDura)
-
+		case ev := <-chainEventCh:
+			block := ev.Block
+			fmt.Println("CSW got chainEventch", block.Hash().String())
+		case ev := <-chainHeadCh:
+			block := ev.Block
+			fmt.Println("CSW got chainHeadEventCh", block.Hash().String())
 		case <-timeout.C:
 			t.Fatal("Timeout. Possibly not all blocks were triggered for sideevent")
 		}
@@ -1029,7 +1034,8 @@ done:
 	// make sure no more events are fired
 	select {
 	case e := <-chainSideCh:
-		t.Errorf("unexpected event fired: %v", e)
+		block := e.Block
+		t.Errorf("unexpected event fired:  %v", block.Hash().String())
 	case <-time.After(250 * time.Millisecond):
 	}
 
@@ -1089,7 +1095,7 @@ func TestEIP155Transition(t *testing.T) {
 		funds      = big.NewInt(1000000000)
 		deleteAddr = common.Address{1}
 		gspec      = &Genesis{
-			Config: &params.ChainConfig{ChainID: big.NewInt(1), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig},
+			Config: &params.ChainConfig{ChainID: params.GeneralId, EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig},
 			Alloc:  GenesisAlloc{address: {Balance: funds}, deleteAddr: {Balance: new(big.Int)}},
 		}
 		genesis = gspec.MustCommit(db)
@@ -1161,7 +1167,7 @@ func TestEIP155Transition(t *testing.T) {
 	}
 
 	// generate an invalid chain id transaction
-	config := &params.ChainConfig{ChainID: big.NewInt(2), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig}
+	config := &params.ChainConfig{ChainID: params.SideId, EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int), Deb: params.TestDebConfig}
 	blocks, _ = GenerateChain(config, blocks[len(blocks)-1], deb.NewFaker(otprn), db, 4, func(i int, block *BlockGen) {
 		var (
 			tx      *types.Transaction
@@ -1171,7 +1177,7 @@ func TestEIP155Transition(t *testing.T) {
 			}
 		)
 		if i == 0 {
-			tx, err = basicTx(types.NewEIP155Signer(big.NewInt(2)))
+			tx, err = basicTx(types.NewEIP155Signer(params.SideId))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1194,7 +1200,7 @@ func TestEIP161AccountRemoval(t *testing.T) {
 		theAddr = common.Address{1}
 		gspec   = &Genesis{
 			Config: &params.ChainConfig{
-				ChainID:        big.NewInt(1),
+				ChainID:        params.GeneralId,
 				HomesteadBlock: new(big.Int),
 				EIP155Block:    new(big.Int),
 				EIP158Block:    big.NewInt(2),
