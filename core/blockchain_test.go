@@ -1008,7 +1008,6 @@ done:
 		select {
 		case ev := <-chainSideCh:
 			block := ev.Block
-			fmt.Println("CSW got chainSideCh", block.Hash().String())
 			if _, ok := expectedSideHashes[block.Hash()]; !ok {
 				t.Errorf("%d: didn't expect %x to be in side chain", i, block.Hash())
 			}
