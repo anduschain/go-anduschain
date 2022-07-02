@@ -131,7 +131,7 @@ func benchmarkBloomBits(b *testing.B, sectionSize uint64) {
 		if i%20 == 0 {
 			db.Close()
 			db, _ = ethdb.NewLDBDatabase(benchDataDir, 128, 1024)
-			backend = &testBackend{mux, db, cnt, new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed)}
+			backend = &testBackend{mux, db, cnt, new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed)}
 		}
 		var addr common.Address
 		addr[0] = byte(i)
@@ -193,7 +193,7 @@ func BenchmarkNoBloomBits(b *testing.B) {
 	fmt.Println("Running filter benchmarks...")
 	start := time.Now()
 	mux := new(event.TypeMux)
-	backend := &testBackend{mux, db, 0, new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed)}
+	backend := &testBackend{mux, db, 0, new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed)}
 	filter := NewRangeFilter(backend, 0, int64(*headNum), []common.Address{{}}, nil)
 	filter.Logs(context.Background())
 	d := time.Since(start)

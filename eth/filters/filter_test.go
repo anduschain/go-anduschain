@@ -110,15 +110,16 @@ func TestFilters(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	var (
-		db, _      = ethdb.NewLDBDatabase(dir, 0, 0)
-		mux        = new(event.TypeMux)
-		txFeed     = new(event.Feed)
-		rmLogsFeed = new(event.Feed)
-		logsFeed   = new(event.Feed)
-		chainFeed  = new(event.Feed)
-		backend    = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, chainFeed}
-		key1, _    = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		addr       = crypto.PubkeyToAddress(key1.PublicKey)
+		db, _          = ethdb.NewLDBDatabase(dir, 0, 0)
+		mux            = new(event.TypeMux)
+		txFeed         = new(event.Feed)
+		rmLogsFeed     = new(event.Feed)
+		logsFeed       = new(event.Feed)
+		pendingLogFeed = new(event.Feed)
+		chainFeed      = new(event.Feed)
+		backend        = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, pendingLogFeed, chainFeed}
+		key1, _        = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		addr           = crypto.PubkeyToAddress(key1.PublicKey)
 
 		hash1 = common.BytesToHash([]byte("topic1"))
 		hash2 = common.BytesToHash([]byte("topic2"))

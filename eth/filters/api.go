@@ -416,6 +416,7 @@ func (api *PublicFilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
 	defer api.filtersMu.Unlock()
 
 	if f, found := api.filters[id]; found {
+		fmt.Println("CSW filter", id, found)
 		if !f.deadline.Stop() {
 			// timer expired but filter is not yet removed in timeout loop
 			// receive timer value and reset timer
@@ -428,7 +429,7 @@ func (api *PublicFilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
 			hashes := f.hashes
 			f.hashes = nil
 			return returnHashes(hashes), nil
-		case LogsSubscription:
+		case LogsSubscription, MinedAndPendingLogsSubscription:
 			logs := f.logs
 			f.logs = nil
 			return returnLogs(logs), nil

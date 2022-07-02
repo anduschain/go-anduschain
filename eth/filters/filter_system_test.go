@@ -403,7 +403,8 @@ func TestLogFilter(t *testing.T) {
 		logsFeed    = new(event.Feed)
 		chainFeed   = new(event.Feed)
 		backend     = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, pendingFeed, chainFeed}
-		api         = NewPublicFilterAPI(backend, false)
+
+		api = NewPublicFilterAPI(backend, false)
 
 		firstAddr      = common.HexToAddress("0x1111111111111111111111111111111111111111")
 		secondAddr     = common.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -413,7 +414,7 @@ func TestLogFilter(t *testing.T) {
 		secondTopic    = common.HexToHash("0x2222222222222222222222222222222222222222222222222222222222222222")
 		notUsedTopic   = common.HexToHash("0x9999999999999999999999999999999999999999999999999999999999999999")
 
-		// posted twice, once as vm.Logs and once as core.PendingLogsEvent
+		// posted twice, once as regular logs and once as pending logs.
 		allLogs = []*types.Log{
 			{Address: firstAddr},
 			{Address: firstAddr, Topics: []common.Hash{firstTopic}, BlockNumber: 1},
@@ -466,11 +467,11 @@ func TestLogFilter(t *testing.T) {
 
 	// raise events
 	time.Sleep(1 * time.Second)
-	if nsend := logsFeed.Send(allLogs); nsend == 0 {
-		t.Fatal("Shoud have at least one subscription")
+	if nsend := backend.logsFeed.Send(allLogs); nsend == 0 {
+		t.Fatal("Logs event not delivered")
 	}
-	if err := mux.Post(types.PendingLogsEvent{Logs: allLogs}); err != nil {
-		t.Fatal(err)
+	if nsend := backend.pendingLogsFeed.Send(allLogs); nsend == 0 {
+		t.Fatal("Pending logs event not delivered")
 	}
 
 	for i, tt := range testCases {
@@ -478,6 +479,7 @@ func TestLogFilter(t *testing.T) {
 		timeout := time.Now().Add(1 * time.Second)
 		for { // fetch all expected logs
 			results, err := api.GetFilterChanges(tt.id)
+			fmt.Println("CSW get", "id", tt.id, "expected", len(tt.expected), "from", tt.crit.FromBlock, "to", tt.crit.ToBlock, "result", results.([]*types.Log))
 			if err != nil {
 				t.Fatalf("Unable to fetch logs: %v", err)
 			}

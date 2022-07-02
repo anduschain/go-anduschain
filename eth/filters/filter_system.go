@@ -206,7 +206,7 @@ func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 	} else {
 		to = rpc.BlockNumber(crit.ToBlock.Int64())
 	}
-
+	fmt.Println("CSW2...SubscribeLogs", crit.FromBlock, crit.ToBlock)
 	// only interested in pending logs
 	if from == rpc.PendingBlockNumber && to == rpc.PendingBlockNumber {
 		return es.subscribePendingLogs(crit, logs), nil
@@ -250,8 +250,10 @@ func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs
 // subscribeLogs creates a subscription that will write all logs matching the
 // given criteria to the given logs channel.
 func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*types.Log) *Subscription {
+	nId := rpc.NewID()
+	fmt.Println("CSW subscribeLogs", nId)
 	sub := &subscription{
-		id:        rpc.NewID(),
+		id:        nId,
 		typ:       LogsSubscription,
 		logsCrit:  crit,
 		created:   time.Now(),
@@ -267,8 +269,10 @@ func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 // subscribePendingLogs creates a subscription that writes transaction hashes for
 // transactions that enter the transaction pool.
 func (es *EventSystem) subscribePendingLogs(crit ethereum.FilterQuery, logs chan []*types.Log) *Subscription {
+	nId := rpc.NewID()
+	fmt.Println("CSW subscribePendingLogs", nId)
 	sub := &subscription{
-		id:        rpc.NewID(),
+		id:        nId,
 		typ:       PendingLogsSubscription,
 		logsCrit:  crit,
 		created:   time.Now(),
