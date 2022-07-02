@@ -206,7 +206,6 @@ func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 	} else {
 		to = rpc.BlockNumber(crit.ToBlock.Int64())
 	}
-	fmt.Println("CSW2...SubscribeLogs", crit.FromBlock, crit.ToBlock)
 	// only interested in pending logs
 	if from == rpc.PendingBlockNumber && to == rpc.PendingBlockNumber {
 		return es.subscribePendingLogs(crit, logs), nil
@@ -327,6 +326,7 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 
 	switch e := ev.(type) {
 	case []*types.Log:
+		fmt.Println("CSW Log")
 		if len(e) > 0 {
 			for _, f := range filters[LogsSubscription] {
 				if matchedLogs := filterLogs(e, f.logsCrit.FromBlock, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics); len(matchedLogs) > 0 {
@@ -334,13 +334,23 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 				}
 			}
 		}
+	case types.PendingLogsEvent:
+		fmt.Println("CSW ..PendingLogsEvent")
+		for _, f := range filters[PendingLogsSubscription] {
+			matchedLogs := filterLogs(e.Logs, nil, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics)
+			if len(matchedLogs) > 0 {
+				f.logs <- matchedLogs
+			}
+		}
 	case types.RemovedLogsEvent:
+		fmt.Println("CSW RemovedLogsEvent")
 		for _, f := range filters[LogsSubscription] {
 			if matchedLogs := filterLogs(e.Logs, f.logsCrit.FromBlock, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics); len(matchedLogs) > 0 {
 				f.logs <- matchedLogs
 			}
 		}
 	case *event.TypeMuxEvent:
+		fmt.Println("CSW ..TypeMuxEvent")
 		if muxe, ok := e.Data.(types.PendingLogsEvent); ok {
 			for _, f := range filters[PendingLogsSubscription] {
 				if e.Time.After(f.created) {
@@ -351,6 +361,7 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 			}
 		}
 	case types.NewTxsEvent:
+		fmt.Println("CSW NewTxsEvent")
 		hashes := make([]common.Hash, 0, len(e.Txs))
 		for _, tx := range e.Txs {
 			hashes = append(hashes, tx.Hash())
@@ -359,6 +370,7 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 			f.hashes <- hashes
 		}
 	case types.ChainEvent:
+		fmt.Println("CSW ChainEvent")
 		for _, f := range filters[BlocksSubscription] {
 			f.headers <- e.Block.Header()
 		}
@@ -371,6 +383,8 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 				}
 			})
 		}
+	default:
+		fmt.Println("CSW default", e)
 	}
 }
 
@@ -464,20 +478,27 @@ func (es *EventSystem) eventLoop() {
 	}
 
 	for {
+		fmt.Println("CSW loop")
 		select {
 		// Handle subscribed events
 		case ev := <-es.txsCh:
+			fmt.Println("CSW txsCh")
 			es.broadcast(index, ev)
 		case ev := <-es.logsCh:
+			fmt.Println("CSW logsCh")
 			es.broadcast(index, ev)
 		case ev := <-es.rmLogsCh:
+			fmt.Println("CSW rmLogsCh")
 			es.broadcast(index, ev)
 		case ev := <-es.chainCh:
+			fmt.Println("CSW chainCh")
 			es.broadcast(index, ev)
 		case ev := <-es.pendingLogsCh:
-			es.broadcast(index, ev)
-
+			fmt.Println("CSW pendingLogsCh")
+			//es.broadcast(index, ev)
+			es.handlePendingLogs(index, ev)
 		case f := <-es.install:
+			fmt.Println("CSW got install")
 			if f.typ == MinedAndPendingLogsSubscription {
 				// the type are logs and pending logs subscriptions
 				index[LogsSubscription][f.id] = f
@@ -506,6 +527,18 @@ func (es *EventSystem) eventLoop() {
 			return
 		case <-es.chainSub.Err():
 			return
+		}
+	}
+}
+
+func (es *EventSystem) handlePendingLogs(filters filterIndex, ev []*types.Log) {
+	if len(ev) == 0 {
+		return
+	}
+	for _, f := range filters[PendingLogsSubscription] {
+		matchedLogs := filterLogs(ev, nil, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics)
+		if len(matchedLogs) > 0 {
+			f.logs <- matchedLogs
 		}
 	}
 }
