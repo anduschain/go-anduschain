@@ -18,6 +18,7 @@ package graphql
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/anduschain/go-anduschain/internal/ethapi"
@@ -71,6 +72,7 @@ func newHandler(stack *node.Node, backend ethapi.Backend, cors, vhosts []string)
 
 	s, err := graphql.ParseSchema(schema, &q)
 	if err != nil {
+		fmt.Println("CSW....", err)
 		return err
 	}
 	h := handler{Schema: s}

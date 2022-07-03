@@ -163,7 +163,6 @@ func enableWhisper(ctx *cli.Context) bool {
 
 func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
-
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
@@ -183,6 +182,12 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 			cfg.Shh.RestrictConnectionBetweenLightClients = true
 		}
 		utils.RegisterShhService(stack, &cfg.Shh)
+	}
+
+	// Configure GraphQL if requested
+	// TODO stack.Backend() 값 지정을 해줘야 함..
+	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) && stack.Backend() != nil {
+		utils.RegisterGraphQLService(stack, stack.Backend(), *stack.Config())
 	}
 
 	// Add the Ethereum Stats daemon if requested.

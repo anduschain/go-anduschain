@@ -18,7 +18,6 @@ package event
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -137,7 +136,7 @@ func (f *Feed) Send(value interface{}) (nsent int) {
 	f.mu.Lock()
 	f.sendCases = append(f.sendCases, f.inbox...)
 	f.inbox = nil
-	fmt.Println("CSW send", rvalue.Type())
+
 	if !f.typecheck(rvalue.Type()) {
 		f.sendLock <- struct{}{}
 		panic(feedTypeError{op: "Send", got: rvalue.Type(), want: f.etype})

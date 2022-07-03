@@ -102,6 +102,10 @@ func (s *Ethereum) Server() *p2p.Server {
 	return s.p2pServer
 }
 
+func (s *Ethereum) SetServer(server *p2p.Server) {
+	s.p2pServer = server
+}
+
 func (s *Ethereum) Coinbase() common.Address {
 	return s.miner.Coinbase()
 }
@@ -144,7 +148,6 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 		etherbase:      config.Etherbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-		p2pServer:      stack.Server(),
 	}
 	log.Info("Initialising AndusChain protocol", "versions", ProtocolVersions, "network", config.NetworkId)
 
@@ -446,4 +449,8 @@ func (s *Ethereum) Stop() error {
 	s.chainDb.Close()
 	close(s.shutdownChan)
 	return nil
+}
+
+func (s *Ethereum) EthApiBackend() ethapi.Backend {
+	return s.APIBackend
 }

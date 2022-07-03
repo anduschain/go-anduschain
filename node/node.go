@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"net"
 	"net/http"
 	"os"
@@ -46,11 +47,14 @@ type Node struct {
 	ephemeralKeystore string            // if non-empty, the key directory that will be removed by Stop
 	instanceDirLock   fileutil.Releaser // prevents concurrent use of instance directory
 
-	serverConfig p2p.Config
-	server       *p2p.Server // Currently running P2P networking layer
+	serverConfig  p2p.Config
+	server        *p2p.Server // Currently running P2P networking layer
+	startStopLock sync.Mutex  // Start/Stop are protected by an additional lock
+	state         int         // Tracks state of node lifecycle
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
+	backend      ethapi.Backend
 
 	rpcAPIs       []rpc.API   // List of APIs currently provided by the node
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
@@ -68,11 +72,18 @@ type Node struct {
 	wsListener net.Listener // Websocket RPC listener socket to server API requests
 	wsHandler  *rpc.Server  // Websocket RPC request handler to process the API requests
 
-	stop chan struct{} // Channel to wait for termination notifications
-	lock sync.RWMutex
+	stop       chan struct{} // Channel to wait for termination notifications
+	lock       sync.RWMutex
+	lifecycles []Lifecycle // All registered backends, services, and auxiliary services that have a lifecycle
 
 	log log.Logger
 }
+
+const (
+	initializingState = iota
+	runningState
+	closedState
+)
 
 // New creates a new P2P node, ready for protocol registration.
 func New(conf *Config) (*Node, error) {
@@ -190,6 +201,7 @@ func (n *Node) Start() error {
 		}
 		services[kind] = service
 	}
+
 	// Gather the protocols and start the freshly assembled P2P server
 	for _, service := range services {
 		running.Protocols = append(running.Protocols, service.Protocols()...)
@@ -220,6 +232,7 @@ func (n *Node) Start() error {
 		running.Stop()
 		return err
 	}
+
 	// Finish initializing the startup
 	n.services = services
 	n.server = running
@@ -401,6 +414,14 @@ func (n *Node) Close() error {
 	return n.Stop()
 }
 
+func (n *Node) Backend() ethapi.Backend {
+	return n.backend
+}
+
+func (n *Node) SetBackend(backend ethapi.Backend) {
+	n.backend = backend
+}
+
 // Stop terminates a running node along with all it's services. In the node was
 // not started, an error is returned.
 func (n *Node) Stop() error {
@@ -469,6 +490,114 @@ func (n *Node) Wait() {
 	<-stop
 }
 
+// RegisterLifecycle registers the given Lifecycle on the node.
+func (n *Node) RegisterLifecycle(lifecycle Lifecycle) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register lifecycle on running/stopped node")
+	}
+	if containsLifecycle(n.lifecycles, lifecycle) {
+		panic(fmt.Sprintf("attempt to register lifecycle %T more than once", lifecycle))
+	}
+	n.lifecycles = append(n.lifecycles, lifecycle)
+}
+
+// RegisterProtocols adds backend's protocols to the node's p2p server.
+func (n *Node) RegisterProtocols(protocols []p2p.Protocol) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register protocols on running/stopped node")
+	}
+	n.server.Protocols = append(n.server.Protocols, protocols...)
+}
+
+// RegisterAPIs registers the APIs a service provides on the node.
+func (n *Node) RegisterAPIs(apis []rpc.API) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register APIs on running/stopped node")
+	}
+	n.rpcAPIs = append(n.rpcAPIs, apis...)
+}
+
+// GetAPIs return two sets of APIs, both the ones that do not require
+// authentication, and the complete set
+func (n *Node) GetAPIs() (unauthenticated, all []rpc.API) {
+	for _, api := range n.rpcAPIs {
+		if !api.Authenticated {
+			unauthenticated = append(unauthenticated, api)
+		}
+	}
+	return unauthenticated, n.rpcAPIs
+}
+
+// RegisterHandler mounts a handler on the given path on the canonical HTTP server.
+//
+// The name of the handler is shown in a log message when the HTTP server starts
+// and should be a descriptive term for the service provided by the handler.
+func (n *Node) RegisterHandler(name, path string, handler http.Handler) {
+	panic("implement me")
+}
+
+// Server retrieves the currently running P2P network layer. This method is meant
+// only to inspect fields of the currently running server. Callers should not
+// start or stop the returned server.
+func (n *Node) Server() *p2p.Server {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	return n.server
+}
+
+// DataDir retrieves the current datadir used by the protocol stack.
+// Deprecated: No files should be stored in this directory, use InstanceDir instead.
+func (n *Node) DataDir() string {
+	return n.config.DataDir
+}
+
+// InstanceDir retrieves the instance directory used by the protocol stack.
+func (n *Node) InstanceDir() string {
+	return n.config.instanceDir()
+}
+
+// KeyStoreDir retrieves the key directory
+func (n *Node) KeyStoreDir() string {
+	return n.ephemeralKeystore
+}
+
+// AccountManager retrieves the account manager used by the protocol stack.
+func (n *Node) AccountManager() *accounts.Manager {
+	return n.accman
+}
+
+// IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
+func (n *Node) IPCEndpoint() string {
+	return n.ipcEndpoint
+}
+
+// HTTPEndpoint returns the URL of the HTTP server. Note that this URL does not
+// contain the JSON-RPC path prefix set by HTTPPathPrefix.
+func (n *Node) HTTPEndpoint() string {
+	return "http://" + n.httpEndpoint
+}
+
+// WSEndpoint returns the current JSON-RPC over WebSocket endpoint.
+func (n *Node) WSEndpoint() string {
+	return "ws://" + n.wsEndpoint
+}
+
+// EventMux retrieves the event multiplexer used by all the network services in
+// the current protocol stack.
+func (n *Node) EventMux() *event.TypeMux {
+	return n.eventmux
+}
+
 // Restart terminates a running node and boots up a new one in its place. If the
 // node isn't running, an error is returned.
 func (n *Node) Restart() error {
@@ -503,13 +632,6 @@ func (n *Node) RPCHandler() (*rpc.Server, error) {
 	return n.inprocHandler, nil
 }
 
-// Server retrieves the currently running P2P network layer. This method is meant
-// only to inspect fields of the currently running server, life cycle management
-// should be left to this Node entity.
-func (n *Node) Server() *p2p.Server {
-	return n.server
-}
-
 // Service retrieves a currently running service registered of a specific type.
 func (n *Node) Service(service interface{}) error {
 	n.lock.RLock()
@@ -526,43 +648,6 @@ func (n *Node) Service(service interface{}) error {
 		return nil
 	}
 	return ErrServiceUnknown
-}
-
-// DataDir retrieves the current datadir used by the protocol stack.
-// Deprecated: No files should be stored in this directory, use InstanceDir instead.
-func (n *Node) DataDir() string {
-	return n.config.DataDir
-}
-
-// InstanceDir retrieves the instance directory used by the protocol stack.
-func (n *Node) InstanceDir() string {
-	return n.config.instanceDir()
-}
-
-// AccountManager retrieves the account manager used by the protocol stack.
-func (n *Node) AccountManager() *accounts.Manager {
-	return n.accman
-}
-
-// IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
-func (n *Node) IPCEndpoint() string {
-	return n.ipcEndpoint
-}
-
-// HTTPEndpoint retrieves the current HTTP endpoint used by the protocol stack.
-func (n *Node) HTTPEndpoint() string {
-	return n.httpEndpoint
-}
-
-// WSEndpoint retrieves the current WS endpoint used by the protocol stack.
-func (n *Node) WSEndpoint() string {
-	return n.wsEndpoint
-}
-
-// EventMux retrieves the event multiplexer used by all the network services in
-// the current protocol stack.
-func (n *Node) EventMux() *event.TypeMux {
-	return n.eventmux
 }
 
 // OpenDatabase opens an existing database with the given name (or creates one if no
@@ -619,13 +704,21 @@ func (n *Node) Config() *Config {
 	return n.config
 }
 
-// RegisterHandler mounts a handler on the given path on the canonical HTTP server.
-//
-// The name of the handler is shown in a log message when the HTTP server starts
-// and should be a descriptive term for the service provided by the handler.
-func (n *Node) RegisterHandler(name, path string, handler http.Handler) {
+// RegisterGraphQLService is a utility function to construct a new service and register it against a node.
+/*
+func (n *Node) RegisterGraphQLService(backend ethapi.Backend) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
-	//ToDO registerHandler
+	return graphql.New(n, backend, n.Config().GraphQLCors, n.Config().GraphQLVirtualHosts)
+}
+*/
+// containsLifecycle checks if 'lfs' contains 'l'.
+func containsLifecycle(lfs []Lifecycle, l Lifecycle) bool {
+	for _, obj := range lfs {
+		if obj == l {
+			return true
+		}
+	}
+	return false
 }

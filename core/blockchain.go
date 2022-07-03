@@ -1391,18 +1391,12 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 	for _, event := range events {
 		switch ev := event.(type) {
 		case types.ChainEvent:
-			block := ev.Block
-			fmt.Println("CSW send ChainEvent", block.Hash().String())
 			bc.chainFeed.Send(ev)
 
 		case types.ChainHeadEvent:
-			block := ev.Block
-			fmt.Println("CSW send ChainHeadEvent", block.Hash().String())
 			bc.chainHeadFeed.Send(ev)
 
 		case types.ChainSideEvent:
-			block := ev.Block
-			fmt.Println("CSW send ChainSideEvent", block.Hash().String())
 			bc.chainSideFeed.Send(ev)
 		}
 	}

@@ -479,7 +479,6 @@ func TestLogFilter(t *testing.T) {
 		timeout := time.Now().Add(1 * time.Second)
 		for { // fetch all expected logs
 			results, err := api.GetFilterChanges(tt.id)
-			fmt.Println("CSW get", "id", tt.id, "expected", len(tt.expected), "from", tt.crit.FromBlock, "to", tt.crit.ToBlock, "result", results.([]*types.Log))
 			if err != nil {
 				t.Fatalf("Unable to fetch logs: %v", err)
 			}

@@ -181,7 +181,7 @@ func TestCallTracer(t *testing.T) {
 				t.Fatalf("failed to prepare transaction for tracing: %v", err)
 			}
 
-			_, _, _, err = core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas()))
+			_, err = core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas()))
 			if err != nil {
 				t.Fatalf("failed to ApplyMessage: %v", err)
 			}
