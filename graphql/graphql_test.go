@@ -209,7 +209,8 @@ func createGQLService(t *testing.T, stack *node.Node) {
 		NetworkId:   1337,
 		TrieTimeout: 60 * time.Minute,
 	}
-	ethBackend, err := eth.New(&node.ServiceContext{}, stack, ethConf)
+
+	ethBackend, err := eth.New(stack.ServiceContext(), stack, ethConf)
 	if err != nil {
 		t.Fatalf("could not create eth backend: %v", err)
 	}

@@ -422,6 +422,15 @@ func (n *Node) SetBackend(backend ethapi.Backend) {
 	n.backend = backend
 }
 
+func (n *Node) ServiceContext() *ServiceContext {
+	return &ServiceContext{
+		config:         n.config,
+		services:       make(map[reflect.Type]Service),
+		EventMux:       n.eventmux,
+		AccountManager: n.accman,
+	}
+}
+
 // Stop terminates a running node along with all it's services. In the node was
 // not started, an error is returned.
 func (n *Node) Stop() error {
