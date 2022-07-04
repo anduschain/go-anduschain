@@ -614,7 +614,7 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				if w.engine.Name() == "deb" {
+				if w.engine.(*deb.Deb) != nil {
 					// otprn check
 					otprn := w.engine.Otprn()
 
