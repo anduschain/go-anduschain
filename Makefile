@@ -169,6 +169,11 @@ godaon-darwin-amd64:
 	@echo "Darwin amd64 cross compilation done:"
 	@ls -ld $(GOBIN)/godaon-darwin-* | grep amd64
 
+godaon-darwin-arm64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=darwin/arm64 -v ./cmd/godaon
+	@echo "Darwin arm64 cross compilation done:"
+	@ls -ld $(GOBIN)/godaon-darwin-* | grep arm64
+
 godaon-windows: godaon-windows-386 godaon-windows-amd64
 	@echo "Windows cross compilation done:"
 	@ls -ld $(GOBIN)/godaon-windows-*
