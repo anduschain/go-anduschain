@@ -36,8 +36,6 @@ import (
 	"github.com/anduschain/go-anduschain/eth/gasprice"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/ethstats"
-	"github.com/anduschain/go-anduschain/graphql"
-	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/les"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/metrics"
@@ -1237,13 +1235,6 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 		return ethstats.New(stack, url, ethServ, lesServ)
 	}); err != nil {
 		Fatalf("Failed to register the Anduschain Stats service: %v", err)
-	}
-}
-
-// RegisterGraphQLService is a utility function to construct a new service and register it against a node.
-func RegisterGraphQLService(stack *node.Node, backend ethapi.Backend, cfg node.Config) {
-	if err := graphql.New(stack, backend, cfg.GraphQLCors, cfg.GraphQLVirtualHosts); err != nil {
-		Fatalf("Failed to register the GraphQL service: %v", err)
 	}
 }
 
