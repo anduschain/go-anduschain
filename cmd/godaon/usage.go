@@ -33,7 +33,7 @@ import (
 var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
-   Copyright 2013-2018 The go-anduschain Authors
+   Copyright 2016-2022 The go-anduschain Authors
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
@@ -223,10 +223,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.MetricsInfluxDBPasswordFlag,
 			utils.MetricsInfluxDBHostTagFlag,
 		},
-	},
-	{
-		Name:  "WHISPER (EXPERIMENTAL)",
-		Flags: whisperFlags,
 	},
 	{
 		Name:  "DEPRECATED",
