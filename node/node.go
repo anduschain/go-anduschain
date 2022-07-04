@@ -72,6 +72,9 @@ type Node struct {
 	wsListener net.Listener // Websocket RPC listener socket to server API requests
 	wsHandler  *rpc.Server  // Websocket RPC request handler to process the API requests
 
+	graphEndpoint string       //
+	graphHandler  http.Handler //
+
 	stop       chan struct{} // Channel to wait for termination notifications
 	lock       sync.RWMutex
 	lifecycles []Lifecycle // All registered backends, services, and auxiliary services that have a lifecycle
@@ -288,6 +291,7 @@ func (n *Node) startRPC(services map[reflect.Type]Service) error {
 		n.stopInProc()
 		return err
 	}
+
 	// All API endpoints started successfully
 	n.rpcAPIs = apis
 	return nil
@@ -546,14 +550,6 @@ func (n *Node) GetAPIs() (unauthenticated, all []rpc.API) {
 	return unauthenticated, n.rpcAPIs
 }
 
-// RegisterHandler mounts a handler on the given path on the canonical HTTP server.
-//
-// The name of the handler is shown in a log message when the HTTP server starts
-// and should be a descriptive term for the service provided by the handler.
-func (n *Node) RegisterHandler(name, path string, handler http.Handler) {
-	panic("implement me")
-}
-
 // Server retrieves the currently running P2P network layer. This method is meant
 // only to inspect fields of the currently running server. Callers should not
 // start or stop the returned server.
@@ -714,14 +710,13 @@ func (n *Node) Config() *Config {
 }
 
 // RegisterGraphQLService is a utility function to construct a new service and register it against a node.
-/*
-func (n *Node) RegisterGraphQLService(backend ethapi.Backend) error {
+
+func (n *Node) SetGraphQLhandler(handler http.Handler) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-
-	return graphql.New(n, backend, n.Config().GraphQLCors, n.Config().GraphQLVirtualHosts)
+	n.graphHandler = handler
 }
-*/
+
 // containsLifecycle checks if 'lfs' contains 'l'.
 func containsLifecycle(lfs []Lifecycle, l Lifecycle) bool {
 	for _, obj := range lfs {

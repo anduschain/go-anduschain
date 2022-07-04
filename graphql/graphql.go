@@ -423,13 +423,14 @@ func (t *Transaction) Logs(ctx context.Context) (*[]*Log, error) {
 	return &ret, nil
 }
 
-func (t *Transaction) Type(ctx context.Context) (*uint64, error) {
+func (t *Transaction) Type(ctx context.Context) (*hexutil.Uint64, error) {
 	tx, err := t.resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
 	txType := tx.TransactionId()
-	return &txType, nil
+	ret := hexutil.Uint64(txType)
+	return &ret, nil
 }
 
 func (t *Transaction) R(ctx context.Context) (hexutil.Big, error) {

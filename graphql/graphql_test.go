@@ -202,11 +202,11 @@ func createGQLService(t *testing.T, stack *node.Node) {
 	// create backend
 	ethConf := &eth.Config{
 		Genesis: &core.Genesis{
-			Config:     params.AllDebProtocolChanges,
+			Config:     params.TestChainConfig,
 			GasLimit:   11500000,
 			Difficulty: big.NewInt(1048576),
 		},
-		NetworkId:   1337,
+		NetworkId:   params.GeneralId.Uint64(),
 		TrieTimeout: 60 * time.Minute,
 	}
 
@@ -215,7 +215,7 @@ func createGQLService(t *testing.T, stack *node.Node) {
 		t.Fatalf("could not create eth backend: %v", err)
 	}
 	// Create some blocks and import them
-	chain, _ := core.GenerateChain(params.AllDebProtocolChanges, ethBackend.BlockChain().Genesis(),
+	chain, _ := core.GenerateChain(params.TestChainConfig, ethBackend.BlockChain().Genesis(),
 		deb.NewFaker(types.NewDefaultOtprn()), ethBackend.ChainDb(), 10, func(i int, gen *core.BlockGen) {})
 	_, err = ethBackend.BlockChain().InsertChain(chain)
 	if err != nil {
