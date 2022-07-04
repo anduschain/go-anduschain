@@ -71,18 +71,11 @@ type Node struct {
 	wsListener net.Listener // Websocket RPC listener socket to server API requests
 	wsHandler  *rpc.Server  // Websocket RPC request handler to process the API requests
 
-	stop       chan struct{} // Channel to wait for termination notifications
-	lock       sync.RWMutex
-	lifecycles []Lifecycle // All registered backends, services, and auxiliary services that have a lifecycle
+	stop chan struct{} // Channel to wait for termination notifications
+	lock sync.RWMutex
 
 	log log.Logger
 }
-
-const (
-	initializingState = iota
-	runningState
-	closedState
-)
 
 // New creates a new P2P node, ready for protocol registration.
 func New(conf *Config) (*Node, error) {
@@ -499,28 +492,11 @@ func (n *Node) Wait() {
 	<-stop
 }
 
-// RegisterLifecycle registers the given Lifecycle on the node.
-func (n *Node) RegisterLifecycle(lifecycle Lifecycle) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
-	if n.state != initializingState {
-		panic("can't register lifecycle on running/stopped node")
-	}
-	if containsLifecycle(n.lifecycles, lifecycle) {
-		panic(fmt.Sprintf("attempt to register lifecycle %T more than once", lifecycle))
-	}
-	n.lifecycles = append(n.lifecycles, lifecycle)
-}
-
 // RegisterProtocols adds backend's protocols to the node's p2p server.
 func (n *Node) RegisterProtocols(protocols []p2p.Protocol) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
-	if n.state != initializingState {
-		panic("can't register protocols on running/stopped node")
-	}
 	n.server.Protocols = append(n.server.Protocols, protocols...)
 }
 
@@ -529,9 +505,6 @@ func (n *Node) RegisterAPIs(apis []rpc.API) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
-	if n.state != initializingState {
-		panic("can't register APIs on running/stopped node")
-	}
 	n.rpcAPIs = append(n.rpcAPIs, apis...)
 }
 
