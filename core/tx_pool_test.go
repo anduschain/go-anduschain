@@ -262,7 +262,7 @@ func TestInvalidTransactions(t *testing.T) {
 	if err := pool.AddRemote(tx); err != ErrUnderpriced {
 		t.Error("expected", ErrUnderpriced, "got", err)
 	}
-	if err := pool.AddLocal(tx); err != nil {
+	if err := pool.AddLocal(tx); err != ErrUnderpriced {
 		t.Error("expected", nil, "got", err)
 	}
 }
@@ -1235,7 +1235,7 @@ func TestTransactionPoolRepricing(t *testing.T) {
 		t.Fatalf("pool internal state corrupted: %v", err)
 	}
 	// However we can add local underpriced transactions
-	tx := pricedTransaction(1, 100000, big.NewInt(1), keys[3])
+	tx := pricedTransaction(1, 100000, big.NewInt(params.DefaultGasFee), keys[3])
 	if err := pool.AddLocal(tx); err != nil {
 		t.Fatalf("failed to add underpriced local transaction: %v", err)
 	}

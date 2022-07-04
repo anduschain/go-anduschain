@@ -138,7 +138,7 @@ const schema string = `
         s: BigInt!
         v: BigInt!
         #Envelope transaction support
-        type: Int
+        type: Long
     }
 
     # BlockFilterCriteria encapsulates log filter criteria for a filter applied

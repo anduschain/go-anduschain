@@ -79,7 +79,7 @@ func (api *PublicEthereumAPI) ChainId() hexutil.Uint64 {
 	if config := api.e.chainConfig; config.IsEIP155(api.e.blockchain.CurrentBlock().Number()) {
 		chainID = config.ChainID
 	}
-	return (hexutil.Uint64)(chainID.Uint64())
+	return hexutil.Uint64(chainID.Uint64())
 }
 
 // NewPublicMinerAPI create a new PublicMinerAPI instance.
@@ -139,6 +139,12 @@ func (api *PrivateMinerAPI) SetGasPrice(gasPrice hexutil.Big) bool {
 	return true
 }
 
+// SetGasLimit sets the gaslimit to target towards during mining.
+func (api *PrivateMinerAPI) SetGasLimit(gasLimit hexutil.Uint64) bool {
+	// Not support
+	return false
+}
+
 // SetEtherbase sets the etherbase of the miner
 func (api *PrivateMinerAPI) SetEtherbase(etherbase common.Address) bool {
 	api.e.SetEtherbase(etherbase)
@@ -151,8 +157,8 @@ func (api *PrivateMinerAPI) SetRecommitInterval(interval int) {
 }
 
 // GetHashrate returns the current hashrate of the miner.
-func (api *PrivateMinerAPI) GetHashrate() uint64 {
-	return api.e.miner.HashRate()
+func (api *PrivateMinerAPI) GetHashrate() hexutil.Uint64 {
+	return hexutil.Uint64(api.e.miner.HashRate())
 }
 
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs
