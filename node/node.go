@@ -492,22 +492,6 @@ func (n *Node) Wait() {
 	<-stop
 }
 
-// RegisterProtocols adds backend's protocols to the node's p2p server.
-func (n *Node) RegisterProtocols(protocols []p2p.Protocol) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
-	n.server.Protocols = append(n.server.Protocols, protocols...)
-}
-
-// RegisterAPIs registers the APIs a service provides on the node.
-func (n *Node) RegisterAPIs(apis []rpc.API) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
-	n.rpcAPIs = append(n.rpcAPIs, apis...)
-}
-
 // GetAPIs return two sets of APIs, both the ones that do not require
 // authentication, and the complete set
 func (n *Node) GetAPIs() (unauthenticated, all []rpc.API) {
