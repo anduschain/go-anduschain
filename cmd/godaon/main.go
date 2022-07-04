@@ -159,7 +159,7 @@ func init() {
 	// Initialize the CLI app and start Geth
 	app.Action = goDaon
 	app.HideVersion = true // we have a command to print the version
-	app.Copyright = "Copyright 2022 The go-anduschain Authors"
+	app.Copyright = "Copyright 2016-2022 The go-anduschain Authors"
 	app.Commands = []cli.Command{
 		// See chaincmd.go:
 		initCommand,

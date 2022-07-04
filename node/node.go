@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -71,9 +70,6 @@ type Node struct {
 	wsEndpoint string       // Websocket endpoint (interface + port) to listen at (empty = websocket disabled)
 	wsListener net.Listener // Websocket RPC listener socket to server API requests
 	wsHandler  *rpc.Server  // Websocket RPC request handler to process the API requests
-
-	graphEndpoint string       //
-	graphHandler  http.Handler //
 
 	stop       chan struct{} // Channel to wait for termination notifications
 	lock       sync.RWMutex
@@ -707,14 +703,6 @@ func (n *Node) apis() []rpc.API {
 // Config returns the configuration of node.
 func (n *Node) Config() *Config {
 	return n.config
-}
-
-// RegisterGraphQLService is a utility function to construct a new service and register it against a node.
-
-func (n *Node) SetGraphQLhandler(handler http.Handler) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	n.graphHandler = handler
 }
 
 // containsLifecycle checks if 'lfs' contains 'l'.
