@@ -618,7 +618,7 @@ func (w *worker) mainLoop() {
 					// otprn check
 					otprn := w.engine.Otprn()
 
-					if otprn.FnAddr == params.TestFairnodeAddr { // TEST
+					if otprn != nil && otprn.FnAddr == params.TestFairnodeAddr && w.config.ChainID == params.DvlpNetId { // TEST
 						w.commitNewWork(nil, false, time.Now().Unix())
 					}
 				}

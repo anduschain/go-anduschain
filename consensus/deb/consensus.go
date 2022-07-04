@@ -417,11 +417,12 @@ func calRewardAndFnFee(jCnt, unit float64, jtxFee, fnFeeRate *big.Float) (*big.I
 func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, txs []*types.Transaction, header *types.Header) error {
 	hexOtprn, _ := hex.DecodeString(params.TestOtprn)
 	pOtprn, _ := types.DecodeOtprn(hexOtprn)
+
 	// for Test
 	if chainid == params.GeneralId || chainid == params.SideId {
 		state.AddBalance(header.Coinbase, big.NewInt(2e18))
 		return nil
-	} else if bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.DvlpNetId {
+	} else if c.otprn != nil && bytes.Compare(c.otprn.FnAddr.Bytes(), pOtprn.FnAddr.Bytes()) == 0 && chainid == params.DvlpNetId {
 		header.Otprn, _ = pOtprn.EncodeOtprn()
 	}
 	if len(txs) == 0 {
