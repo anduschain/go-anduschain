@@ -4,7 +4,7 @@ FROM golang:1.16-alpine as builder
 RUN apk add --no-cache make gcc musl-dev linux-headers
 
 ADD . /go-anduschain
-RUN cd /go-anduschain && make clean && rm go.sum && go mod tidy && make all
+RUN cd /go-anduschain && make clean && go mod tidy && make all
 
 # Pull all binaries into a second stage deploy alpine container
 FROM alpine:latest
