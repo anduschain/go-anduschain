@@ -10,7 +10,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v1.13.1
-	github.com/dop251/goja v0.0.0-20200721192441-a695b0cdd498
+	github.com/dop251/goja v0.0.0-20211011172007-d99e4b8cbf48
 	github.com/elastic/gosigar v0.10.5
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
@@ -33,8 +33,8 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/usb v0.0.2
 	github.com/karalabe/xgo v0.0.0-20191115072854-c5ccff8648a7 // indirect
-	github.com/mattn/go-colorable v0.1.12
-	github.com/mattn/go-isatty v0.0.14
+	github.com/mattn/go-colorable v0.1.8
+    github.com/mattn/go-isatty v0.0.12
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
@@ -51,11 +51,11 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/urfave/cli v1.22.1
 	go.mongodb.org/mongo-driver v1.8.2
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
-	golang.org/x/text v0.3.7
+    golang.org/x/sys v0.0.0-20210816183151-1e6c022a8912
+    golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
