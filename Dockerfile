@@ -1,15 +1,16 @@
 # Build Geth in a stock Go builder container
 FROM golang:1.16-alpine as builder
 
-RUN apk add --no-cache make gcc musl-dev linux-headers
+RUN apk add --no-cache make gcc musl-dev linux-headers git
 
 ADD . /go-anduschain
-RUN cd /go-anduschain && make clean && go mod tidy && make all
+RUN cd /go-anduschain && make godaon
 
-# Pull all binaries into a second stage deploy alpine container
+# Pull Geth into a second stage deploy alpine container
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /go-anduschain/build/bin/* /usr/local/bin/
+COPY --from=builder /go-anduschain/build/bin/godaon /usr/local/bin/
 
 EXPOSE 8545 8546 50505 50505/udp
+ENTRYPOINT ["godaon"]
