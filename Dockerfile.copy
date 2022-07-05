@@ -3,6 +3,6 @@ FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
 ADD . /go-anduschain
-COPY --from=builder /go-anduschain/build/bin/* /usr/local/bin/
+COPY /go-anduschain/build/bin/* /usr/local/bin/
 
 EXPOSE 8545 8546 50505 50505/udp
