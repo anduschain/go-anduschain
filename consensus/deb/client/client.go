@@ -16,9 +16,7 @@ import (
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -120,20 +118,6 @@ func getOutBoundIP() string {
 	defer conn.Close()
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP.String()
-}
-
-func getPublicIP() string {
-	resp, err := http.Get("https://api.ipify.org")
-	if err != nil {
-		return ""
-	}
-
-	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return ""
-	}
-	return string(data)
 }
 
 func (dc *DebClient) Start(backend Backend) error {
