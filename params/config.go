@@ -203,6 +203,8 @@ func (c *ChainConfig) String() string {
 	switch {
 	case c.Deb != nil:
 		engine = c.Deb
+	case c.Clique != nil:
+		engine = c.Clique
 	default:
 		engine = "unknown"
 	}

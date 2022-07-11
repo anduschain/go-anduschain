@@ -263,13 +263,15 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.resultLoop()
 	go worker.taskLoop()
 
-	worker.debClient = client.NewDebClient(config, worker.exitCh)
-	// TODO(hakuna) : new version miner process, event receiver
-	worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
-	worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
+	if worker.config.Deb != nil {
+		worker.debClient = client.NewDebClient(config, worker.exitCh)
+		// TODO(hakuna) : new version miner process, event receiver
+		worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
+		worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
 
-	go worker.clientStatusLoop() // client close check and mininig canceled
-	go worker.leagueStatusLoop() // for league status message
+		go worker.clientStatusLoop() // client close check and mininig canceled
+		go worker.leagueStatusLoop() // for league status message
+	}
 
 	// Submit first work to initialize pending state.
 	worker.startCh <- struct{}{}
@@ -441,13 +443,20 @@ func (w *worker) start() {
 		return
 	}
 	atomic.StoreInt32(&w.running, 1)
-	w.debStart()
+	if w.config.Deb != nil {
+		w.debStart()
+	} else {
+		w.startCh <- struct{}{}
+	}
+
 }
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
-	w.debClient.Stop()
+	if w.config.Deb != nil {
+		w.debClient.Stop()
+	}
 }
 
 // isRunning returns an indicator whether worker is running or not.
@@ -677,6 +686,9 @@ func (w *worker) taskLoop() {
 
 			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
+				w.pendingMu.Lock()
+				delete(w.pendingTasks, sealHash)
+				w.pendingMu.Unlock()
 			}
 		case <-w.exitCh:
 			interrupt()
@@ -691,7 +703,7 @@ func (w *worker) resultLoop() {
 	for {
 		select {
 		case block := <-w.resultCh:
-			if w.fnStatus != types.MAKE_BLOCK {
+			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
 				continue
 			}
 
@@ -709,22 +721,63 @@ func (w *worker) resultLoop() {
 			)
 
 			w.pendingMu.RLock()
-			_, exist := w.pendingTasks[sealhash]
+			task, exist := w.pendingTasks[sealhash]
 			w.pendingMu.RUnlock()
 
 			if !exist {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
+			if w.config.Deb != nil {
+				w.pendingMu.Lock()
+				w.possibleWinning = block // made for me, saving possible block
+				w.pendingMu.Unlock()
 
-			w.pendingMu.Lock()
-			w.possibleWinning = block // made for me, saving possible block
-			w.pendingMu.Unlock()
+				log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+			} else {
+				// Different block could share same sealhash, deep copy here to prevent write-write conflict.
+				var (
+					receipts = make([]*types.Receipt, len(task.receipts))
+					logs     []*types.Log
+				)
+				for i, taskReceipt := range task.receipts {
+					receipt := new(types.Receipt)
+					receipts[i] = receipt
+					*receipt = *taskReceipt
 
-			log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+					// add block location fields
+					receipt.BlockHash = hash
+					receipt.BlockNumber = block.Number()
+					receipt.TransactionIndex = uint(i)
 
+					// Update the block hash in all logs since it is now available and not when the
+					// receipt/log of individual transactions were created.
+					receipt.Logs = make([]*types.Log, len(taskReceipt.Logs))
+					for i, taskLog := range taskReceipt.Logs {
+						log := new(types.Log)
+						receipt.Logs[i] = log
+						*log = *taskLog
+						log.BlockHash = hash
+					}
+					logs = append(logs, receipt.Logs...)
+				}
+				// Commit block and state to database.
+				_, err := w.chain.WriteBlockWithState(block, receipts, task.state)
+				if err != nil {
+					log.Error("Failed writing block to chain", "err", err)
+					continue
+				}
+				log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+					"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
+
+				// Broadcast the block and announce chain insertion event
+				w.mux.Post(types.NewMinedBlockEvent{Block: block})
+
+				// Insert the block into the set of pending ones to resultLoop for confirmations
+				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+			}
 		case <-w.leagueBroadCastCh:
-			if w.fnStatus != types.LEAGUE_BROADCASTING {
+			if w.config.Deb != nil && w.fnStatus != types.LEAGUE_BROADCASTING {
 				continue
 			}
 
@@ -863,7 +916,7 @@ func (w *worker) resultLoop() {
 			w.finalBlock = block
 			log.Info("Make Final Block for Finalize", "hash", w.finalBlock.Hash())
 		case <-w.finalizeCh:
-			if w.fnStatus != types.FINALIZE {
+			if w.config.Deb != nil && w.fnStatus != types.FINALIZE {
 				continue
 			}
 
@@ -1121,7 +1174,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
-
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
 
@@ -1134,7 +1186,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
 		time.Sleep(wait)
 	}
-
 	num := parent.Number()
 	header := &types.Header{
 		ParentHash: parent.Hash(),
@@ -1156,7 +1207,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
 		}
-
 		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 		if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
 			// Check whether the block is among the fork extra-override range
@@ -1187,7 +1237,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				delete(w.possibleUncles, hash)
 			}
 		}
-
 		// Fill the block with all available pending transactions.
 		pending, pendingJoinTx, err := w.eth.TxPool().Pending()
 		if err != nil {
@@ -1196,29 +1245,30 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 		// Short circuit if there is no available pending transactions
 		// otprn check
-		otprn, err := types.DecodeOtprn(header.Otprn)
-		if err != nil {
-			return
-		}
+		if w.config.Deb != nil {
+			otprn, err := types.DecodeOtprn(header.Otprn)
+			if err != nil {
+				return
+			}
 
-		if otprn.FnAddr == params.TestFairnodeAddr { // TEST
-			if len(pending) == 0 {
-				w.updateSnapshot()
-				return
-			}
-		} else {
-			if len(pending) == 0 || len(pendingJoinTx) == 0 {
-				w.updateSnapshot()
-				return
-			}
-			// miner's join transaction is empty
-			if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
-				log.Error("miner's join transaction is empty")
-				w.updateSnapshot()
-				return
+			if otprn.FnAddr == params.TestFairnodeAddr { // TEST
+				if len(pending) == 0 {
+					w.updateSnapshot()
+					return
+				}
+			} else {
+				if len(pending) == 0 || len(pendingJoinTx) == 0 {
+					w.updateSnapshot()
+					return
+				}
+				// miner's join transaction is empty
+				if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+					log.Error("miner's join transaction is empty")
+					w.updateSnapshot()
+					return
+				}
 			}
 		}
-
 		// Split the pending transactions into locals and remotes
 		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
 		for _, account := range w.eth.TxPool().Locals() {
@@ -1227,7 +1277,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
-
 		if len(localTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
@@ -1240,7 +1289,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				return
 			}
 		}
-
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return
@@ -1263,7 +1311,6 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	if err != nil {
 		return err
 	}
-
 	if engine, ok := w.engine.(*deb.Deb); ok {
 		// otprn check
 		otprn, err := types.DecodeOtprn(block.Otprn())

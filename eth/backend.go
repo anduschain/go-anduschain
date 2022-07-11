@@ -24,6 +24,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
@@ -228,7 +229,11 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 // CreateConsensusEngine creates the required type of consensus engine instance for an anduschain service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-Deb is requested, set it up
-	return deb.New(chainConfig.Deb, db)
+	if chainConfig.Clique != nil {
+		return clique.New(chainConfig.Clique, db)
+	} else {
+		return deb.New(chainConfig.Deb, db)
+	}
 }
 
 // APIs return the collection of RPC services the ethereum package offers.
@@ -356,6 +361,9 @@ func (s *Ethereum) StartMining(threads int) error {
 			if wallet == nil || err != nil {
 				log.Error("Coinbase account unavailable locally", "err[andus]", err)
 				return fmt.Errorf("signer missing: %v", err)
+			}
+			if c, ok := s.engine.(*clique.Clique); ok {
+				c.Authorize(eb, wallet.SignData)
 			}
 		}
 
