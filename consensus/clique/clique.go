@@ -438,7 +438,6 @@ func (c *Clique) snapshot(chain consensus.ChainReader, number uint64, hash commo
 		return nil, err
 	}
 	c.recents.Add(snap.Hash, snap)
-
 	// If we've generated a new checkpoint snapshot, save to disk
 	if snap.Number%checkpointInterval == 0 && len(headers) > 0 {
 		if err = snap.store(c.db); err != nil {
@@ -604,7 +603,6 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, results c
 		return err
 	}
 	if _, authorized := snap.Signers[signer]; !authorized {
-		fmt.Println("CSW...authorized", signer.String())
 		return errUnauthorizedSigner
 	}
 	// If we're amongst the recent signers, wait for the next block
@@ -693,22 +691,8 @@ func (c *Clique) APIs(chain consensus.ChainReader) []rpc.API {
 // SealHash returns the hash of a block prior to it being sealed.
 func SealHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewLegacyKeccak256()
-	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Nonce,
-		header.Otprn,
-	})
-	hasher.Sum(hash[:0])
+	encodeSigHeader(hasher, header)
+	hasher.(crypto.KeccakState).Read(hash[:])
 	return hash
 }
 

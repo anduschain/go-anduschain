@@ -443,18 +443,17 @@ func (w *worker) start() {
 		return
 	}
 	atomic.StoreInt32(&w.running, 1)
-	if w.config.Deb != nil {
+	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debStart()
 	} else {
 		w.startCh <- struct{}{}
 	}
-
 }
 
 // stop sets the running status as 0.
 func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
-	if w.config.Deb != nil {
+	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debClient.Stop()
 	}
 }
@@ -542,10 +541,12 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
 			if w.isRunning() && w.config.Deb == nil {
-				// Short circuit if no new transaction arrives.
-				if atomic.LoadInt32(&w.newTxs) == 0 {
-					timer.Reset(recommit)
-					continue
+				if w.config.Clique != nil && w.config.Clique.Period == 0 {
+					// Short circuit if no new transaction arrives.
+					if atomic.LoadInt32(&w.newTxs) == 0 {
+						timer.Reset(recommit)
+						continue
+					}
 				}
 				commit(true, commitInterruptResubmit)
 			}
@@ -623,7 +624,7 @@ func (w *worker) mainLoop() {
 				w.updateSnapshot()
 			} else {
 				//If we're mining, but nothing is being processed, wake on new transactions
-				if w.engine.(*deb.Deb) != nil {
+				if _, ok := w.engine.(*deb.Deb); ok {
 					// otprn check
 					otprn := w.engine.Otprn()
 
@@ -728,7 +729,7 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-			if w.config.Deb != nil {
+			if _, ok := w.engine.(*deb.Deb); ok {
 				w.pendingMu.Lock()
 				w.possibleWinning = block // made for me, saving possible block
 				w.pendingMu.Unlock()
@@ -1187,13 +1188,26 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		time.Sleep(wait)
 	}
 	num := parent.Number()
-	header := &types.Header{
-		ParentHash: parent.Hash(),
-		Number:     num.Add(num, common.Big1),
-		//GasLimit:   core.CalcGasLimit(parent, w.gasFloor, w.gasCeil),
-		Extra: w.extra,
-		Time:  big.NewInt(timestamp),
+	var header *types.Header
+	if _, ok := w.engine.(*deb.Deb); ok {
+		header = &types.Header{
+			ParentHash: parent.Hash(),
+			Number:     num.Add(num, common.Big1),
+			// Set GasLimit in Prepare() using otprn
+			//GasLimit:   core.CalcGasLimit(parent, w.gasFloor, w.gasCeil),
+			Extra: w.extra,
+			Time:  big.NewInt(timestamp),
+		}
+	} else {
+		header = &types.Header{
+			ParentHash: parent.Hash(),
+			Number:     num.Add(num, common.Big1),
+			GasLimit:   core.CalcGasLimitEth(parent.GasLimit(), w.gasCeil),
+			Extra:      w.extra,
+			Time:       big.NewInt(timestamp),
+		}
 	}
+
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
@@ -1202,7 +1216,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 
 		header.Coinbase = w.coinbase
-
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
@@ -1245,7 +1258,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 		// Short circuit if there is no available pending transactions
 		// otprn check
-		if w.config.Deb != nil {
+		if _, ok := w.engine.(*deb.Deb); ok {
 			otprn, err := types.DecodeOtprn(header.Otprn)
 			if err != nil {
 				return
