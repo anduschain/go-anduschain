@@ -136,14 +136,6 @@ func (dc *DebClient) Start(backend Backend) error {
 
 	// 어떤 ip를 사용할지 세팅값을 가져와야 함 CSW
 	outboundIp := getOutBoundIP()
-	/**
-	if backend.Server().IpFind {
-		str := getPublicIP()
-		if str != "" {
-			outboundIp = str
-		}
-	}
-	**/
 
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{

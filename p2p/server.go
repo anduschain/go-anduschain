@@ -82,9 +82,6 @@ type Config struct {
 	// protocol should be started or not.
 	DiscoveryV5 bool `toml:",omitempty"`
 
-	// Find Public Ip Address
-	IpFind bool
-
 	// Name sets the node name of this server.
 	// Use common.MakeName to create a name that follows existing conventions.
 	Name string `toml:"-"`
