@@ -37,8 +37,8 @@ web3._extend({
 	methods: [],
 	properties: [
 		new web3._extend.Property({
-			name: 'getFairnodePubKey',
-			getter: 'deb_getFairnodePubKey'
+			name: 'fairnodePubKey',
+			getter: 'deb_fairnodePubKey'
 		}),
 	]
 });
@@ -129,6 +129,11 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'printBlock',
 			call: 'debug_printBlock',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'getHeaderRlp',
+			call: 'debug_getHeaderRlp',
 			params: 1
 		}),
 		new web3._extend.Method({
@@ -376,6 +381,35 @@ web3._extend({
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter]
 		}),
 		new web3._extend.Method({
+			name: 'fillTransaction',
+			call: 'eth_fillTransaction',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputTransactionFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'getHeaderByNumber',
+			call: 'eth_getHeaderByNumber',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'getHeaderByHash',
+			call: 'eth_getHeaderByHash',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'getBlockByNumber',
+			call: 'eth_getBlockByNumber',
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, function (val) { return !!val; }]
+		}),
+		new web3._extend.Method({
+			name: 'getBlockByHash',
+			call: 'eth_getBlockByHash',
+			params: 2,
+			inputFormatter: [null, function (val) { return !!val; }]
+		}),
+		new web3._extend.Method({
 			name: 'getRawTransaction',
 			call: 'eth_getRawTransactionByHash',
 			params: 1
@@ -387,6 +421,17 @@ web3._extend({
 			},
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, web3._extend.utils.toHex]
+		}),
+		new web3._extend.Method({
+			name: 'getProof',
+			call: 'eth_getProof',
+			params: 3,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputBlockNumberFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'getLogs',
+			call: 'eth_getLogs',
+			params: 1,
 		}),
 	],
 	properties: [
@@ -434,6 +479,12 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'setGasPrice',
 			call: 'miner_setGasPrice',
+			params: 1,
+			inputFormatter: [web3._extend.utils.fromDecimal]
+		}),
+		new web3._extend.Method({
+			name: 'setGasLimit',
+			call: 'miner_setGasLimit',
 			params: 1,
 			inputFormatter: [web3._extend.utils.fromDecimal]
 		}),
@@ -500,6 +551,16 @@ web3._extend({
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
 		}),
+		new web3._extend.Method({
+			name: 'unpair',
+			call: 'personal_unpair',
+			params: 2
+		}),
+		new web3._extend.Method({
+			name: 'initializeWallet',
+			call: 'personal_initializeWallet',
+			params: 1
+		})
 	],
 	properties: [
 		new web3._extend.Property({
@@ -518,26 +579,6 @@ web3._extend({
 		new web3._extend.Property({
 			name: 'modules',
 			getter: 'rpc_modules'
-		}),
-	]
-});
-`
-
-const Shh_JS = `
-web3._extend({
-	property: 'shh',
-	methods: [
-	],
-	properties:
-	[
-		new web3._extend.Property({
-			name: 'version',
-			getter: 'shh_version',
-			outputFormatter: web3._extend.utils.toDecimal
-		}),
-		new web3._extend.Property({
-			name: 'info',
-			getter: 'shh_info'
 		}),
 	]
 });
@@ -565,6 +606,11 @@ web3._extend({
 				status.queued = web3._extend.utils.toDecimal(status.queued);
 				return status;
 			}
+		}),
+		new web3._extend.Method({
+			name: 'contentFrom',
+			call: 'txpool_contentFrom',
+			params: 1,
 		}),
 	]
 });

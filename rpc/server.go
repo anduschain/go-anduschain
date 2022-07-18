@@ -402,7 +402,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 		}
 
 		if svc, ok = s.services[r.service]; !ok { // rpc method isn't available
-			requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
+			requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.method}}
 			continue
 		}
 
@@ -419,7 +419,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 					}
 				}
 			} else {
-				requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
+				requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.method}}
 			}
 			continue
 		}
@@ -436,7 +436,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 			continue
 		}
 
-		requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
+		requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.method}}
 	}
 
 	return requests, batch, nil

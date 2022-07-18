@@ -18,6 +18,6 @@ func NewPrivateDebApi(chain consensus.ChainReader, deb *Deb) *PrivateDebApi {
 	return &PrivateDebApi{chain, deb}
 }
 
-func (api *PrivateDebApi) GetFairnodePubKey() string {
+func (api *PrivateDebApi) FairnodePubKey() string {
 	return api.deb.config.FairPubKey
 }

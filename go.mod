@@ -29,6 +29,7 @@ require (
 	github.com/influxdata/influxdb v1.8.3
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/jedisct1/go-minisign v0.0.0-20211028175153-1c139d1cc84b
+	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/usb v0.0.2
 	github.com/mattn/go-colorable v0.1.8
@@ -40,7 +41,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
 	github.com/rjeczalik/notify v0.9.2
-	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d
+	github.com/robertkrimen/otto v0.0.0-20211024170158-b87d35c0b86f
 	github.com/rs/cors v1.7.0
 	github.com/status-im/keycard-go v0.0.0-20211109104530-b0e0482ba91d
 	github.com/stretchr/testify v1.7.0

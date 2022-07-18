@@ -204,7 +204,7 @@ func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 
 	elems := strings.Split(in.Method, serviceMethodSeparator)
 	if len(elems) != 2 {
-		return nil, false, &methodNotFoundError{in.Method, ""}
+		return nil, false, &methodNotFoundError{in.Method}
 	}
 
 	// regular RPC call
@@ -263,7 +263,7 @@ func parseBatchRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) 
 		if elem := strings.Split(r.Method, serviceMethodSeparator); len(elem) == 2 {
 			requests[i].service, requests[i].method = elem[0], elem[1]
 		} else {
-			requests[i].err = &methodNotFoundError{r.Method, ""}
+			requests[i].err = &methodNotFoundError{r.Method}
 		}
 	}
 

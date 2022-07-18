@@ -1021,7 +1021,7 @@ var formatOutputInt = function (param) {
     var value = param.staticPart() || "0";
 
     // check if it's negative number
-    // it it is, return two's complement
+    // it is, return two's complement
     if (signedIsNegative(value)) {
         return new BigNumber(value, 16).minus(new BigNumber('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 16)).minus(1);
     }
@@ -2231,7 +2231,7 @@ var toTwosComplement = function (number) {
  * Checks if the given string is strictly an address
  *
  * @method isStrictAddress
- * @param {String} address the given HEX adress
+ * @param {String} address the given HEX address
  * @return {Boolean}
 */
 var isStrictAddress = function (address) {
@@ -2242,7 +2242,7 @@ var isStrictAddress = function (address) {
  * Checks if the given string is an address
  *
  * @method isAddress
- * @param {String} address the given HEX adress
+ * @param {String} address the given HEX address
  * @return {Boolean}
 */
 var isAddress = function (address) {
@@ -2250,7 +2250,7 @@ var isAddress = function (address) {
         // check if it has the basic requirements of an address
         return false;
     } else if (/^(0x)?[0-9a-f]{40}$/.test(address) || /^(0x)?[0-9A-F]{40}$/.test(address)) {
-        // If it's all small caps or all all caps, return true
+        // If it's all small caps or all caps, return true
         return true;
     } else {
         // Otherwise check each case
@@ -2262,7 +2262,7 @@ var isAddress = function (address) {
  * Checks if the given string is a checksummed address
  *
  * @method isChecksumAddress
- * @param {String} address the given HEX adress
+ * @param {String} address the given HEX address
  * @return {Boolean}
 */
 var isChecksumAddress = function (address) {
@@ -2285,7 +2285,7 @@ var isChecksumAddress = function (address) {
  * Makes a checksum address
  *
  * @method toChecksumAddress
- * @param {String} address the given HEX adress
+ * @param {String} address the given HEX address
  * @return {String}
 */
 var toChecksumAddress = function (address) {
@@ -3003,7 +3003,7 @@ var ContractFactory = function (eth, abi) {
 
         if (callback) {
 
-            // wait for the contract address adn check if the code was deployed
+            // wait for the contract address and check if the code was deployed
             this.eth.sendTransaction(options, function (err, hash) {
                 if (err) {
                     callback(err);
@@ -3056,7 +3056,7 @@ ContractFactory.prototype.at = function (address, callback) {
     var contract = new Contract(this.eth, this.abi, address);
 
     // this functions are not part of prototype,
-    // because we dont want to spoil the interface
+    // because we don't want to spoil the interface
     addFunctionsToContract(contract);
     addEventsToContract(contract);
 
@@ -3734,7 +3734,7 @@ var inputCallFormatter = function (options){
         options.to = inputAddressFormatter(options.to);
     }
 
-    ['gasPrice', 'gas', 'value', 'nonce'].filter(function (key) {
+    ['maxFeePerGas', 'maxPriorityFeePerGas', 'gasPrice', 'gas', 'value', 'nonce'].filter(function (key) {
         return options[key] !== undefined;
     }).forEach(function(key){
         options[key] = utils.fromDecimal(options[key]);
@@ -3759,7 +3759,7 @@ var inputTransactionFormatter = function (options){
         options.to = inputAddressFormatter(options.to);
     }
 
-    ['gasPrice', 'gas', 'value', 'nonce'].filter(function (key) {
+    ['maxFeePerGas', 'maxPriorityFeePerGas', 'gasPrice', 'gas', 'value', 'nonce'].filter(function (key) {
         return options[key] !== undefined;
     }).forEach(function(key){
         options[key] = utils.fromDecimal(options[key]);
@@ -3783,6 +3783,12 @@ var outputTransactionFormatter = function (tx){
     tx.nonce = utils.toDecimal(tx.nonce);
     tx.gas = utils.toDecimal(tx.gas);
     tx.gasPrice = utils.toBigNumber(tx.gasPrice);
+    if(tx.maxFeePerGas !== undefined) {
+      tx.maxFeePerGas = utils.toBigNumber(tx.maxFeePerGas);
+    }
+    if(tx.maxPriorityFeePerGas !== undefined) {
+      tx.maxPriorityFeePerGas = utils.toBigNumber(tx.maxPriorityFeePerGas);
+    }
     tx.value = utils.toBigNumber(tx.value);
     return tx;
 };
@@ -3801,7 +3807,9 @@ var outputTransactionReceiptFormatter = function (receipt){
         receipt.transactionIndex = utils.toDecimal(receipt.transactionIndex);
     receipt.cumulativeGasUsed = utils.toDecimal(receipt.cumulativeGasUsed);
     receipt.gasUsed = utils.toDecimal(receipt.gasUsed);
-
+    if(receipt.effectiveGasPrice !== undefined) {
+      receipt.effectiveGasPrice = utils.toBigNumber(receipt.effectiveGasPrice);
+    }
     if(utils.isArray(receipt.logs)) {
         receipt.logs = receipt.logs.map(function(log){
             return outputLogFormatter(log);
@@ -3819,8 +3827,10 @@ var outputTransactionReceiptFormatter = function (receipt){
  * @returns {Object}
 */
 var outputBlockFormatter = function(block) {
-
     // transform to number
+    if (block.baseFeePerGas !== undefined) {
+      block.baseFeePerGas = utils.toBigNumber(block.baseFeePerGas);
+    }
     block.gasLimit = utils.toDecimal(block.gasLimit);
     block.gasUsed = utils.toDecimal(block.gasUsed);
     block.size = utils.toDecimal(block.size);
@@ -3939,10 +3949,18 @@ var outputSyncingFormatter = function(result) {
     result.startingBlock = utils.toDecimal(result.startingBlock);
     result.currentBlock = utils.toDecimal(result.currentBlock);
     result.highestBlock = utils.toDecimal(result.highestBlock);
-    if (result.knownStates) {
-        result.knownStates = utils.toDecimal(result.knownStates);
-        result.pulledStates = utils.toDecimal(result.pulledStates);
-    }
+    result.syncedAccounts = utils.toDecimal(result.syncedAccounts);
+    result.syncedAccountBytes = utils.toDecimal(result.syncedAccountBytes);
+    result.syncedBytecodes = utils.toDecimal(result.syncedBytecodes);
+    result.syncedBytecodeBytes = utils.toDecimal(result.syncedBytecodeBytes);
+    result.syncedStorage = utils.toDecimal(result.syncedStorage);
+    result.syncedStorageBytes = utils.toDecimal(result.syncedStorageBytes);
+    result.healedTrienodes = utils.toDecimal(result.healedTrienodes);
+    result.healedTrienodeBytes = utils.toDecimal(result.healedTrienodeBytes);
+    result.healedBytecodes = utils.toDecimal(result.healedBytecodes);
+    result.healedBytecodeBytes = utils.toDecimal(result.healedBytecodeBytes);
+    result.healingTrienodes = utils.toDecimal(result.healingTrienodes);
+    result.healingBytecode = utils.toDecimal(result.healingBytecode);
 
     return result;
 };
@@ -4346,7 +4364,6 @@ HttpProvider.prototype.send = function (payload) {
   } catch (e) {
     throw errors.InvalidResponse(request.responseText);
   }
-
   return result;
 };
 
@@ -4378,7 +4395,6 @@ HttpProvider.prototype.sendAsync = function (payload, callback) {
   request.ontimeout = function () {
     callback(errors.ConnectionTimeout(this.timeout));
   };
-
   try {
     request.send(JSON.stringify(payload));
   } catch (error) {
@@ -5657,13 +5673,6 @@ var methods = function () {
         inputFormatter: [formatters.inputAddressFormatter, null, null]
     });
 
-    var unlockCoinbase = new Method({
-      name: 'unlockCoinbase',
-      call: 'personal_unlockCoinbase',
-      params: 3,
-      inputFormatter: [formatters.inputAddressFormatter, null, null]
-    });
-
     var sendTransaction = new Method({
         name: 'sendTransaction',
         call: 'personal_sendTransaction',
@@ -5685,8 +5694,7 @@ var methods = function () {
         ecRecover,
         sign,
         sendTransaction,
-        lockAccount,
-        unlockCoinbase
+        lockAccount
     ];
 };
 
@@ -5870,7 +5878,7 @@ module.exports = Shh;
  * @author Alex Beregszaszi <alex@rtfs.hu>
  * @date 2016
  *
- * Reference: https://github.com/anduschain/go-anduschain/blob/swarm/internal/web3ext/web3ext.go#L33
+ * Reference: https://github.com/ethereum/go-ethereum/blob/swarm/internal/web3ext/web3ext.go#L33
  */
 
 "use strict";
@@ -6242,7 +6250,8 @@ Property.prototype.attachToObject = function (obj) {
     }
 
     Object.defineProperty(obj, name, proto);
-    obj[asyncGetterName(name)] = this.buildAsyncGet();
+    //obj[asyncGetterName(name)] = this.buildAsyncGet();
+    obj[asyncGetterName(name)] = this.buildGet();
 };
 
 var asyncGetterName = function (name) {
@@ -6264,7 +6273,7 @@ Property.prototype.buildAsyncGet = function () {
         property.requestManager.sendAsync({
             method: property.getter
         }, function (err, result) {
-            callback(err, property.formatOutput(result));
+          callback(err, property.formatOutput(result));
         });
     };
     get.request = this.request.bind(this);
@@ -6379,7 +6388,6 @@ RequestManager.prototype.sendAsync = function (data, callback) {
         if (!Jsonrpc.isValidResponse(result)) {
             return callback(errors.InvalidResponse(result));
         }
-
         callback(null, result.result);
     });
 };
@@ -6743,7 +6751,7 @@ var transferToAddress = function (eth, from, to, value, callback) {
  * @method deposit
  * @param {String} from
  * @param {String} to
- * @param {Value} value to be transfered
+ * @param {Value} value to be transferred
  * @param {String} client unique identifier
  * @param {Function} callback, callback
  */
@@ -13625,7 +13633,7 @@ module.exports = BigNumber; // jshint ignore:line
 },{}],"web3":[function(require,module,exports){
 var Web3 = require('./lib/web3');
 
-// dont override global variable
+// don't override global variable
 if (typeof window !== 'undefined' && typeof window.Web3 === 'undefined') {
     window.Web3 = Web3;
 }
@@ -13633,4 +13641,4 @@ if (typeof window !== 'undefined' && typeof window.Web3 === 'undefined') {
 module.exports = Web3;
 
 },{"./lib/web3":22}]},{},["web3"])
-//# sourceMappingURL=web3-light.js.map
+
