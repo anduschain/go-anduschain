@@ -54,23 +54,3 @@ devtools:
 	@type "npm" 2> /dev/null || echo 'Please install node.js and npm'
 	@type "solc" 2> /dev/null || echo 'Please install solc'
 	@type "protoc" 2> /dev/null || echo 'Please install protoc'
-
-# Cross Compilation Targets (xgo)
-
-# loadtest
-loadtest-linux-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/loadtest
-	@echo "Linux amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/loadtest-linux-* | grep amd64
-
-# fairnode
-fairnode-linux-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/fairnode
-	@echo "Linux amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/fairnode-linux-* | grep amd64
-
-# bootnode
-bootnode-linux-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/bootnode
-	@echo "Linux amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/bootnode-linux-* | grep amd64
