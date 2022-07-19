@@ -109,14 +109,15 @@ func (dc *DebClient) FnAddress() common.Address {
 	return crypto.PubkeyToAddress(*dc.fnPubKey)
 }
 
-func getOutBoundIP() string {
+func getMinerIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		log.Error("Get OutBound Ip", err.Error())
 		return ""
 	}
 	defer conn.Close()
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr := conn.LocalAddr().(*net.UDPAddr) // Local IP for outbounding
+
 	return localAddr.IP.String()
 }
 
@@ -134,8 +135,10 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
-	// 어떤 ip를 사용할지 세팅값을 가져와야 함 CSW
-	outboundIp := getOutBoundIP()
+	minerIp := ""
+	// CSW
+	// Use Local Zone Mining & Other Zone fairNode
+	// minerIp = getMinerIP()
 
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{
@@ -144,7 +147,7 @@ func (dc *DebClient) Start(backend Backend) error {
 			ChainID:      backend.BlockChain().Config().ChainID.String(),
 			MinerAddress: backend.Coinbase().String(),
 			Port:         int64(backend.Server().NodeInfo().Ports.Listener),
-			Ip:           outboundIp,
+			Ip:           minerIp,
 		},
 		Miner:    accounts.Account{Address: backend.Coinbase()},
 		Accounts: backend.AccountManager(),

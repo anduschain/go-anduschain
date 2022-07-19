@@ -13,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/peer"
 	"math/big"
 	"strings"
 	"sync"
@@ -52,16 +53,11 @@ func newServer(fn fnNode) *rpcServer {
 
 // Heart Beat : notify to fairnode, I'm alive.
 func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (*empty.Empty, error) {
-	//p, _ := peer.FromContext(ctx)
-	//ip, err := ParseIP(p.Addr.String())
-	//if err != nil {
-	//	logger.Error("HeartBeat ParseIP", "msg", err)
-	//	return nil, err
-	//}
-	var err error
-
-	if nodeInfo.GetIp() == "" {
-		return nil, errorEmpty("ip")
+	p, _ := peer.FromContext(ctx)
+	ip, err := ParseIP(p.Addr.String())
+	if err != nil {
+		logger.Error("HeartBeat ParseIP", "msg", err)
+		return nil, err
 	}
 
 	if nodeInfo.GetEnode() == "" {
@@ -105,6 +101,11 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 	err = verify.ValidationSignHash(nodeInfo.GetSign(), hash, common.HexToAddress(nodeInfo.GetMinerAddress()))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	// If node IP is null, set remote ip address
+	if nodeInfo.GetIp() == "" {
+		nodeInfo.Ip = ip
 	}
 
 	if config := rs.db.GetChainConfig(); config != nil {
