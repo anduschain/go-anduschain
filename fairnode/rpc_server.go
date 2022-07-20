@@ -109,7 +109,7 @@ func (rs *rpcServer) HeartBeat(ctx context.Context, nodeInfo *proto.HeartBeat) (
 	}
 
 	if config := rs.db.GetChainConfig(); config != nil {
-		if config.NodeVersion != nodeInfo.GetNodeVersion() {
+		if strings.Compare(config.NodeVersion, nodeInfo.GetNodeVersion()) > 0 {
 			return nil, errors.New(fmt.Sprintf("node version differnet config=%s node=%s ", config.NodeVersion, nodeInfo.GetNodeVersion()))
 		}
 	} else {
