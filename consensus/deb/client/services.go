@@ -206,7 +206,6 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 			for i, enode := range enodes {
 				eNode := enode
 				id, host, port := common.SplitEnode(enode)
-				fmt.Println("CSW enode======", id, host, port)
 				if host != "" {
 					val := dc.localIps[host]
 					if val != "" {
@@ -214,7 +213,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 					}
 				}
 				dc.backend.Server().AddPeer(discover.MustParseNode(eNode))
-				log.Info("make league status", "addPeer", enodes[i])
+				log.Info("make league status", "addPeer", enodes[i], "realPeer", eNode)
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:
 			fnBlockNum := new(big.Int)
