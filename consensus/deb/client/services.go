@@ -203,7 +203,15 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
 			for i, enode := range enodes {
-				dc.backend.Server().AddPeer(discover.MustParseNode(enode))
+				eNode := enode
+				id, host, port := common.SplitEnode(enode)
+				if host != "" {
+					val := dc.localIps[host]
+					if val != "" {
+						eNode = id + "@" + val + ":" + port
+					}
+				}
+				dc.backend.Server().AddPeer(discover.MustParseNode(eNode))
 				log.Info("make league status", "addPeer", enodes[i])
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:

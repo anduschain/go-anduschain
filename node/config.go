@@ -18,6 +18,7 @@ package node
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -42,6 +43,7 @@ const (
 	datadirStaticNodes     = "static-nodes.json"  // Path within the datadir to the static node list
 	datadirTrustedNodes    = "trusted-nodes.json" // Path within the datadir to the trusted node list
 	datadirNodeDatabase    = "nodes"              // Path within the datadir to store the node infos
+	datadirLocalIps        = "local-ips.json"     // Path within the datadir to the static node list
 )
 
 // Config represents a small collection of configuration values to fine tune the
@@ -283,6 +285,7 @@ var isOldGethResource = map[string]bool{
 	"nodekey":            true,
 	"static-nodes.json":  true,
 	"trusted-nodes.json": true,
+	"local-ips.json":     true,
 }
 
 // ResolvePath resolves path in the instance directory.
@@ -361,6 +364,29 @@ func (c *Config) StaticNodes() []*discover.Node {
 // TrustedNodes returns a list of node enode URLs configured as trusted nodes.
 func (c *Config) TrustedNodes() []*discover.Node {
 	return c.parsePersistentNodes(c.ResolvePath(datadirTrustedNodes))
+}
+
+// TrustedNodes returns a list of node enode URLs configured as trusted nodes.
+func (c *Config) LocalIps() map[string]string {
+	localIps := make(map[string]string)
+	path := c.ResolvePath(datadirLocalIps)
+	// Short circuit if no node config is present
+	if c.DataDir == "" {
+		return localIps
+	}
+	if _, err := os.Stat(path); err != nil {
+		return localIps
+	}
+
+	data, err := os.Open(path)
+	if err != nil {
+		log.Info("local-ip open fail:" + err.Error())
+		return localIps
+	}
+	byteValue, _ := ioutil.ReadAll(data)
+	json.Unmarshal(byteValue, &localIps)
+
+	return localIps
 }
 
 // parsePersistentNodes parses a list of discovery node URLs loaded from a .json

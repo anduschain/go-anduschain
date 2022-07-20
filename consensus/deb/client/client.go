@@ -79,14 +79,16 @@ type DebClient struct {
 	closeClient event.Feed
 
 	exitWorker chan struct{}
+	localIps   map[string]string
 }
 
-func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}) *DebClient {
+func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}, localIps map[string]string) *DebClient {
 	dc := DebClient{
 		ctx:        context.Background(),
 		config:     config,
 		exitWorker: exitWorker,
 		otprn:      make(map[common.Hash]*types.Otprn),
+		localIps:   localIps,
 	}
 
 	go dc.workerCheckLoop()

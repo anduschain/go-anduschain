@@ -150,7 +150,7 @@ func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) (*miner.Miner
 	}
 	backend.rollback()
 
-	mine := miner.New(backend, params.DebChainConfig, new(event.TypeMux), deb.NewFaker(types.NewDefaultOtprn()), time.Second, params.GenesisGasLimit, params.GenesisGasLimit)
+	mine := miner.New(backend, params.DebChainConfig, new(event.TypeMux), deb.NewFaker(types.NewDefaultOtprn()), time.Second, params.GenesisGasLimit, params.GenesisGasLimit, make(map[string]string))
 	mine.Start(testMinerAddress)
 
 	return mine, backend

@@ -211,7 +211,7 @@ type worker struct {
 	finalizeCh chan struct{}
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string) *worker {
 	worker := &worker{
 		config:             config,
 		engine:             engine,
@@ -264,7 +264,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.taskLoop()
 
 	if worker.config.Deb != nil {
-		worker.debClient = client.NewDebClient(config, worker.exitCh)
+		worker.debClient = client.NewDebClient(config, worker.exitCh, loacalIps)
 		// TODO(hakuna) : new version miner process, event receiver
 		worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
 		worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
