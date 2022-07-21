@@ -51,7 +51,7 @@ func (api *PrivateAdminAPI) AddPeer(url string) (bool, error) {
 		return false, ErrNodeStopped
 	}
 	// Try to add the url as a static peer and return
-	node, err := discover.ParseNode(url)
+	node, err := discover.ParseNode(url, make(map[string]string))
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
@@ -67,7 +67,7 @@ func (api *PrivateAdminAPI) RemovePeer(url string) (bool, error) {
 		return false, ErrNodeStopped
 	}
 	// Try to remove the url as a static peer and return
-	node, err := discover.ParseNode(url)
+	node, err := discover.ParseNode(url, make(map[string]string))
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
@@ -82,7 +82,7 @@ func (api *PrivateAdminAPI) AddTrustedPeer(url string) (bool, error) {
 	if server == nil {
 		return false, ErrNodeStopped
 	}
-	node, err := discover.ParseNode(url)
+	node, err := discover.ParseNode(url, make(map[string]string))
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
@@ -98,7 +98,7 @@ func (api *PrivateAdminAPI) RemoveTrustedPeer(url string) (bool, error) {
 	if server == nil {
 		return false, ErrNodeStopped
 	}
-	node, err := discover.ParseNode(url)
+	node, err := discover.ParseNode(url, make(map[string]string))
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}

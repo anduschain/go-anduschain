@@ -148,7 +148,7 @@ var parseNodeTests = []struct {
 
 func TestParseNode(t *testing.T) {
 	for _, test := range parseNodeTests {
-		n, err := ParseNode(test.rawurl)
+		n, err := ParseNode(test.rawurl, make(map[string]string))
 		if test.wantError != "" {
 			if err == nil {
 				t.Errorf("test %q:\n  got nil error, expected %#q", test.rawurl, test.wantError)

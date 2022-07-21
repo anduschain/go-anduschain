@@ -53,7 +53,8 @@ type Node struct {
 	sha common.Hash
 
 	// Time when the node was added to the table.
-	addedAt time.Time
+	addedAt  time.Time
+	LocalIps map[string]string
 }
 
 // NewNode creates a new node. It is mostly meant to be used for
@@ -62,6 +63,7 @@ func NewNode(id NodeID, ip net.IP, udpPort, tcpPort uint16) *Node {
 	if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4
 	}
+
 	return &Node{
 		IP:  ip,
 		UDP: udpPort,
@@ -140,7 +142,7 @@ var incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")
 // and UDP discovery port 30301.
 //
 //    enode://<hex node id>@10.3.58.6:30303?discport=30301
-func ParseNode(rawurl string) (*Node, error) {
+func ParseNode(rawurl string, localIps map[string]string) (*Node, error) {
 	if m := incompleteNodeURL.FindStringSubmatch(rawurl); m != nil {
 		id, err := HexID(m[1])
 		if err != nil {
@@ -148,10 +150,10 @@ func ParseNode(rawurl string) (*Node, error) {
 		}
 		return NewNode(id, nil, 0, 0), nil
 	}
-	return parseComplete(rawurl)
+	return parseComplete(rawurl, localIps)
 }
 
-func parseComplete(rawurl string) (*Node, error) {
+func parseComplete(rawurl string, localIps map[string]string) (*Node, error) {
 	var (
 		id               NodeID
 		ip               net.IP
@@ -175,6 +177,12 @@ func parseComplete(rawurl string) (*Node, error) {
 	host, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		return nil, fmt.Errorf("invalid host: %v", err)
+	}
+
+	// TODO: CSW Convert Local IP using local-ips.json
+	val := localIps[host]
+	if val != "" {
+		host = val
 	}
 
 	ip = net.ParseIP(host)
@@ -209,8 +217,8 @@ func parseComplete(rawurl string) (*Node, error) {
 }
 
 // MustParseNode parses a node URL. It panics if the URL is not valid.
-func MustParseNode(rawurl string) *Node {
-	n, err := ParseNode(rawurl)
+func MustParseNode(rawurl string, localIps map[string]string) *Node {
+	n, err := ParseNode(rawurl, localIps)
 	if err != nil {
 		panic("invalid node URL: " + err.Error())
 	}
@@ -224,7 +232,7 @@ func (n *Node) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (n *Node) UnmarshalText(text []byte) error {
-	dec, err := ParseNode(string(text))
+	dec, err := ParseNode(string(text), make(map[string]string))
 	if err == nil {
 		*n = *dec
 	}
