@@ -53,8 +53,7 @@ type Node struct {
 	sha common.Hash
 
 	// Time when the node was added to the table.
-	addedAt  time.Time
-	LocalIps map[string]string
+	addedAt time.Time
 }
 
 // NewNode creates a new node. It is mostly meant to be used for
