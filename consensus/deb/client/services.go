@@ -212,7 +212,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 						eNode = id + "@" + val + ":" + port
 					}
 				}
-				dc.backend.Server().AddPeer(discover.MustParseNode(eNode, dc.localIps))
+				dc.backend.Server().AddTrustedPeer(discover.MustParseNode(eNode))
 				log.Info("make league status", "addPeer", enodes[i], "realPeer", eNode)
 			}
 		case proto.ProcessStatus_MAKE_JOIN_TX:
