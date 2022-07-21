@@ -202,7 +202,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
-			// TODO CSW: convert ip-address using iplocal-ips.json
+			// TODO CSW: convert ip-address using local-ips.json
 			for i, enode := range enodes {
 				eNode := enode
 				id, host, port := common.SplitEnode(enode)
