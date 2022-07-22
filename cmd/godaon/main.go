@@ -114,6 +114,7 @@ var (
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
+		utils.LocalIpFlag,
 		configFileFlag,
 	}
 

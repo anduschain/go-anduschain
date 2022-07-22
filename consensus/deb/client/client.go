@@ -138,9 +138,12 @@ func (dc *DebClient) Start(backend Backend) error {
 	}
 
 	minerIp := ""
-	// CSW
-	// Use Local Zone Mining & Other Zone fairNode
-	// minerIp = getMinerIP()
+
+	// TODO: CSW
+	// Use Local IP for mining
+	if backend.Server().UseLocalIp == true {
+		minerIp = getMinerIP()
+	}
 
 	dc.miner = &Miner{
 		Node: proto.HeartBeat{

@@ -253,7 +253,7 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 		return nil, err
 	}
 	for _, boot := range enodes {
-		old, _ := discover.ParseNode(boot.String(), make(map[string]string))
+		old, _ := discover.ParseNode(boot.String())
 		stack.Server().AddPeer(old)
 	}
 	// Attach to the client and retrieve and interesting metadatas

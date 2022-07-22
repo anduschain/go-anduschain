@@ -474,6 +474,10 @@ var (
 		Name:  "netrestrict",
 		Usage: "Restricts network communication to the given IP networks (CIDR masks)",
 	}
+	LocalIpFlag = cli.BoolFlag{
+		Name:  "uselocalip",
+		Usage: "Use Local Outbound ip address for mining",
+	}
 
 	// ATM the url is left to the user and deployment to
 	JSpathFlag = cli.StringFlag{
@@ -890,6 +894,9 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	}
 	if ctx.GlobalIsSet(NoDiscoverFlag.Name) || lightClient {
 		cfg.NoDiscovery = true
+	}
+	if ctx.GlobalIsSet(LocalIpFlag.Name) {
+		cfg.UseLocalIp = true
 	}
 
 	// if we're running a light client or server, force enable the v5 peer discovery
