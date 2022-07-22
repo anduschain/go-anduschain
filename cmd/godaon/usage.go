@@ -147,6 +147,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.IPCPathFlag,
 			utils.RPCCORSDomainFlag,
 			utils.RPCVirtualHostsFlag,
+			utils.AllowUnprotectedTxs,
 			utils.JSpathFlag,
 			utils.ExecFlag,
 			utils.PreloadJSFlag,

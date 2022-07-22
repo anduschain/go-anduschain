@@ -130,6 +130,7 @@ var (
 		utils.WSAllowedOriginsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
+		utils.AllowUnprotectedTxs,
 	}
 
 	metricsFlags = []cli.Flag{

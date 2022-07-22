@@ -371,20 +371,6 @@ var (
 		Name:  "ipcpath",
 		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
 	}
-	GraphQLEnabledFlag = cli.BoolFlag{
-		Name:  "graphql",
-		Usage: "Enable GraphQL on the HTTP-RPC server. Note that GraphQL can only be started if an HTTP server is started as well.",
-	}
-	GraphQLCORSDomainFlag = cli.StringFlag{
-		Name:  "graphql.corsdomain",
-		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
-		Value: "",
-	}
-	GraphQLVirtualHostsFlag = cli.StringFlag{
-		Name:  "graphql.vhosts",
-		Usage: "Comma separated list of virtual hostnames from which to accept requests (server enforced). Accepts '*' wildcard.",
-		Value: strings.Join(node.DefaultConfig.GraphQLVirtualHosts, ","),
-	}
 	WSEnabledFlag = cli.BoolFlag{
 		Name:  "ws",
 		Usage: "Enable the WS-RPC server",
@@ -416,6 +402,10 @@ var (
 	PreloadJSFlag = cli.StringFlag{
 		Name:  "preload",
 		Usage: "Comma separated list of JavaScript files to preload into the console",
+	}
+	AllowUnprotectedTxs = cli.BoolFlag{
+		Name:  "rpc.allow-unprotected-txs",
+		Usage: "Allow for unprotected (non EIP155 signed) transactions to be submitted via RPC",
 	}
 
 	// Network Settings
@@ -730,16 +720,8 @@ func setHTTP(ctx *cli.Context, cfg *node.Config) {
 	if ctx.GlobalIsSet(RPCVirtualHostsFlag.Name) {
 		cfg.HTTPVirtualHosts = splitAndTrim(ctx.GlobalString(RPCVirtualHostsFlag.Name))
 	}
-}
-
-// setGraphQL creates the GraphQL listener interface string from the set
-// command line flags, returning empty if the GraphQL endpoint is disabled.
-func setGraphQL(ctx *cli.Context, cfg *node.Config) {
-	if ctx.GlobalIsSet(GraphQLCORSDomainFlag.Name) {
-		cfg.GraphQLCors = SplitAndTrim(ctx.GlobalString(GraphQLCORSDomainFlag.Name))
-	}
-	if ctx.GlobalIsSet(GraphQLVirtualHostsFlag.Name) {
-		cfg.GraphQLVirtualHosts = SplitAndTrim(ctx.GlobalString(GraphQLVirtualHostsFlag.Name))
+	if ctx.GlobalIsSet(AllowUnprotectedTxs.Name) {
+		cfg.AllowUnprotectedTxs = ctx.GlobalBool(AllowUnprotectedTxs.Name)
 	}
 }
 
