@@ -173,6 +173,7 @@ type Server struct {
 	removestatic  chan *discover.Node
 	addtrusted    chan *discover.Node
 	removetrusted chan *discover.Node
+	deletestatic  chan *discover.Node
 	posthandshake chan *conn
 	addpeer       chan *conn
 	delpeer       chan peerDrop
@@ -320,6 +321,22 @@ func (srv *Server) RemovePeer(node *discover.Node) {
 	}
 }
 
+// DeleteStaticPeer  delete static statatus from the given node
+// Do Not Disconnect
+func (srv *Server) DeleteStaticPeer(node *discover.Node) {
+	select {
+	case srv.deletestatic <- node:
+	case <-srv.quit:
+	}
+}
+
+// DeleteStaticPeers  delete all static statatus
+func (srv *Server) DeleteStaticPeers() {
+	for _, node := range srv.StaticNodes {
+		srv.DeleteStaticPeer(node)
+	}
+}
+
 // AddTrustedPeer adds the given node to a reserved whitelist which allows the
 // node to always connect, even if the slot are full.
 func (srv *Server) AddTrustedPeer(node *discover.Node) {
@@ -448,6 +465,7 @@ func (srv *Server) Start() (err error) {
 	srv.posthandshake = make(chan *conn)
 	srv.addstatic = make(chan *discover.Node)
 	srv.removestatic = make(chan *discover.Node)
+	srv.deletestatic = make(chan *discover.Node)
 	srv.addtrusted = make(chan *discover.Node)
 	srv.removetrusted = make(chan *discover.Node)
 	srv.peerOp = make(chan peerOpFunc)
@@ -646,6 +664,12 @@ running:
 			if p, ok := peers[n.ID]; ok {
 				p.Disconnect(DiscRequested)
 			}
+		case n := <-srv.deletestatic:
+			// This channel is used by RemovePeer to send a
+			// disconnect request to a peer and begin the
+			// stop keeping the node connected.
+			srv.log.Trace("Delete static node", "node", n)
+			dialstate.removeStatic(n)
 		case n := <-srv.addtrusted:
 			// This channel is used by AddTrustedPeer to add an enode
 			// to the trusted node set.
