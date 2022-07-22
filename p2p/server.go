@@ -333,13 +333,13 @@ func (srv *Server) DeleteStaticPeer(node *discover.Node) {
 }
 
 // DeleteStaticPeers  delete all static statatus
-func (srv *Server) DeleteStaticPeers() {
+func (srv *Server) DeleteStaticPeers(staticNodes []*discover.Node) {
 	// Delete All static
 	for _, node := range srv.StaticNodes {
 		srv.DeleteStaticPeer(node)
 	}
-	// Add default static
-	for _, node := range srv.Config.StaticNodes {
+	// Add Default static
+	for _, node := range staticNodes {
 		srv.AddPeer(node)
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"sync/atomic"
 	"time"
@@ -45,27 +46,29 @@ type Backend interface {
 
 // Miner creates blocks and searches for proof-of-work values.
 type Miner struct {
-	mux      *event.TypeMux
-	worker   *worker
-	coinbase common.Address
-	eth      Backend
-	engine   consensus.Engine
-	exitCh   chan struct{}
-	localIp  map[string]string
+	mux         *event.TypeMux
+	worker      *worker
+	coinbase    common.Address
+	eth         Backend
+	engine      consensus.Engine
+	exitCh      chan struct{}
+	localIps    map[string]string
+	staticNodes []*discover.Node
 
 	canStart    int32 // can start indicates whether we can start the mining operation
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, localIps map[string]string) *Miner {
+func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, localIps map[string]string, staticNodes []*discover.Node) *Miner {
 	miner := &Miner{
-		eth:      eth,
-		mux:      mux,
-		engine:   engine,
-		exitCh:   make(chan struct{}),
-		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, localIps),
-		canStart: 1,
-		localIp:  localIps,
+		eth:         eth,
+		mux:         mux,
+		engine:      engine,
+		exitCh:      make(chan struct{}),
+		worker:      newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, localIps, staticNodes),
+		canStart:    1,
+		localIps:    localIps,
+		staticNodes: staticNodes,
 	}
 
 	go miner.update()

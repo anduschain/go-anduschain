@@ -185,8 +185,9 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	TODO: CSW: Get LocalIp convert data
 	*/
 	localIps := stack.Config().LocalIps()
+	staticNodes := stack.Config().StaticNodes()
 
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, localIps)
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.MinerRecommit, config.MinerGasFloor, config.MinerGasCeil, localIps, staticNodes)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData))
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, eth.miner); err != nil {

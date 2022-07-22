@@ -203,7 +203,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
 			// TODO CSW: static node -> dynamic node
-			dc.backend.Server().DeleteStaticPeers()
+			dc.backend.Server().DeleteStaticPeers(dc.staticNodes)
 			// TODO CSW: convert ip-address using local-ips.json
 			for i, enode := range enodes {
 				eNode := enode

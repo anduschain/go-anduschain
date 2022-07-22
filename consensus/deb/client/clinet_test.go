@@ -58,7 +58,7 @@ func init() {
 	var err error
 
 	exitWorker = make(chan struct{})
-	client = NewDebClient(params.TestChainConfig, exitWorker)
+	client = NewDebClient(params.TestChainConfig, exitWorker, make(map[string]string), nil)
 	if client != nil {
 		log.Error("new deb client", "msg", err)
 	}

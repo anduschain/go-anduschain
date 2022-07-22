@@ -11,6 +11,7 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
@@ -78,17 +79,19 @@ type DebClient struct {
 	statusFeed  event.Feed // process status feed
 	closeClient event.Feed
 
-	exitWorker chan struct{}
-	localIps   map[string]string
+	exitWorker  chan struct{}
+	localIps    map[string]string
+	staticNodes []*discover.Node
 }
 
-func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}, localIps map[string]string) *DebClient {
+func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}, localIps map[string]string, staticNodes []*discover.Node) *DebClient {
 	dc := DebClient{
-		ctx:        context.Background(),
-		config:     config,
-		exitWorker: exitWorker,
-		otprn:      make(map[common.Hash]*types.Otprn),
-		localIps:   localIps,
+		ctx:         context.Background(),
+		config:      config,
+		exitWorker:  exitWorker,
+		otprn:       make(map[common.Hash]*types.Otprn),
+		localIps:    localIps,
+		staticNodes: staticNodes,
 	}
 
 	go dc.workerCheckLoop()

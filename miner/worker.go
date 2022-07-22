@@ -31,6 +31,7 @@ import (
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/deckarep/golang-set"
 	"math/big"
@@ -211,7 +212,7 @@ type worker struct {
 	finalizeCh chan struct{}
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
 	worker := &worker{
 		config:             config,
 		engine:             engine,
@@ -264,7 +265,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	go worker.taskLoop()
 
 	if worker.config.Deb != nil {
-		worker.debClient = client.NewDebClient(config, worker.exitCh, loacalIps)
+		worker.debClient = client.NewDebClient(config, worker.exitCh, loacalIps, staticNodes)
 		// TODO(hakuna) : new version miner process, event receiver
 		worker.fnStatusdSub = worker.debClient.SubscribeFairnodeStatusEvent(worker.fnStatusCh)
 		worker.fnClientCLoseSub = worker.debClient.SubscribeClientCloseEvent(worker.fnClientCloseCh)
