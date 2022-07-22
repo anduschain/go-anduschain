@@ -264,11 +264,11 @@ func (b *LesApiBackend) ProtocolVersion() int {
 }
 
 func (b *LesApiBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return big.NewInt(params.DefaultGasFee), nil
+	return b.GasPrice(), nil
 }
 
 func (b *LesApiBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	return big.NewInt(params.DefaultGasFee), nil
+	return b.GasPrice(), nil
 }
 
 func (b *LesApiBackend) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (firstBlock *big.Int, reward [][]*big.Int, baseFee []*big.Int, gasUsedRatio []float64, err error) {

@@ -299,7 +299,7 @@ func (b *EthAPIBackend) SyncProgress() ethereum.SyncProgress {
 }
 
 func (b *EthAPIBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	return big.NewInt(params.DefaultGasFee), nil
+	return b.GasPrice(), nil
 }
 
 func (b *EthAPIBackend) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (firstBlock *big.Int, reward [][]*big.Int, baseFee []*big.Int, gasUsedRatio []float64, err error) {
@@ -318,7 +318,7 @@ func (b *EthAPIBackend) ProtocolVersion() int {
 }
 
 func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return big.NewInt(params.DefaultGasFee), nil
+	return b.GasPrice(), nil
 }
 
 func (b *EthAPIBackend) ChainDb() ethdb.Database {
