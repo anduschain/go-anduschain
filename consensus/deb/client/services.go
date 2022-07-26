@@ -8,6 +8,7 @@ import (
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
+	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
@@ -146,8 +147,22 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 	}
 }
 
+func (dc *DebClient) disconnectNonStatic() {
+	peers := dc.backend.Server().Peers()
+	log.Info("League End: disconnect non static peer", "peers", len(peers))
+	for idx, peer := range peers {
+		if !peer.Info().Network.Static {
+			if idx%2 == 0 {
+				log.Info("Disconnect peer", "id", peer.ID())
+				peer.Disconnect(p2p.DiscQuitting)
+			}
+		}
+	}
+}
+
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
+	defer dc.disconnectNonStatic()
 
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,
