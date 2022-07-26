@@ -150,11 +150,13 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 func (dc *DebClient) disconnectNonStatic() {
 	peers := dc.backend.Server().Peers()
 	log.Info("League End: disconnect non static peer", "peers", len(peers))
-	for idx, peer := range peers {
-		if !peer.Info().Network.Static {
-			if idx%2 == 0 {
-				log.Info("Disconnect peer", "id", peer.ID())
-				peer.Disconnect(p2p.DiscQuitting)
+	if len(peers) > dc.backend.Server().MaxPeers/3*2 {
+		for idx, peer := range peers {
+			if !peer.Info().Network.Static {
+				if idx%2 == 0 {
+					log.Info("Disconnect peer", "id", peer.ID())
+					peer.Disconnect(p2p.DiscQuitting)
+				}
 			}
 		}
 	}
