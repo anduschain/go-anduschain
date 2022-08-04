@@ -126,16 +126,7 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 		log.Warn("Sanitizing invalid miner gas price", "provided", config.MinerGasPrice, "updated", DefaultConfig.MinerGasPrice)
 		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
 	}
-	// TODO: CSW clique allow txpool gasLimit 0
-	log.Info("CSW===============================================")
-	log.Info("CSW============", "config", config)
-	log.Info("CSW===============================================2")
-	if config.Genesis.Config.Clique != nil && config.MinerGasPrice.Cmp(common.Big0) == 0 {
-		config.TxPool.PriceLimit = uint64(0)
-	} else if config.MinerGasPrice.Cmp(common.Big0) == 0 {
-		log.Warn("Sanitizing invalid miner gas price", "provided", config.MinerGasPrice, "updated", DefaultConfig.MinerGasPrice)
-		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
-	}
+
 	// Assemble the Ethereum object
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
@@ -144,6 +135,14 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
+	}
+
+	// TODO: CSW clique allow txpool gasLimit 0
+	if chainConfig.Clique != nil && config.MinerGasPrice.Cmp(common.Big0) == 0 {
+		config.TxPool.PriceLimit = uint64(0)
+	} else if config.MinerGasPrice.Cmp(common.Big0) == 0 {
+		log.Warn("Sanitizing invalid miner gas price", "provided", config.MinerGasPrice, "updated", DefaultConfig.MinerGasPrice)
+		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
 	}
 
 	log.Info("Initialised chain configuration", "config", chainConfig)
