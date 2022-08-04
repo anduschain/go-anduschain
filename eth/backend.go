@@ -121,9 +121,8 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	if !config.SyncMode.IsValid() {
 		return nil, fmt.Errorf("invalid sync mode %d", config.SyncMode)
 	}
-	log.Info("CSW=======================================================================")
-	log.Info("CSW===========================", "MinerGasPrice", config.MinerGasPrice)
-	if config.MinerGasPrice == nil || config.MinerGasPrice.Cmp(common.Big0) <= 0 {
+
+	if config.MinerGasPrice == nil || config.MinerGasPrice.Cmp(common.Big0) < 0 {
 		log.Warn("Sanitizing invalid miner gas price", "provided", config.MinerGasPrice, "updated", DefaultConfig.MinerGasPrice)
 		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
 	}
