@@ -291,7 +291,9 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 	}
 	// Subscribe events from blockchain
 	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
-
+	log.Info("CSW==============================================")
+	log.Info("CSW==============================================", "gasPrice", pool.gasPrice)
+	log.Info("CSW==============================================2")
 	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()

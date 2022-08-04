@@ -140,7 +140,6 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	// TODO: CSW clique allow txpool gasLimit 0
 	if chainConfig.Clique != nil && config.MinerGasPrice.Cmp(common.Big0) == 0 {
 		config.TxPool.PriceLimit = uint64(0)
-		log.Info("CSW==============================", "txPool.PriceLimit", config.TxPool.PriceLimit)
 	} else if config.MinerGasPrice.Cmp(common.Big0) == 0 {
 		log.Warn("Sanitizing invalid miner gas price", "provided", config.MinerGasPrice, "updated", DefaultConfig.MinerGasPrice)
 		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
