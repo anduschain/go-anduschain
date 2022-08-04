@@ -203,7 +203,8 @@ func (config *TxPoolConfig) sanitize() TxPoolConfig {
 		log.Warn("Sanitizing invalid txpool journal time", "provided", conf.Rejournal, "updated", time.Second)
 		conf.Rejournal = time.Second
 	}
-	if conf.PriceLimit < 1 {
+	// TODO: CSW allow gasLimit = 0
+	if conf.PriceLimit < 0 {
 		log.Warn("Sanitizing invalid txpool price limit", "provided", conf.PriceLimit, "updated", DefaultTxPoolConfig.PriceLimit)
 		conf.PriceLimit = DefaultTxPoolConfig.PriceLimit
 	}
@@ -291,9 +292,6 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 	}
 	// Subscribe events from blockchain
 	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
-	log.Info("CSW==============================================", "gasLimit", config.PriceLimit)
-	log.Info("CSW==============================================", "gasPrice", pool.gasPrice)
-	log.Info("CSW==============================================2")
 	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()
@@ -676,8 +674,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		// account may be local even if the transaction arrived from the network
-		log.Info("CSW=================", "pool", pool.gasPrice)
-		log.Info("CSW=================", "tx", tx.GasPrice())
 		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
