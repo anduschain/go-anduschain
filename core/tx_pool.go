@@ -649,13 +649,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrInvalidSender
 	}
 
-	log.Info("======================================================", "from", from)
-	log.Info("======================================================", "cost", tx.Cost())
-	log.Info("======================================================", "getBalance", pool.currentState.GetBalance(from))
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		log.Info("CSW===============", "from", from, "balance", pool.currentState.GetBalance(from), "cost", tx.Cost())
 		return ErrInsufficientFunds
 	}
 
@@ -678,6 +674,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	case types.GeneralTx, types.EthTx:
 		// Drop non-local transactions under our own minimal accepted gas price
 		// account may be local even if the transaction arrived from the network
+		log.Info("CSW=================", "pool", pool.gasPrice)
+		log.Info("CSW=================", "tx", tx.GasPrice())
 		if pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 			return ErrUnderpriced
 		}
