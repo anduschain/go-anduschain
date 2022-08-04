@@ -127,6 +127,7 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 		config.MinerGasPrice = new(big.Int).Set(DefaultConfig.MinerGasPrice)
 	}
 	// TODO: CSW clique allow txpool gasLimit 0
+	log.Info("CSW============", "config", config.Genesis.Config)
 	if config.Genesis.Config.Clique != nil && config.MinerGasPrice.Cmp(common.Big0) == 0 {
 		config.TxPool.PriceLimit = uint64(0)
 	} else if config.MinerGasPrice.Cmp(common.Big0) == 0 {
