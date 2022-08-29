@@ -1,4 +1,4 @@
-// Package ecvrf implements ECVRF-EDWARDS25519-SHA512-TAI, a verifiable random
+// Package vrf implements ECVRF-EDWARDS25519-SHA512-TAI, a verifiable random
 // function described in draft-irtf-cfrg-vrf-10.
 // This VRF uses the Edwards form of Curve25519, SHA512 and the try-and-increment
 // hash-to-curve function.
@@ -13,9 +13,8 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
-	"io"
-
 	"filippo.io/edwards25519"
+	"io"
 )
 
 const (
