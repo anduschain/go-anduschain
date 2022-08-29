@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -314,7 +315,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	}
 	// Generate ephemeral key if no datadir is being used.
 	if c.DataDir == "" {
-		key, err := crypto.GenerateKey()
+		key, err := vrf.GenerateKey()
 		if err != nil {
 			log.Crit(fmt.Sprintf("Failed to generate ephemeral node key: %v", err))
 		}
@@ -326,7 +327,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 		return key
 	}
 	// No persistent key found, generate and store a new one.
-	key, err := crypto.GenerateKey()
+	key, err := vrf.GenerateKey()
 	if err != nil {
 		log.Crit(fmt.Sprintf("Failed to generate node key: %v", err))
 	}

@@ -17,6 +17,7 @@
 package types
 
 import (
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"math/big"
 	"testing"
 
@@ -25,7 +26,7 @@ import (
 )
 
 func TestEIP155Signing(t *testing.T) {
-	key, _ := crypto.GenerateKey()
+	key, _ := vrf.GenerateKey()
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
 	signer := NewEIP155Signer(big.NewInt(18))
@@ -44,7 +45,7 @@ func TestEIP155Signing(t *testing.T) {
 }
 
 func TestEIP155ChainId(t *testing.T) {
-	key, _ := crypto.GenerateKey()
+	key, _ := vrf.GenerateKey()
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
 	signer := NewEIP155Signer(big.NewInt(18))

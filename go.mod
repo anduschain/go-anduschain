@@ -3,6 +3,7 @@ module github.com/anduschain/go-anduschain
 go 1.16
 
 require (
+	filippo.io/edwards25519 v1.0.0
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
 	github.com/btcsuite/btcd v0.22.0-beta
@@ -29,10 +30,8 @@ require (
 	github.com/influxdata/influxdb v1.8.3
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/jedisct1/go-minisign v0.0.0-20211028175153-1c139d1cc84b
-	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/usb v0.0.2
-	github.com/karalabe/xgo v0.0.0-20191115072854-c5ccff8648a7 // indirect
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -42,7 +41,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
 	github.com/rjeczalik/notify v0.9.2
-	github.com/robertkrimen/otto v0.0.0-20211024170158-b87d35c0b86f
 	github.com/rs/cors v1.7.0
 	github.com/status-im/keycard-go v0.0.0-20211109104530-b0e0482ba91d
 	github.com/stretchr/testify v1.7.0
@@ -59,6 +57,5 @@ require (
 	gopkg.in/inconshreveable/log15.v2 v2.0.0-20200109203555-b30bc20e4fd1
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6
-	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
 )

@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 
 	"github.com/anduschain/go-anduschain/crypto"
 	pcsc "github.com/gballet/go-libpcsclite"
@@ -63,7 +64,7 @@ type SecureChannelSession struct {
 // NewSecureChannelSession creates a new secure channel for the given card and public key.
 func NewSecureChannelSession(card *pcsc.Card, keyData []byte) (*SecureChannelSession, error) {
 	// Generate an ECDSA keypair for ourselves
-	key, err := crypto.GenerateKey()
+	key, err := vrf.GenerateKey()
 	if err != nil {
 		return nil, err
 	}

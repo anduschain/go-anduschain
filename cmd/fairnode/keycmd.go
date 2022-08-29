@@ -10,6 +10,7 @@ import (
 	"github.com/anduschain/go-anduschain/console"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/fairnode"
 	"github.com/anduschain/go-anduschain/fairnode/fairdb"
 	"github.com/anduschain/go-anduschain/params"
@@ -54,7 +55,7 @@ func makeFairNodeKey(ctx *cli.Context) error {
 		return errors.New("Keyfile already exists")
 	}
 
-	privateKey, err := crypto.GenerateKey()
+	privateKey, err := vrf.GenerateKey()
 	if err != nil {
 		log.Error("Failed to generate random private key", "error", err)
 		return err

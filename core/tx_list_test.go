@@ -17,18 +17,18 @@
 package core
 
 import (
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"math/rand"
 	"testing"
 
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/crypto"
 )
 
 // Tests that transactions can be added to strict lists and list contents and
 // nonce boundaries are correctly maintained.
 func TestStrictTxListAdd(t *testing.T) {
 	// Generate a list of transactions to insert
-	key, _ := crypto.GenerateKey()
+	key, _ := vrf.GenerateKey()
 
 	txs := make(types.Transactions, 1024)
 	for i := 0; i < len(txs); i++ {

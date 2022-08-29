@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"flag"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"net"
 	"os"
 
@@ -62,7 +63,7 @@ func main() {
 	}
 	switch {
 	case *genKey != "":
-		nodeKey, err = crypto.GenerateKey()
+		nodeKey, err = vrf.GenerateKey()
 		if err != nil {
 			utils.Fatalf("could not generate key: %v", err)
 		}

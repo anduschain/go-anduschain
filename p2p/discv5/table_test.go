@@ -19,6 +19,7 @@ package discv5
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"math/rand"
 
 	"net"
@@ -28,7 +29,6 @@ import (
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto"
 )
 
 type nullTransport struct{}
@@ -329,7 +329,7 @@ func gen(typ interface{}, rand *rand.Rand) interface{} {
 }
 
 func newkey() *ecdsa.PrivateKey {
-	key, err := crypto.GenerateKey()
+	key, err := vrf.GenerateKey()
 	if err != nil {
 		panic("couldn't generate key: " + err.Error())
 	}

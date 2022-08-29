@@ -29,6 +29,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
@@ -67,7 +68,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		panic(err)
 	}
 
-	testMiner, _ := crypto.GenerateKey()
+	testMiner, _ := vrf.GenerateKey()
 	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
 	miner, _ := backends.NewSimulatedBackend(gspec.Alloc, params.GenesisGasLimit)
 	miner.Start(testMinerAddress)

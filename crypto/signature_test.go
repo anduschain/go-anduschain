@@ -19,6 +19,7 @@ package crypto
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"reflect"
 	"testing"
 
@@ -120,7 +121,7 @@ func TestPubkeyRandom(t *testing.T) {
 	const runs = 200
 
 	for i := 0; i < runs; i++ {
-		key, err := GenerateKey()
+		key, err := vrf.GenerateKey()
 		if err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
 		}

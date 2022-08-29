@@ -19,6 +19,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -95,7 +96,7 @@ func init() {
 	ringKeys[0] = benchRootKey
 	ringAddrs[0] = benchRootAddr
 	for i := 1; i < len(ringKeys); i++ {
-		ringKeys[i], _ = crypto.GenerateKey()
+		ringKeys[i], _ = vrf.GenerateKey()
 		ringAddrs[i] = crypto.PubkeyToAddress(ringKeys[i].PublicKey)
 	}
 }

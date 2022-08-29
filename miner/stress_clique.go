@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -51,11 +52,11 @@ func main() {
 	// Generate a batch of accounts to seal and fund with
 	faucets := make([]*ecdsa.PrivateKey, 128)
 	for i := 0; i < len(faucets); i++ {
-		faucets[i], _ = crypto.GenerateKey()
+		faucets[i], _ = vrf.GenerateKey()
 	}
 	sealers := make([]*ecdsa.PrivateKey, 4)
 	for i := 0; i < len(sealers); i++ {
-		sealers[i], _ = crypto.GenerateKey()
+		sealers[i], _ = vrf.GenerateKey()
 	}
 	// Create a Clique network based off of the Rinkeby config
 	genesis := makeGenesis(faucets, sealers)

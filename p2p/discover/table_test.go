@@ -19,6 +19,7 @@ package discover
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"math/rand"
 	"sync"
 
@@ -654,7 +655,7 @@ func gen(typ interface{}, rand *rand.Rand) interface{} {
 }
 
 func newkey() *ecdsa.PrivateKey {
-	key, err := crypto.GenerateKey()
+	key, err := vrf.GenerateKey()
 	if err != nil {
 		panic("couldn't generate key: " + err.Error())
 	}

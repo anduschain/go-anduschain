@@ -17,6 +17,7 @@
 package keystore
 
 import (
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -30,7 +31,6 @@ import (
 
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/event"
 )
 
@@ -347,7 +347,7 @@ func TestWalletNotifications(t *testing.T) {
 func TestImportECDSA(t *testing.T) {
 	dir, ks := tmpKeyStore(t, true)
 	defer os.RemoveAll(dir)
-	key, err := crypto.GenerateKey()
+	key, err := vrf.GenerateKey()
 	if err != nil {
 		t.Fatalf("failed to generate key: %v", key)
 	}
