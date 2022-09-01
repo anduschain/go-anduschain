@@ -210,6 +210,8 @@ type worker struct {
 
 	finalBlock *types.Block
 	finalizeCh chan struct{}
+
+	dbftStatusCh chan types.DbftStatusEvent
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
@@ -245,6 +247,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		submitBlockCh:     make(chan *types.Block),
 		fnSignCh:          make(chan []byte),
 		finalizeCh:        make(chan struct{}),
+
+		// for dbft
+		dbftStatusCh: make(chan types.DbftStatusEvent),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -272,6 +277,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 		go worker.clientStatusLoop() // client close check and mininig canceled
 		go worker.leagueStatusLoop() // for league status message
+	} else if worker.config.Dbft != nil {
+		// TODO(woody) : debBFT
+		go worker.bftLoop()
 	}
 
 	// Submit first work to initialize pending state.
@@ -1368,4 +1376,17 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		w.updateSnapshot()
 	}
 	return nil
+}
+
+// resultLoop is a standalone goroutine to handle sealing result submitting
+// and flush relative data to the database.
+func (w *worker) bftLoop() {
+	for {
+		select {
+		case ev := <-w.dbftStatusCh:
+			log.Info(ev.Status.String())
+		case <-w.exitCh:
+			log.Info("Worker has exited")
+		}
+	}
 }

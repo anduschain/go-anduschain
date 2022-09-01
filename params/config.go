@@ -101,29 +101,41 @@ var (
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil}
+		TestDebConfig, nil, nil}
 
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil}
+		TestDebConfig, nil, nil}
 
 	AllDebProtocolChanges = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil}
+		TestDebConfig, nil, nil}
 
 	TestCliqueChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, TestCliqueConfig}
+		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
 
 	AllCliqueProtocolChanges = &ChainConfig{
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+
+	TestDbftChainConfig = &ChainConfig{
+		GeneralId, big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		nil, nil, &DbftConfig{Period: 0, Epoch: 30000}}
+
+	AllDbftProtocolChanges = &ChainConfig{
+		big.NewInt(1337), big.NewInt(0), nil, false,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		nil, nil, &DbftConfig{Period: 0, Epoch: 30000}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -153,6 +165,7 @@ type ChainConfig struct {
 	// Various consensus engines
 	Deb    *DebConfig    `json:"deb,omitempty"`
 	Clique *CliqueConfig `json:"clique,omitempty"`
+	Dbft   *DbftConfig   `json:"dbft,omitempty"`
 }
 
 type DebConfig struct {
@@ -197,6 +210,17 @@ func (c *CliqueConfig) String() string {
 	return "clique"
 }
 
+// DbftConfig is the consensus engine configs for proof-of-authority based sealing.
+type DbftConfig struct {
+	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
+	Epoch  uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
+}
+
+// String implements the stringer interface, returning the consensus engine details.
+func (c *DbftConfig) String() string {
+	return "dbft"
+}
+
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
 	var engine interface{}
@@ -205,6 +229,8 @@ func (c *ChainConfig) String() string {
 		engine = c.Deb
 	case c.Clique != nil:
 		engine = c.Clique
+	case c.Dbft != nil:
+		engine = c.Dbft
 	default:
 		engine = "unknown"
 	}
@@ -268,7 +294,7 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 	return isForked(c.ConstantinopleBlock, num)
 }
 
-// IsConstantinople returns whether num is either equal to the Constantinople fork block or greater.
+// IsPohang returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsPohang(num *big.Int) bool {
 	return isForked(c.PohangBlock, num)
 }

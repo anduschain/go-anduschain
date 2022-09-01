@@ -62,3 +62,8 @@ type FairnodeStatusEvent struct {
 }
 
 type ClientClose struct{}
+
+type DbftStatusEvent struct {
+	Status  DbftStatus
+	Payload interface{}
+}
