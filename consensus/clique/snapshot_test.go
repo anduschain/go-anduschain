@@ -19,7 +19,6 @@ package clique
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"sort"
 	"testing"
@@ -67,7 +66,7 @@ func (ap *testerAccountPool) address(account string) common.Address {
 	}
 	// Ensure we have a persistent key for the account
 	if ap.accounts[account] == nil {
-		ap.accounts[account], _ = vrf.GenerateKey()
+		ap.accounts[account], _ = crypto.GenerateKey()
 	}
 	// Resolve and return the Ethereum address
 	return crypto.PubkeyToAddress(ap.accounts[account].PublicKey)
@@ -78,7 +77,7 @@ func (ap *testerAccountPool) address(account string) common.Address {
 func (ap *testerAccountPool) sign(header *types.Header, signer string) {
 	// Ensure we have a persistent key for the signer
 	if ap.accounts[signer] == nil {
-		ap.accounts[signer], _ = vrf.GenerateKey()
+		ap.accounts[signer], _ = crypto.GenerateKey()
 	}
 	// Sign the header and embed the signature in extra data
 	sig, _ := crypto.Sign(SealHash(header).Bytes(), ap.accounts[signer])

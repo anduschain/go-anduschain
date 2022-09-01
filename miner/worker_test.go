@@ -20,7 +20,6 @@ import (
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/p2p"
 	proto "github.com/anduschain/go-anduschain/protos/common"
@@ -47,11 +46,11 @@ var (
 	debChainConfig *params.ChainConfig
 
 	// Test accounts
-	testBankKey, _  = vrf.GenerateKey()
+	testBankKey, _  = crypto.GenerateKey()
 	testBankAddress = crypto.PubkeyToAddress(testBankKey.PublicKey)
 	testBankFunds   = big.NewInt(1000000000000000000)
 
-	testUserKey, _  = vrf.GenerateKey()
+	testUserKey, _  = crypto.GenerateKey()
 	testUserAddress = crypto.PubkeyToAddress(testUserKey.PublicKey)
 
 	// Test transactions
