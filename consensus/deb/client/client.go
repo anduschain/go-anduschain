@@ -142,7 +142,7 @@ func (dc *DebClient) Start(backend Backend) error {
 
 	minerIp := ""
 
-	// TODO: CSW
+	// TODO: CSW => 지정하면 fairnode가 지정된 IP를, 지정하지 않으면 fairnode가 인식한 ip를 채굴리그 IP로 지정
 	// Use Local IP for mining
 	if backend.Server().UseLocalIp == true {
 		minerIp = getMinerIP()
