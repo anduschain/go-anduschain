@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/eth/filters"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/event"
@@ -116,7 +115,7 @@ func (b *SimulatedBackend) Coinbase() common.Address {
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) (*miner.Miner, *SimulatedBackend) {
-	testMiner, _ := vrf.GenerateKey()
+	testMiner, _ := crypto.GenerateKey()
 	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
 	database := ethdb.NewMemDatabase()
 	genesis := core.Genesis{Config: params.AllDebProtocolChanges, GasLimit: gasLimit, Alloc: alloc}
