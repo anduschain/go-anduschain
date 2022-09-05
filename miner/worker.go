@@ -212,6 +212,7 @@ type worker struct {
 	finalizeCh chan struct{}
 
 	dbftStatusCh chan types.DbftStatusEvent
+	dbftStatus   types.DbftStatus
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
@@ -250,6 +251,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 		// for dbft
 		dbftStatusCh: make(chan types.DbftStatusEvent),
+		dbftStatus:   types.DBFT_PENDING, // Wait for start
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -605,6 +607,7 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
+			w.dbftStatus = types.DBFT_PROPOSE // TODO(woody): for dbft
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 		case ev := <-w.chainSideCh:
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {

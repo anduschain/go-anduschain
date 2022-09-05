@@ -186,7 +186,8 @@ func ProtoToStatus(status proto.ProcessStatus) FnStatus {
 type DbftStatus uint64
 
 const (
-	DBFT_PROPOSE DbftStatus = iota
+	DBFT_PENDING DbftStatus = iota
+	DBFT_PROPOSE
 	DBFT_PREAPRE
 	DBFT_VOTE
 	DBFT_COMMIT
@@ -194,6 +195,8 @@ const (
 
 func (d DbftStatus) String() string {
 	switch d {
+	case DBFT_PENDING:
+		return "PENDING"
 	case DBFT_PROPOSE:
 		return "PROPSE"
 	case DBFT_PREAPRE:
