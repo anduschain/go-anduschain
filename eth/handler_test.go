@@ -19,7 +19,6 @@ package eth
 import (
 	"github.com/anduschain/go-anduschain/accounts/abi/bind/backends"
 	"github.com/anduschain/go-anduschain/consensus/deb"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"math"
 	"math/big"
 	"math/rand"
@@ -477,7 +476,7 @@ func testDAOChallenge(t *testing.T, localForked, remoteForked bool, timeout bool
 		genesis       = gspec.MustCommit(db)
 		blockchain, _ = core.NewBlockChain(db, nil, config, pow, vm.Config{})
 	)
-	testMiner, _ := vrf.GenerateKey()
+	testMiner, _ := crypto.GenerateKey()
 	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
 	miner, _ := backends.NewSimulatedBackend(gspec.Alloc, params.GenesisGasLimit)
 	miner.Start(testMinerAddress)
