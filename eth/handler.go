@@ -103,6 +103,9 @@ type ProtocolManager struct {
 	newLeagueBlockCh  chan types.NewLeagueBlockEvent
 	newLeagueBlockSub event.Subscription
 	miner             *miner.Miner
+
+	// TODO(CSW) : dbft
+	voteBlockSub *event.TypeMuxSubscription
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -231,6 +234,9 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.newLeagueBlockCh = make(chan types.NewLeagueBlockEvent, newLeagueBlockChanSize)
 	pm.newLeagueBlockSub = pm.miner.Worker().SubscribeNewLeagueBlockEvent(pm.newLeagueBlockCh)
 	go pm.leagueBroadCast()
+
+	pm.voteBlockSub = pm.eventMux.Subscribe(types.VoteBlockEvent{})
+	go pm.voteBroadcastLoop()
 }
 
 // league broadcasting loop
@@ -726,7 +732,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			p.MarkTransaction(tx.Hash())
 		}
 		pm.txpool.AddRemotes(txs)
-
+	// For Deb
 	case msg.Code == MakeLeagueBlockMsg:
 		var request types.NewLeagueBlockEvent
 		if err := msg.Decode(&request); err != nil {
@@ -735,6 +741,27 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		if pm.miner.Mining() {
 			pm.miner.Worker().LeagueBlockCh() <- &request
+		}
+	// For Dbft
+	case msg.Code == VoteBlockMsg:
+		// ToDo: Woody
+		var request types.VoteBlockEvent
+		if err := msg.Decode(&request); err != nil {
+			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		}
+
+		if pm.miner.Mining() {
+			pm.miner.Worker().VoteBlockCh() <- &request
+		}
+	case msg.Code == CommitBlockMsg:
+		// ToDo: Woody
+		var request types.VoteBlockEvent
+		if err := msg.Decode(&request); err != nil {
+			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		}
+
+		if pm.miner.Mining() {
+			pm.miner.Worker().VoteBlockCh() <- &request
 		}
 
 	default:
@@ -797,6 +824,13 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 	}
 }
 
+// TODO: CSW
+func (pm *ProtocolManager) BroadcastVoteBlock(block *types.VoteBlock) {
+	for _, peer := range pm.peers.peers {
+		peer.SendVoteBlock(block)
+	}
+}
+
 // Mined broadcast loop
 func (pm *ProtocolManager) minedBroadcastLoop() {
 	// automatically stops if unsubscribe
@@ -816,6 +850,16 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
 			return
+		}
+	}
+}
+
+// VoteBlock broadcast loop
+func (pm *ProtocolManager) voteBroadcastLoop() {
+	// automatically stops if unsubscribe
+	for obj := range pm.minedBlockSub.Chan() {
+		if ev, ok := obj.Data.(types.VoteBlockEvent); ok {
+			pm.BroadcastVoteBlock(ev.Block)
 		}
 	}
 }

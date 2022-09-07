@@ -40,6 +40,7 @@ const (
 	MimetypeTypedData         = "data/typed"
 	MimetypeClique            = "application/x-clique-header"
 	MimetypeTextPlain         = "text/plain"
+	MimetypeDbft              = "application/x-dbft-header"
 )
 
 // Wallet represents a software or hardware wallet that might contain one or more

@@ -295,6 +295,11 @@ func (p *peer) SendMakeLeagueBlock(eb *types.NewLeagueBlockEvent) error {
 	return p2p.Send(p.rw, MakeLeagueBlockMsg, eb)
 }
 
+// TODO: CSW
+func (p *peer) SendVoteBlock(block *types.VoteBlock) error {
+	return p2p.Send(p.rw, VoteBlockMsg, []interface{}{block})
+}
+
 // RequestOneHeader is a wrapper around the header query functions to fetch a
 // single header. It is used solely by the fetcher.
 func (p *peer) RequestOneHeader(hash common.Hash) error {

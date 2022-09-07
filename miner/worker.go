@@ -21,6 +21,7 @@ import (
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/dbft"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
@@ -211,8 +212,9 @@ type worker struct {
 	finalBlock *types.Block
 	finalizeCh chan struct{}
 
-	dbftStatusCh chan types.DbftStatusEvent
-	dbftStatus   types.DbftStatus
+	dbftStatus           types.DbftStatus
+	voteBlockCh          chan *types.VoteBlockEvent
+	possibleWinningBlock *types.VoteBlock // A set of possible winning voteblock
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
@@ -250,8 +252,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		finalizeCh:        make(chan struct{}),
 
 		// for dbft
-		dbftStatusCh: make(chan types.DbftStatusEvent),
-		dbftStatus:   types.DBFT_PENDING, // Wait for start
+		dbftStatus: types.DBFT_PENDING, // Wait for start
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -390,6 +391,11 @@ func (w *worker) SubscribeNewLeagueBlockEvent(ch chan<- types.NewLeagueBlockEven
 
 func (w *worker) LeagueBlockCh() chan *types.NewLeagueBlockEvent {
 	return w.leagueBlockCh
+}
+
+// for dbft
+func (w *worker) VoteBlockCh() chan *types.VoteBlockEvent {
+	return w.voteBlockCh
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -720,6 +726,12 @@ func (w *worker) resultLoop() {
 			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
 				continue
 			}
+			// TODO: CSW
+			if _, ok := w.engine.(*dbft.Dbft); ok {
+				if w.dbftStatus != types.DBFT_PENDING {
+					continue
+				}
+			}
 
 			// Short circuit when receiving empty result.
 			if block == nil {
@@ -748,6 +760,22 @@ func (w *worker) resultLoop() {
 				w.pendingMu.Unlock()
 
 				log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
+			} else if _, ok := w.engine.(*dbft.Dbft); ok {
+				// TODO: CSW
+				// 현재 저장되어잇는 possibleWinnig 블록의 블록넘버와 자신이 생성한 블록번호를 비교
+				// 자신의 블록번호가 더 크면, 자신의 투표를 포함해서 자신의 possibleWinningBlock 전송.
+				// 블록번호가 동일하면서, 자신의 difficulty 비교, difficulty가 더 크면 자신의 투펴를 포함해서 자신의 possibleWinningBlock 전송
+				// possibleWinningBlock에 저장된 블록의 difficulty가 더 크면, possibleWinning블록에 자신의 투표를 포함해서 possibleWinningBlock전송
+				w.pendingMu.Lock()
+				w.possibleWinning = block // made for me, saving possible block
+				w.pendingMu.Unlock()
+
+				log.Info("Save possible block for Broadcasting ", "hash", w.possibleWinning.Hash())
+				// TODO: CSW
+				// 상태를 바꾸고, 자신의 투표를 전송
+				w.dbftStatus = types.DBFT_PROPOSE
+				// Broadcast the block and announce VoteBlockEvent
+				w.mux.Post(types.VoteBlockEvent{VoteType: types.DBFT_VOTE, Block: w.possibleWinningBlock})
 			} else {
 				// Different block could share same sealhash, deep copy here to prevent write-write conflict.
 				var (
@@ -1381,13 +1409,39 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	return nil
 }
 
-// resultLoop is a standalone goroutine to handle sealing result submitting
-// and flush relative data to the database.
+// TODO: CSW
 func (w *worker) bftLoop() {
 	for {
 		select {
-		case ev := <-w.dbftStatusCh:
-			log.Info(ev.Status.String())
+		case ev := <-w.voteBlockCh:
+			voteType := ev.VoteType
+			voteBlock := ev.Block
+			if voteType == types.DBFT_VOTE {
+				if w.dbftStatus != types.DBFT_PROPOSE {
+					continue
+				}
+				if w.possibleWinningBlock.Block.Number().Cmp(voteBlock.Block.Number()) == 0 {
+					continue
+				}
+				// 자신이 가진 possibleWinningBlock과 비교하여, 새로 들어온 블록의 difficulty가 크면, 투표를 하고 전송
+				// 그렇지 않은 경우 무시
+				// 동일한 블록에 자신이 가진 투표수보다 새로 들어온 투표수가 많으면 전송, 그렇지 않으면 무시
+				// 전체 투표수가 임계투표수 이상이면 상태를 변경
+				w.dbftStatus = types.DBFT_PREPARE
+				// 자신이 투표하여 새로운 Commit Message 전송..
+				// possibleWinningFinsishBlock 생성
+			} else if voteType == types.DBFT_COMMIT {
+				if w.dbftStatus != types.DBFT_PREPARE {
+					continue
+				}
+				if w.possibleWinningBlock.Block.Number().Cmp(voteBlock.Block.Number()) == 0 {
+					continue
+				}
+				// 자신이 가진 possibleWinningFinishBlock과 동일한 block에 대하여 commit이 온 경우 투표하고, 재 전송
+				// .. possibleWinningFinishBlock의 투표자수가 임계치를 넘어가면
+				// 신규 블록 등록하고
+				// 새로운 블록 생성단계로 전환
+			}
 		case <-w.exitCh:
 			log.Info("Worker has exited")
 		}

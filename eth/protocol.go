@@ -55,7 +55,11 @@ const (
 	GetBlockBodiesMsg  = 0x05
 	BlockBodiesMsg     = 0x06
 	NewBlockMsg        = 0x07
+	// Protocol messages belonging to deb
 	MakeLeagueBlockMsg = 0x08
+	// Protocol messages belonging to dbft
+	VoteBlockMsg   = 0x09
+	CommitBlockMsg = 0x00a
 
 	// Protocol messages belonging to eth/63
 	GetNodeDataMsg = 0x0d
