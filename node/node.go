@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"net"
 	"os"
@@ -75,6 +76,8 @@ type Node struct {
 	lock sync.RWMutex
 
 	log log.Logger
+
+	vrfKey *vrf.PrivateKey
 }
 
 // New creates a new P2P node, ready for protocol registration.
@@ -110,6 +113,8 @@ func New(conf *Config) (*Node, error) {
 	if conf.Logger == nil {
 		conf.Logger = log.New()
 	}
+	vrfKey, _ := vrf.GenerateKey(nil)
+
 	// Note: any interaction with Config that would create/touch files
 	// in the data directory or instance directory is delayed until Start.
 	return &Node{
@@ -122,6 +127,7 @@ func New(conf *Config) (*Node, error) {
 		wsEndpoint:        conf.WSEndpoint(),
 		eventmux:          new(event.TypeMux),
 		log:               conf.Logger,
+		vrfKey:            vrfKey,
 	}, nil
 }
 
@@ -660,6 +666,22 @@ func (n *Node) apis() []rpc.API {
 // Config returns the configuration of node.
 func (n *Node) Config() *Config {
 	return n.config
+}
+
+func (n *Node) VrfPrivateKey() *vrf.PrivateKey {
+	return n.vrfKey
+}
+
+func (n *Node) VrfPublicKey() (*vrf.PublicKey, error) {
+	return n.vrfKey.Public()
+}
+
+func (n *Node) VrfProve(message []byte) ([]byte, []byte, error) {
+	return n.vrfKey.Prove(message)
+}
+
+func (n *Node) VrfBytes() []byte {
+	return n.vrfKey.Bytes()
 }
 
 // containsLifecycle checks if 'lfs' contains 'l'.

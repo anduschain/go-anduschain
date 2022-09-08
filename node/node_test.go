@@ -18,6 +18,7 @@ package node
 
 import (
 	"errors"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"os"
@@ -30,7 +31,8 @@ import (
 )
 
 var (
-	testNodeKey, _ = vrf.GenerateKey()
+	testNodeKey, _ = crypto.GenerateKey()
+	vtestVrfKey, _ = vrf.GenerateKey(nil)
 )
 
 func testNodeConfig() *Config {
