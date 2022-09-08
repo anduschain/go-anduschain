@@ -650,9 +650,11 @@ func (c *Dbft) Seal(chain consensus.ChainReader, block *types.Block, results cha
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have:
-// * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
-// * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
+// TODO: CSW
 func (c *Dbft) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+	cHader := chain.CurrentHeader()
+	cHader.Number.Bytes()
+	crypto.Keccak256Hash()
 	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
 	if err != nil {
 		return nil

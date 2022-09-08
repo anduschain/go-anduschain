@@ -251,8 +251,6 @@ func TestRatio(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hashRatio := HashRatio(aliceVRF)
-	t.Log("hashRatio=", hashRatio)
 	verified, aliceVRFFromVerification, err := pk.Verify(alice, aliceProof)
 	if err != nil {
 		t.Fatal(err)
