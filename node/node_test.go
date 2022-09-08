@@ -32,7 +32,7 @@ import (
 
 var (
 	testNodeKey, _ = crypto.GenerateKey()
-	vtestVrfKey, _ = vrf.GenerateKey(nil)
+	testVrfKey, _  = vrf.GenerateKey(nil)
 )
 
 func testNodeConfig() *Config {
