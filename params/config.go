@@ -59,6 +59,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
+		PohangBlock:         big.NewInt(2000000),
 		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
