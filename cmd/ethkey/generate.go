@@ -19,7 +19,6 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -76,7 +75,7 @@ If you want to encrypt an existing private key, it can be specified by setting
 			}
 		} else {
 			// If not loaded, generate random.
-			privateKey, err = vrf.GenerateKey()
+			privateKey, err = crypto.GenerateKey()
 			if err != nil {
 				utils.Fatalf("Failed to generate random private key: %v", err)
 			}

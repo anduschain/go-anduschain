@@ -31,8 +31,8 @@ import (
 // API is a user facing RPC API to allow controlling the signer and voting
 // mechanisms of the proof-of-authority scheme.
 type API struct {
-	chain  consensus.ChainReader
-	clique *Clique
+	chain consensus.ChainReader
+	dbft  *Dbft
 }
 
 // GetSnapshot retrieves the state snapshot at a given block.
@@ -48,7 +48,7 @@ func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	return api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.dbft.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 }
 
 // GetSnapshotAtHash retrieves the state snapshot at a given block.
@@ -57,7 +57,7 @@ func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	return api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	return api.dbft.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 }
 
 // GetSigners retrieves the list of authorized signers at the specified block.
@@ -73,7 +73,7 @@ func (api *API) GetSigners(number *rpc.BlockNumber) ([]common.Address, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.dbft.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	snap, err := api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.dbft.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +95,11 @@ func (api *API) GetSignersAtHash(hash common.Hash) ([]common.Address, error) {
 
 // Proposals returns the current proposals the node tries to uphold and vote on.
 func (api *API) Proposals() map[common.Address]bool {
-	api.clique.lock.RLock()
-	defer api.clique.lock.RUnlock()
+	api.dbft.lock.RLock()
+	defer api.dbft.lock.RUnlock()
 
 	proposals := make(map[common.Address]bool)
-	for address, auth := range api.clique.proposals {
+	for address, auth := range api.dbft.proposals {
 		proposals[address] = auth
 	}
 	return proposals
@@ -108,19 +108,19 @@ func (api *API) Proposals() map[common.Address]bool {
 // Propose injects a new authorization proposal that the signer will attempt to
 // push through.
 func (api *API) Propose(address common.Address, auth bool) {
-	api.clique.lock.Lock()
-	defer api.clique.lock.Unlock()
+	api.dbft.lock.Lock()
+	defer api.dbft.lock.Unlock()
 
-	api.clique.proposals[address] = auth
+	api.dbft.proposals[address] = auth
 }
 
 // Discard drops a currently running proposal, stopping the signer from casting
 // further votes (either for or against).
 func (api *API) Discard(address common.Address) {
-	api.clique.lock.Lock()
-	defer api.clique.lock.Unlock()
+	api.dbft.lock.Lock()
+	defer api.dbft.lock.Unlock()
 
-	delete(api.clique.proposals, address)
+	delete(api.dbft.proposals, address)
 }
 
 type status struct {
@@ -140,7 +140,7 @@ func (api *API) Status() (*status, error) {
 		diff      = uint64(0)
 		optimals  = 0
 	)
-	snap, err := api.clique.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+	snap, err := api.dbft.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (api *API) Status() (*status, error) {
 			optimals++
 		}
 		diff += h.Difficulty.Uint64()
-		sealer, err := api.clique.Author(h)
+		sealer, err := api.dbft.Author(h)
 		if err != nil {
 			return nil, err
 		}
@@ -221,15 +221,15 @@ func (api *API) GetSigner(rlpOrBlockNr *blockNumberOrHashOrRLP) (common.Address,
 		if header == nil {
 			return common.Address{}, fmt.Errorf("missing block %v", blockNrOrHash.String())
 		}
-		return api.clique.Author(header)
+		return api.dbft.Author(header)
 	}
 	block := new(types.Block)
 	if err := rlp.DecodeBytes(rlpOrBlockNr.RLP, block); err == nil {
-		return api.clique.Author(block.Header())
+		return api.dbft.Author(block.Header())
 	}
 	header := new(types.Header)
 	if err := rlp.DecodeBytes(rlpOrBlockNr.RLP, header); err != nil {
 		return common.Address{}, err
 	}
-	return api.clique.Author(header)
+	return api.dbft.Author(header)
 }

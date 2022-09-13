@@ -18,7 +18,6 @@ package discv5
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"net"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ import (
 )
 
 func TestNetwork_Lookup(t *testing.T) {
-	key, _ := vrf.GenerateKey()
+	key, _ := crypto.GenerateKey()
 	network, err := newNetwork(lookupTestnet, key.PublicKey, "", nil)
 	if err != nil {
 		t.Fatal(err)

@@ -685,7 +685,7 @@ func (c *Dbft) APIs(chain consensus.ChainReader) []rpc.API {
 	return []rpc.API{{
 		Namespace: "clique",
 		Version:   "1.0",
-		Service:   &API{chain: chain, clique: c},
+		Service:   &API{chain: chain, dbft: c},
 		Public:    false,
 	}}
 }

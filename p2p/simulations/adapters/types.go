@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"net"
 	"os"
 	"strconv"
@@ -169,7 +168,7 @@ func (n *NodeConfig) UnmarshalJSON(data []byte) error {
 // RandomNodeConfig returns node configuration with a randomly generated ID and
 // PrivateKey
 func RandomNodeConfig() *NodeConfig {
-	key, err := vrf.GenerateKey()
+	key, err := crypto.GenerateKey()
 	if err != nil {
 		panic("unable to generate key")
 	}

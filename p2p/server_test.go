@@ -19,7 +19,7 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"errors"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/rand"
 	"net"
 	"reflect"
@@ -600,7 +600,7 @@ func (c *setupTransport) ReadMsg() (Msg, error) {
 }
 
 func newkey() *ecdsa.PrivateKey {
-	key, err := vrf.GenerateKey()
+	key, err := crypto.GenerateKey()
 	if err != nil {
 		panic("couldn't generate key: " + err.Error())
 	}

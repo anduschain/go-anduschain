@@ -21,7 +21,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
 	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 	"testing"
@@ -55,7 +54,7 @@ var (
 )
 
 func TestNewJoinTransaction(t *testing.T) {
-	key, err := vrf.GenerateKey()
+	key, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("could not generate key: %v", err)
 	}
@@ -134,7 +133,7 @@ func TestNewJoinTransaction(t *testing.T) {
 }
 
 func TestTransaction_MarshalJSON(t *testing.T) {
-	key, err := vrf.GenerateKey()
+	key, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("could not generate key: %v", err)
 	}
@@ -325,7 +324,7 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 	// Generate a batch of accounts to start with
 	keys := make([]*ecdsa.PrivateKey, 25)
 	for i := 0; i < len(keys); i++ {
-		keys[i], _ = vrf.GenerateKey()
+		keys[i], _ = crypto.GenerateKey()
 	}
 
 	signer := HomesteadSigner{}
@@ -374,7 +373,7 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 
 // TestTransactionJSON tests serializing/de-serializing to/from JSON.
 func TestTransactionJSON(t *testing.T) {
-	key, err := vrf.GenerateKey()
+	key, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("could not generate key: %v", err)
 	}

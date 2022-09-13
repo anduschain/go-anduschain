@@ -17,7 +17,7 @@
 package core
 
 import (
-	"github.com/anduschain/go-anduschain/crypto/vrf"
+	"github.com/anduschain/go-anduschain/crypto"
 	"math/rand"
 	"testing"
 
@@ -28,7 +28,7 @@ import (
 // nonce boundaries are correctly maintained.
 func TestStrictTxListAdd(t *testing.T) {
 	// Generate a list of transactions to insert
-	key, _ := vrf.GenerateKey()
+	key, _ := crypto.GenerateKey()
 
 	txs := make(types.Transactions, 1024)
 	for i := 0; i < len(txs); i++ {
