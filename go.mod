@@ -6,13 +6,13 @@ require (
 	filippo.io/edwards25519 v1.0.0
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
-	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v1.13.1
 	github.com/dop251/goja v0.0.0-20220405120441-9037c2b61cbf
 	github.com/elastic/gosigar v0.10.5
+	github.com/ethereum/go-ethereum v1.10.4
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff
