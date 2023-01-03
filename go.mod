@@ -6,13 +6,14 @@ require (
 	filippo.io/edwards25519 v1.0.0
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
+	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v1.13.1
 	github.com/dop251/goja v0.0.0-20220405120441-9037c2b61cbf
 	github.com/elastic/gosigar v0.10.5
-	github.com/ethereum/go-ethereum v1.10.4
+	github.com/ethereum/go-ethereum v1.10.22
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff
@@ -63,6 +64,8 @@ require (
 require (
 	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.21 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
