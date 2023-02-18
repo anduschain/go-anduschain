@@ -6,6 +6,7 @@ require (
 	filippo.io/edwards25519 v1.0.0
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/aristanetworks/goarista v0.0.0-20191015010157-ce4ff66f8dba
+	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
@@ -48,9 +49,9 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0
 	go.mongodb.org/mongo-driver v1.8.2
 	golang.org/x/crypto v0.4.0
-	golang.org/x/net v0.3.0
-	golang.org/x/sys v0.3.0
-	golang.org/x/text v0.5.0
+	golang.org/x/net v0.7.0
+	golang.org/x/sys v0.5.0
+	golang.org/x/text v0.7.0
 	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -79,7 +80,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.2 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20200108215221-bd8f9a0ef82f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
