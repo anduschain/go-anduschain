@@ -842,6 +842,9 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 	if err := vmError(); err != nil {
 		return nil, 0, false, err
 	}
+	if len(result.Revert()) > 0 {
+		return nil, 0, false, newRevertError(result)
+	}
 	return result.Return(), result.UsedGas, result.Failed(), err
 }
 
@@ -849,6 +852,8 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 // It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
 func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
 	result, _, _, err := s.doCall(ctx, args, blockNr, vm.Config{}, 5*time.Second)
+	// If the result contains a revert reason, try to unpack and return it.
+
 	return (hexutil.Bytes)(result), err
 }
 
