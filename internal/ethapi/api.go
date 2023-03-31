@@ -842,9 +842,14 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 	if err := vmError(); err != nil {
 		return nil, 0, false, err
 	}
+	fmt.Printf("CSW ReturnData %v\n", result.ReturnData)
+	fmt.Printf("CSW Err %v\n", result.Err)
+	fmt.Printf("CSW Revert %v\n", result.Revert())
+
 	if len(result.Revert()) > 0 {
 		return nil, 0, false, newRevertError(result)
 	}
+	fmt.Printf("CSW After revert check : %v\n", result)
 	return result.Return(), result.UsedGas, result.Failed(), err
 }
 
