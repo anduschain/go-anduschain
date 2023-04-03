@@ -2,7 +2,7 @@ version: "3"
 
 services:
   godaon:
-    image: anduslab/godaon:0.3.0
+    image: anduslab/godaon:0.8.2
     restart: unless-stopped
     ports:
       - "50505:50505"
