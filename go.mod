@@ -10,7 +10,7 @@ require (
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
-	github.com/docker/docker v23.0.1+incompatible
+	github.com/docker/docker v23.0.3+incompatible
 	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c
 	github.com/elastic/gosigar v0.14.2
 	github.com/ethereum/go-ethereum v1.10.26
