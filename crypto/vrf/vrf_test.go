@@ -60,7 +60,20 @@ func TestVrf(t *testing.T) {
 	m := []byte("foobar")
 	indexA, proof := Evaluate(privateKey, m)
 
-	indexB, err := ProofToHash(publicKeyECDSA, m, proof)
+	_, _, err = ecdsa.Sign(rand.Reader, privateKey, m)
+	if err != nil {
+		return
+	}
+
+	pubKey := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     publicKeyECDSA.X,
+		Y:     publicKeyECDSA.Y,
+	}
+
+	// X, Y 값을 uint256 포멧으로 hex64byte..
+
+	indexB, err := ProofToHash(pubKey, m, proof)
 	if err != nil {
 		t.Fatalf("ProofToHash(): %v", err)
 	}

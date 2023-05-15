@@ -4,6 +4,11 @@
 package deb
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"github.com/anduschain/go-anduschain/consensus"
 )
 
@@ -20,4 +25,14 @@ func NewPrivateDebApi(chain consensus.ChainReader, deb *Deb) *PrivateDebApi {
 
 func (api *PrivateDebApi) FairnodePubKey() string {
 	return api.deb.config.FairPubKey
+}
+
+func (api *PrivateDebApi) GenVrfKey() string {
+	privatekey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return ""
+	}
+	x509Encoded, _ := x509.MarshalECPrivateKey(privatekey)
+	priBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
+	return string(priBytes)
 }

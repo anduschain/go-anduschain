@@ -54,8 +54,8 @@ func Unmarshal(curve elliptic.Curve, data []byte) (x, y *big.Int) {
 	}
 
 	x, y = tx, ty // valid point: return it
-	fmt.Printf("Return %+v %+v\n", x, y)
-	return x, y
+
+	return
 }
 
 // Use the curve equation to calculate y² given x.
@@ -80,38 +80,4 @@ func defaultSqrt(x, p *big.Int) *big.Int {
 		return nil // x is not a square
 	}
 	return &r
-}
-
-// Unmarshal a compressed point in the form specified in section 4.3.6 of ANSI X9.62.
-func UnmarshalSecp256(curve elliptic.Curve, data []byte) (x, y *big.Int) {
-	byteLen := (curve.Params().BitSize + 7) >> 3
-	if (data[0] &^ 1) != 2 {
-		fmt.Printf("ERRRR  %+v %+v\n", data[0], data[0]&^1)
-		return // unrecognized point encoding
-	}
-	if len(data) != 1+byteLen {
-		return
-	}
-
-	// Based on Routine 2.2.4 in NIST Mathematical routines paper
-	params := curve.Params()
-	tx := new(big.Int).SetBytes(data[1 : 1+byteLen])
-	y2 := y2(params, tx)
-	sqrt := defaultSqrt
-	ty := sqrt(y2, params.P)
-	if ty == nil {
-		return // "y^2" is not a square: invalid point
-	}
-	var y2c big.Int
-	y2c.Mul(ty, ty).Mod(&y2c, params.P)
-	if y2c.Cmp(y2) != 0 {
-		return // sqrt(y2)^2 != y2: invalid point
-	}
-	if ty.Bit(0) != uint(data[0]&1) {
-		ty.Sub(params.P, ty)
-	}
-
-	x, y = tx, ty // valid point: return it
-
-	return x, y
 }
