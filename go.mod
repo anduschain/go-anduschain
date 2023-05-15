@@ -3,7 +3,6 @@ module github.com/anduschain/go-anduschain
 go 1.18
 
 require (
-	filippo.io/edwards25519 v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
 	github.com/aristanetworks/goarista v0.0.0-20230220080635-060caa35f493
 	github.com/btcsuite/btcd v0.22.0-beta

@@ -1,265 +1,183 @@
-// Package vrf implements ECVRF-EDWARDS25519-SHA512-TAI, a verifiable random
-// function described in draft-irtf-cfrg-vrf-10.
-// This VRF uses the Edwards form of Curve25519, SHA512 and the try-and-increment
-// hash-to-curve function.
-// See: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vrf/
-// Copy From github.com/ProtonMail/go-ecvrf
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package vrf
 
 import (
-	"crypto/ed25519"
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/sha512"
-	"crypto/subtle"
+	"encoding/binary"
 	"errors"
-	"filippo.io/edwards25519"
-	"io"
+	"math/big"
 )
 
-const (
-	scalarSize       = ed25519.SeedSize
-	pointSize        = ed25519.PublicKeySize
-	intermediateSize = 16
-	PublicKeySize    = pointSize
-	PrivateKeySize   = scalarSize + pointSize
-	ProofSize        = pointSize + intermediateSize + scalarSize
-	suiteID          = 0x03
+var (
+	curve  = elliptic.P256()
+	params = curve.Params()
+
+	// ErrPointNotOnCurve occurs when a public key is not on the curve.
+	ErrPointNotOnCurve = errors.New("point is not on the P256 curve")
+	// ErrWrongKeyType occurs when a key is not an ECDSA key.
+	ErrWrongKeyType = errors.New("not an ECDSA key")
+	// ErrNoPEMFound occurs when attempting to parse a non PEM data structure.
+	ErrNoPEMFound = errors.New("no PEM block found")
+	// ErrInvalidVRF occurs when the VRF does not validate.
+	ErrInvalidVRF = errors.New("invalid VRF proof")
 )
 
-// PrivateKey contains the VRF private key, a standard ed25519 key and the precomputed secret scalar.
-type PrivateKey struct {
-	sk, pk []byte
-	x      *edwards25519.Scalar
+// H1 hashes m to a curve point
+func H1(m []byte) (x, y *big.Int) {
+	h := sha512.New()
+	var i uint32
+	byteLen := (params.BitSize + 7) >> 3
+	for x == nil && i < 100 {
+		// TODO: Use a NIST specified DRBG.
+		h.Reset()
+		binary.Write(h, binary.BigEndian, i)
+		h.Write(m)
+		r := []byte{2} // Set point encoding to "compressed", y=0.
+		r = h.Sum(r)
+		x, y = Unmarshal(curve, r[:byteLen+1])
+		i++
+	}
+	return
 }
 
-// PublicKey contains the VRF public key, the canonical representation of a point on the ed25519 curve.
-type PublicKey struct {
-	pk []byte
-}
+var one = big.NewInt(1)
 
-// GenerateKey creates a public/private key pair using rnd for randomness.
-// If rnd is nil, crypto/rand is used.
-func GenerateKey(rnd io.Reader) (sk *PrivateKey, err error) {
-	if rnd == nil {
-		rnd = rand.Reader
-	}
-
-	seed := make([]byte, scalarSize)
-	if _, err := io.ReadFull(rnd, seed); err != nil {
-		return nil, err
-	}
-
-	// Generate the private key, the secret scalar, and the public key
-	// according to Section 5.1.5 of RFC8032 and cache the values.
-	h := sha512.Sum512(seed)
-	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:scalarSize])
-	if err != nil {
-		return nil, err
-	}
-
-	A := (&edwards25519.Point{}).ScalarBaseMult(s)
-	return &PrivateKey{seed, A.Bytes(), s}, err
-}
-
-// NewPrivateKey generates a PrivateKey object from a standard RFC8032
-// Ed25519 64-byte private key.
-func NewPrivateKey(skBytes []byte) (sk *PrivateKey, err error) {
-	if len(skBytes) != PrivateKeySize {
-		return nil, errors.New("ecvrf: bad private key size")
-	}
-
-	// Generate the secret scalar according to Section 5.1.5 of RFC8032.
-	h := sha512.Sum512(skBytes[:scalarSize])
-	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:scalarSize])
-	if err != nil {
-		return nil, err
-	}
-
-	return &PrivateKey{skBytes[:scalarSize], skBytes[scalarSize:], s}, err
-}
-
-// Public extracts the public VRF key from the underlying private-key.
-func (sk *PrivateKey) Public() (*PublicKey, error) {
-	return NewPublicKey(sk.pk)
-}
-
-// Bytes serialises the private VRF key in a bytearray.
-func (sk *PrivateKey) Bytes() []byte {
-	buf := make([]byte, PrivateKeySize)
-	copy(buf, sk.sk)
-	copy(buf[scalarSize:], sk.pk)
-	return buf
-}
-
-// NewPublicKey generates a PublicKey object from a standard RFC8032
-// Ed25519 32-byte public key.
-func NewPublicKey(pkBytes []byte) (*PublicKey, error) {
-	return &PublicKey{pkBytes}, nil
-}
-
-// Bytes serialises the private VRF key in a bytearray.
-func (pk *PublicKey) Bytes() []byte {
-	return pk.pk
-}
-
-// Prove returns a proof such that Verify(pk, message, vrf, proof) == true
-// for a given message and public key pair sk/pk.
-// This function is defined in section 5.1 of draft-irtf-cfrg-vrf-10.
-func (sk *PrivateKey) Prove(message []byte) (vrf, proof []byte, err error) {
-	// Step 1 is done in key generation/parsing
-	h, err := hashToCurveTAI(sk.pk, message)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	gamma := (&edwards25519.Point{}).ScalarMult(sk.x, h)
-	kHash := generateNonceHash(sk.sk, h.Bytes())
-	k, err := edwards25519.NewScalar().SetUniformBytes(kHash)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	c := hashPoints(
-		h,
-		gamma,
-		(&edwards25519.Point{}).ScalarBaseMult(k),
-		(&edwards25519.Point{}).ScalarMult(k, h),
-	)
-
-	// append 16 zeroes to c to convert it to a scalar
-	cScal, err := cToScalar(c)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// s = (k + c*x) mod q
-	s := edwards25519.NewScalar().Add(k, edwards25519.NewScalar().Multiply(cScal, sk.x))
-
-	proof = make([]byte, ProofSize)
-	copy(proof, gamma.Bytes())
-	copy(proof[pointSize:], c)
-	copy(proof[pointSize+intermediateSize:], s.Bytes())
-
-	return proofToHash(gamma), proof, nil
-}
-
-// Verify verifies that the given proof matches the message and the public
-// key pk. When true it also returns the expected VRF string.
-// This function is defined in section 5.3 of draft-irtf-cfrg-vrf-10.
-func (pk *PublicKey) Verify(message, proof []byte) (verified bool, vrf []byte, err error) {
-	if len(proof) != ProofSize {
-		return false, nil, errors.New("ecvrf: bad proof length")
-	}
-
-	y, err := (&edwards25519.Point{}).SetBytes(pk.pk)
-	if err != nil {
-		return false, nil, err
-	}
-
-	gamma, err := (&edwards25519.Point{}).SetBytes(proof[:pointSize])
-	if err != nil {
-		return false, nil, err
-	}
-
-	c, err := cToScalar(proof[pointSize : pointSize+intermediateSize])
-	if err != nil {
-		return false, nil, err
-	}
-
-	s, err := edwards25519.NewScalar().SetCanonicalBytes(proof[pointSize+intermediateSize:])
-	if err != nil {
-		return false, nil, err
-	}
-
-	h, err := hashToCurveTAI(pk.pk, message)
-	if err != nil {
-		return false, nil, err
-	}
-
-	// U = s*B - c*Y
-	u := (&edwards25519.Point{}).Subtract(
-		(&edwards25519.Point{}).ScalarBaseMult(s),
-		(&edwards25519.Point{}).ScalarMult(c, y),
-	)
-
-	// V = s*H - c*Gamma
-	v := (&edwards25519.Point{}).Subtract(
-		(&edwards25519.Point{}).ScalarMult(s, h),
-		(&edwards25519.Point{}).ScalarMult(c, gamma),
-	)
-
-	// If c and c' are different
-	if subtle.ConstantTimeCompare(hashPoints(h, gamma, u, v), proof[pointSize:pointSize+intermediateSize]) == 0 {
-		return false, nil, nil
-	}
-
-	return true, proofToHash(gamma), nil
-}
-
-// -- internal functions --
-
-// Step 5.1.2 of draft-irtf-cfrg-vrf-10 implemented as defined by the section
-// 5.4.1.1, ECVRF_hash_to_curve_try_and_increment.
-func hashToCurveTAI(pk, alpha []byte) (*edwards25519.Point, error) {
-	// CTR needs to be encoded in a string of length 1, therefore at most 255
-	for ctr := 0; ctr < 256; ctr++ {
-		h := sha512.New()
-		h.Write([]byte{suiteID, 0x01})
-		h.Write(pk)
-		h.Write(alpha)
-		h.Write([]byte{uint8(ctr), 0x00})
-
-		p, err := (&edwards25519.Point{}).SetBytes(h.Sum(nil)[:scalarSize])
-		if err == nil && p.Equal(edwards25519.NewIdentityPoint()) == 0 {
-			return (&edwards25519.Point{}).MultByCofactor(p), nil
+// H2 hashes to an integer [1,N-1]
+func H2(m []byte) *big.Int {
+	// NIST SP 800-90A § A.5.1: Simple discard method.
+	byteLen := (params.BitSize + 7) >> 3
+	h := sha512.New()
+	for i := uint32(0); ; i++ {
+		// TODO: Use a NIST specified DRBG.
+		h.Reset()
+		binary.Write(h, binary.BigEndian, i)
+		h.Write(m)
+		b := h.Sum(nil)
+		k := new(big.Int).SetBytes(b[:byteLen])
+		if k.Cmp(new(big.Int).Sub(params.N, one)) == -1 {
+			return k.Add(k, one)
 		}
 	}
-
-	// Abort - too many CTR attempts
-	return nil, errors.New("ecvrf: unable to find suitable ctr value")
 }
 
-// generateNonceHash implements step 5.1.5 of draft-irtf-cfrg-vrf-10 as defined by the section
-// 5.4.2.2, ECVRF_nonce_generation_RFC8032.
-func generateNonceHash(sk, h []byte) []byte {
-	skHash := sha512.New()
-	skHash.Write(sk)
-
-	nonceHash := sha512.New()
-	nonceHash.Write(skHash.Sum(nil)[scalarSize:])
-	nonceHash.Write(h)
-
-	return nonceHash.Sum(nil)
-}
-
-// hashPoints implements step 5.1.6 of draft-irtf-cfrg-vrf-10 as defined by the section
-// 5.4.3, ECVRF_hash_points.
-func hashPoints(points ...*edwards25519.Point) []byte {
-	h := sha512.New()
-	h.Write([]byte{suiteID, 0x02})
-	for _, point := range points {
-		h.Write(point.Bytes())
+// Evaluate returns the verifiable unpredictable function evaluated at m
+func Evaluate(k *ecdsa.PrivateKey, m []byte) (index [32]byte, proof []byte) {
+	nilIndex := [32]byte{}
+	// Prover chooses r <-- [1,N-1]
+	r, _, _, err := elliptic.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		return nilIndex, nil
 	}
-	h.Write([]byte{0x00})
+	ri := new(big.Int).SetBytes(r)
 
-	return h.Sum(nil)[:intermediateSize]
+	// H = H1(m)
+	Hx, Hy := H1(m)
+
+	// VRF_k(m) = [k]H
+	sHx, sHy := curve.ScalarMult(Hx, Hy, k.D.Bytes())
+	vrf := elliptic.Marshal(curve, sHx, sHy) // 65 bytes.
+
+	// G is the base point
+	// s = H2(G, H, [k]G, VRF, [r]G, [r]H)
+	rGx, rGy := curve.ScalarBaseMult(r)
+	rHx, rHy := curve.ScalarMult(Hx, Hy, r)
+	var b bytes.Buffer
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, Hx, Hy))
+	b.Write(elliptic.Marshal(curve, k.PublicKey.X, k.PublicKey.Y))
+	b.Write(vrf)
+	b.Write(elliptic.Marshal(curve, rGx, rGy))
+	b.Write(elliptic.Marshal(curve, rHx, rHy))
+	s := H2(b.Bytes())
+
+	// t = r−s*k mod N
+	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
+	t.Mod(t, params.N)
+
+	// Index = H(vrf)
+	index = sha256.Sum256(vrf)
+
+	// Write s, t, and vrf to a proof blob. Also write leading zeros before s and t
+	// if needed.
+	var buf bytes.Buffer
+	buf.Write(make([]byte, 32-len(s.Bytes())))
+	buf.Write(s.Bytes())
+	buf.Write(make([]byte, 32-len(t.Bytes())))
+	buf.Write(t.Bytes())
+	buf.Write(vrf)
+
+	return index, buf.Bytes()
 }
 
-// proofToHash implements section 5.2 of draft-irtf-cfrg-vrf-10.
-func proofToHash(gamma *edwards25519.Point) []byte {
-	h := sha512.New()
-	gammaC := (&edwards25519.Point{}).MultByCofactor(gamma)
-	h.Write([]byte{suiteID, 0x03})
-	h.Write(gammaC.Bytes())
-	h.Write([]byte{0x00})
+// ProofToHash asserts that proof is correct for m and outputs index.
+func ProofToHash(pk *ecdsa.PublicKey, m, proof []byte) (index [32]byte, err error) {
+	nilIndex := [32]byte{}
+	// verifier checks that s == H2(m, [t]G + [s]([k]G), [t]H1(m) + [s]VRF_k(m))
+	if got, want := len(proof), 64+65; got != want {
+		return nilIndex, ErrInvalidVRF
+	}
 
-	return h.Sum(nil)
-}
+	// Parse proof into s, t, and vrf.
+	s := proof[0:32]
+	t := proof[32:64]
+	vrf := proof[64 : 64+65]
 
-// cToScalar transforms the 16-byte c into an ed25519 scalar.
-func cToScalar(c []byte) (*edwards25519.Scalar, error) {
-	cRaw := make([]byte, 32)
-	copy(cRaw, c)
-	return edwards25519.NewScalar().SetCanonicalBytes(cRaw)
+	uHx, uHy := elliptic.Unmarshal(curve, vrf)
+	if uHx == nil {
+		return nilIndex, ErrInvalidVRF
+	}
+
+	// [t]G + [s]([k]G) = [t+ks]G
+	tGx, tGy := curve.ScalarBaseMult(t)
+	ksGx, ksGy := curve.ScalarMult(pk.X, pk.Y, s)
+	tksGx, tksGy := curve.Add(tGx, tGy, ksGx, ksGy)
+
+	// H = H1(m)
+	// [t]H + [s]VRF = [t+ks]H
+	Hx, Hy := H1(m)
+	tHx, tHy := curve.ScalarMult(Hx, Hy, t)
+	sHx, sHy := curve.ScalarMult(uHx, uHy, s)
+	tksHx, tksHy := curve.Add(tHx, tHy, sHx, sHy)
+
+	//   H2(G, H, [k]G, VRF, [t]G + [s]([k]G), [t]H + [s]VRF)
+	// = H2(G, H, [k]G, VRF, [t+ks]G, [t+ks]H)
+	// = H2(G, H, [k]G, VRF, [r]G, [r]H)
+	var b bytes.Buffer
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, Hx, Hy))
+	b.Write(elliptic.Marshal(curve, pk.X, pk.Y))
+	b.Write(vrf)
+	b.Write(elliptic.Marshal(curve, tksGx, tksGy))
+	b.Write(elliptic.Marshal(curve, tksHx, tksHy))
+	h2 := H2(b.Bytes())
+
+	// Left pad h2 with zeros if needed. This will ensure that h2 is padded
+	// the same way s is.
+	var buf bytes.Buffer
+	buf.Write(make([]byte, 32-len(h2.Bytes())))
+	buf.Write(h2.Bytes())
+
+	if !hmac.Equal(s, buf.Bytes()) {
+		return nilIndex, ErrInvalidVRF
+	}
+	return sha256.Sum256(vrf), nil
 }
