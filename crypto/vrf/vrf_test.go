@@ -60,11 +60,6 @@ func TestVrf(t *testing.T) {
 	m := []byte("foobar")
 	indexA, proof := Evaluate(privateKey, m)
 
-	_, _, err = ecdsa.Sign(rand.Reader, privateKey, m)
-	if err != nil {
-		return
-	}
-
 	pubKey := &ecdsa.PublicKey{
 		Curve: elliptic.P256(),
 		X:     publicKeyECDSA.X,
