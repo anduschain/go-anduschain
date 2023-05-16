@@ -39,6 +39,16 @@ web3._extend({
 			name: 'genVrfKey',
 			call: 'deb_genVrfKey',
 			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'vrfProof',
+			call: 'deb_vrfProof',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'vrfVerify',
+			call: 'deb_vrfVerify',
+			params: 4
 		})
 	],
 	properties: [

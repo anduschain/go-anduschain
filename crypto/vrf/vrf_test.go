@@ -4,8 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"fmt"
-	"github.com/anduschain/go-anduschain/crypto"
 	"log"
 	"testing"
 )
@@ -75,34 +73,4 @@ func TestVrf(t *testing.T) {
 	if got, want := indexB, indexA; got != want {
 		t.Errorf("ProofToHash(%s, %x): %x, want %x", m, proof, got, want)
 	}
-}
-
-func TestSign(t *testing.T) {
-	//privateKey, err := crypto.GenerateKey()
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Get the public key from the private key
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("error casting public key to ECDSA")
-	}
-	address := crypto.PubkeyToAddress(*publicKeyECDSA)
-	m := []byte("foobar")
-	hash := crypto.Keccak256Hash(m)
-	sig, err := crypto.Sign(hash.Bytes(), privateKey)
-	if err != nil {
-		t.Errorf("Sign %+v", err)
-	}
-	pubkey, err := crypto.SigToPub(hash.Bytes(), sig)
-	if err != nil {
-		t.Errorf("SignToPub %+v", err)
-	}
-	if !publicKeyECDSA.Equal(pubkey) {
-		t.Errorf("public key not match")
-	}
-	fmt.Printf("Address=%s\n", address.Hex())
 }
