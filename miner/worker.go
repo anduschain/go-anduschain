@@ -21,7 +21,6 @@ import (
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/consensus/dbft"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
@@ -726,12 +725,6 @@ func (w *worker) resultLoop() {
 			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
 				continue
 			}
-			// TODO: CSW
-			if _, ok := w.engine.(*dbft.Dbft); ok {
-				if w.dbftStatus != types.DBFT_PENDING {
-					continue
-				}
-			}
 
 			// Short circuit when receiving empty result.
 			if block == nil {
@@ -760,22 +753,6 @@ func (w *worker) resultLoop() {
 				w.pendingMu.Unlock()
 
 				log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
-			} else if _, ok := w.engine.(*dbft.Dbft); ok {
-				// TODO: CSW
-				// 현재 저장되어잇는 possibleWinnig 블록의 블록넘버와 자신이 생성한 블록번호를 비교
-				// 자신의 블록번호가 더 크면, 자신의 투표를 포함해서 자신의 possibleWinningBlock 전송.
-				// 블록번호가 동일하면서, 자신의 difficulty 비교, difficulty가 더 크면 자신의 투펴를 포함해서 자신의 possibleWinningBlock 전송
-				// possibleWinningBlock에 저장된 블록의 difficulty가 더 크면, possibleWinning블록에 자신의 투표를 포함해서 possibleWinningBlock전송
-				w.pendingMu.Lock()
-				w.possibleWinning = block // made for me, saving possible block
-				w.pendingMu.Unlock()
-
-				log.Info("Save possible block for Broadcasting ", "hash", w.possibleWinning.Hash())
-				// TODO: CSW
-				// 상태를 바꾸고, 자신의 투표를 전송
-				w.dbftStatus = types.DBFT_PROPOSE
-				// Broadcast the block and announce VoteBlockEvent
-				w.mux.Post(types.VoteBlockEvent{VoteType: types.DBFT_VOTE, Block: w.possibleWinningBlock})
 			} else {
 				// Different block could share same sealhash, deep copy here to prevent write-write conflict.
 				var (
