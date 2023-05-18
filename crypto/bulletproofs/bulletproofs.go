@@ -24,9 +24,7 @@ Asiacrypt 2008
 
 package bulletproofs
 
-import (
-	"github.com/ing-bank/zkrp/crypto/p256"
-)
+import "github.com/anduschain/go-anduschain/crypto/p256"
 
 var ORDER = p256.CURVE.N
 var SEEDH = "BulletproofsDoesNotNeedTrustedSetupH"

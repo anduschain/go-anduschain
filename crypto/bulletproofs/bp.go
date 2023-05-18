@@ -26,6 +26,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto/util/bn"
 	"math"
 	"math/big"
+	"strconv"
 )
 
 /*
@@ -89,8 +90,8 @@ func Setup(b int64) (BulletProofSetupParams, error) {
 	params.Gg = make([]*p256.P256, params.N)
 	params.Hh = make([]*p256.P256, params.N)
 	for i := int64(0); i < params.N; i++ {
-		params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + string(i))
-		params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + string(i))
+		params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + strconv.FormatInt(i, 10))
+		params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + strconv.FormatInt(i, 10))
 	}
 	return params, nil
 }

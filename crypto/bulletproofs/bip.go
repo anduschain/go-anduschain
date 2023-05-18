@@ -24,6 +24,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto/p256"
 	"github.com/anduschain/go-anduschain/crypto/util/bn"
 	"math/big"
+	"strconv"
 )
 
 var SEEDU = "BulletproofsDoesNotNeedTrustedSetupU"
@@ -78,7 +79,7 @@ func setupInnerProduct(H *p256.P256, g, h []*p256.P256, c *big.Int, N int64) (In
 	if g == nil {
 		params.Gg = make([]*p256.P256, params.N)
 		for i := int64(0); i < params.N; i++ {
-			params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + string(i))
+			params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + strconv.FormatInt(i, 10))
 		}
 	} else {
 		params.Gg = g
@@ -86,7 +87,7 @@ func setupInnerProduct(H *p256.P256, g, h []*p256.P256, c *big.Int, N int64) (In
 	if h == nil {
 		params.Hh = make([]*p256.P256, params.N)
 		for i := int64(0); i < params.N; i++ {
-			params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + string(i))
+			params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + strconv.FormatInt(i, 10))
 		}
 	} else {
 		params.Hh = h

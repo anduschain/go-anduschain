@@ -18,11 +18,10 @@
 package bulletproofs
 
 import (
+	"github.com/anduschain/go-anduschain/crypto/p256"
 	"math"
 	"math/big"
 	"testing"
-
-	"github.com/ing-bank/zkrp/crypto/p256"
 )
 
 /*

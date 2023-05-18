@@ -21,11 +21,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"github.com/anduschain/go-anduschain/crypto/p256"
+	"github.com/anduschain/go-anduschain/crypto/util/bn"
+	"github.com/anduschain/go-anduschain/crypto/util/intconversion"
 	"math/big"
-
-	"github.com/ing-bank/zkrp/crypto/p256"
-	"github.com/ing-bank/zkrp/util/bn"
-	"github.com/ing-bank/zkrp/util/intconversion"
 )
 
 /*

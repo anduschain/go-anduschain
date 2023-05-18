@@ -19,10 +19,9 @@ package bulletproofs
 
 import (
 	"errors"
+	"github.com/anduschain/go-anduschain/crypto/p256"
+	"github.com/anduschain/go-anduschain/crypto/util/bn"
 	"math/big"
-
-	"github.com/ing-bank/zkrp/crypto/p256"
-	"github.com/ing-bank/zkrp/util/bn"
 )
 
 /*
