@@ -28,7 +28,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/uint256 v1.2.1
 	github.com/huin/goupnp v1.1.0
-	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230510161104-02840741a53a
 	github.com/influxdata/influxdb v1.8.3
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/jedisct1/go-minisign v0.0.0-20230211184525-1f273d8dc776
