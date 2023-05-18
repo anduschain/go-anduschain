@@ -139,7 +139,7 @@ func (fn *Fairnode) Start() error {
 	if DefaultConfig.Memorydb {
 		fn.db = fairdb.NewMemDatabase() // fake mode memory db
 	} else {
-		fn.db, err = fairdb.NewMongoDatabase(&DefaultConfig) // fake mode memory db
+		fn.db, err = fairdb.NewMongoDatabase(&DefaultConfig) // real mode memory db
 		if err != nil {
 			return err
 		}
