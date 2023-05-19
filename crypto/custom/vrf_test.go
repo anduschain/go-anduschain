@@ -1,4 +1,4 @@
-package vrf
+package custom
 
 import (
 	"crypto/ecdsa"

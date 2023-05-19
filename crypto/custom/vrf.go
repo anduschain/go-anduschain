@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vrf
+package custom
 
 import (
 	"bytes"
@@ -24,6 +24,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
+	"github.com/anduschain/go-anduschain/crypto/util"
 	"math/big"
 )
 
@@ -53,7 +54,7 @@ func H1(m []byte) (x, y *big.Int) {
 		h.Write(m)
 		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
-		x, y = Unmarshal(curve, r[:byteLen+1])
+		x, y = util.Unmarshal(curve, r[:byteLen+1])
 		i++
 	}
 	return

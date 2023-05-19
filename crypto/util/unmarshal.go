@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vrf
+package util
 
 // This file implements compressed point unmarshaling.  Preferably this
 // functionality would be in a standard library.  Code borrowed from:

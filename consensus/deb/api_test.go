@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestDebApi(t *testing.T) {
+func TestGenP256Key(t *testing.T) {
 	privatekey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)

@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/crypto/vrf"
+	"github.com/anduschain/go-anduschain/crypto/custom"
 	"math/big"
 )
 
@@ -64,7 +64,7 @@ func (api *PrivateDebApi) VrfProof(m string) string {
 	// Get the private key in hex format
 	//privateKeyHex := hexutil.Encode(crypto.FromECDSA(privateKey))
 
-	index, proof := vrf.Evaluate(privateKey, []byte(m))
+	index, proof := custom.Evaluate(privateKey, []byte(m))
 
 	X := *publicKeyECDSA.X
 	Y := *publicKeyECDSA.Y
@@ -93,7 +93,7 @@ func (api *PrivateDebApi) VrfVerify(m string, proofHex string, X big.Int, Y big.
 	if err != nil {
 		return err.Error()
 	}
-	index, err := vrf.ProofToHash(pubKey, []byte(m), proof)
+	index, err := custom.ProofToHash(pubKey, []byte(m), proof)
 	if err != nil {
 		return err.Error()
 	}

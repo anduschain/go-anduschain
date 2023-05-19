@@ -18,9 +18,8 @@
 package p256
 
 import (
+	"github.com/anduschain/go-anduschain/crypto/secp256k1"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 type MyBitCurve struct {
