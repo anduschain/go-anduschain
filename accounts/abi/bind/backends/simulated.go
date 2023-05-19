@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain"
+	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/abi/bind"
 	"github.com/anduschain/go-anduschain/common"

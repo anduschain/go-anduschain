@@ -25,7 +25,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anduschain/go-anduschain"
+	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
