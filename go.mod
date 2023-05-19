@@ -13,7 +13,6 @@ require (
 	github.com/docker/docker v23.0.3+incompatible
 	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c
 	github.com/elastic/gosigar v0.14.2
-	github.com/ethereum/go-ethereum v1.10.26
 	github.com/fatih/color v1.14.1
 	github.com/fjl/memsize v0.0.1
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08
@@ -65,8 +64,6 @@ require (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
