@@ -4,6 +4,7 @@
 package deb
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -83,13 +84,20 @@ func (api *PrivateDebApi) VrfProof(m string) string {
 	return string(ret)
 }
 
-func (api *PrivateDebApi) VrfVerify(m string, proofHex string, X big.Int, Y big.Int) string {
+func (api *PrivateDebApi) VrfVerify(m string, vrfproof string) string {
+	var vrfData vrfdata
+
+	err := json.Unmarshal([]byte(vrfproof), &vrfData)
+	if err != nil {
+		return err.Error()
+	}
+
 	pubKey := &ecdsa.PublicKey{
 		Curve: elliptic.P256(),
-		X:     &X,
-		Y:     &Y,
+		X:     &vrfData.X,
+		Y:     &vrfData.Y,
 	}
-	proof, err := hex.DecodeString(proofHex)
+	proof, err := hex.DecodeString(vrfData.Proof)
 	if err != nil {
 		return err.Error()
 	}
@@ -97,6 +105,14 @@ func (api *PrivateDebApi) VrfVerify(m string, proofHex string, X big.Int, Y big.
 	if err != nil {
 		return err.Error()
 	}
+	dIndex, err := hex.DecodeString(vrfData.Index)
+	if err != nil {
+		return err.Error()
+	}
 
-	return hex.EncodeToString(index[:])
+	if bytes.Equal(dIndex, index[:]) {
+		return vrfData.Index
+	}
+
+	return ""
 }

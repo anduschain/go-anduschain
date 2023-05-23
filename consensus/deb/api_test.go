@@ -34,3 +34,13 @@ func TestGenP256Key(t *testing.T) {
 		t.Fatal("privateKey not match")
 	}
 }
+
+func TestVrf(t *testing.T) {
+	var api = &PrivateDebApi{}
+	var msg = "This is vrf test string"
+	proof := api.VrfProof(msg)
+	index := api.VrfVerify(msg, proof)
+	if len(index) != 64 {
+		t.Fatal("Verify fail")
+	}
+}
