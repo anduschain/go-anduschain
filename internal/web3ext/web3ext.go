@@ -48,7 +48,7 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'vrfVerify',
 			call: 'deb_vrfVerify',
-			params: 4
+			params: 2
 		})
 	],
 	properties: [

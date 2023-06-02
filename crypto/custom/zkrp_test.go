@@ -2,7 +2,6 @@ package custom
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/anduschain/go-anduschain/crypto/bulletproofs"
 	"math/big"
 	"testing"
@@ -21,6 +20,8 @@ func TestZkrp(t *testing.T) {
 	sec40 := new(big.Int).SetInt64(int64(38))
 
 	gSetup := GeneralBulletSetup{
+		A:   params.A,
+		B:   params.B,
 		BP1: params.BP1,
 		BP2: params.BP2,
 	}
@@ -29,14 +30,14 @@ func TestZkrp(t *testing.T) {
 		t.Fatal(err)
 	}
 	strParam := string(jsonParam)
-	fmt.Println(strParam)
+
 	var decParam GeneralBulletSetup
 	err = json.Unmarshal([]byte(strParam), &decParam)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Generate Proof
-	proof40, err := Prove(new(big.Int).SetInt64(a), new(big.Int).SetInt64(b), sec40, &decParam)
+	proof40, err := Prove(sec40, &decParam)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,5 +63,16 @@ func TestZkrp(t *testing.T) {
 
 	if !ok {
 		t.Error("Verify fail")
+	}
+
+	errProof := bulletproofs.ProofBPRP{
+		P1: decodeProof.P1,
+	}
+	ok, err = errProof.Verify()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Error("invalid proof.. impossible verify ok")
 	}
 }

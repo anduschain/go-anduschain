@@ -78,6 +78,7 @@ func setupProveVerify18To200(t *testing.T, secret int) bool {
 func TestJsonEncodeDecodeBPRP(t *testing.T) {
 	// Set up the range, [18, 200) in this case.
 	// We want to prove that we are over 18, and less than 200 years old.
+	// 증명을 하기 위한 SetupParam 배포
 	params, errSetup := SetupGeneric(18, 200)
 	if errSetup != nil {
 		t.Errorf(errSetup.Error())
@@ -85,7 +86,7 @@ func TestJsonEncodeDecodeBPRP(t *testing.T) {
 	}
 
 	// Create the proof
-	bigSecret := new(big.Int).SetInt64(int64(40))
+	bigSecret := new(big.Int).SetInt64(int64(50))
 	proof, errProve := ProveGeneric(bigSecret, params)
 	if errProve != nil {
 		t.Errorf(errProve.Error())
@@ -108,6 +109,11 @@ func TestJsonEncodeDecodeBPRP(t *testing.T) {
 	}
 
 	assert.Equal(t, proof, decodedProof, "should be equal")
+
+	// Compare SetupParam & proof param
+	if params.BP1.N != decodedProof.P1.Params.N {
+		t.Errorf("SetupParam != Proof Param")
+	}
 
 	// Verify the proof
 	ok, errVerify := decodedProof.Verify()
