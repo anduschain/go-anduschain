@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
 	github.com/aristanetworks/goarista v0.0.0-20230220080635-060caa35f493
-	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
@@ -66,6 +65,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
