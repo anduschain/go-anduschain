@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/cmd/utils"
@@ -25,44 +27,43 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
 	"gopkg.in/urfave/cli.v1"
-	"io/ioutil"
 )
 
 var (
-	walletCommand = cli.Command{
-		Name:      "wallet",
-		Usage:     "Manage Ethereum presale wallets",
-		ArgsUsage: "",
-		Category:  "ACCOUNT COMMANDS",
-		Description: `
-    godaon wallet import /path/to/my/presale.wallet
+// 	walletCommand = cli.Command{
+// 		Name:      "wallet",
+// 		Usage:     "Manage Ethereum presale wallets",
+// 		ArgsUsage: "",
+// 		Category:  "ACCOUNT COMMANDS",
+// 		Description: `
+//     godaon wallet import /path/to/my/presale.wallet
 
-will prompt for your password and imports your ether presale account.
-It can be used non-interactively with the --password option taking a
-passwordfile as argument containing the wallet password in plaintext.`,
-		Subcommands: []cli.Command{
-			{
+// will prompt for your password and imports your ether presale account.
+// It can be used non-interactively with the --password option taking a
+// passwordfile as argument containing the wallet password in plaintext.`,
+// 		Subcommands: []cli.Command{
+// 			{
 
-				Name:      "import",
-				Usage:     "Import Ethereum presale wallet",
-				ArgsUsage: "<keyFile>",
-				Action:    utils.MigrateFlags(importWallet),
-				Category:  "ACCOUNT COMMANDS",
-				Flags: []cli.Flag{
-					utils.DataDirFlag,
-					utils.KeyStoreDirFlag,
-					utils.PasswordFileFlag,
-					utils.LightKDFFlag,
-				},
-				Description: `
-	godaon wallet [options] /path/to/my/presale.wallet
+// 				Name:      "import",
+// 				Usage:     "Import Ethereum presale wallet",
+// 				ArgsUsage: "<keyFile>",
+// 				Action:    utils.MigrateFlags(importWallet),
+// 				Category:  "ACCOUNT COMMANDS",
+// 				Flags: []cli.Flag{
+// 					utils.DataDirFlag,
+// 					utils.KeyStoreDirFlag,
+// 					utils.PasswordFileFlag,
+// 					utils.LightKDFFlag,
+// 				},
+// 				Description: `
+// 	godaon wallet [options] /path/to/my/presale.wallet
 
-will prompt for your password and imports your ether presale account.
-It can be used non-interactively with the --password option taking a
-passwordfile as argument containing the wallet password in plaintext.`,
-			},
-		},
-	}
+// will prompt for your password and imports your ether presale account.
+// It can be used non-interactively with the --password option taking a
+// passwordfile as argument containing the wallet password in plaintext.`,
+// 			},
+// 		},
+// 	}
 
 	accountCommand = cli.Command{
 		Name:     "account",
