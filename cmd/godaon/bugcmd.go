@@ -109,5 +109,4 @@ const header = `
 #### Steps to reproduce the behaviour
 
 
-#### Backtrace
-`
+#### Backtrace`
