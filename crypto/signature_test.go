@@ -19,9 +19,10 @@ package crypto
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/crypto"
 	"reflect"
 	"testing"
+
+	"github.com/anduschain/go-anduschain/crypto"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
