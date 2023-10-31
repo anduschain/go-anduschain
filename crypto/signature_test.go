@@ -19,14 +19,11 @@ package crypto
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"reflect"
-	"testing"
-
-	"github.com/anduschain/go-anduschain/crypto"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
+	"reflect"
+	"testing"
 )
 
 var (
@@ -122,7 +119,7 @@ func TestPubkeyRandom(t *testing.T) {
 	const runs = 200
 
 	for i := 0; i < runs; i++ {
-		key, err := crypto.GenerateKey()
+		key, err := GenerateKey()
 		if err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
 		}
