@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/console/prompt"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/eth"
 	"github.com/anduschain/go-anduschain/internal/jsre"
@@ -68,7 +69,7 @@ func (p *hookedPrompter) PromptConfirm(prompt string) (bool, error) {
 func (p *hookedPrompter) SetHistory(history []string)              {}
 func (p *hookedPrompter) AppendHistory(command string)             {}
 func (p *hookedPrompter) ClearHistory()                            {}
-func (p *hookedPrompter) SetWordCompleter(completer WordCompleter) {}
+func (p *hookedPrompter) SetWordCompleter(completer prompt.WordCompleter) {}
 
 // tester is a console test environment for the console tests to operate on.
 type tester struct {

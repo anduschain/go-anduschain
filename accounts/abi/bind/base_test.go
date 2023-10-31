@@ -18,13 +18,14 @@ package bind_test
 
 import (
 	"context"
-	"github.com/anduschain/go-anduschain/accounts/abi"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/anduschain/go-anduschain"
+	"github.com/anduschain/go-anduschain/accounts/abi"
+
+	ethereum "github.com/anduschain/go-anduschain"
 	"github.com/anduschain/go-anduschain/accounts/abi/bind"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
