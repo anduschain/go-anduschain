@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	_ "io/ioutil"
 
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
@@ -341,27 +341,27 @@ func accountUpdate(ctx *cli.Context) error {
 	return nil
 }
 
-func importWallet(ctx *cli.Context) error {
-	keyfile := ctx.Args().First()
-	if len(keyfile) == 0 {
-		utils.Fatalf("keyfile must be given as argument")
-	}
-	keyJSON, err := ioutil.ReadFile(keyfile)
-	if err != nil {
-		utils.Fatalf("Could not read wallet file: %v", err)
-	}
+// func importWallet(ctx *cli.Context) error {
+// 	keyfile := ctx.Args().First()
+// 	if len(keyfile) == 0 {
+// 		utils.Fatalf("keyfile must be given as argument")
+// 	}
+// 	keyJSON, err := ioutil.ReadFile(keyfile)
+// 	if err != nil {
+// 		utils.Fatalf("Could not read wallet file: %v", err)
+// 	}
 
-	stack, _ := makeConfigNode(ctx)
-	passphrase := getPassPhrase("", false, 0, utils.MakePasswordList(ctx))
+// 	stack, _ := makeConfigNode(ctx)
+// 	passphrase := getPassPhrase("", false, 0, utils.MakePasswordList(ctx))
 
-	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
-	acct, err := ks.ImportPreSaleKey(keyJSON, passphrase)
-	if err != nil {
-		utils.Fatalf("%v", err)
-	}
-	fmt.Printf("Address: {%x}\n", acct.Address)
-	return nil
-}
+// 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+// 	acct, err := ks.ImportPreSaleKey(keyJSON, passphrase)
+// 	if err != nil {
+// 		utils.Fatalf("%v", err)
+// 	}
+// 	fmt.Printf("Address: {%x}\n", acct.Address)
+// 	return nil
+// }
 
 func accountImport(ctx *cli.Context) error {
 	keyfile := ctx.Args().First()
