@@ -119,12 +119,12 @@ func TestNewJoinTransaction(t *testing.T) {
 
 	t.Log("++++++++++++++++++++++++++++++++++")
 
-	var decodedJtx *Transaction
+	var decodedJtx Transaction
 	err = rlp.DecodeBytes(encodedJointx, &decodedJtx)
 	if err != nil {
 		t.Error("join transaction DecodeBytes", err)
 	}
-	t.Log("decoded Join transaction to", sjtx.To().String())
+	t.Log("decoded Join transaction to", decodedJtx.To().String())
 	t.Log("decoded Join transaction", decodedJtx.Hash().String())
 	dv, dr, ds := decodedJtx.RawSignatureValues()
 	t.Log("decoded signature", "v :", dv, "r :", dr, "s :", ds)
@@ -398,7 +398,7 @@ func TestTransactionJSON(t *testing.T) {
 			t.Errorf("json.Marshal failed: %v", err)
 		}
 
-		var parsedTx *Transaction
+		var parsedTx Transaction
 		if err := json.Unmarshal(data, &parsedTx); err != nil {
 			t.Errorf("json.Unmarshal failed: %v", err)
 		}

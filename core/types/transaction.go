@@ -265,7 +265,13 @@ func (tx *Transaction) TransactionId() uint64 {
 
 // Type returns the transaction type.
 func (tx *Transaction) Type() uint64 {
-	return tx.data.txType()
+	data, ok := tx.data.(*LegacyTx)
+	if ok {
+		return data.txType()
+	} else {
+		return EthTx
+	}
+
 }
 
 // for join transaction
@@ -338,21 +344,35 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 
 // DecodeRLP implements rlp.Decoder
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
-	kind, size, err := s.Kind()
-	switch {
-	case err != nil:
-		return err
-	case kind == rlp.List:
-		// It's a legacy transaction.
-		var inner LegacyTx
+	_, size, _ := s.Kind()
+	var inner LegacyTx
+	err := s.Decode(&inner)
+
+	if err == nil {
+		tx.setDecoded(&inner, int(rlp.ListSize(size)))
+	} else {
+		var inner txEthdata
 		err := s.Decode(&inner)
+
 		if err == nil {
 			tx.setDecoded(&inner, int(rlp.ListSize(size)))
 		}
-		return err
-	default:
-		return errors.New("DecodeRLP error invalid kind :" + kind.String())
 	}
+
+	return err
+}
+
+type ethJSON struct {
+	AccountNonce hexutil.Uint64  `json:"nonce"    gencodec:"required"`
+	Price        *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+	GasLimit     hexutil.Uint64  `json:"gas"      gencodec:"required"`
+	Recipient    *common.Address `json:"to"       rlp:"nil"`
+	Amount       *hexutil.Big    `json:"value"    gencodec:"required"`
+	Payload      hexutil.Bytes   `json:"input"    gencodec:"required"`
+	V            *hexutil.Big    `json:"v" gencodec:"required"`
+	R            *hexutil.Big    `json:"r" gencodec:"required"`
+	S            *hexutil.Big    `json:"s" gencodec:"required"`
+	Hash         *common.Hash    `json:"hash" rlp:"-"`
 }
 
 type txJSON struct {
@@ -376,7 +396,11 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 	enc.Hash = &hash
 
 	t := tx.data
-	enc.Type = hexutil.Uint64(t.txType())
+	if tx.Type() == EthTx {
+		enc.Type = hexutil.Uint64(EthTx)
+	} else {
+		enc.Type = hexutil.Uint64(t.txType())
+	}
 	enc.AccountNonce = hexutil.Uint64(t.nonce())
 	enc.Price = (*hexutil.Big)(t.gasPrice())
 	enc.GasLimit = hexutil.Uint64(t.gas())
@@ -401,60 +425,116 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	//	return errors.New("missing required field 'type' for TxData")
 	//}
 	var inner TxData
-	var itx LegacyTx
-	inner = &itx
-	itx.Type = uint64(dec.Type)
-	//if dec.AccountNonce == nil {
-	//	return errors.New("missing required field 'nonce' for TxData")
-	//}
-	itx.AccountNonce = uint64(dec.AccountNonce)
-	if dec.Price == nil {
-		return errors.New("missing required field 'gasPrice' for TxData")
-	}
-	itx.Price = (*big.Int)(dec.Price)
-	//if dec.GasLimit == nil {
-	//	return errors.New("missing required field 'gas' for TxData")
-	//}
-	itx.GasLimit = uint64(dec.GasLimit)
-	//if dec.Recipient != nil {
-	//	t.Recipient = dec.Recipient
-	//}
-	itx.Recipient = dec.Recipient
-	if dec.Amount == nil {
-		return errors.New("missing required field 'value' for TxData")
-	}
-	itx.Amount = (*big.Int)(dec.Amount)
-	if dec.Payload == nil {
-		return errors.New("missing required field 'input' for TxData")
-	}
-	itx.Payload = dec.Payload
-	if dec.V == nil {
-		return errors.New("missing required field 'v' for TxData")
-	}
-	itx.V = (*big.Int)(dec.V)
-	if dec.R == nil {
-		return errors.New("missing required field 'r' for TxData")
-	}
-	itx.R = (*big.Int)(dec.R)
-	if dec.S == nil {
-		return errors.New("missing required field 's' for TxData")
-	}
-	itx.S = (*big.Int)(dec.S)
-	if dec.Hash != nil {
-		itx.Hash = dec.Hash
-	}
+	if dec.Type == hexutil.Uint64(EthTx) {
+		var itx txEthdata
+		inner = &itx
+		//if dec.AccountNonce == nil {
+		//	return errors.New("missing required field 'nonce' for TxData")
+		//}
+		itx.AccountNonce = uint64(dec.AccountNonce)
+		if dec.Price == nil {
+			return errors.New("missing required field 'gasPrice' for TxData")
+		}
+		itx.Price = (*big.Int)(dec.Price)
+		//if dec.GasLimit == nil {
+		//	return errors.New("missing required field 'gas' for TxData")
+		//}
+		itx.GasLimit = uint64(dec.GasLimit)
+		//if dec.Recipient != nil {
+		//	t.Recipient = dec.Recipient
+		//}
+		itx.Recipient = dec.Recipient
+		if dec.Amount == nil {
+			return errors.New("missing required field 'value' for TxData")
+		}
+		itx.Amount = (*big.Int)(dec.Amount)
+		if dec.Payload == nil {
+			return errors.New("missing required field 'input' for TxData")
+		}
+		itx.Payload = dec.Payload
+		if dec.V == nil {
+			return errors.New("missing required field 'v' for TxData")
+		}
+		itx.V = (*big.Int)(dec.V)
+		if dec.R == nil {
+			return errors.New("missing required field 'r' for TxData")
+		}
+		itx.R = (*big.Int)(dec.R)
+		if dec.S == nil {
+			return errors.New("missing required field 's' for TxData")
+		}
+		itx.S = (*big.Int)(dec.S)
+		if dec.Hash != nil {
+			itx.Hash = dec.Hash
+		}
 
-	var V byte
-	if isProtectedV((*big.Int)(dec.V)) {
-		chainID := deriveChainId((*big.Int)(dec.V)).Uint64()
-		V = byte((*big.Int)(dec.V).Uint64() - 35 - 2*chainID)
+		var V byte
+		if isProtectedV((*big.Int)(dec.V)) {
+			chainID := deriveChainId((*big.Int)(dec.V)).Uint64()
+			V = byte((*big.Int)(dec.V).Uint64() - 35 - 2*chainID)
+		} else {
+			V = byte((*big.Int)(dec.V).Uint64() - 27)
+		}
+		if !crypto.ValidateSignatureValues(V, (*big.Int)(dec.R), (*big.Int)(dec.S), false) {
+			return ErrInvalidSig
+		}
+		*tx = Transaction{data: inner}
 	} else {
-		V = byte((*big.Int)(dec.V).Uint64() - 27)
+		var itx LegacyTx
+		inner = &itx
+		itx.Type = uint64(dec.Type)
+		//if dec.AccountNonce == nil {
+		//	return errors.New("missing required field 'nonce' for TxData")
+		//}
+		itx.AccountNonce = uint64(dec.AccountNonce)
+		if dec.Price == nil {
+			return errors.New("missing required field 'gasPrice' for TxData")
+		}
+		itx.Price = (*big.Int)(dec.Price)
+		//if dec.GasLimit == nil {
+		//	return errors.New("missing required field 'gas' for TxData")
+		//}
+		itx.GasLimit = uint64(dec.GasLimit)
+		//if dec.Recipient != nil {
+		//	t.Recipient = dec.Recipient
+		//}
+		itx.Recipient = dec.Recipient
+		if dec.Amount == nil {
+			return errors.New("missing required field 'value' for TxData")
+		}
+		itx.Amount = (*big.Int)(dec.Amount)
+		if dec.Payload == nil {
+			return errors.New("missing required field 'input' for TxData")
+		}
+		itx.Payload = dec.Payload
+		if dec.V == nil {
+			return errors.New("missing required field 'v' for TxData")
+		}
+		itx.V = (*big.Int)(dec.V)
+		if dec.R == nil {
+			return errors.New("missing required field 'r' for TxData")
+		}
+		itx.R = (*big.Int)(dec.R)
+		if dec.S == nil {
+			return errors.New("missing required field 's' for TxData")
+		}
+		itx.S = (*big.Int)(dec.S)
+		if dec.Hash != nil {
+			itx.Hash = dec.Hash
+		}
+
+		var V byte
+		if isProtectedV((*big.Int)(dec.V)) {
+			chainID := deriveChainId((*big.Int)(dec.V)).Uint64()
+			V = byte((*big.Int)(dec.V).Uint64() - 35 - 2*chainID)
+		} else {
+			V = byte((*big.Int)(dec.V).Uint64() - 27)
+		}
+		if !crypto.ValidateSignatureValues(V, (*big.Int)(dec.R), (*big.Int)(dec.S), false) {
+			return ErrInvalidSig
+		}
+		*tx = Transaction{data: inner}
 	}
-	if !crypto.ValidateSignatureValues(V, (*big.Int)(dec.R), (*big.Int)(dec.S), false) {
-		return ErrInvalidSig
-	}
-	*tx = Transaction{data: inner}
 
 	return nil
 }

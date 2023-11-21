@@ -17,26 +17,9 @@
 package types
 
 import (
-	"bytes"
-	"io"
-	"math/big"
-	"sync/atomic"
-
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/rlp"
+	"math/big"
 )
-
-//go:generate gencodec -dir . -type txEthdata -field-override txEthdataMarshaling -out eth_tx_json.go
-
-type TransactionEth struct {
-	data txEthdata
-	// caches
-	hash atomic.Value
-	size atomic.Value
-	from atomic.Value
-}
 
 type txEthdata struct {
 	AccountNonce uint64          `json:"nonce"    gencodec:"required"`
@@ -53,6 +36,85 @@ type txEthdata struct {
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash `json:"hash" rlp:"-"`
+}
+
+func (t txEthdata) txType() uint64 {
+	return EthTx
+}
+
+func (t txEthdata) copy() TxData {
+	cpy := &txEthdata{
+		AccountNonce: t.AccountNonce,
+		Recipient:    copyAddressPtr(t.Recipient),
+		Payload:      common.CopyBytes(t.Payload),
+		GasLimit:     t.GasLimit,
+		// These are initialized below.
+		Amount: new(big.Int),
+		Price:  new(big.Int),
+		V:      new(big.Int),
+		R:      new(big.Int),
+		S:      new(big.Int),
+	}
+	if t.Amount != nil {
+		cpy.Amount.Set(t.Amount)
+	}
+	if t.Price != nil {
+		cpy.Price.Set(t.Price)
+	}
+	if t.V != nil {
+		cpy.V.Set(t.V)
+	}
+	if t.R != nil {
+		cpy.R.Set(t.R)
+	}
+	if t.S != nil {
+		cpy.S.Set(t.S)
+	}
+	return cpy
+}
+
+func (t txEthdata) chainID() *big.Int {
+	return deriveChainId(t.V)
+}
+
+func (t txEthdata) data() []byte {
+	return t.Payload
+}
+
+func (t txEthdata) gas() uint64 {
+	return t.GasLimit
+}
+
+func (t txEthdata) gasPrice() *big.Int {
+	return t.Price
+}
+
+func (t txEthdata) gasTipCap() *big.Int {
+	return t.Price
+}
+
+func (t txEthdata) gasFeeCap() *big.Int {
+	return t.Price
+}
+
+func (t txEthdata) value() *big.Int {
+	return t.Amount
+}
+
+func (t txEthdata) nonce() uint64 {
+	return t.AccountNonce
+}
+
+func (t txEthdata) to() *common.Address {
+	return t.Recipient
+}
+
+func (t txEthdata) rawSignatureValues() (v, r, s *big.Int) {
+	return t.V, t.R, t.S
+}
+
+func (t txEthdata) setSignatureValues(chainID, v, r, s *big.Int) {
+	t.V, t.R, t.S = v, r, s
 }
 
 func (tx txEthdata) TxData() TxData {
@@ -85,150 +147,4 @@ func (tx txEthdata) TxData() TxData {
 		cpy.S.Set(tx.S)
 	}
 	return cpy
-}
-
-type txEthdataMarshaling struct {
-	AccountNonce hexutil.Uint64
-	Price        *hexutil.Big
-	GasLimit     hexutil.Uint64
-	Amount       *hexutil.Big
-	Payload      hexutil.Bytes
-	V            *hexutil.Big
-	R            *hexutil.Big
-	S            *hexutil.Big
-}
-
-// ChainId returns which chain id this transaction was signed for (if at all)
-func (tx *TransactionEth) ChainId() *big.Int {
-	return deriveChainId(tx.data.V)
-}
-
-// Protected returns whether the transaction is protected from replay protection.
-func (tx *TransactionEth) Protected() bool {
-	return isProtectedV(tx.data.V)
-}
-
-// EncodeRLP implements rlp.Encoder
-func (tx *TransactionEth) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &tx.data)
-}
-
-// DecodeRLP implements rlp.Decoder
-func (tx *TransactionEth) DecodeRLP(s *rlp.Stream) error {
-	_, size, _ := s.Kind()
-	err := s.Decode(&tx.data)
-	if err == nil {
-		tx.size.Store(common.StorageSize(rlp.ListSize(size)))
-	}
-
-	return err
-}
-
-// MarshalJSON encodes the web3 RPC transaction format.
-func (tx *TransactionEth) MarshalJSON() ([]byte, error) {
-	hash := tx.Hash()
-	data := tx.data
-	data.Hash = &hash
-	return data.MarshalJSON()
-}
-
-// UnmarshalJSON decodes the web3 RPC transaction format.
-func (tx *TransactionEth) UnmarshalJSON(input []byte) error {
-	var dec txEthdata
-	if err := dec.UnmarshalJSON(input); err != nil {
-		return err
-	}
-	var V byte
-	if isProtectedV(dec.V) {
-		chainID := deriveChainId(dec.V).Uint64()
-		V = byte(dec.V.Uint64() - 35 - 2*chainID)
-	} else {
-		V = byte(dec.V.Uint64() - 27)
-	}
-	if !crypto.ValidateSignatureValues(V, dec.R, dec.S, false) {
-		return ErrInvalidSig
-	}
-	*tx = TransactionEth{data: dec}
-	return nil
-}
-
-func (tx *TransactionEth) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
-func (tx *TransactionEth) Gas() uint64        { return tx.data.GasLimit }
-func (tx *TransactionEth) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
-func (tx *TransactionEth) Value() *big.Int    { return new(big.Int).Set(tx.data.Amount) }
-func (tx *TransactionEth) Nonce() uint64      { return tx.data.AccountNonce }
-func (tx *TransactionEth) CheckNonce() bool   { return true }
-
-// To returns the recipient address of the transaction.
-// It returns nil if the transaction is a contract creation.
-func (tx *TransactionEth) To() *common.Address {
-	if tx.data.Recipient == nil {
-		return nil
-	}
-	to := *tx.data.Recipient
-	return &to
-}
-
-func (tx *TransactionEth) Payload() []byte {
-	return tx.data.Payload
-}
-
-func (tx *TransactionEth) Vrs() (*big.Int, *big.Int, *big.Int) {
-	return tx.data.V, tx.data.R, tx.data.S
-}
-
-// Hash hashes the RLP encoding of tx.
-// It uniquely identifies the transaction.
-func (tx *TransactionEth) Hash() common.Hash {
-	if hash := tx.hash.Load(); hash != nil {
-		return hash.(common.Hash)
-	}
-	v := rlpHash(tx)
-	tx.hash.Store(v)
-	return v
-}
-
-// Size returns the true RLP encoded storage size of the transaction, either by
-// encoding and returning it, or returning a previsouly cached value.
-func (tx *TransactionEth) Size() common.StorageSize {
-	if size := tx.size.Load(); size != nil {
-		return size.(common.StorageSize)
-	}
-	c := writeCounter(0)
-	rlp.Encode(&c, &tx.data)
-	tx.size.Store(common.StorageSize(c))
-	return common.StorageSize(c)
-}
-
-// Cost returns amount + gasprice * gaslimit.
-func (tx *TransactionEth) Cost() *big.Int {
-	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
-	total.Add(total, tx.data.Amount)
-	return total
-}
-
-func (tx *TransactionEth) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
-	return tx.data.V, tx.data.R, tx.data.S
-}
-
-func (tx *TransactionEth) Transaction() Transaction {
-	var rtn Transaction
-
-	rtn.data = tx.data.TxData()
-
-	return rtn
-}
-
-// Transactions implements DerivableList for transactions.
-type EthTransactions []*TransactionEth
-
-// Len returns the length of s.
-func (s EthTransactions) Len() int { return len(s) }
-
-// EncodeIndex encodes the i'th transaction to w. Note that this does not check for errors
-// because we assume that *Transaction will only ever contain valid txs that were either
-// constructed by decoding or via public API in this package.
-func (s EthTransactions) EncodeIndex(i int, w *bytes.Buffer) {
-	tx := s[i]
-	rlp.Encode(w, tx.data)
 }

@@ -146,12 +146,7 @@ func TestCallTracer(t *testing.T) {
 			// Configure a blockchain with the given prestate
 			tx := new(types.Transaction)
 			if err := rlp.DecodeBytes(common.FromHex(test.Input), tx); err != nil {
-				tx1 := new(types.TransactionEth)
-				if err1 := rlp.DecodeBytes(common.FromHex(test.Input), tx1); err1 != nil {
-					t.Fatalf("failed to parse testcase input: %v", err1)
-				}
-				tx2 := tx1.Transaction()
-				tx = &tx2
+				t.Fatalf("failed to parse testcase input: %v", err)
 			}
 
 			signer := types.MakeSigner(test.Genesis.Config, new(big.Int).SetUint64(uint64(test.Context.Number)))
