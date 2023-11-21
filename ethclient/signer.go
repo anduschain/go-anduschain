@@ -32,6 +32,10 @@ type senderFromServer struct {
 	blockhash common.Hash
 }
 
+func (s *senderFromServer) ChainID() *big.Int {
+	return nil
+}
+
 var errNotCached = errors.New("sender not cached")
 
 func setSenderFromServer(tx *types.Transaction, addr common.Address, block common.Hash) {

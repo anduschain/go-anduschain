@@ -99,6 +99,7 @@ type Signer interface {
 	Hash(tx *Transaction) common.Hash
 	// Equal returns true if the given signer is the same as the receiver.
 	Equal(Signer) bool
+	ChainID() *big.Int
 }
 
 // EIP155Transaction implements Signer using the EIP155 rules.
@@ -116,6 +117,10 @@ func NewEIP155Signer(chainId *big.Int) EIP155Signer {
 	}
 }
 
+func (s EIP155Signer) ChainID() *big.Int {
+	return s.chainId
+}
+
 func (s EIP155Signer) Equal(s2 Signer) bool {
 	eip155, ok := s2.(EIP155Signer)
 	return ok && eip155.chainId.Cmp(s.chainId) == 0
@@ -131,9 +136,10 @@ func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
 	if tx.ChainId().Cmp(s.chainId) != 0 {
 		return common.Address{}, ErrInvalidChainId
 	}
-	V := new(big.Int).Sub(tx.data.V, s.chainIdMul)
+	v, r, s1 := tx.data.rawSignatureValues()
+	V := new(big.Int).Sub(v, s.chainIdMul)
 	V.Sub(V, big8)
-	return recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, V, true)
+	return recoverPlain(s.Hash(tx), r, s1, V, true)
 }
 
 // WithSignature returns a new transaction with the given signature. This signature
@@ -153,25 +159,25 @@ func (s EIP155Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (s EIP155Signer) Hash(tx *Transaction) common.Hash {
-	if tx.data.Type == EthTx {
+	if tx.data.txType() == EthTx {
 		return rlpHash([]interface{}{
-			tx.data.AccountNonce,
-			tx.data.Price,
-			tx.data.GasLimit,
-			tx.data.Recipient,
-			tx.data.Amount,
-			tx.data.Payload,
+			tx.data.nonce(),
+			tx.data.gasPrice(),
+			tx.data.gas(),
+			tx.data.to(),
+			tx.data.value(),
+			tx.data.data(),
 			s.chainId, uint(0), uint(0),
 		})
 	} else {
 		return rlpHash([]interface{}{
-			tx.data.Type,
-			tx.data.AccountNonce,
-			tx.data.Price,
-			tx.data.GasLimit,
-			tx.data.Recipient,
-			tx.data.Amount,
-			tx.data.Payload,
+			tx.data.txType(),
+			tx.data.nonce(),
+			tx.data.gasPrice(),
+			tx.data.gas(),
+			tx.data.to(),
+			tx.data.value(),
+			tx.data.data(),
 			s.chainId, uint(0), uint(0),
 		})
 	}
@@ -181,6 +187,10 @@ func (s EIP155Signer) Hash(tx *Transaction) common.Hash {
 // HomesteadTransaction implements TransactionInterface using the
 // homestead rules.
 type HomesteadSigner struct{ FrontierSigner }
+
+func (s HomesteadSigner) ChainID() *big.Int {
+	return nil
+}
 
 func (s HomesteadSigner) Equal(s2 Signer) bool {
 	_, ok := s2.(HomesteadSigner)
@@ -194,11 +204,15 @@ func (hs HomesteadSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v 
 }
 
 func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
-	return recoverPlain(hs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, true)
+	v, r, s := tx.data.rawSignatureValues()
+	return recoverPlain(hs.Hash(tx), r, s, v, true)
 }
 
 type FrontierSigner struct{}
 
+func (s FrontierSigner) ChainID() *big.Int {
+	return nil
+}
 func (s FrontierSigner) Equal(s2 Signer) bool {
 	_, ok := s2.(FrontierSigner)
 	return ok
@@ -219,30 +233,31 @@ func (fs FrontierSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v *
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (fs FrontierSigner) Hash(tx *Transaction) common.Hash {
-	if tx.data.Type == EthTx {
+	if tx.data.txType() == EthTx {
 		return rlpHash([]interface{}{
-			tx.data.AccountNonce,
-			tx.data.Price,
-			tx.data.GasLimit,
-			tx.data.Recipient,
-			tx.data.Amount,
-			tx.data.Payload,
+			tx.data.nonce(),
+			tx.data.gasPrice(),
+			tx.data.gas(),
+			tx.data.to(),
+			tx.data.value(),
+			tx.data.data(),
 		})
 	} else {
 		return rlpHash([]interface{}{
-			tx.data.Type,
-			tx.data.AccountNonce,
-			tx.data.Price,
-			tx.data.GasLimit,
-			tx.data.Recipient,
-			tx.data.Amount,
-			tx.data.Payload,
+			tx.data.txType(),
+			tx.data.nonce(),
+			tx.data.gasPrice(),
+			tx.data.gas(),
+			tx.data.to(),
+			tx.data.value(),
+			tx.data.data(),
 		})
 	}
 }
 
 func (fs FrontierSigner) Sender(tx *Transaction) (common.Address, error) {
-	return recoverPlain(fs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, false)
+	v, r, s := tx.data.rawSignatureValues()
+	return recoverPlain(fs.Hash(tx), r, s, v, false)
 }
 
 func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {

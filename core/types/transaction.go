@@ -19,6 +19,7 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"github.com/anduschain/go-anduschain/params"
 	"io"
@@ -30,8 +31,6 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/rlp"
 )
-
-//go:generate gencodec -dir . -type TxData -field-override TxDataMarshaling -out gen_tx_json.go
 
 var (
 	ErrInvalidSig = errors.New("invalid transaction v, r, s values")
@@ -45,7 +44,25 @@ type Transaction struct {
 	from atomic.Value
 }
 
-type TxData struct {
+type TxData interface {
+	txType() uint64 // returns the type ID
+	copy() TxData   // creates a deep copy and initializes all fields
+
+	chainID() *big.Int
+	data() []byte
+	gas() uint64
+	gasPrice() *big.Int
+	gasTipCap() *big.Int
+	gasFeeCap() *big.Int
+	value() *big.Int
+	nonce() uint64
+	to() *common.Address
+
+	rawSignatureValues() (v, r, s *big.Int)
+	setSignatureValues(chainID, v, r, s *big.Int)
+}
+
+type LegacyTx struct {
 	Type         uint64          `json:"type"    gencodec:"required"`
 	AccountNonce uint64          `json:"nonce"    gencodec:"required"`
 	Price        *big.Int        `json:"gasPrice" gencodec:"required"`
@@ -63,16 +80,83 @@ type TxData struct {
 	Hash *common.Hash `json:"hash" rlp:"-"`
 }
 
-type TxDataMarshaling struct {
-	Type         hexutil.Uint64
-	AccountNonce hexutil.Uint64
-	Price        *hexutil.Big
-	GasLimit     hexutil.Uint64
-	Amount       *hexutil.Big
-	Payload      hexutil.Bytes
-	V            *hexutil.Big
-	R            *hexutil.Big
-	S            *hexutil.Big
+func (tx *LegacyTx) copy() TxData {
+	cpy := &LegacyTx{
+		AccountNonce: tx.AccountNonce,
+		Recipient:    copyAddressPtr(tx.Recipient),
+		Payload:      common.CopyBytes(tx.Payload),
+		GasLimit:     tx.GasLimit,
+		// These are initialized below.
+		Amount: new(big.Int),
+		Price:  new(big.Int),
+		V:      new(big.Int),
+		R:      new(big.Int),
+		S:      new(big.Int),
+	}
+	if tx.Amount != nil {
+		cpy.Amount.Set(tx.Amount)
+	}
+	if tx.Price != nil {
+		cpy.Price.Set(tx.Price)
+	}
+	if tx.V != nil {
+		cpy.V.Set(tx.V)
+	}
+	if tx.R != nil {
+		cpy.R.Set(tx.R)
+	}
+	if tx.S != nil {
+		cpy.S.Set(tx.S)
+	}
+	return cpy
+}
+
+func (tx *LegacyTx) txType() uint64 {
+	return tx.Type
+}
+
+func (tx *LegacyTx) chainID() *big.Int {
+	return deriveChainId(tx.V)
+}
+
+func (tx *LegacyTx) data() []byte {
+	return tx.Payload
+}
+
+func (tx *LegacyTx) gas() uint64 {
+	return tx.GasLimit
+}
+
+func (tx *LegacyTx) gasPrice() *big.Int {
+	return tx.Price
+}
+
+func (tx *LegacyTx) gasTipCap() *big.Int {
+	return tx.Price
+}
+
+func (tx *LegacyTx) gasFeeCap() *big.Int {
+	return tx.Price
+}
+
+func (tx *LegacyTx) value() *big.Int {
+	return tx.Amount
+}
+
+func (tx *LegacyTx) nonce() uint64 {
+	return tx.AccountNonce
+}
+
+func (tx *LegacyTx) to() *common.Address {
+	return tx.Recipient
+}
+
+func (tx *LegacyTx) rawSignatureValues() (v, r, s *big.Int) {
+	return tx.V, tx.R, tx.S
+}
+
+func (tx *LegacyTx) setSignatureValues(chainID, v, r, s *big.Int) {
+	tx.V, tx.R, tx.S = v, r, s
 }
 
 // NewTx creates a new transaction.
@@ -95,7 +179,7 @@ func ConvertEthTransaction(nonce uint64, to *common.Address, amount *big.Int, ga
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
-	d := TxData{
+	d := &LegacyTx{
 		Type:         EthTx,
 		AccountNonce: nonce,
 		Recipient:    to,
@@ -133,7 +217,7 @@ func NewJoinTransaction(nonce, joinNonce uint64, otprn []byte, coinase common.Ad
 	payload = append(payload, b...)
 	payload = append(payload, hash.Bytes()...)
 
-	d := TxData{
+	d := &LegacyTx{
 		Type:         JoinTx,
 		AccountNonce: nonce,
 		Recipient:    &params.JtxAddress,
@@ -153,7 +237,7 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
-	d := TxData{
+	d := &LegacyTx{
 		Type:         GeneralTx,
 		AccountNonce: nonce,
 		Recipient:    to,
@@ -176,13 +260,18 @@ func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit 
 }
 
 func (tx *Transaction) TransactionId() uint64 {
-	return tx.data.Type
+	return tx.data.txType()
+}
+
+// Type returns the transaction type.
+func (tx *Transaction) Type() uint64 {
+	return tx.data.txType()
 }
 
 // for join transaction
 func (tx *Transaction) JoinNonce() (uint64, error) {
-	if tx.data.Type == JoinTx {
-		payload := tx.data.Payload
+	if tx.data.txType() == JoinTx {
+		payload := tx.data.data()
 		return binary.LittleEndian.Uint64(payload[len(payload)-40 : len(payload)-32]), nil
 	}
 	return 0, errors.New("not join transaction")
@@ -190,8 +279,8 @@ func (tx *Transaction) JoinNonce() (uint64, error) {
 
 // for join transaction
 func (tx *Transaction) Otprn() ([]byte, error) {
-	if tx.data.Type == JoinTx {
-		payload := tx.data.Payload
+	if tx.data.txType() == JoinTx {
+		payload := tx.data.data()
 		return payload[:len(payload)-40], nil
 	}
 	return nil, errors.New("not join transaction")
@@ -199,25 +288,26 @@ func (tx *Transaction) Otprn() ([]byte, error) {
 
 // for join transaction
 func (tx *Transaction) PayloadHash() ([]byte, error) {
-	if tx.data.Type == JoinTx {
-		payload := tx.data.Payload
+	if tx.data.txType() == JoinTx {
+		payload := tx.data.data()
 		return payload[len(payload)-32:], nil
 	}
 	return nil, errors.New("not join transaction")
 }
 
 func (tx *Transaction) Payload() []byte {
-	return tx.data.Payload
+	return tx.data.data()
 }
 
 // ChainId returns which chain id this transaction was signed for (if at all)
 func (tx *Transaction) ChainId() *big.Int {
-	return deriveChainId(tx.data.V)
+	return tx.data.chainID()
 }
 
 // Protected returns whether the transaction is protected from replay protection.
 func (tx *Transaction) Protected() bool {
-	return isProtectedV(tx.data.V)
+	v, _, _ := tx.data.rawSignatureValues()
+	return isProtectedV(v)
 }
 
 func isProtectedV(V *big.Int) bool {
@@ -248,40 +338,124 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 
 // DecodeRLP implements rlp.Decoder
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
-	_, size, _ := s.Kind()
-	err := s.Decode(&tx.data)
-	if err == nil {
-		tx.size.Store(common.StorageSize(rlp.ListSize(size)))
+	kind, size, err := s.Kind()
+	switch {
+	case err != nil:
+		return err
+	case kind == rlp.List:
+		// It's a legacy transaction.
+		var inner LegacyTx
+		err := s.Decode(&inner)
+		if err == nil {
+			tx.setDecoded(&inner, int(rlp.ListSize(size)))
+		}
+		return err
+	default:
+		return errors.New("DecodeRLP error invalid kind :" + kind.String())
 	}
+}
 
-	return err
+type txJSON struct {
+	Type         hexutil.Uint64  `json:"type"    gencodec:"required"`
+	AccountNonce hexutil.Uint64  `json:"nonce"    gencodec:"required"`
+	Price        *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+	GasLimit     hexutil.Uint64  `json:"gas"      gencodec:"required"`
+	Recipient    *common.Address `json:"to"       rlp:"nil"`
+	Amount       *hexutil.Big    `json:"value"    gencodec:"required"`
+	Payload      hexutil.Bytes   `json:"input"    gencodec:"required"`
+	V            *hexutil.Big    `json:"v" gencodec:"required"`
+	R            *hexutil.Big    `json:"r" gencodec:"required"`
+	S            *hexutil.Big    `json:"s" gencodec:"required"`
+	Hash         *common.Hash    `json:"hash" rlp:"-"`
 }
 
 // MarshalJSON encodes the web3 RPC transaction format.
 func (tx *Transaction) MarshalJSON() ([]byte, error) {
+	var enc txJSON
 	hash := tx.Hash()
-	data := tx.data
-	data.Hash = &hash
-	return data.MarshalJSON()
+	enc.Hash = &hash
+
+	t := tx.data
+	enc.Type = hexutil.Uint64(t.txType())
+	enc.AccountNonce = hexutil.Uint64(t.nonce())
+	enc.Price = (*hexutil.Big)(t.gasPrice())
+	enc.GasLimit = hexutil.Uint64(t.gas())
+	enc.Recipient = t.to()
+	enc.Amount = (*hexutil.Big)(t.value())
+	enc.Payload = t.data()
+	v, r, s := t.rawSignatureValues()
+	enc.V = (*hexutil.Big)(v)
+	enc.R = (*hexutil.Big)(r)
+	enc.S = (*hexutil.Big)(s)
+
+	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON decodes the web3 RPC transaction format.
 func (tx *Transaction) UnmarshalJSON(input []byte) error {
-	var dec TxData
-	if err := dec.UnmarshalJSON(input); err != nil {
+	var dec txJSON
+	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	var V byte
-	if isProtectedV(dec.V) {
-		chainID := deriveChainId(dec.V).Uint64()
-		V = byte(dec.V.Uint64() - 35 - 2*chainID)
-	} else {
-		V = byte(dec.V.Uint64() - 27)
+	//if dec.Type == nil {
+	//	return errors.New("missing required field 'type' for TxData")
+	//}
+	var inner TxData
+	var itx LegacyTx
+	inner = &itx
+	itx.Type = uint64(dec.Type)
+	//if dec.AccountNonce == nil {
+	//	return errors.New("missing required field 'nonce' for TxData")
+	//}
+	itx.AccountNonce = uint64(dec.AccountNonce)
+	if dec.Price == nil {
+		return errors.New("missing required field 'gasPrice' for TxData")
 	}
-	if !crypto.ValidateSignatureValues(V, dec.R, dec.S, false) {
+	itx.Price = (*big.Int)(dec.Price)
+	//if dec.GasLimit == nil {
+	//	return errors.New("missing required field 'gas' for TxData")
+	//}
+	itx.GasLimit = uint64(dec.GasLimit)
+	//if dec.Recipient != nil {
+	//	t.Recipient = dec.Recipient
+	//}
+	itx.Recipient = dec.Recipient
+	if dec.Amount == nil {
+		return errors.New("missing required field 'value' for TxData")
+	}
+	itx.Amount = (*big.Int)(dec.Amount)
+	if dec.Payload == nil {
+		return errors.New("missing required field 'input' for TxData")
+	}
+	itx.Payload = dec.Payload
+	if dec.V == nil {
+		return errors.New("missing required field 'v' for TxData")
+	}
+	itx.V = (*big.Int)(dec.V)
+	if dec.R == nil {
+		return errors.New("missing required field 'r' for TxData")
+	}
+	itx.R = (*big.Int)(dec.R)
+	if dec.S == nil {
+		return errors.New("missing required field 's' for TxData")
+	}
+	itx.S = (*big.Int)(dec.S)
+	if dec.Hash != nil {
+		itx.Hash = dec.Hash
+	}
+
+	var V byte
+	if isProtectedV((*big.Int)(dec.V)) {
+		chainID := deriveChainId((*big.Int)(dec.V)).Uint64()
+		V = byte((*big.Int)(dec.V).Uint64() - 35 - 2*chainID)
+	} else {
+		V = byte((*big.Int)(dec.V).Uint64() - 27)
+	}
+	if !crypto.ValidateSignatureValues(V, (*big.Int)(dec.R), (*big.Int)(dec.S), false) {
 		return ErrInvalidSig
 	}
-	*tx = Transaction{data: dec}
+	*tx = Transaction{data: inner}
+
 	return nil
 }
 
@@ -304,20 +478,20 @@ func (tx *Transaction) setDecoded(inner TxData, size int) {
 		tx.size.Store(common.StorageSize(size))
 	}
 }
-func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
-func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
-func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
-func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.Amount) }
-func (tx *Transaction) Nonce() uint64      { return tx.data.AccountNonce }
+func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.data()) }
+func (tx *Transaction) Gas() uint64        { return tx.data.gas() }
+func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.gasPrice()) }
+func (tx *Transaction) Value() *big.Int    { return new(big.Int).Set(tx.data.value()) }
+func (tx *Transaction) Nonce() uint64      { return tx.data.nonce() }
 func (tx *Transaction) CheckNonce() bool   { return true }
 
 // To returns the recipient address of the transaction.
 // It returns nil if the transaction is a contract creation.
 func (tx *Transaction) To() *common.Address {
-	if tx.data.Recipient == nil {
+	if tx.data.to() == nil {
 		return nil
 	}
-	to := *tx.data.Recipient
+	to := *tx.data.to()
 	return &to
 }
 
@@ -351,12 +525,12 @@ func (tx *Transaction) Size() common.StorageSize {
 // XXX Rename message to something less arbitrary?
 func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	msg := Message{
-		nonce:      tx.data.AccountNonce,
-		gasLimit:   tx.data.GasLimit,
-		gasPrice:   new(big.Int).Set(tx.data.Price),
-		to:         tx.data.Recipient,
-		amount:     tx.data.Amount,
-		data:       tx.data.Payload,
+		nonce:      tx.data.nonce(),
+		gasLimit:   tx.data.gas(),
+		gasPrice:   new(big.Int).Set(tx.data.gasPrice()),
+		to:         tx.data.to(),
+		amount:     tx.data.value(),
+		data:       tx.data.data(),
 		checkNonce: true,
 	}
 
@@ -373,19 +547,20 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 		return nil, err
 	}
 	cpy := &Transaction{data: tx.data}
-	cpy.data.R, cpy.data.S, cpy.data.V = r, s, v
+	cpy.data.setSignatureValues(signer.ChainID(), v, r, s)
 	return cpy, nil
 }
 
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost() *big.Int {
-	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
-	total.Add(total, tx.data.Amount)
+	total := new(big.Int).Mul(tx.data.gasPrice(), new(big.Int).SetUint64(tx.data.gas()))
+	total.Add(total, tx.data.value())
 	return total
 }
 
 func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
-	return tx.data.V, tx.data.R, tx.data.S
+	v, r, s := tx.data.rawSignatureValues()
+	return v, r, s
 }
 
 func (tx *Transaction) Sender(signer Signer) (common.Address, error) {
@@ -404,38 +579,6 @@ func (tx *Transaction) Sender(signer Signer) (common.Address, error) {
 	}
 	tx.from.Store(sigCache{signer: signer, from: addr})
 	return addr, nil
-}
-
-func (tx *TxData) copy() TxData {
-	cpy := TxData{
-		Type:         tx.Type,
-		AccountNonce: tx.AccountNonce,
-		Recipient:    copyAddressPtr(tx.Recipient),
-		Payload:      common.CopyBytes(tx.Payload),
-		GasLimit:     tx.GasLimit,
-		// These are initialized below.
-		Amount: new(big.Int),
-		Price:  new(big.Int),
-		V:      new(big.Int),
-		R:      new(big.Int),
-		S:      new(big.Int),
-	}
-	if tx.Amount != nil {
-		cpy.Amount.Set(tx.Amount)
-	}
-	if tx.Price != nil {
-		cpy.Price.Set(tx.Price)
-	}
-	if tx.V != nil {
-		cpy.V.Set(tx.V)
-	}
-	if tx.R != nil {
-		cpy.R.Set(tx.R)
-	}
-	if tx.S != nil {
-		cpy.S.Set(tx.S)
-	}
-	return cpy
 }
 
 // Message is a fully derived transaction and implements core.Message

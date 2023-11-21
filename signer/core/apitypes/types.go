@@ -124,8 +124,8 @@ func (args *SendTxArgs) ToTransaction() *types.Transaction {
 	} else if args.Data != nil {
 		input = *args.Data
 	}
-
-	data := types.TxData{
+	var inner types.TxData
+	itx := types.LegacyTx{
 		Recipient:    to,
 		AccountNonce: uint64(args.Nonce),
 		GasLimit:     uint64(args.Gas),
@@ -133,8 +133,9 @@ func (args *SendTxArgs) ToTransaction() *types.Transaction {
 		Amount:       (*big.Int)(&args.Value),
 		Payload:      input,
 	}
+	inner = &itx
 
-	return types.NewTx(data)
+	return types.NewTx(inner)
 }
 
 type SigFormat struct {

@@ -180,7 +180,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64) (types.Message, erro
 func (args *TransactionArgs) toTransaction() *types.Transaction {
 	var data types.TxData
 
-	data = types.TxData{
+	itx := types.LegacyTx{
 		Recipient:    args.To,
 		AccountNonce: uint64(*args.Nonce),
 		GasLimit:     uint64(*args.Gas),
@@ -188,6 +188,7 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 		Amount:       (*big.Int)(args.Value),
 		Payload:      args.data(),
 	}
+	data = &itx
 
 	return types.NewTx(data)
 }

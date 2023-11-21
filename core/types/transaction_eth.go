@@ -56,24 +56,35 @@ type txEthdata struct {
 }
 
 func (tx txEthdata) TxData() TxData {
-	var rtn TxData
-
-	rtn.Type = EthTx
-	rtn.AccountNonce = tx.AccountNonce
-	rtn.Price = tx.Price
-	rtn.GasLimit = tx.GasLimit
-	rtn.Recipient = tx.Recipient
-	rtn.Amount = tx.Amount
-	rtn.Payload = tx.Payload
-	// Signature values
-	rtn.V = tx.V
-	rtn.R = tx.R
-	rtn.S = tx.S
-
-	// This is only used when marshaling to JSON.
-	rtn.Hash = tx.Hash
-
-	return rtn
+	cpy := &LegacyTx{
+		Type:         EthTx,
+		AccountNonce: tx.AccountNonce,
+		Recipient:    copyAddressPtr(tx.Recipient),
+		Payload:      common.CopyBytes(tx.Payload),
+		GasLimit:     tx.GasLimit,
+		// These are initialized below.
+		Amount: new(big.Int),
+		Price:  new(big.Int),
+		V:      new(big.Int),
+		R:      new(big.Int),
+		S:      new(big.Int),
+	}
+	if tx.Amount != nil {
+		cpy.Amount.Set(tx.Amount)
+	}
+	if tx.Price != nil {
+		cpy.Price.Set(tx.Price)
+	}
+	if tx.V != nil {
+		cpy.V.Set(tx.V)
+	}
+	if tx.R != nil {
+		cpy.R.Set(tx.R)
+	}
+	if tx.S != nil {
+		cpy.S.Set(tx.S)
+	}
+	return cpy
 }
 
 type txEthdataMarshaling struct {
