@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
@@ -540,14 +541,32 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 }
 
 // UnmarshalBinary decodes the canonical encoding of transactions.
-// It supports legacy RLP transactions and EIP2718 typed transactions.
+// It supports legacy RLP transactions and Ethereum typed transactions.
 func (tx *Transaction) UnmarshalBinary(b []byte) error {
-	var data TxData
+	var inner TxData
+	var data LegacyTx
 	err := rlp.DecodeBytes(b, &data)
 	if err != nil {
-		return err
+		var data2 txEthdata
+		err := rlp.DecodeBytes(b, &data2)
+		if err != nil {
+			return err
+		}
+		data.Type = EthTx
+		data.AccountNonce = data2.AccountNonce
+		data.Recipient = copyAddressPtr(data2.Recipient)
+		data.Payload = common.CopyBytes(data2.Payload)
+		data.GasLimit = data2.GasLimit
+		data.Amount = data2.Amount
+		data.Price = data2.Price
+		data.V = data2.V
+		data.R = data2.R
+		data.S = data2.S
+		fmt.Printf("CSW......... %v %v %v", data.V, data.R, data.S)
 	}
-	tx.setDecoded(data, len(b))
+	inner = &data
+	tx.setDecoded(inner, len(b))
+
 	return nil
 }
 

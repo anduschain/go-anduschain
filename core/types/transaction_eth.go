@@ -117,7 +117,7 @@ func (t txEthdata) setSignatureValues(chainID, v, r, s *big.Int) {
 	t.V, t.R, t.S = v, r, s
 }
 
-func (tx txEthdata) TxData() TxData {
+func (tx txEthdata) TxData() *LegacyTx {
 	cpy := &LegacyTx{
 		Type:         EthTx,
 		AccountNonce: tx.AccountNonce,
