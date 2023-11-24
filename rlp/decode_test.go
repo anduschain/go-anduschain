@@ -21,13 +21,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common/math"
 	"io"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common/math"
 )
 
 func TestStreamKind(t *testing.T) {

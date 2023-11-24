@@ -19,8 +19,7 @@ package rlp_test
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/anduschain/go-anduschain/rlp"
 )
 
 func ExampleEncoderBuffer() {

@@ -20,13 +20,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common/math"
 	"io"
 	"math/big"
 	"runtime"
 	"sync"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common/math"
 )
 
 type testEncoder struct {
