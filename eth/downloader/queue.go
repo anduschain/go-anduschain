@@ -22,6 +22,7 @@ package downloader
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/trie"
 	"sync"
 	"time"
 
@@ -774,11 +775,11 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, voters 
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash {
+		if types.DeriveSha(types.Transactions(txLists[index]), new(trie.Trie)) != header.TxHash {
 			return errInvalidBody
 		}
 
-		if types.DeriveSha(types.Voters(voters[index])) != header.VoteHash {
+		if types.DeriveSha(types.Voters(voters[index]), new(trie.Trie)) != header.VoteHash {
 			return errInvalidBody
 		}
 
@@ -798,7 +799,7 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Receipts(receiptList[index])) != header.ReceiptHash {
+		if types.DeriveSha(types.Receipts(receiptList[index]), new(trie.Trie)) != header.ReceiptHash {
 			return errInvalidReceipt
 		}
 

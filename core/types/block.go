@@ -22,8 +22,8 @@ import (
 	"encoding/binary"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"sort"
@@ -33,9 +33,9 @@ import (
 )
 
 var (
-	EmptyRootHash    = DeriveSha(Transactions{})
-	EmptyReceiptHash = DeriveSha(Receipts{})
-	EmptyVoteHash    = DeriveSha(Voters{})
+	EmptyRootHash    = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyReceiptHash = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyVoteHash    = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
@@ -138,13 +138,6 @@ func (h *Header) Size() common.StorageSize {
 	return common.StorageSize(unsafe.Sizeof(*h)) + common.StorageSize(len(h.Extra)+(h.Difficulty.BitLen()+h.Number.BitLen()+h.Time.BitLen())/8)
 }
 
-func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
-}
-
 // Body is a simple (mutable, non-safe) data container for storing and moving
 // a block's data contents (transactions and uncles) together.
 type Body struct {
@@ -214,7 +207,7 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []
 	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
-		b.header.TxHash = DeriveSha(Transactions(txs))
+		b.header.TxHash = DeriveSha(Transactions(txs), new(trie.Trie))
 		b.transactions = make(Transactions, len(txs))
 		copy(b.transactions, txs)
 	}
@@ -222,14 +215,14 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []
 	if len(receipts) == 0 {
 		b.header.ReceiptHash = EmptyReceiptHash
 	} else {
-		b.header.ReceiptHash = DeriveSha(Receipts(receipts))
+		b.header.ReceiptHash = DeriveSha(Receipts(receipts), new(trie.Trie))
 		b.header.Bloom = CreateBloom(receipts)
 	}
 
 	if len(voters) == 0 {
 		b.header.VoteHash = EmptyVoteHash
 	} else {
-		b.header.VoteHash = DeriveSha(Voters(voters))
+		b.header.VoteHash = DeriveSha(Voters(voters), new(trie.Trie))
 		b.voters = make(Voters, len(voters))
 		copy(b.voters, voters)
 	}

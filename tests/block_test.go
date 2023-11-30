@@ -17,8 +17,29 @@
 package tests
 
 import (
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/trie"
 	"testing"
 )
+
+func TestGetConstantHash(t *testing.T) {
+	WantEmptyRootHash := common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	WantEmptyReceiptHash := common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	WantEmptyVoteHash := common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyRootHash := types.DeriveSha(types.Transactions{}, new(trie.Trie))
+	EmptyReceiptHash := types.DeriveSha(types.Receipts{}, new(trie.Trie))
+	EmptyVoteHash := types.DeriveSha(types.Voters{}, new(trie.Trie))
+	if EmptyRootHash != WantEmptyRootHash {
+		t.Fatalf("want %v got %v\n", WantEmptyRootHash, EmptyRootHash)
+	}
+	if WantEmptyReceiptHash != WantEmptyReceiptHash {
+		t.Fatalf("want %v got %v\n", WantEmptyReceiptHash, EmptyReceiptHash)
+	}
+	if EmptyVoteHash != WantEmptyVoteHash {
+		t.Fatalf("want %v got %v\n", WantEmptyVoteHash, EmptyVoteHash)
+	}
+}
 
 func TestBlockchain(t *testing.T) {
 	t.Parallel()
