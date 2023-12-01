@@ -9,7 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
-	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/node"
 	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/params"
@@ -81,7 +81,7 @@ func init() {
 		GasLimit:   100000000,
 		Difficulty: params.GenesisDifficulty,
 	}
-	database := ethdb.NewMemDatabase()
+	database := memorydb.NewMemDatabase()
 	genesis := core.Genesis{Config: params.AllDebProtocolChanges, GasLimit: params.GenesisGasLimit, Alloc: gspec.Alloc}
 	genesis.MustCommit(database)
 	blockchain, _ := core.NewBlockChain(database, nil, genesis.Config, deb.NewFaker(types.NewDefaultOtprn()), vm.Config{})

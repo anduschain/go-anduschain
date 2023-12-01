@@ -18,6 +18,7 @@ package tracers
 
 import (
 	"encoding/json"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/tests"
 	"io/ioutil"
@@ -33,7 +34,6 @@ import (
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
-	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
@@ -163,7 +163,7 @@ func TestCallTracer(t *testing.T) {
 				GasLimit:    uint64(test.Context.GasLimit),
 				GasPrice:    tx.GasPrice(),
 			}
-			statedb := tests.MakePreState(ethdb.NewMemDatabase(), test.Genesis.Alloc)
+			statedb := tests.MakePreState(memorydb.NewMemDatabase(), test.Genesis.Alloc)
 
 			// Create the tracer, the EVM environment and run it
 			tracer, err := New("callTracer")

@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/anduschain/go-anduschain/eth/tracers/logger"
-	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -188,7 +188,7 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			}
 			vmconfig.ExtraAips = aips
 			block := t.genesis(config).ToBlock(nil)
-			statedb := MakePreState(ethdb.NewMemDatabase(), t.json.Pre)
+			statedb := MakePreState(memorydb.NewMemDatabase(), t.json.Pre)
 
 			var baseFee *big.Int
 			post := t.json.Post[subtest.Fork][subtest.Index]

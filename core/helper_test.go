@@ -20,6 +20,7 @@ import (
 	"container/list"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/event"
 )
 
@@ -77,7 +78,7 @@ func (tm *TestManager) Db() ethdb.Database {
 func NewTestManager() *TestManager {
 	testManager := &TestManager{}
 	testManager.eventMux = new(event.TypeMux)
-	testManager.db = ethdb.NewMemDatabase()
+	testManager.db = memorydb.NewMemDatabase()
 	// testManager.txPool = NewTxPool(testManager)
 	// testManager.blockChain = NewBlockChain(testManager)
 	// testManager.stateManager = NewStateManager(testManager)

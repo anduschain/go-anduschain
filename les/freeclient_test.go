@@ -20,12 +20,12 @@ package les
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common/mclock"
-	"github.com/anduschain/go-anduschain/ethdb"
 )
 
 func TestFreeClientPoolL10C100(t *testing.T) {
@@ -45,7 +45,7 @@ const testFreeClientPoolTicks = 500000
 func testFreeClientPool(t *testing.T, connLimit, clientCount int) {
 	var (
 		clock     mclock.Simulated
-		db        = ethdb.NewMemDatabase()
+		db        = memorydb.NewMemDatabase()
 		pool      = newFreeClientPool(db, connLimit, 10000, &clock)
 		connected = make([]bool, clientCount)
 		connTicks = make([]int, clientCount)

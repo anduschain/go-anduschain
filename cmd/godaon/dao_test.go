@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/anduschain/go-anduschain/ethdb/leveldb"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -25,7 +26,6 @@ import (
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/rawdb"
-	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -116,7 +116,7 @@ func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBloc
 	// Retrieve the DAO config flag from the database
 	path := filepath.Join(datadir, "godaon", "chaindata")
 
-	db, err := ethdb.NewLDBDatabase(path, 0, 0)
+	db, err := leveldb.NewLDBDatabase(path, 0, 0)
 	if err != nil {
 		t.Fatalf("test %d: failed to open test database: %v", test, err)
 	}

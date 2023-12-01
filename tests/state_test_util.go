@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"strconv"
 	"strings"
@@ -182,7 +183,7 @@ func (t *StateTest) RunNoVerify(subtest StateSubtest, vmconfig vm.Config) (*stat
 	}
 	vmconfig.ExtraAips = aips
 	block := t.genesis(config).ToBlock(nil)
-	statedb := MakePreState(ethdb.NewMemDatabase(), t.json.Pre)
+	statedb := MakePreState(memorydb.NewMemDatabase(), t.json.Pre)
 
 	var baseFee *big.Int
 

@@ -18,13 +18,13 @@ package core
 
 import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"runtime"
 	"testing"
 	"time"
 
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
-	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -33,7 +33,7 @@ func TestHeaderVerification(t *testing.T) {
 	otprn := types.NewDefaultOtprn()
 	// Create a simple chain to verify
 	var (
-		testdb = ethdb.NewMemDatabase()
+		testdb = memorydb.NewMemDatabase()
 		gspec  = &Genesis{Config: params.TestChainConfig}
 
 		genesis   = gspec.MustCommit(testdb)
@@ -90,7 +90,7 @@ func testHeaderConcurrentVerification(t *testing.T, threads int) {
 	otprn := types.NewDefaultOtprn()
 	// Create a simple chain to verify
 	var (
-		testdb    = ethdb.NewMemDatabase()
+		testdb    = memorydb.NewMemDatabase()
 		gspec     = &Genesis{Config: params.TestChainConfig}
 		genesis   = gspec.MustCommit(testdb)
 		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(otprn), testdb, 8, nil)
@@ -163,7 +163,7 @@ func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	otprn := types.NewDefaultOtprn()
 	// Create a simple chain to verify
 	var (
-		testdb    = ethdb.NewMemDatabase()
+		testdb    = memorydb.NewMemDatabase()
 		gspec     = &Genesis{Config: params.TestChainConfig}
 		genesis   = gspec.MustCommit(testdb)
 		blocks, _ = GenerateChain(params.TestChainConfig, genesis, deb.NewFaker(otprn), testdb, 1024, nil)

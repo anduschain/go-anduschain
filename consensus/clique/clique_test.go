@@ -17,7 +17,7 @@
 package clique
 
 import (
-	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"testing"
 
@@ -38,7 +38,7 @@ import (
 func TestReimportMirroredState(t *testing.T) {
 	// Initialize a Clique chain with a single signer
 	var (
-		db     = ethdb.NewMemDatabase()
+		db     = memorydb.NewMemDatabase()
 		key, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 		addr   = crypto.PubkeyToAddress(key.PublicKey)
 		engine = New(params.AllCliqueProtocolChanges.Clique, db)
@@ -86,7 +86,7 @@ func TestReimportMirroredState(t *testing.T) {
 
 	}
 	// Insert the first two blocks and make sure the chain is valid
-	db = ethdb.NewMemDatabase()
+	db = memorydb.NewMemDatabase()
 	genspec.MustCommit(db)
 
 	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})

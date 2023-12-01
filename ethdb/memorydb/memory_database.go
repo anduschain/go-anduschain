@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package ethdb
+package memorydb
 
 import (
 	"errors"
+	"github.com/anduschain/go-anduschain/ethdb"
 	"sync"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -29,6 +30,18 @@ import (
 type MemDatabase struct {
 	db   map[string][]byte
 	lock sync.RWMutex
+}
+
+func (db *MemDatabase) Close() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	db.db = nil
+	return nil
+}
+
+func (db *MemDatabase) NewBatchWithSize(size int) ethdb.Batch {
+	return &memBatch{db: db}
 }
 
 func NewMemDatabase() *MemDatabase {
@@ -88,9 +101,7 @@ func (db *MemDatabase) Delete(key []byte) error {
 	return nil
 }
 
-func (db *MemDatabase) Close() {}
-
-func (db *MemDatabase) NewBatch() Batch {
+func (db *MemDatabase) NewBatch() ethdb.Batch {
 	return &memBatch{db: db}
 }
 
@@ -105,6 +116,21 @@ type memBatch struct {
 	db     *MemDatabase
 	writes []kv
 	size   int
+}
+
+func (b *memBatch) Replay(w ethdb.KeyValueWriter) error {
+	for _, keyvalue := range b.writes {
+		if keyvalue.del {
+			if err := w.Delete(keyvalue.k); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := w.Put(keyvalue.k, keyvalue.v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *memBatch) Put(key, value []byte) error {

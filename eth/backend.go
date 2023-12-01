@@ -34,6 +34,7 @@ import (
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/filters"
 	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/leveldb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/log"
@@ -238,7 +239,7 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	if err != nil {
 		return nil, err
 	}
-	if db, ok := db.(*ethdb.LDBDatabase); ok {
+	if db, ok := db.(*leveldb.LDBDatabase); ok {
 		db.Meter("eth/db/chaindata/")
 	}
 	return db, nil

@@ -35,6 +35,7 @@ import (
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/eth/filters"
 	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/miner"
 	"github.com/anduschain/go-anduschain/node"
@@ -117,7 +118,7 @@ func (b *SimulatedBackend) Coinbase() common.Address {
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) (*miner.Miner, *SimulatedBackend) {
 	testMiner, _ := crypto.GenerateKey()
 	testMinerAddress := crypto.PubkeyToAddress(testMiner.PublicKey)
-	database := ethdb.NewMemDatabase()
+	database := memorydb.NewMemDatabase()
 	genesis := core.Genesis{Config: params.AllDebProtocolChanges, GasLimit: gasLimit, Alloc: alloc}
 	genesis.MustCommit(database)
 	otprn := types.NewDefaultOtprn()

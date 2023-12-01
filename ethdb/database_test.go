@@ -19,6 +19,8 @@ package ethdb_test
 import (
 	"bytes"
 	"fmt"
+	"github.com/anduschain/go-anduschain/ethdb/leveldb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -28,12 +30,12 @@ import (
 	"github.com/anduschain/go-anduschain/ethdb"
 )
 
-func newTestLDB() (*ethdb.LDBDatabase, func()) {
+func newTestLDB() (*leveldb.LDBDatabase, func()) {
 	dirname, err := ioutil.TempDir(os.TempDir(), "ethdb_test_")
 	if err != nil {
 		panic("failed to create test file: " + err.Error())
 	}
-	db, err := ethdb.NewLDBDatabase(dirname, 0, 0)
+	db, err := leveldb.NewLDBDatabase(dirname, 0, 0)
 	if err != nil {
 		panic("failed to create test database: " + err.Error())
 	}
@@ -53,7 +55,7 @@ func TestLDB_PutGet(t *testing.T) {
 }
 
 func TestMemoryDB_PutGet(t *testing.T) {
-	testPutGet(ethdb.NewMemDatabase(), t)
+	testPutGet(memorydb.NewMemDatabase(), t)
 }
 
 func testPutGet(db ethdb.Database, t *testing.T) {
@@ -152,7 +154,7 @@ func TestLDB_ParallelPutGet(t *testing.T) {
 }
 
 func TestMemoryDB_ParallelPutGet(t *testing.T) {
-	testParallelPutGet(ethdb.NewMemDatabase(), t)
+	testParallelPutGet(memorydb.NewMemDatabase(), t)
 }
 
 func testParallelPutGet(db ethdb.Database, t *testing.T) {

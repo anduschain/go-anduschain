@@ -19,6 +19,8 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/ethdb/leveldb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"net"
 	"os"
@@ -614,9 +616,9 @@ func (n *Node) Service(service interface{}) error {
 // ephemeral, a memory database is returned.
 func (n *Node) OpenDatabase(name string, cache, handles int) (ethdb.Database, error) {
 	if n.config.DataDir == "" {
-		return ethdb.NewMemDatabase(), nil
+		return memorydb.NewMemDatabase(), nil
 	}
-	return ethdb.NewLDBDatabase(n.config.ResolvePath(name), cache, handles)
+	return leveldb.NewLDBDatabase(n.config.ResolvePath(name), cache, handles)
 }
 
 // ResolvePath returns the absolute path of a resource in the instance directory.
