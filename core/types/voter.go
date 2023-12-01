@@ -4,7 +4,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
-	"github.com/anduschain/go-anduschain/trie"
 )
 
 //go:generate gencodec -type Voter -field-override votertMarshaling -out gen_voter_json.go
@@ -40,6 +39,6 @@ func (v Voters) GetRlp(i int) []byte {
 	return enc
 }
 
-func (v Voters) Hash() common.Hash {
-	return DeriveSha(v, new(trie.Trie))
+func (v Voters) Hash(hasher TrieHasher) common.Hash {
+	return DeriveSha(v, hasher)
 }

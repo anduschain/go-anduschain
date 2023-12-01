@@ -23,7 +23,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
-	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"sort"
@@ -201,13 +200,13 @@ type storageblock struct {
 // The values of TxHash, UncleHash, ReceiptHash and Bloom in header
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
-func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []*Voter) *Block {
+func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []*Voter, hasher TrieHasher) *Block {
 	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
 	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
-		b.header.TxHash = DeriveSha(Transactions(txs), new(trie.Trie))
+		b.header.TxHash = DeriveSha(Transactions(txs), hasher)
 		b.transactions = make(Transactions, len(txs))
 		copy(b.transactions, txs)
 	}
@@ -215,14 +214,14 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []
 	if len(receipts) == 0 {
 		b.header.ReceiptHash = EmptyReceiptHash
 	} else {
-		b.header.ReceiptHash = DeriveSha(Receipts(receipts), new(trie.Trie))
+		b.header.ReceiptHash = DeriveSha(Receipts(receipts), hasher)
 		b.header.Bloom = CreateBloom(receipts)
 	}
 
 	if len(voters) == 0 {
 		b.header.VoteHash = EmptyVoteHash
 	} else {
-		b.header.VoteHash = DeriveSha(Voters(voters), new(trie.Trie))
+		b.header.VoteHash = DeriveSha(Voters(voters), hasher)
 		b.voters = make(Voters, len(voters))
 		copy(b.voters, voters)
 	}
@@ -375,9 +374,9 @@ func (b *Block) WithFairnodeSign(fnSign []byte) *Block {
 
 // WithVoter returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithVoter(voters Voters) *Block {
+func (b *Block) WithVoter(voters Voters, hasher TrieHasher) *Block {
 	cpy := *b.header
-	cpy.VoteHash = voters.Hash()
+	cpy.VoteHash = voters.Hash(hasher)
 
 	return &Block{
 		header:       &cpy,
