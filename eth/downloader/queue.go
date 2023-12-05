@@ -775,11 +775,11 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, voters 
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Transactions(txLists[index]), new(trie.Trie)) != header.TxHash {
+		if types.DeriveSha(types.Transactions(txLists[index]), trie.NewStackTrie(nil)) != header.TxHash {
 			return errInvalidBody
 		}
 
-		if types.DeriveSha(types.Voters(voters[index]), new(trie.Trie)) != header.VoteHash {
+		if types.DeriveSha(types.Voters(voters[index]), trie.NewStackTrie(nil)) != header.VoteHash {
 			return errInvalidBody
 		}
 
@@ -799,7 +799,7 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 	defer q.lock.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
-		if types.DeriveSha(types.Receipts(receiptList[index]), new(trie.Trie)) != header.ReceiptHash {
+		if types.DeriveSha(types.Receipts(receiptList[index]), trie.NewStackTrie(nil)) != header.ReceiptHash {
 			return errInvalidReceipt
 		}
 

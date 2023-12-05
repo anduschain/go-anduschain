@@ -18,6 +18,7 @@ package state
 
 import (
 	"bytes"
+	"github.com/anduschain/go-anduschain/core/types"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/rlp"
@@ -28,7 +29,7 @@ import (
 func NewStateSync(root common.Hash, database trie.DatabaseReader) *trie.Sync {
 	var syncer *trie.Sync
 	callback := func(leaf []byte, parent common.Hash) error {
-		var obj Account
+		var obj types.StateAccount
 		if err := rlp.Decode(bytes.NewReader(leaf), &obj); err != nil {
 			return err
 		}

@@ -144,7 +144,7 @@ func (p *FakePeer) RequestReceipts(hashes []common.Hash) error {
 	}{}
 
 	for _, hash := range hashes {
-		receipts.receipts = append(receipts.receipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
+		receipts.receipts = append(receipts.receipts, rawdb.ReadRawReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
 	}
 
 	p.dl.DeliverReceipts(p.id, receipts.receipts)

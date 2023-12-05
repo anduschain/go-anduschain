@@ -27,7 +27,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
 	"github.com/anduschain/go-anduschain/core"
-	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/dashboard"
@@ -266,11 +265,11 @@ var (
 		Usage: "Percentage of cache memory allowance to use for trie pruning",
 		Value: 25,
 	}
-	TrieCacheGenFlag = cli.IntFlag{
-		Name:  "trie-cache-gens",
-		Usage: "Number of trie node generations to keep in memory",
-		Value: int(state.MaxTrieCacheGen),
-	}
+	//TrieCacheGenFlag = cli.IntFlag{
+	//	Name:  "trie-cache-gens",
+	//	Usage: "Number of trie node generations to keep in memory",
+	//	Value: int(state.MaxTrieCacheGen),
+	//}
 	// Miner settings
 	MiningEnabledFlag = cli.BoolFlag{
 		Name:  "mine",
@@ -1111,10 +1110,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 		cfg.Genesis = core.DeveloperGenesisBlock(developer.Address)
 	}
-	// TODO(fjl): move trie cache generations into config
-	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
-		state.MaxTrieCacheGen = uint16(gen)
-	}
+	//// TODO(fjl): move trie cache generations into config
+	//if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
+	//	state.MaxTrieCacheGen = uint16(gen)
+	//}
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.

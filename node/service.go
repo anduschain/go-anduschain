@@ -17,8 +17,7 @@
 package node
 
 import (
-	"github.com/anduschain/go-anduschain/ethdb/leveldb"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
+	"github.com/anduschain/go-anduschain/core/rawdb"
 	"reflect"
 
 	"github.com/anduschain/go-anduschain/accounts"
@@ -43,9 +42,9 @@ type ServiceContext struct {
 // node is an ephemeral one, a memory database is returned.
 func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int) (ethdb.Database, error) {
 	if ctx.config.DataDir == "" {
-		return memorydb.NewMemDatabase(), nil
+		return rawdb.NewMemoryDatabase(), nil
 	}
-	db, err := leveldb.NewLDBDatabase(ctx.config.ResolvePath(name), cache, handles)
+	db, err := rawdb.NewLevelDBDatabase(ctx.config.ResolvePath(name), cache, handles, "", false)
 	if err != nil {
 		return nil, err
 	}

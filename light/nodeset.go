@@ -37,11 +37,8 @@ type NodeSet struct {
 }
 
 func (db *NodeSet) Delete(key []byte) error {
-	db.lock.Lock()
-	defer db.lock.Unlock()
-
-	delete(db.nodes, string(key))
-	return nil
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewNodeSet creates an empty node set
@@ -123,7 +120,7 @@ func (db *NodeSet) Store(target ethdb.KeyValueWriter) {
 	}
 }
 
-// NodeList stores an ordered list of trie nodes. It implements ethdb.KeyValueWriter.
+// NodeList stores an ordered list of trie nodes. It implements ethdb.Putter.
 type NodeList []rlp.RawValue
 
 func (n NodeList) Delete(key []byte) error {

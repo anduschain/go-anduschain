@@ -21,6 +21,17 @@ import (
 // for less cluttered pprof profiles.
 var Enabled bool = false
 
+// EnabledExpensive is a soft-flag meant for external packages to check if costly
+// metrics gathering is allowed or not. The goal is to separate standard metrics
+// for health monitoring and debug metrics that might impact runtime performance.
+var EnabledExpensive = false
+
+// enablerFlags is the CLI flag names to use to enable metrics collections.
+var enablerFlags = []string{"metrics"}
+
+// expensiveEnablerFlags is the CLI flag names to use to enable metrics collections.
+var expensiveEnablerFlags = []string{"metrics.expensive"}
+
 // MetricsEnabledFlag is the CLI flag name to use to enable metrics collections.
 const MetricsEnabledFlag = "metrics"
 const DashboardEnabledFlag = "dashboard"

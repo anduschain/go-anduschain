@@ -94,6 +94,8 @@ type Config struct {
 	MinerRecommit  time.Duration
 	MinerNoverify  bool
 
+	DatabaseFreezer string
+
 	// Transaction pool options
 	TxPool core.TxPoolConfig
 

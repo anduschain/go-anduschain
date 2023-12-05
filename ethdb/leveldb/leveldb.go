@@ -18,6 +18,7 @@ package leveldb
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/ethdb"
 	"strconv"
 	"strings"
@@ -35,6 +36,22 @@ import (
 )
 
 const (
+	// degradationWarnInterval specifies how often warning should be printed if the
+	// leveldb database cannot keep up with requested writes.
+	degradationWarnInterval = time.Minute
+
+	// minCache is the minimum amount of memory in megabytes to allocate to leveldb
+	// read and write caching, split half and half.
+	minCache = 16
+
+	// minHandles is the minimum number of files handles to allocate to the open
+	// database files.
+	minHandles = 16
+
+	// metricsGatheringInterval specifies the interval to retrieve leveldb database
+	// compaction, io and pause stats to report to the user.
+	metricsGatheringInterval = 3 * time.Second
+
 	writePauseWarningThrottler = 1 * time.Minute
 )
 
@@ -49,8 +66,16 @@ type LDBDatabase struct {
 	compWriteMeter   metrics.Meter // Meter for measuring the data written during compaction
 	writeDelayNMeter metrics.Meter // Meter for measuring the write delay number due to database compaction
 	writeDelayMeter  metrics.Meter // Meter for measuring the write delay duration due to database compaction
-	diskReadMeter    metrics.Meter // Meter for measuring the effective amount of data read
-	diskWriteMeter   metrics.Meter // Meter for measuring the effective amount of data written
+
+	diskSizeGauge metrics.Gauge // Gauge for tracking the size of all the levels in the database
+
+	diskReadMeter  metrics.Meter // Meter for measuring the effective amount of data read
+	diskWriteMeter metrics.Meter // Meter for measuring the effective amount of data written
+
+	memCompGauge       metrics.Gauge // Gauge for tracking the number of memory compaction
+	level0CompGauge    metrics.Gauge // Gauge for tracking the number of table compaction in level0
+	nonlevel0CompGauge metrics.Gauge // Gauge for tracking the number of table compaction in non0 level
+	seekCompGauge      metrics.Gauge // Gauge for tracking the number of table compaction caused by read opt
 
 	quitLock sync.Mutex      // Mutex protecting the quit channel access
 	quitChan chan chan error // Quit channel to stop the metrics collection before closing the database
@@ -120,9 +145,9 @@ func (db *LDBDatabase) Delete(key []byte) error {
 	return db.db.Delete(key, nil)
 }
 
-func (db *LDBDatabase) NewIterator() iterator.Iterator {
-	return db.db.NewIterator(nil, nil)
-}
+//func (db *LDBDatabase) NewIterator() iterator.Iterator {
+//	return db.db.NewIterator(nil, nil)
+//}
 
 // NewIteratorWithPrefix returns a iterator to iterate over subset of database content with a particular prefix.
 func (db *LDBDatabase) NewIteratorWithPrefix(prefix []byte) iterator.Iterator {
@@ -175,13 +200,14 @@ func (db *LDBDatabase) Meter(prefix string) {
 // the metrics subsystem.
 //
 // This is how a stats table look like (currently):
-//   Compactions
-//    Level |   Tables   |    Size(MB)   |    Time(sec)  |    Read(MB)   |   Write(MB)
-//   -------+------------+---------------+---------------+---------------+---------------
-//      0   |          0 |       0.00000 |       1.27969 |       0.00000 |      12.31098
-//      1   |         85 |     109.27913 |      28.09293 |     213.92493 |     214.26294
-//      2   |        523 |    1000.37159 |       7.26059 |      66.86342 |      66.77884
-//      3   |        570 |    1113.18458 |       0.00000 |       0.00000 |       0.00000
+//
+//	Compactions
+//	 Level |   Tables   |    Size(MB)   |    Time(sec)  |    Read(MB)   |   Write(MB)
+//	-------+------------+---------------+---------------+---------------+---------------
+//	   0   |          0 |       0.00000 |       1.27969 |       0.00000 |      12.31098
+//	   1   |         85 |     109.27913 |      28.09293 |     213.92493 |     214.26294
+//	   2   |        523 |    1000.37159 |       7.26059 |      66.86342 |      66.77884
+//	   3   |        570 |    1113.18458 |       0.00000 |       0.00000 |       0.00000
 //
 // This is how the write delay look like (currently):
 // DelayN:5 Delay:406.604657ms Paused: false
@@ -413,4 +439,153 @@ func (b *ldbBatch) ValueSize() int {
 func (b *ldbBatch) Reset() {
 	b.b.Reset()
 	b.size = 0
+}
+
+// New returns a wrapped LevelDB object. The namespace is the prefix that the
+// metrics reporting should use for surfacing internal stats.
+func New(file string, cache int, handles int, namespace string, readonly bool) (*LDBDatabase, error) {
+	return NewCustom(file, namespace, func(options *opt.Options) {
+		// Ensure we have some minimal caching and file guarantees
+		if cache < minCache {
+			cache = minCache
+		}
+		if handles < minHandles {
+			handles = minHandles
+		}
+		// Set default options
+		options.OpenFilesCacheCapacity = handles
+		options.BlockCacheCapacity = cache / 2 * opt.MiB
+		options.WriteBuffer = cache / 4 * opt.MiB // Two of these are used internally
+		if readonly {
+			options.ReadOnly = true
+		}
+	})
+}
+
+// NewCustom returns a wrapped LevelDB object. The namespace is the prefix that the
+// metrics reporting should use for surfacing internal stats.
+// The customize function allows the caller to modify the leveldb options.
+func NewCustom(file string, namespace string, customize func(options *opt.Options)) (*LDBDatabase, error) {
+	options := configureOptions(customize)
+	logger := log.New("database", file)
+	usedCache := options.GetBlockCacheCapacity() + options.GetWriteBuffer()*2
+	logCtx := []interface{}{"cache", common.StorageSize(usedCache), "handles", options.GetOpenFilesCacheCapacity()}
+	if options.ReadOnly {
+		logCtx = append(logCtx, "readonly", "true")
+	}
+	logger.Info("Allocated cache and file handles", logCtx...)
+
+	// Open the db and recover any potential corruptions
+	db, err := leveldb.OpenFile(file, options)
+	if _, corrupted := err.(*errors.ErrCorrupted); corrupted {
+		db, err = leveldb.RecoverFile(file, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Assemble the wrapper with all the registered metrics
+	ldb := &LDBDatabase{
+		fn:       file,
+		db:       db,
+		log:      logger,
+		quitChan: make(chan chan error),
+	}
+	ldb.compTimeMeter = metrics.NewRegisteredMeter(namespace+"compact/time", nil)
+	ldb.compReadMeter = metrics.NewRegisteredMeter(namespace+"compact/input", nil)
+	ldb.compWriteMeter = metrics.NewRegisteredMeter(namespace+"compact/output", nil)
+	ldb.diskSizeGauge = metrics.NewRegisteredGauge(namespace+"disk/size", nil)
+	ldb.diskReadMeter = metrics.NewRegisteredMeter(namespace+"disk/read", nil)
+	ldb.diskWriteMeter = metrics.NewRegisteredMeter(namespace+"disk/write", nil)
+	ldb.writeDelayMeter = metrics.NewRegisteredMeter(namespace+"compact/writedelay/duration", nil)
+	ldb.writeDelayNMeter = metrics.NewRegisteredMeter(namespace+"compact/writedelay/counter", nil)
+	ldb.memCompGauge = metrics.NewRegisteredGauge(namespace+"compact/memory", nil)
+	ldb.level0CompGauge = metrics.NewRegisteredGauge(namespace+"compact/level0", nil)
+	ldb.nonlevel0CompGauge = metrics.NewRegisteredGauge(namespace+"compact/nonlevel0", nil)
+	ldb.seekCompGauge = metrics.NewRegisteredGauge(namespace+"compact/seek", nil)
+
+	// Start up the metrics gathering and return
+	go ldb.meter(metricsGatheringInterval)
+	return ldb, nil
+}
+
+// configureOptions sets some default options, then runs the provided setter.
+func configureOptions(customizeFn func(*opt.Options)) *opt.Options {
+	// Set default options
+	options := &opt.Options{
+		Filter:                 filter.NewBloomFilter(10),
+		DisableSeeksCompaction: true,
+	}
+	// Allow caller to make custom modifications to the options
+	if customizeFn != nil {
+		customizeFn(options)
+	}
+	return options
+}
+
+// NewIterator creates a binary-alphabetical iterator over a subset
+// of database content with a particular key prefix, starting at a particular
+// initial key (or after, if it does not exist).
+func (db *LDBDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
+	return db.db.NewIterator(bytesPrefixRange(prefix, start), nil)
+}
+
+// NewSnapshot creates a database snapshot based on the current state.
+// The created snapshot will not be affected by all following mutations
+// happened on the database.
+// Note don't forget to release the snapshot once it's used up, otherwise
+// the stale data will never be cleaned up by the underlying compactor.
+func (db *LDBDatabase) NewSnapshot() (ethdb.Snapshot, error) {
+	snap, err := db.db.GetSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	return &snapshot{db: snap}, nil
+}
+
+// Stat returns a particular internal stat of the database.
+func (db *LDBDatabase) Stat(property string) (string, error) {
+	return db.db.GetProperty(property)
+}
+
+// Compact flattens the underlying data store for the given key range. In essence,
+// deleted and overwritten versions are discarded, and the data is rearranged to
+// reduce the cost of operations needed to access them.
+//
+// A nil start is treated as a key before all keys in the data store; a nil limit
+// is treated as a key after all keys in the data store. If both is nil then it
+// will compact entire data store.
+func (db *LDBDatabase) Compact(start []byte, limit []byte) error {
+	return db.db.CompactRange(util.Range{Start: start, Limit: limit})
+}
+
+// bytesPrefixRange returns key range that satisfy
+// - the given prefix, and
+// - the given seek position
+func bytesPrefixRange(prefix, start []byte) *util.Range {
+	r := util.BytesPrefix(prefix)
+	r.Start = append(r.Start, start...)
+	return r
+}
+
+// snapshot wraps a leveldb snapshot for implementing the Snapshot interface.
+type snapshot struct {
+	db *leveldb.Snapshot
+}
+
+// Has retrieves if a key is present in the snapshot backing by a key-value
+// data store.
+func (snap *snapshot) Has(key []byte) (bool, error) {
+	return snap.db.Has(key, nil)
+}
+
+// Get retrieves the given key if it's present in the snapshot backing by
+// key-value data store.
+func (snap *snapshot) Get(key []byte) ([]byte, error) {
+	return snap.db.Get(key, nil)
+}
+
+// Release releases associated resources. Release should always succeed and can
+// be called multiple times without causing error.
+func (snap *snapshot) Release() {
+	snap.db.Release()
 }

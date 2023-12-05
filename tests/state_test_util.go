@@ -20,7 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
+	"github.com/anduschain/go-anduschain/core/rawdb"
 	"math/big"
 	"strconv"
 	"strings"
@@ -183,7 +183,7 @@ func (t *StateTest) RunNoVerify(subtest StateSubtest, vmconfig vm.Config) (*stat
 	}
 	vmconfig.ExtraAips = aips
 	block := t.genesis(config).ToBlock(nil)
-	statedb := MakePreState(memorydb.NewMemDatabase(), t.json.Pre)
+	statedb := MakePreState(rawdb.NewMemoryDatabase(), t.json.Pre)
 
 	var baseFee *big.Int
 
@@ -223,7 +223,7 @@ func (t *StateTest) gasLimit(subtest StateSubtest) uint64 {
 
 func MakePreState(db ethdb.Database, accounts core.GenesisAlloc) *state.StateDB {
 	sdb := state.NewDatabase(db)
-	statedb, _ := state.New(common.Hash{}, sdb)
+	statedb, _ := state.New(common.Hash{}, sdb, nil)
 	for addr, a := range accounts {
 		statedb.SetCode(addr, a.Code)
 		statedb.SetNonce(addr, a.Nonce)
@@ -235,7 +235,7 @@ func MakePreState(db ethdb.Database, accounts core.GenesisAlloc) *state.StateDB 
 	// Commit and re-open to start with a clean state.
 	root, _ := statedb.Commit(false)
 
-	statedb, _ = state.New(root, sdb)
+	statedb, _ = state.New(root, sdb, nil)
 	return statedb
 }
 

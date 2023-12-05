@@ -67,7 +67,7 @@ func GetHeaderByNumber(ctx context.Context, odr OdrBackend, number uint64) (*typ
 		}
 	}
 	if number >= chtCount*odr.IndexerConfig().ChtSize {
-		return nil, ErrNoTrustedCht
+		return nil, errNoTrustedCht
 	}
 	r := &ChtRequest{ChtRoot: GetChtRoot(db, chtCount-1, sectionHead), ChtNum: chtCount - 1, BlockNum: number, Config: odr.IndexerConfig()}
 	if err := odr.Retrieve(ctx, r); err != nil {
@@ -121,7 +121,7 @@ func GetBlock(ctx context.Context, odr OdrBackend, hash common.Hash, number uint
 	// Retrieve the block header and body contents
 	header := rawdb.ReadHeader(odr.Database(), hash, number)
 	if header == nil {
-		return nil, ErrNoHeader
+		return nil, errNoHeader
 	}
 	body, err := GetBody(ctx, odr, hash, number)
 	if err != nil {
@@ -135,7 +135,7 @@ func GetBlock(ctx context.Context, odr OdrBackend, hash common.Hash, number uint
 // in a block given by its hash.
 func GetBlockReceipts(ctx context.Context, odr OdrBackend, hash common.Hash, number uint64) (types.Receipts, error) {
 	// Retrieve the potentially incomplete receipts from disk or network
-	receipts := rawdb.ReadReceipts(odr.Database(), hash, number)
+	receipts := rawdb.ReadRawReceipts(odr.Database(), hash, number)
 	if receipts == nil {
 		r := &ReceiptsRequest{Hash: hash, Number: number}
 		if err := odr.Retrieve(ctx, r); err != nil {
@@ -164,7 +164,7 @@ func GetBlockReceipts(ctx context.Context, odr OdrBackend, hash common.Hash, num
 // block given by its hash.
 func GetBlockLogs(ctx context.Context, odr OdrBackend, hash common.Hash, number uint64) ([][]*types.Log, error) {
 	// Retrieve the potentially incomplete receipts from disk or network
-	receipts := rawdb.ReadReceipts(odr.Database(), hash, number)
+	receipts := rawdb.ReadRawReceipts(odr.Database(), hash, number)
 	if receipts == nil {
 		r := &ReceiptsRequest{Hash: hash, Number: number}
 		if err := odr.Retrieve(ctx, r); err != nil {
@@ -218,7 +218,7 @@ func GetBloomBits(ctx context.Context, odr OdrBackend, bitIdx uint, sectionIdxLi
 		} else {
 			// TODO(rjl493456442) Convert sectionIndex to BloomTrie relative index
 			if sectionIdx >= bloomTrieCount {
-				return nil, ErrNoTrustedBloomTrie
+				return nil, errNoTrustedBloomTrie
 			}
 			reqList = append(reqList, sectionIdx)
 			reqIdx = append(reqIdx, i)
