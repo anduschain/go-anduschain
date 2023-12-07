@@ -22,7 +22,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/anduschain/go-anduschain/trie"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -62,11 +61,11 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Header validity is known at this point, check the uncles and transactions
 	header := block.Header()
 
-	if hash := types.DeriveSha(block.Transactions(), new(trie.Trie)); hash != header.TxHash {
+	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
 	}
 
-	if hash := types.DeriveSha(block.Voters(), new(trie.Trie)); hash != header.VoteHash {
+	if hash := types.DeriveSha(block.Voters()); hash != header.VoteHash {
 		return fmt.Errorf("voters hash mismatch: have %x, want %x", hash, header.VoteHash)
 	}
 
@@ -93,7 +92,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 		return fmt.Errorf("invalid bloom (remote: %x  local: %x)", header.Bloom, rbloom)
 	}
 	// Tre receipt Trie's root (R = (Tr [[H1, R1], ... [Hn, R1]]))
-	receiptSha := types.DeriveSha(receipts, new(trie.Trie))
+	receiptSha := types.DeriveSha(receipts)
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}

@@ -389,7 +389,7 @@ func (r *ChtRequest) Request(reqID uint64, peer *peer) error {
 		}
 		blockNum := binary.BigEndian.Uint64(req.Key)
 		// convert HelperTrie request to old CHT request
-		reqsV1 = ChtReq{ChtNum: (req.TrieIdx + 1) * (r.Config.ChtSize), BlockNum: blockNum, FromLevel: req.FromLevel}
+		reqsV1 = ChtReq{ChtNum: (req.TrieIdx + 1) * (r.Config.ChtSize / r.Config.PairChtSize), BlockNum: blockNum, FromLevel: req.FromLevel}
 		return peer.RequestHelperTrieProofs(reqID, r.GetCost(peer), []ChtReq{reqsV1})
 	case lpv2:
 		return peer.RequestHelperTrieProofs(reqID, r.GetCost(peer), []HelperTrieReq{req})

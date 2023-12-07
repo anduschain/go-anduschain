@@ -19,8 +19,8 @@ package types
 import (
 	"bytes"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/trie"
 )
 
 type DerivableList interface {
@@ -28,29 +28,15 @@ type DerivableList interface {
 	GetRlp(i int) []byte
 }
 
-// TrieHasher is the tool used to calculate the hash of derivable list.
-// This is internal, do not use.
-type TrieHasher interface {
-	Update([]byte, []byte)
-	Hash() common.Hash
-}
-
-func DeriveSha(list DerivableList, hasher TrieHasher) common.Hash {
+func DeriveSha(list DerivableList) common.Hash {
 	keybuf := new(bytes.Buffer)
-
+	trie := new(trie.Trie)
 	for i := 0; i < list.Len(); i++ {
 		keybuf.Reset()
 		rlp.Encode(keybuf, uint(i))
-		hasher.Update(keybuf.Bytes(), list.GetRlp(i))
+		trie.Update(keybuf.Bytes(), list.GetRlp(i))
 	}
-	return hasher.Hash()
-}
-
-func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
+	return trie.Hash()
 }
 
 func RlpHash(x interface{}) (h common.Hash) {

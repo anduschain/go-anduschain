@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"sort"
@@ -374,9 +375,9 @@ func (b *Block) WithFairnodeSign(fnSign []byte) *Block {
 
 // WithVoter returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithVoter(voters Voters, hasher TrieHasher) *Block {
+func (b *Block) WithVoter(voters Voters) *Block {
 	cpy := *b.header
-	cpy.VoteHash = voters.Hash(hasher)
+	cpy.VoteHash = voters.Hash()
 
 	return &Block{
 		header:       &cpy,
@@ -445,21 +446,3 @@ func (self blockSorter) Swap(i, j int) {
 func (self blockSorter) Less(i, j int) bool { return self.by(self.blocks[i], self.blocks[j]) }
 
 func Number(b1, b2 *Block) bool { return b1.header.Number.Cmp(b2.header.Number) < 0 }
-
-// HeaderParentHashFromRLP returns the parentHash of an RLP-encoded
-// header. If 'header' is invalid, the zero hash is returned.
-func HeaderParentHashFromRLP(header []byte) common.Hash {
-	// parentHash is the first list element.
-	listContent, _, err := rlp.SplitList(header)
-	if err != nil {
-		return common.Hash{}
-	}
-	parentHash, _, err := rlp.SplitString(listContent)
-	if err != nil {
-		return common.Hash{}
-	}
-	if len(parentHash) != 32 {
-		return common.Hash{}
-	}
-	return common.BytesToHash(parentHash)
-}

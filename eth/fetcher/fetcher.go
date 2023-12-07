@@ -19,7 +19,6 @@ package fetcher
 
 import (
 	"errors"
-	"github.com/anduschain/go-anduschain/trie"
 	"math/rand"
 	"time"
 
@@ -461,7 +460,7 @@ func (f *Fetcher) loop() {
 						announce.time = task.time
 
 						// If the block is empty (header only), short circuit into the final import queue
-						if header.TxHash == types.DeriveSha(types.Transactions{}, new(trie.Trie)) {
+						if header.TxHash == types.DeriveSha(types.Transactions{}) {
 							log.Trace("Block empty, skipping body retrieval", "peer", announce.origin, "number", header.Number, "hash", header.Hash())
 
 							block := types.NewBlockWithHeader(header)
@@ -525,7 +524,7 @@ func (f *Fetcher) loop() {
 
 				for hash, announce := range f.completing {
 					if f.queued[hash] == nil {
-						txnHash := types.DeriveSha(types.Transactions(task.transactions[i]), new(trie.Trie))
+						txnHash := types.DeriveSha(types.Transactions(task.transactions[i]))
 						if txnHash == announce.header.TxHash && announce.origin == task.peer {
 							// Mark the body matched, reassemble if still unknown
 							matched = true
