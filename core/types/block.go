@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"sort"
@@ -206,7 +207,7 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []
 	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
-		b.header.TxHash = DeriveSha(Transactions(txs), hasher)
+		b.header.TxHash = DeriveSha(Transactions(txs), new(trie.Trie))
 		b.transactions = make(Transactions, len(txs))
 		copy(b.transactions, txs)
 	}
@@ -214,14 +215,14 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, voters []
 	if len(receipts) == 0 {
 		b.header.ReceiptHash = EmptyReceiptHash
 	} else {
-		b.header.ReceiptHash = DeriveSha(Receipts(receipts), hasher)
+		b.header.ReceiptHash = DeriveSha(Receipts(receipts), new(trie.Trie))
 		b.header.Bloom = CreateBloom(receipts)
 	}
 
 	if len(voters) == 0 {
 		b.header.VoteHash = EmptyVoteHash
 	} else {
-		b.header.VoteHash = DeriveSha(Voters(voters), hasher)
+		b.header.VoteHash = DeriveSha(Voters(voters), new(trie.Trie))
 		b.voters = make(Voters, len(voters))
 		copy(b.voters, voters)
 	}
