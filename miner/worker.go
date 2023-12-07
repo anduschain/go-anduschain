@@ -33,7 +33,6 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
-	"github.com/anduschain/go-anduschain/trie"
 	"github.com/deckarep/golang-set"
 	"math/big"
 	"sync"
@@ -903,8 +902,8 @@ func (w *worker) resultLoop() {
 			}
 
 			w.pendingMu.Lock()
-			w.possibleFinalBlock = pBlock.WithVoter(voters, new(trie.Trie)) // add voters in block
-			w.submitBlockCh <- w.possibleFinalBlock                         // pass votershash
+			w.possibleFinalBlock = pBlock.WithVoter(voters) // add voters in block
+			w.submitBlockCh <- w.possibleFinalBlock         // pass votershash
 			w.possibleWinning = nil
 			w.pendingMu.Unlock()
 
@@ -1058,7 +1057,6 @@ func (w *worker) updateSnapshot() {
 		w.current.txs,
 		w.current.receipts,
 		[]*types.Voter{},
-		new(trie.Trie),
 	)
 
 	w.snapshotState = w.current.state.Copy()

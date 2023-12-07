@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"math/rand"
@@ -558,7 +557,7 @@ func (c *Clique) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	header.VoteHash = types.EmptyVoteHash
 
 	// Assemble and return the final block for sealing
-	return types.NewBlock(header, txs, receipts, voters, new(trie.Trie)), nil
+	return types.NewBlock(header, txs, receipts, voters), nil
 }
 
 // FinalizeAndAssemble implements consensus.Engine, ensuring no uncles are set,

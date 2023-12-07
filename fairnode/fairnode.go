@@ -10,7 +10,6 @@ import (
 	fs "github.com/anduschain/go-anduschain/fairnode/fairsync"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
-	"github.com/anduschain/go-anduschain/trie"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
@@ -332,7 +331,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 							continue
 						}
 						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
-						voteHash := types.Voters(voters).Hash(new(trie.Trie))     // voter hash
+						voteHash := types.Voters(voters).Hash()                   // voter hash
 						league.BlockHash = &finalBlockHash
 						league.Votehash = &voteHash
 					case types.FINALIZE:
@@ -447,7 +446,7 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.REJECT
 					} else {
 						finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
-						voteHash := types.Voters(voters).Hash(new(trie.Trie))     // voter hash
+						voteHash := types.Voters(voters).Hash()                   // voter hash
 						l.BlockHash = &finalBlockHash
 						l.Votehash = &voteHash
 						time.Sleep(1 * time.Second)

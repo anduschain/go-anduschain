@@ -11,7 +11,6 @@ import (
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/log"
-	"github.com/anduschain/go-anduschain/trie"
 	"math/big"
 	"time"
 
@@ -402,7 +401,7 @@ func (c *Deb) Finalize(chain consensus.ChainReader, header *types.Header, state 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
 	// Assemble and return the final block for sealing
-	return types.NewBlock(header, Txs, receipts, voters, new(trie.Trie)), nil
+	return types.NewBlock(header, Txs, receipts, voters), nil
 }
 
 // return miner's reward, fairnode fee
