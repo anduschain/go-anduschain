@@ -11,6 +11,7 @@ import (
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"github.com/anduschain/go-anduschain/rlp"
+	"github.com/anduschain/go-anduschain/trie"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/peer"
@@ -501,8 +502,8 @@ func (rs *rpcServer) RequestVoteResult(ctx context.Context, res *proto.ReqVoteRe
 		})
 	}
 
-	finalBlockHash := verify.ValidationFinalBlockHash(voters) // block hash
-	voteHash := types.Voters(voters).Hash()                   // voter hash
+	finalBlockHash := verify.ValidationFinalBlockHash(voters)     // block hash
+	voteHash := types.Voters(voters).Hash(trie.NewStackTrie(nil)) // voter hash
 
 	msg := proto.ResVoteResult{
 		Result:    proto.Status_SUCCESS,
