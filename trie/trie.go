@@ -104,7 +104,7 @@ func New(root common.Hash, db *Database) (*Trie, error) {
 	trie := &Trie{
 		db:           db,
 		originalRoot: root,
-		tracer:       newTracer(),
+		//tracer:       newTracer(),
 	}
 	if root != (common.Hash{}) && root != emptyRoot {
 		rootnode, err := trie.resolveHash(root[:], nil)
