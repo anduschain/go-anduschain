@@ -263,7 +263,7 @@ func (c *BoundContract) createLegacyTx(opts *TransactOpts, contract *common.Addr
 	if err != nil {
 		return nil, err
 	}
-	baseTx := &types.LegacyTx{
+	baseTx := &types.TxData{
 		Recipient:    contract,
 		AccountNonce: nonce,
 		Price:        gasPrice,
@@ -271,7 +271,7 @@ func (c *BoundContract) createLegacyTx(opts *TransactOpts, contract *common.Addr
 		Amount:       value,
 		Payload:      input,
 	}
-	return types.NewTx(baseTx), nil
+	return types.NewTx(*baseTx), nil
 }
 
 func (c *BoundContract) estimateGasLimit(opts *TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
