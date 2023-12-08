@@ -23,7 +23,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/rlp"
-	"github.com/anduschain/go-anduschain/trie"
 	"io"
 	"math/big"
 	"sort"
@@ -375,9 +374,9 @@ func (b *Block) WithFairnodeSign(fnSign []byte) *Block {
 
 // WithVoter returns a new block with the data from b but the header replaced with
 // the sealed one.
-func (b *Block) WithVoter(voters Voters) *Block {
+func (b *Block) WithVoter(voters Voters, hasher TrieHasher) *Block {
 	cpy := *b.header
-	cpy.VoteHash = voters.Hash()
+	cpy.VoteHash = voters.Hash(hasher)
 
 	return &Block{
 		header:       &cpy,

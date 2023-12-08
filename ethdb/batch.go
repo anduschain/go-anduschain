@@ -12,9 +12,6 @@ type Batch interface {
 	Write() error
 	// Reset resets the batch for reuse
 	Reset()
-
-	// Replay replays the batch contents.
-	Replay(w KeyValueWriter) error
 }
 
 // Batcher wraps the NewBatch method of a backing data store.

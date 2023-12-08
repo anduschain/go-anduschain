@@ -266,21 +266,14 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 	return &PublicDebugAPI{eth: eth}
 }
 
-// AccountRangeMaxResults is the maximum number of results to be returned per call
-const AccountRangeMaxResults = 256
-
 // DumpBlock retrieves the entire state of the database at a given block.
 func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error) {
-	opts := &state.DumpConfig{
-		OnlyWithAddresses: true,
-		Max:               AccountRangeMaxResults, // Sanity limit over RPC
-	}
 	if blockNr == rpc.PendingBlockNumber {
 		// If we're dumping the pending state, we need to request
 		// both the pending block as well as the pending state from
 		// the miner and operate on those
 		_, stateDb := api.eth.miner.Pending()
-		return stateDb.RawDump(opts), nil
+		return stateDb.RawDump(), nil
 	}
 	var block *types.Block
 	if blockNr == rpc.LatestBlockNumber {
@@ -295,7 +288,7 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 	if err != nil {
 		return state.Dump{}, err
 	}
-	return stateDb.RawDump(opts), nil
+	return stateDb.RawDump(), nil
 }
 
 // PrivateDebugAPI is the collection of Ethereum full node APIs exposed over
@@ -458,11 +451,11 @@ func (api *PrivateDebugAPI) getModifiedAccounts(startBlock, endBlock *types.Bloc
 		return nil, fmt.Errorf("start block height (%d) must be less than end block height (%d)", startBlock.Number().Uint64(), endBlock.Number().Uint64())
 	}
 
-	oldTrie, err := trie.NewStateTrie(common.Hash{}, startBlock.Root(), trie.NewDatabase(api.eth.chainDb))
+	oldTrie, err := trie.NewSecure(startBlock.Root(), trie.NewDatabase(api.eth.chainDb), 0)
 	if err != nil {
 		return nil, err
 	}
-	newTrie, err := trie.NewStateTrie(common.Hash{}, endBlock.Root(), trie.NewDatabase(api.eth.chainDb))
+	newTrie, err := trie.NewSecure(endBlock.Root(), trie.NewDatabase(api.eth.chainDb), 0)
 	if err != nil {
 		return nil, err
 	}

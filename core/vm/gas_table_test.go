@@ -21,7 +21,7 @@ import (
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/state"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
+	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 	"math/big"
 	"testing"
@@ -77,7 +77,7 @@ func TestEIP2200(t *testing.T) {
 	for i, tt := range eip2200Tests {
 		address := common.BytesToAddress([]byte("contract"))
 
-		statedb, _ := state.New(common.Hash{}, state.NewDatabase(memorydb.NewMemDatabase()))
+		statedb, _ := state.New(common.Hash{}, state.NewDatabase(ethdb.NewMemDatabase()))
 		statedb.CreateAccount(address)
 		statedb.SetCode(address, hexutil.MustDecode(tt.input))
 		statedb.SetState(address, common.Hash{}, common.BytesToHash([]byte{tt.original}))

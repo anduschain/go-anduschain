@@ -18,26 +18,26 @@ package trie
 
 import (
 	"bytes"
-	"fmt"
 	"runtime"
 	"sync"
 	"testing"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
+	"github.com/anduschain/go-anduschain/ethdb"
 )
 
-func newEmptySecure() *StateTrie {
-	trie, _ := NewStateTrie(common.Hash{}, common.Hash{}, NewDatabase(memorydb.New()))
+func newEmptySecure() *SecureTrie {
+	trie, _ := NewSecure(common.Hash{}, NewDatabase(ethdb.NewMemDatabase()), 0)
 	return trie
 }
 
-// makeTestStateTrie creates a large enough secure trie for testing.
-func makeTestStateTrie() (*Database, *StateTrie, map[string][]byte) {
+// makeTestSecureTrie creates a large enough secure trie for testing.
+func makeTestSecureTrie() (*Database, *SecureTrie, map[string][]byte) {
 	// Create an empty trie
-	triedb := NewDatabase(memorydb.New())
-	trie, _ := NewStateTrie(common.Hash{}, common.Hash{}, triedb)
+	triedb := NewDatabase(ethdb.NewMemDatabase())
+
+	trie, _ := NewSecure(common.Hash{}, triedb, 0)
 
 	// Fill it with some arbitrary data
 	content := make(map[string][]byte)
@@ -58,15 +58,9 @@ func makeTestStateTrie() (*Database, *StateTrie, map[string][]byte) {
 			trie.Update(key, val)
 		}
 	}
-	root, nodes, err := trie.Commit(false)
-	if err != nil {
-		panic(fmt.Errorf("failed to commit trie %v", err))
-	}
-	if err := triedb.Update(NewWithNodeSet(nodes)); err != nil {
-		panic(fmt.Errorf("failed to commit db %v", err))
-	}
-	// Re-create the trie based on the new state
-	trie, _ = NewSecure(common.Hash{}, root, triedb)
+	trie.Commit(nil)
+
+	// Return the generated trie
 	return triedb, trie, content
 }
 
@@ -112,16 +106,17 @@ func TestSecureGetKey(t *testing.T) {
 	}
 }
 
-func TestStateTrieConcurrency(t *testing.T) {
+func TestSecureTrieConcurrency(t *testing.T) {
 	// Create an initial trie and copy if for concurrent access
-	_, trie, _ := makeTestStateTrie()
+	_, trie, _ := makeTestSecureTrie()
 
 	threads := runtime.NumCPU()
-	tries := make([]*StateTrie, threads)
+	tries := make([]*SecureTrie, threads)
 	for i := 0; i < threads; i++ {
-		tries[i] = trie.Copy()
+		cpy := *trie
+		tries[i] = &cpy
 	}
-	// Start a batch of goroutines interacting with the trie
+	// Start a batch of goroutines interactng with the trie
 	pend := new(sync.WaitGroup)
 	pend.Add(threads)
 	for i := 0; i < threads; i++ {
@@ -142,7 +137,7 @@ func TestStateTrieConcurrency(t *testing.T) {
 					tries[index].Update(key, val)
 				}
 			}
-			tries[index].Commit(false)
+			tries[index].Commit(nil)
 		}(i)
 	}
 	// Wait for all threads to finish

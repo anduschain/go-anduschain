@@ -37,8 +37,11 @@ type NodeSet struct {
 }
 
 func (db *NodeSet) Delete(key []byte) error {
-	//TODO implement me
-	panic("implement me")
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	delete(db.nodes, string(key))
+	return nil
 }
 
 // NewNodeSet creates an empty node set

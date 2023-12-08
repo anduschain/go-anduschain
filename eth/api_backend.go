@@ -191,8 +191,10 @@ func (b *EthAPIBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.
 }
 
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-
-	return b.eth.blockchain.GetReceiptsByHash(hash), nil
+	if number := rawdb.ReadHeaderNumber(b.eth.chainDb, hash); number != nil {
+		return rawdb.ReadReceipts(b.eth.chainDb, hash, *number), nil
+	}
+	return nil, nil
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
@@ -200,7 +202,15 @@ func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*typ
 	if number == nil {
 		return nil, nil
 	}
-	return rawdb.ReadLogs(b.eth.chainDb, hash, *number, b.ChainConfig()), nil
+	receipts := rawdb.ReadReceipts(b.eth.chainDb, hash, *number)
+	if receipts == nil {
+		return nil, nil
+	}
+	logs := make([][]*types.Log, len(receipts))
+	for i, receipt := range receipts {
+		logs[i] = receipt.Logs
+	}
+	return logs, nil
 }
 
 func (b *EthAPIBackend) GetTd(blockHash common.Hash) *big.Int {

@@ -665,7 +665,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// Retrieve the requested block's receipts, skipping if unknown to us
 			var results types.Receipts
 			if number := rawdb.ReadHeaderNumber(pm.chainDb, hash); number != nil {
-				results = rawdb.ReadReceipts(pm.chainDb, hash, *number, pm.chainConfig)
+				results = rawdb.ReadReceipts(pm.chainDb, hash, *number)
 			}
 			if results == nil {
 				if header := pm.blockchain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyRootHash {
@@ -881,12 +881,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if reject(uint64(reqCnt), MaxHelperTrieProofsFetch) {
 			return errResp(ErrRequestRejected, "")
 		}
-		trieDb := trie.NewDatabase(rawdb.NewTable(pm.chainDb, light.ChtTablePrefix))
+		trieDb := trie.NewDatabase(ethdb.NewTable(pm.chainDb, light.ChtTablePrefix))
 		for _, req := range req.Reqs {
 			if header := pm.blockchain.GetHeaderByNumber(req.BlockNum); header != nil {
 				sectionHead := rawdb.ReadCanonicalHash(pm.chainDb, req.ChtNum*pm.iConfig.ChtSize-1)
 				if root := light.GetChtRoot(pm.chainDb, req.ChtNum-1, sectionHead); root != (common.Hash{}) {
-					trie, err := trie.New(common.Hash{}, root, trieDb)
+					trie, err := trie.New(root, trieDb)
 					if err != nil {
 						continue
 					}
@@ -940,7 +940,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 				var prefix string
 				if root, prefix = pm.getHelperTrie(req.Type, req.TrieIdx); root != (common.Hash{}) {
-					auxTrie, _ = trie.New(common.Hash{}, root, trie.NewDatabase(rawdb.NewTable(pm.chainDb, prefix)))
+					auxTrie, _ = trie.New(root, trie.NewDatabase(ethdb.NewTable(pm.chainDb, prefix)))
 				}
 			}
 			if req.AuxReq == auxRoot {
@@ -1119,18 +1119,18 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 }
 
 // getAccount retrieves an account from the state based at root.
-func (pm *ProtocolManager) getAccount(statedb *state.StateDB, root, hash common.Hash) (types.StateAccount, error) {
-	trie, err := trie.New(common.Hash{}, root, statedb.Database().TrieDB())
+func (pm *ProtocolManager) getAccount(statedb *state.StateDB, root, hash common.Hash) (state.Account, error) {
+	trie, err := trie.New(root, statedb.Database().TrieDB())
 	if err != nil {
-		return types.StateAccount{}, err
+		return state.Account{}, err
 	}
 	blob, err := trie.TryGet(hash[:])
 	if err != nil {
-		return types.StateAccount{}, err
+		return state.Account{}, err
 	}
-	var account types.StateAccount
+	var account state.Account
 	if err = rlp.DecodeBytes(blob, &account); err != nil {
-		return types.StateAccount{}, err
+		return state.Account{}, err
 	}
 	return account, nil
 }
@@ -1139,8 +1139,9 @@ func (pm *ProtocolManager) getAccount(statedb *state.StateDB, root, hash common.
 func (pm *ProtocolManager) getHelperTrie(id uint, idx uint64) (common.Hash, string) {
 	switch id {
 	case htCanonical:
-		sectionHead := rawdb.ReadCanonicalHash(pm.chainDb, (idx+1)*pm.iConfig.ChtSize-1)
-		return light.GetChtRoot(pm.chainDb, idx, sectionHead), light.ChtTablePrefix
+		idxV1 := (idx+1)*(pm.iConfig.PairChtSize/pm.iConfig.ChtSize) - 1
+		sectionHead := rawdb.ReadCanonicalHash(pm.chainDb, (idxV1+1)*pm.iConfig.ChtSize-1)
+		return light.GetChtRoot(pm.chainDb, idxV1, sectionHead), light.ChtTablePrefix
 	case htBloomBits:
 		sectionHead := rawdb.ReadCanonicalHash(pm.chainDb, (idx+1)*pm.iConfig.BloomTrieSize-1)
 		return light.GetBloomTrieRoot(pm.chainDb, idx, sectionHead), light.BloomTrieTablePrefix
@@ -1168,7 +1169,7 @@ func (pm *ProtocolManager) txStatus(hashes []common.Hash) []txStatus {
 		if stat == core.TxStatusUnknown {
 			if block, number, index := rawdb.ReadTxLookupEntry(pm.chainDb, hashes[i]); block != (common.Hash{}) {
 				stats[i].Status = core.TxStatusIncluded
-				stats[i].Lookup = &rawdb.LegacyTxLookupEntry{BlockHash: block, BlockIndex: number, Index: index}
+				stats[i].Lookup = &rawdb.TxLookupEntry{BlockHash: block, BlockIndex: number, Index: index}
 			}
 		}
 	}

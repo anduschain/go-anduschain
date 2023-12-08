@@ -70,7 +70,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 	// Iterate over and process the individual general transactions
 	for i, tx := range block.Transactions() {
-		statedb.Prepare(tx.Hash(), i)
+		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
 		var receipt *types.Receipt
 		var err error
@@ -132,7 +132,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
 	}
 	// Set the receipt logs and create a bloom for filtering
-	receipt.Logs = statedb.GetLogs(tx.Hash(), header.Hash())
+	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	return receipt, result.UsedGas, err
 }

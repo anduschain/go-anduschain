@@ -22,7 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/anduschain/go-anduschain/core/rawdb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"os"
 
@@ -104,7 +104,7 @@ func (t *BlockTest) Run(snapshotter bool) error {
 	}
 
 	// import pre accounts & construct test genesis block & state root
-	db := rawdb.NewMemoryDatabase()
+	db := memorydb.NewMemDatabase()
 	gblock, err := t.genesis(config).Commit(db)
 	if err != nil {
 		return err

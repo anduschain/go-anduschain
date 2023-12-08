@@ -34,6 +34,7 @@ import (
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/eth/filters"
 	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/ethdb/leveldb"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/internal/ethapi"
 	"github.com/anduschain/go-anduschain/log"
@@ -128,14 +129,10 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	}
 
 	// Assemble the Ethereum object
-	chainDb, err := stack.OpenDatabaseWithFreezer("chaindata", config.DatabaseCache, config.DatabaseHandles, config.DatabaseFreezer, "eth/db/chaindata/", false)
+	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
 		return nil, err
 	}
-	//chainDb, err := CreateDB(ctx, config, "chaindata")
-	//if err != nil {
-	//	return nil, err
-	//}
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
@@ -237,16 +234,16 @@ func makeExtraData(extra []byte) []byte {
 }
 
 // CreateDB creates the chain database.
-//func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Database, error) {
-//	db, err := ctx.OpenDatabase(name, config.DatabaseCache, config.DatabaseHandles)
-//	if err != nil {
-//		return nil, err
-//	}
-//	if db, ok := db.(*leveldb.LDBDatabase); ok {
-//		db.Meter("eth/db/chaindata/")
-//	}
-//	return db, nil
-//}
+func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Database, error) {
+	db, err := ctx.OpenDatabase(name, config.DatabaseCache, config.DatabaseHandles)
+	if err != nil {
+		return nil, err
+	}
+	if db, ok := db.(*leveldb.LDBDatabase); ok {
+		db.Meter("eth/db/chaindata/")
+	}
+	return db, nil
+}
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an anduschain service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, notify []string, noverify bool, db ethdb.Database) consensus.Engine {

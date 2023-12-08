@@ -21,11 +21,11 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 )
 
@@ -37,7 +37,7 @@ func ExampleGenerateChain() {
 		addr1   = crypto.PubkeyToAddress(key1.PublicKey)
 		addr2   = crypto.PubkeyToAddress(key2.PublicKey)
 		addr3   = crypto.PubkeyToAddress(key3.PublicKey)
-		db      = memorydb.NewMemDatabase()
+		db      = ethdb.NewMemDatabase()
 	)
 
 	gspec := DefaultGenesisForDebTesting()

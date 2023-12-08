@@ -79,14 +79,10 @@ type LightEthereum struct {
 }
 
 func New(ctx *node.ServiceContext, stack *node.Node, config *eth.Config) (*LightEthereum, error) {
-	chainDb, err := stack.OpenDatabaseWithFreezer("lightchaindata", config.DatabaseCache, config.DatabaseHandles, config.DatabaseFreezer, "eth/db/lightchaindata/", false)
+	chainDb, err := eth.CreateDB(ctx, config, "lightchaindata")
 	if err != nil {
 		return nil, err
 	}
-	//chainDb, err := eth.CreateDB(ctx, config, "lightchaindata")
-	//if err != nil {
-	//	return nil, err
-	//}
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
 	if _, isCompat := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !isCompat {
 		return nil, genesisErr
@@ -120,8 +116,8 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *eth.Config) (*Light
 	leth.retriever = newRetrieveManager(peers, leth.reqDist, leth.serverPool)
 
 	leth.odr = NewLesOdr(chainDb, light.DefaultClientIndexerConfig, leth.retriever)
-	leth.chtIndexer = light.NewChtIndexer(chainDb, leth.odr, params.CHTFrequencyClient, params.HelperTrieConfirmations, true)
-	leth.bloomTrieIndexer = light.NewBloomTrieIndexer(chainDb, leth.odr, params.BloomBitsBlocksClient, params.BloomTrieFrequency, true)
+	leth.chtIndexer = light.NewChtIndexer(chainDb, leth.odr, params.CHTFrequencyClient, params.HelperTrieConfirmations)
+	leth.bloomTrieIndexer = light.NewBloomTrieIndexer(chainDb, leth.odr, params.BloomBitsBlocksClient, params.BloomTrieFrequency)
 	leth.odr.SetIndexers(leth.chtIndexer, leth.bloomTrieIndexer, leth.bloomIndexer)
 
 	// Note: NewLightChain adds the trusted checkpoint so it needs an ODR with

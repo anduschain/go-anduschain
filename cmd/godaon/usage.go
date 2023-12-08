@@ -115,15 +115,15 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.TxPoolLifetimeFlag,
 		},
 	},
-	//{
-	//	Name: "PERFORMANCE TUNING",
-	//	Flags: []cli.Flag{
-	//		utils.CacheFlag,
-	//		utils.CacheDatabaseFlag,
-	//		utils.CacheGCFlag,
-	//		utils.TrieCacheGenFlag,
-	//	},
-	//},
+	{
+		Name: "PERFORMANCE TUNING",
+		Flags: []cli.Flag{
+			utils.CacheFlag,
+			utils.CacheDatabaseFlag,
+			utils.CacheGCFlag,
+			utils.TrieCacheGenFlag,
+		},
+	},
 	{
 		Name: "ACCOUNT",
 		Flags: []cli.Flag{
