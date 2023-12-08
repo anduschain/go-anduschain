@@ -74,6 +74,10 @@ type Trie struct {
 	// new nodes are tagged with the current generation and unloaded
 	// when their generation is older than than cachegen-cachelimit.
 	cachegen, cachelimit uint16
+
+	// tracer is the tool to track the trie changes.
+	// It will be reset after each commit operation.
+	tracer *tracer
 }
 
 // SetCacheLimit sets the number of 'cache generations' to keep.
@@ -100,6 +104,7 @@ func New(root common.Hash, db *Database) (*Trie, error) {
 	trie := &Trie{
 		db:           db,
 		originalRoot: root,
+		tracer:       newTracer(),
 	}
 	if root != (common.Hash{}) && root != emptyRoot {
 		rootnode, err := trie.resolveHash(root[:], nil)
@@ -109,6 +114,18 @@ func New(root common.Hash, db *Database) (*Trie, error) {
 		trie.root = rootnode
 	}
 	return trie, nil
+}
+
+// Copy returns a copy of Trie.
+func (t *Trie) Copy() *Trie {
+	return &Trie{
+		root:         t.root,
+		originalRoot: t.originalRoot,
+		cachegen:     t.cachegen,
+		cachelimit:   t.cachelimit,
+		db:           t.db,
+		tracer:       t.tracer.copy(),
+	}
 }
 
 // NodeIterator returns an iterator that returns nodes of the trie. Iteration starts at
@@ -249,6 +266,9 @@ func (t *Trie) insert(n node, prefix, key []byte, value node) (bool, node, error
 		if matchlen == 0 {
 			return true, branch, nil
 		}
+
+		t.tracer.onInsert(append(prefix, key[:matchlen]...))
+
 		// Otherwise, replace it with a short node leading up to the branch.
 		return true, &shortNode{key[:matchlen], branch, t.newFlag()}, nil
 
@@ -263,6 +283,8 @@ func (t *Trie) insert(n node, prefix, key []byte, value node) (bool, node, error
 		return true, n, nil
 
 	case nil:
+		t.tracer.onInsert(prefix)
+
 		return true, &shortNode{key, value, t.newFlag()}, nil
 
 	case hashNode:
@@ -314,6 +336,8 @@ func (t *Trie) delete(n node, prefix, key []byte) (bool, node, error) {
 			return false, n, nil // don't replace n on mismatch
 		}
 		if matchlen == len(key) {
+			t.tracer.onDelete(prefix)
+
 			return true, nil, nil // remove n entirely for whole matches
 		}
 		// The key is longer than n.Key. Remove the remaining suffix
@@ -326,6 +350,8 @@ func (t *Trie) delete(n node, prefix, key []byte) (bool, node, error) {
 		}
 		switch child := child.(type) {
 		case *shortNode:
+			t.tracer.onDelete(append(prefix, n.Key...))
+
 			// Deleting from the subtrie reduced it to another
 			// short node. Merge the nodes to avoid creating a
 			// shortNode{..., shortNode{...}}. Use concat (which
@@ -379,6 +405,8 @@ func (t *Trie) delete(n node, prefix, key []byte) (bool, node, error) {
 					return false, nil, err
 				}
 				if cnode, ok := cnode.(*shortNode); ok {
+					t.tracer.onDelete(append(prefix, byte(pos)))
+
 					k := append([]byte{byte(pos)}, cnode.Key...)
 					return true, &shortNode{k, cnode.Val, t.newFlag()}, nil
 				}
@@ -454,6 +482,8 @@ func (t *Trie) Hash() common.Hash {
 // Commit writes all nodes to the trie's memory database, tracking the internal
 // and external (for account tries) references.
 func (t *Trie) Commit(onleaf LeafCallback) (root common.Hash, err error) {
+	defer t.tracer.reset()
+
 	if t.db == nil {
 		panic("commit called on trie with nil database")
 	}
@@ -487,4 +517,12 @@ func (t *Trie) Reset() {
 	t.root = nil
 	t.originalRoot = common.Hash{}
 	t.cachegen = 0
+
+	t.tracer.reset()
+}
+
+// NewEmpty is a shortcut to create empty tree. It's mostly used in tests.
+func NewEmpty(db *Database) *Trie {
+	tr, _ := New(common.Hash{}, db)
+	return tr
 }
