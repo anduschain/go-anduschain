@@ -83,6 +83,11 @@ type LDBDatabase struct {
 	log log.Logger // Contextual logger tracking the database path
 }
 
+func (db *LDBDatabase) Sync() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewLDBDatabase returns a LevelDB wrapped object.
 func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 	logger := log.New("database", file)

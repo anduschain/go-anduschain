@@ -13,7 +13,6 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/dop251/goja v0.0.0-20230605162241-28ee0ee714f3
 	github.com/elastic/gosigar v0.14.2
-	github.com/ethereum/go-ethereum v1.10.26
 	github.com/fatih/color v1.14.1
 	github.com/fjl/memsize v0.0.1
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08
@@ -45,6 +44,7 @@ require (
 	github.com/prometheus/tsdb v0.10.0
 	github.com/rjeczalik/notify v0.9.3
 	github.com/rs/cors v1.8.3
+	github.com/scroll-tech/zktrie v0.7.1
 	github.com/status-im/keycard-go v0.2.0
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7

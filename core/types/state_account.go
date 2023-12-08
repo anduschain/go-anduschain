@@ -32,4 +32,8 @@ type StateAccount struct {
 	Balance   *big.Int
 	Root      common.Hash // merkle root of the storage trie
 	CodeHash  []byte
+
+	// StateAccount Scroll extensions
+	PoseidonCodeHash []byte
+	CodeSize         uint64
 }

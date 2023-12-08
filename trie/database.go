@@ -64,6 +64,10 @@ type DatabaseReader interface {
 type Database struct {
 	diskdb ethdb.Database // Persistent storage for matured trie nodes
 
+	Zktrie bool
+	// TODO: It's a quick&dirty implementation. FIXME later.
+	rawDirties KvMap
+
 	nodes  map[common.Hash]*cachedNode // Data and references relationships of a node
 	oldest common.Hash                 // Oldest tracked node, flush-list head
 	newest common.Hash                 // Newest tracked node, flush-list tail

@@ -48,6 +48,11 @@ type MemDatabase struct {
 	lock sync.RWMutex
 }
 
+func (db *MemDatabase) Sync() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (db *MemDatabase) Stat(property string) (string, error) {
 	return "", errors.New("unknown property")
 }

@@ -59,79 +59,21 @@ type Writer interface {
 	KeyValueWriter
 }
 
+// Stater wraps the Stat method of a backing data store.
+type Stater interface {
+	// Stat returns a particular internal stat of the database.
+	Stat(property string) (string, error)
+}
+
 // Database contains all the methods required by the high level database to not
 // only access the key-value data store but also the chain freezer.
 type Database interface {
 	Reader
 	Writer
-	NewBatch() Batch
+	Iteratee
+	Batcher
 	io.Closer
-}
-
-type table struct {
-	db     Database
-	prefix string
-}
-
-// NewTable returns a Database object that prefixes all keys with a given
-// string.
-func NewTable(db Database, prefix string) Database {
-	return &table{
-		db:     db,
-		prefix: prefix,
-	}
-}
-
-func (dt *table) Put(key []byte, value []byte) error {
-	return dt.db.Put(append([]byte(dt.prefix), key...), value)
-}
-
-func (dt *table) Has(key []byte) (bool, error) {
-	return dt.db.Has(append([]byte(dt.prefix), key...))
-}
-
-func (dt *table) Get(key []byte) ([]byte, error) {
-	return dt.db.Get(append([]byte(dt.prefix), key...))
-}
-
-func (dt *table) Delete(key []byte) error {
-	return dt.db.Delete(append([]byte(dt.prefix), key...))
-}
-
-func (dt *table) Close() error {
-	return nil
-}
-
-type tableBatch struct {
-	batch  Batch
-	prefix string
-}
-
-// NewTableBatch returns a Batch object which prefixes all keys with a given string.
-func NewTableBatch(db Database, prefix string) Batch {
-	return &tableBatch{db.NewBatch(), prefix}
-}
-
-func (dt *table) NewBatch() Batch {
-	return &tableBatch{dt.db.NewBatch(), dt.prefix}
-}
-
-func (tb *tableBatch) Put(key, value []byte) error {
-	return tb.batch.Put(append([]byte(tb.prefix), key...), value)
-}
-
-func (tb *tableBatch) Delete(key []byte) error {
-	return tb.batch.Delete(append([]byte(tb.prefix), key...))
-}
-
-func (tb *tableBatch) Write() error {
-	return tb.batch.Write()
-}
-
-func (tb *tableBatch) ValueSize() int {
-	return tb.batch.ValueSize()
-}
-
-func (tb *tableBatch) Reset() {
-	tb.batch.Reset()
+	Sync() error
+	Stater
+	Compact(start []byte, limit []byte) error
 }
