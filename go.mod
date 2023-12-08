@@ -28,6 +28,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/uint256 v1.2.3
 	github.com/huin/goupnp v1.1.0
+	github.com/iden3/go-iden3-crypto v0.0.15
 	github.com/influxdata/influxdb v1.8.3
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/jedisct1/go-minisign v0.0.0-20230211184525-1f273d8dc776
@@ -45,7 +46,7 @@ require (
 	github.com/rjeczalik/notify v0.9.3
 	github.com/rs/cors v1.8.3
 	github.com/status-im/keycard-go v0.2.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tyler-smith/go-bip39 v1.1.0
 	go.mongodb.org/mongo-driver v1.11.2
