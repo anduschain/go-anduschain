@@ -18,6 +18,7 @@ package runtime
 
 import (
 	"github.com/anduschain/go-anduschain/accounts/abi"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"strings"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
-	"github.com/anduschain/go-anduschain/ethdb"
 )
 
 func TestDefaults(t *testing.T) {
@@ -94,7 +94,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	state, _ := state.New(common.Hash{}, state.NewDatabase(ethdb.NewMemDatabase()))
+	state, _ := state.New(common.Hash{}, state.NewDatabase(memorydb.NewMemDatabase()))
 	address := common.HexToAddress("0x0a")
 	state.SetCode(address, []byte{
 		byte(vm.PUSH1), 10,
