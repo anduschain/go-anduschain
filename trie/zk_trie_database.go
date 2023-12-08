@@ -63,11 +63,13 @@ func (l *ZktrieDatabase) Get(key []byte) ([]byte, error) {
 
 func (l *ZktrieDatabase) UpdatePreimage(preimage []byte, hashField *big.Int) {
 	db := l.db
+	db.lock.Lock()
 	if db.preimages != nil { // Ugly direct check but avoids the below write lock
 		// we must copy the input key
 		db.insertPreimage(common.BytesToHash(hashField.Bytes()), preimage)
 		//db.preimages.insertPreimage(map[common.Hash][]byte{common.BytesToHash(hashField.Bytes()): common.CopyBytes(preimage)})
 	}
+	db.lock.Unlock()
 }
 
 // Iterate implements the method Iterate of the interface Storage

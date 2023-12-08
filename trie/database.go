@@ -271,9 +271,10 @@ func expandNode(hash hashNode, n node, cachegen uint16) node {
 // its written out to disk or garbage collected.
 func NewDatabase(diskdb ethdb.Database) *Database {
 	return &Database{
-		diskdb:    diskdb,
-		nodes:     map[common.Hash]*cachedNode{{}: {}},
-		preimages: make(map[common.Hash][]byte),
+		diskdb:     diskdb,
+		nodes:      map[common.Hash]*cachedNode{{}: {}},
+		preimages:  make(map[common.Hash][]byte),
+		rawDirties: make(KvMap),
 	}
 }
 
