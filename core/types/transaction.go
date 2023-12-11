@@ -724,3 +724,25 @@ func copyAddressPtr(a *common.Address) *common.Address {
 	cpy := *a
 	return &cpy
 }
+
+// IsL1MessageTx returns true if the transaction is an L1 cross-domain tx.
+func (tx *Transaction) IsL1MessageTx() bool {
+	return tx.Type() == L1MessageTxType
+}
+
+// AsL1MessageTx casts the tx into an L1 cross-domain tx.
+func (tx *Transaction) AsL1MessageTx() *L1MessageTx {
+	if !tx.IsL1MessageTx() {
+		return nil
+	}
+	return tx.data.(*L1MessageTx)
+}
+
+// L1MessageQueueIndex returns the L1 queue index if `tx` is of type `L1MessageTx`.
+// It returns 0 otherwise.
+func (tx *Transaction) L1MessageQueueIndex() uint64 {
+	if !tx.IsL1MessageTx() {
+		return 0
+	}
+	return tx.AsL1MessageTx().QueueIndex
+}

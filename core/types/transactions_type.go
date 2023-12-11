@@ -26,6 +26,8 @@ const (
 	GeneralTx uint64 = iota
 	JoinTx
 	EthTx
+
+	L1MessageTxType = 0x7E
 )
 
 // Transactions is a Transaction slice type for basic sorting.
