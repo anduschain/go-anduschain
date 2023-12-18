@@ -234,9 +234,6 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.newLeagueBlockCh = make(chan types.NewLeagueBlockEvent, newLeagueBlockChanSize)
 	pm.newLeagueBlockSub = pm.miner.Worker().SubscribeNewLeagueBlockEvent(pm.newLeagueBlockCh)
 	go pm.leagueBroadCast()
-
-	pm.voteBlockSub = pm.eventMux.Subscribe(types.VoteBlockEvent{})
-	go pm.voteBroadcastLoop()
 }
 
 // league broadcasting loop
@@ -739,27 +736,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if pm.miner.Mining() {
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
-	// For Dbft
-	case msg.Code == VoteBlockMsg:
-		// ToDo: Woody
-		var request types.VoteBlockEvent
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
-		}
-
-		if pm.miner.Mining() {
-			pm.miner.Worker().VoteBlockCh() <- &request
-		}
-	case msg.Code == CommitBlockMsg:
-		// ToDo: Woody
-		var request types.VoteBlockEvent
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
-		}
-
-		if pm.miner.Mining() {
-			pm.miner.Worker().VoteBlockCh() <- &request
-		}
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
@@ -847,16 +823,6 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():
 			return
-		}
-	}
-}
-
-// VoteBlock broadcast loop
-func (pm *ProtocolManager) voteBroadcastLoop() {
-	// automatically stops if unsubscribe
-	for obj := range pm.minedBlockSub.Chan() {
-		if ev, ok := obj.Data.(types.VoteBlockEvent); ok {
-			pm.BroadcastVoteBlock(ev.Block)
 		}
 	}
 }

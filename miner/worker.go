@@ -212,8 +212,6 @@ type worker struct {
 	finalBlock *types.Block
 	finalizeCh chan struct{}
 
-	dbftStatus           types.DbftStatus
-	voteBlockCh          chan *types.VoteBlockEvent
 	possibleWinningBlock *types.VoteBlock // A set of possible winning voteblock
 }
 
@@ -250,9 +248,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		submitBlockCh:     make(chan *types.Block),
 		fnSignCh:          make(chan []byte),
 		finalizeCh:        make(chan struct{}),
-
-		// for dbft
-		dbftStatus: types.DBFT_PENDING, // Wait for start
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -280,9 +275,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 		go worker.clientStatusLoop() // client close check and mininig canceled
 		go worker.leagueStatusLoop() // for league status message
-	} else if worker.config.Dbft != nil {
-		// TODO(woody) : debBFT
-		go worker.bftLoop()
 	}
 
 	// Submit first work to initialize pending state.
@@ -391,11 +383,6 @@ func (w *worker) SubscribeNewLeagueBlockEvent(ch chan<- types.NewLeagueBlockEven
 
 func (w *worker) LeagueBlockCh() chan *types.NewLeagueBlockEvent {
 	return w.leagueBlockCh
-}
-
-// for dbft
-func (w *worker) VoteBlockCh() chan *types.VoteBlockEvent {
-	return w.voteBlockCh
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -613,7 +600,6 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
-			w.dbftStatus = types.DBFT_PROPOSE // TODO(woody): for dbft
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 		case ev := <-w.chainSideCh:
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {
@@ -1386,43 +1372,4 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		w.updateSnapshot()
 	}
 	return nil
-}
-
-// TODO: CSW
-func (w *worker) bftLoop() {
-	for {
-		select {
-		case ev := <-w.voteBlockCh:
-			voteType := ev.VoteType
-			voteBlock := ev.Block
-			if voteType == types.DBFT_VOTE {
-				if w.dbftStatus != types.DBFT_PROPOSE {
-					continue
-				}
-				if w.possibleWinningBlock.Block.Number().Cmp(voteBlock.Block.Number()) == 0 {
-					continue
-				}
-				// 자신이 가진 possibleWinningBlock과 비교하여, 새로 들어온 블록의 difficulty가 크면, 투표를 하고 전송
-				// 그렇지 않은 경우 무시
-				// 동일한 블록에 자신이 가진 투표수보다 새로 들어온 투표수가 많으면 전송, 그렇지 않으면 무시
-				// 전체 투표수가 임계투표수 이상이면 상태를 변경
-				w.dbftStatus = types.DBFT_PREPARE
-				// 자신이 투표하여 새로운 Commit Message 전송..
-				// possibleWinningFinsishBlock 생성
-			} else if voteType == types.DBFT_COMMIT {
-				if w.dbftStatus != types.DBFT_PREPARE {
-					continue
-				}
-				if w.possibleWinningBlock.Block.Number().Cmp(voteBlock.Block.Number()) == 0 {
-					continue
-				}
-				// 자신이 가진 possibleWinningFinishBlock과 동일한 block에 대하여 commit이 온 경우 투표하고, 재 전송
-				// .. possibleWinningFinishBlock의 투표자수가 임계치를 넘어가면
-				// 신규 블록 등록하고
-				// 새로운 블록 생성단계로 전환
-			}
-		case <-w.exitCh:
-			log.Info("Worker has exited")
-		}
-	}
 }

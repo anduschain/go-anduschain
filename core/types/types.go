@@ -182,31 +182,3 @@ func ProtoToStatus(status proto.ProcessStatus) FnStatus {
 		return PENDING
 	}
 }
-
-type DbftStatus uint64
-
-const (
-	DBFT_PENDING DbftStatus = iota // 블록생성단계
-	DBFT_PROPOSE                   // 제안투표단계
-	DBFT_PREPARE                   // 투표단계
-
-	DBFT_VOTE   = 0x20 // 제안 메시지
-	DBFT_COMMIT = 0x21 // 투표 메시지
-)
-
-func (d DbftStatus) String() string {
-	switch d {
-	case DBFT_PENDING:
-		return "PENDING"
-	case DBFT_PROPOSE:
-		return "PROPSE"
-	case DBFT_PREPARE:
-		return "PREPARE"
-	case DBFT_VOTE:
-		return "VOTE"
-	case DBFT_COMMIT:
-		return "COMMIT"
-	default:
-		return "UNKNOWN"
-	}
-}

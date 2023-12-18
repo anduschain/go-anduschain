@@ -63,12 +63,6 @@ type FairnodeStatusEvent struct {
 
 type ClientClose struct{}
 
-// for dbft
-type DbftStatusEvent struct {
-	Status  DbftStatus
-	Payload interface{}
-}
-
 type BlockVoter struct {
 	Voter    common.Address
 	VoteSign []byte
@@ -77,9 +71,4 @@ type BlockVoter struct {
 type VoteBlock struct {
 	Block  Block
 	Voters []BlockVoter
-}
-
-type VoteBlockEvent struct {
-	VoteType DbftStatus
-	Block    *VoteBlock
 }
