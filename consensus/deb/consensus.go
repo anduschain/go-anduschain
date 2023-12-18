@@ -501,7 +501,7 @@ func (c *Deb) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *t
 	return big.NewInt(0)
 }
 
-func (c *Deb) CalcDifficultyDeb(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
+func (c *Deb) CalcDifficultyEngine(joinNonce uint64, otprn []byte, coinbase common.Address, parentHash common.Hash) *big.Int {
 
 	return calcDifficultyDeb(joinNonce, otprn, coinbase, parentHash)
 }

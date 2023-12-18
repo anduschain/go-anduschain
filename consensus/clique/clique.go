@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/trie"
+	"github.com/templexxx/xor"
 	"io"
 	"math/big"
 	"math/rand"
@@ -193,9 +194,9 @@ func (c *Clique) VerifySeal(chain consensus.ChainReader, header *types.Header) e
 	panic("implement me")
 }
 
-func (c *Clique) CalcDifficultyDeb(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int {
-	//TODO implement me
-	panic("implement me")
+func (c *Clique) CalcDifficultyEngine(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int {
+
+	return calcDifficulty(hash, coinbase)
 }
 
 func (c *Clique) SetOtprn(otprn *types.Otprn) {
@@ -523,7 +524,7 @@ func (c *Clique) Prepare(chain consensus.ChainReader, header *types.Header) erro
 		c.lock.RUnlock()
 	}
 	// Set the correct difficulty
-	header.Difficulty = calcDifficulty(snap, c.signer)
+	header.Difficulty = calcDifficulty(header.ParentHash, c.signer)
 
 	// Ensure the extra data has all its components
 	if len(header.Extra) < extraVanity {
@@ -654,19 +655,27 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, results c
 // * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
 // * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
 func (c *Clique) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
-	if err != nil {
-		return nil
-	}
-	return calcDifficulty(snap, c.signer)
+	//snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
+	//if err != nil {
+	//	return nil
+	//}
+	//
+	//return calcDifficulty(snap, c.signer)
+	return calcDifficulty(parent.Hash(), c.signer)
 }
 
-func calcDifficulty(snap *Snapshot, signer common.Address) *big.Int {
-	if snap.inturn(snap.Number+1, signer) {
-		return new(big.Int).Set(diffInTurn)
-	}
-	return new(big.Int).Set(diffNoTurn)
+func calcDifficulty(hash common.Hash, signer common.Address) *big.Int {
+	result := make([]byte, len(signer))
+	xor.Bytes(result, hash.Bytes(), signer.Bytes())
+	return big.NewInt(0).SetBytes(result)
 }
+
+//func calcDifficulty(snap *Snapshot, signer common.Address) *big.Int {
+//	if snap.inturn(snap.Number+1, signer) {
+//		return new(big.Int).Set(diffInTurn)
+//	}
+//	return new(big.Int).Set(diffNoTurn)
+//}
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (c *Clique) SealHash(header *types.Header) common.Hash {

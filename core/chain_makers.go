@@ -235,7 +235,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 				otp, _ = b.engine.Otprn().EncodeOtprn()
 				block.SetOtprn(otp)
 				if bytes.Compare(b.engine.Otprn().FnAddr.Bytes(), params.TestFairnodeAddr.Bytes()) != 0 && b.config.ChainID != params.DvlpNetId {
-					block.SetDifficulty(engine.CalcDifficultyDeb(block.Nonce(), block.Otprn(), block.Coinbase(), block.ParentHash()))
+					block.SetDifficulty(engine.CalcDifficultyEngine(block.Nonce(), block.Otprn(), block.Coinbase(), block.ParentHash()))
 				} else {
 					block.SetDifficulty(parent.Difficulty())
 				}
