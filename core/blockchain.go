@@ -70,6 +70,7 @@ type CacheConfig struct {
 	Disabled      bool          // Whether to disable trie write caching (archive node)
 	TrieNodeLimit int           // Memory limit (MB) at which to flush the current in-memory trie to disk
 	TrieTimeLimit time.Duration // Time limit after which to flush the current in-memory trie to disk
+	ZktrieEnabled bool
 }
 
 // BlockChain represents the canonical chain given a database with a genesis
@@ -152,7 +153,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		cacheConfig:  cacheConfig,
 		db:           db,
 		triegc:       prque.New(nil),
-		stateCache:   state.NewDatabase(db),
+		stateCache:   state.NewDatabaseWithZktrie(db, cacheConfig.ZktrieEnabled),
 		quit:         make(chan struct{}),
 		bodyCache:    bodyCache,
 		bodyRLPCache: bodyRLPCache,

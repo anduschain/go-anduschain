@@ -83,6 +83,7 @@ type Config struct {
 	DatabaseCache      int
 	TrieCache          int
 	TrieTimeout        time.Duration
+	ZktrieEnabled      bool
 
 	// Mining-related options
 	Etherbase      common.Address `toml:",omitempty"`

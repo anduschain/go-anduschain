@@ -122,6 +122,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.CacheDatabaseFlag,
 			utils.CacheGCFlag,
 			utils.TrieCacheGenFlag,
+			utils.ZktrieEnableFlag,
 		},
 	},
 	{

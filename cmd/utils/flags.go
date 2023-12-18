@@ -250,6 +250,7 @@ var (
 		Usage: "Maximum amount of time non-executable transaction are queued",
 		Value: eth.DefaultConfig.TxPool.Lifetime,
 	}
+
 	// Performance tuning settings
 	CacheFlag = cli.IntFlag{
 		Name:  "cache",
@@ -271,6 +272,11 @@ var (
 		Usage: "Number of trie node generations to keep in memory",
 		Value: int(state.MaxTrieCacheGen),
 	}
+	ZktrieEnableFlag = cli.BoolFlag{
+		Name:  "zktrie",
+		Usage: "StateDB use ZkTrie",
+	}
+
 	// Miner settings
 	MiningEnabledFlag = cli.BoolFlag{
 		Name:  "mine",
@@ -308,6 +314,7 @@ var (
 		Name:  "miner.noverify",
 		Usage: "Disable remote sealing verification",
 	}
+
 	// Account settings
 	UnlockedAccountFlag = cli.StringFlag{
 		Name:  "unlock",
@@ -324,6 +331,7 @@ var (
 		Name:  "vmdebug",
 		Usage: "Record information useful for VM and contract debugging",
 	}
+
 	// Logging and debug settings
 	EthStatsURLFlag = cli.StringFlag{
 		Name:  "ethstats",
@@ -333,6 +341,7 @@ var (
 		Name:  "nocompaction",
 		Usage: "Disables db compaction after import",
 	}
+
 	// RPC settings
 	RPCEnabledFlag = cli.BoolFlag{
 		Name:  "rpc",
@@ -1078,6 +1087,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	if ctx.GlobalIsSet(VMEnableDebugFlag.Name) {
 		// TODO(fjl): force-enable this in --dev mode
 		cfg.EnablePreimageRecording = ctx.GlobalBool(VMEnableDebugFlag.Name)
+	}
+
+	if ctx.GlobalIsSet(ZktrieEnableFlag.Name) {
+		cfg.ZktrieEnabled = true
 	}
 
 	// Override any default configs for hard coded networks.

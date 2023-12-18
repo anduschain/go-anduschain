@@ -78,6 +78,16 @@ type Trie interface {
 func NewDatabase(db ethdb.Database) Database {
 	csc, _ := lru.New(codeSizeCacheSize)
 	return &cachingDB{
+		zktrie:        false,
+		db:            trie.NewDatabase(db),
+		codeSizeCache: csc,
+	}
+}
+
+func NewDatabaseWithZktrie(db ethdb.Database, zktrie bool) Database {
+	csc, _ := lru.New(codeSizeCacheSize)
+	return &cachingDB{
+		zktrie:        zktrie,
 		db:            trie.NewDatabase(db),
 		codeSizeCache: csc,
 	}
@@ -88,10 +98,20 @@ type cachingDB struct {
 	mu            sync.Mutex
 	pastTries     []*trie.SecureTrie
 	codeSizeCache *lru.Cache
+
+	zktrie bool
 }
 
 // OpenTrie opens the main account trie.
 func (db *cachingDB) OpenTrie(root common.Hash) (Trie, error) {
+	if db.zktrie {
+		tr, err := trie.NewZkTrie(root, trie.NewZktrieDatabaseFromTriedb(db.db))
+		if err != nil {
+			return nil, err
+		}
+		return tr, nil
+	}
+
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -121,6 +141,14 @@ func (db *cachingDB) pushTrie(t *trie.SecureTrie) {
 
 // OpenStorageTrie opens the storage trie of an account.
 func (db *cachingDB) OpenStorageTrie(addrHash, root common.Hash) (Trie, error) {
+	if db.zktrie {
+		tr, err := trie.NewZkTrie(root, trie.NewZktrieDatabaseFromTriedb(db.db))
+		if err != nil {
+			return nil, err
+		}
+		return tr, nil
+	}
+
 	return trie.NewSecure(root, db.db, 0)
 }
 
@@ -130,6 +158,8 @@ func (db *cachingDB) CopyTrie(t Trie) Trie {
 	case cachedTrie:
 		return cachedTrie{t.SecureTrie.Copy(), db}
 	case *trie.SecureTrie:
+		return t.Copy()
+	case *trie.ZkTrie:
 		return t.Copy()
 	default:
 		panic(fmt.Errorf("unknown trie type %T", t))
