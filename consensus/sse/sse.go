@@ -15,13 +15,14 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package clique implements the proof-of-authority consensus engine.
-package clique
+package sse
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"github.com/anduschain/go-anduschain/trie"
+	"github.com/templexxx/xor"
 	"io"
 	"math/big"
 	"math/rand"
@@ -64,9 +65,6 @@ var (
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a signer.
 
 	voterHash = types.EmptyVoteHash
-
-	diffInTurn = big.NewInt(2) // Block difficulty for in-turn signatures
-	diffNoTurn = big.NewInt(1) // Block difficulty for out-of-turn signatures
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -194,8 +192,8 @@ func (c *Clique) VerifySeal(chain consensus.ChainReader, header *types.Header) e
 }
 
 func (c *Clique) CalcDifficultyEngine(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int {
-	//TODO implement me
-	panic("implement me")
+
+	return calcDifficulty(hash, coinbase)
 }
 
 func (c *Clique) SetOtprn(otprn *types.Otprn) {
@@ -306,7 +304,7 @@ func (c *Clique) verifyHeader(chain consensus.ChainReader, header *types.Header,
 	}
 	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
-		if header.Difficulty == nil || (header.Difficulty.Cmp(diffInTurn) != 0 && header.Difficulty.Cmp(diffNoTurn) != 0) {
+		if header.Difficulty.Cmp(calcDifficulty(header.Hash(), c.signer)) != 0 {
 			return errInvalidDifficulty
 		}
 	}
@@ -476,12 +474,9 @@ func (c *Clique) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 		}
 	}
 	// Ensure that the difficulty corresponds to the turn-ness of the signer
+	calcDifficulty := calcDifficulty(header.Hash(), c.signer)
 	if !c.fakeDiff {
-		inturn := snap.inturn(header.Number.Uint64(), signer)
-		if inturn && header.Difficulty.Cmp(diffInTurn) != 0 {
-			return errWrongDifficulty
-		}
-		if !inturn && header.Difficulty.Cmp(diffNoTurn) != 0 {
+		if header.Difficulty.Cmp(calcDifficulty) != 0 {
 			return errWrongDifficulty
 		}
 	}
@@ -523,7 +518,7 @@ func (c *Clique) Prepare(chain consensus.ChainReader, header *types.Header) erro
 		c.lock.RUnlock()
 	}
 	// Set the correct difficulty
-	header.Difficulty = calcDifficulty(snap, c.signer)
+	header.Difficulty = calcDifficulty(header.ParentHash, c.signer)
 
 	// Ensure the extra data has all its components
 	if len(header.Extra) < extraVanity {
@@ -617,13 +612,7 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, results c
 	}
 	// Sweet, the protocol permits us to sign the block, wait for our time
 	delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now()) // nolint: gosimple
-	if header.Difficulty.Cmp(diffNoTurn) == 0 {
-		// It's not our turn explicitly to sign, delay it a bit
-		wiggle := time.Duration(len(snap.Signers)/2+1) * wiggleTime
-		delay += time.Duration(rand.Int63n(int64(wiggle)))
 
-		log.Trace("Out-of-turn signing requested", "wiggle", common.PrettyDuration(wiggle))
-	}
 	// Sign all the things!
 	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeClique, CliqueRLP(header))
 	if err != nil {
@@ -654,21 +643,27 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, results c
 // * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
 // * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
 func (c *Clique) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
-	if err != nil {
-		return nil
-	}
-
+	//snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
+	//if err != nil {
+	//	return nil
+	//}
+	//
 	//return calcDifficulty(snap, c.signer)
-	return c.CalcDifficultyEngine(uint64(len(snap.Signers)), parent.Otprn, c.signer, parent.Hash())
+	return calcDifficulty(parent.Hash(), c.signer)
 }
 
-func calcDifficulty(snap *Snapshot, signer common.Address) *big.Int {
-	if snap.inturn(snap.Number+1, signer) {
-		return new(big.Int).Set(diffInTurn)
-	}
-	return new(big.Int).Set(diffNoTurn)
+func calcDifficulty(hash common.Hash, signer common.Address) *big.Int {
+	result := make([]byte, len(signer))
+	xor.Bytes(result, hash.Bytes(), signer.Bytes())
+	return big.NewInt(0).SetBytes(result)
 }
+
+//func calcDifficulty(snap *Snapshot, signer common.Address) *big.Int {
+//	if snap.inturn(snap.Number+1, signer) {
+//		return new(big.Int).Set(diffInTurn)
+//	}
+//	return new(big.Int).Set(diffNoTurn)
+//}
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (c *Clique) SealHash(header *types.Header) common.Hash {
