@@ -21,7 +21,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
@@ -562,7 +561,6 @@ func (tx *Transaction) UnmarshalBinary(b []byte) error {
 		data.V = data2.V
 		data.R = data2.R
 		data.S = data2.S
-		fmt.Printf("CSW......... %v %v %v", data.V, data.R, data.S)
 	}
 	inner = &data
 	tx.setDecoded(inner, len(b))

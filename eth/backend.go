@@ -26,6 +26,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/consensus/sse"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
 	"github.com/anduschain/go-anduschain/core/rawdb"
@@ -251,6 +252,8 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	// If proof-of-Deb is requested, set it up
 	if chainConfig.Clique != nil {
 		return clique.New(chainConfig.Clique, db)
+	} else if chainConfig.Sse != nil {
+		return sse.New(chainConfig.Sse, db)
 	} else {
 		return deb.New(chainConfig.Deb, db)
 	}
@@ -383,6 +386,9 @@ func (s *Ethereum) StartMining(threads int) error {
 				return fmt.Errorf("signer missing: %v", err)
 			}
 			if c, ok := s.engine.(*clique.Clique); ok {
+				c.Authorize(eb, wallet.SignData)
+			}
+			if c, ok := s.engine.(*sse.Sse); ok {
 				c.Authorize(eb, wallet.SignData)
 			}
 		}

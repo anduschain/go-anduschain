@@ -434,7 +434,7 @@ func TestClique(t *testing.T) {
 				header.Extra = make([]byte, extraVanity+len(auths)*common.AddressLength+extraSeal)
 				accounts.checkpoint(header, auths)
 			}
-			header.Difficulty = calcDifficulty(header.Hash(), accounts.address(tt.votes[j].signer)) // Ignored, we just need a valid number
+			header.Difficulty = calcDifficulty(header.Number, accounts.address(tt.votes[j].signer)) // Ignored, we just need a valid number
 
 			// Generate the signature, embed it into the header and the block
 			accounts.sign(header, tt.votes[j].signer)

@@ -87,7 +87,7 @@ func newSnapshot(config *params.SseConfig, sigcache *lru.ARCCache, number uint64
 
 // loadSnapshot loads an existing snapshot from the database.
 func loadSnapshot(config *params.SseConfig, sigcache *lru.ARCCache, db ethdb.Database, hash common.Hash) (*Snapshot, error) {
-	blob, err := db.Get(append([]byte("sse-"), hash[:]...))
+	blob, err := db.Get(append([]byte("clique-"), hash[:]...))
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *Snapshot) store(db ethdb.Database) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("sse-"), s.Hash[:]...), blob)
+	return db.Put(append([]byte("clique-"), s.Hash[:]...), blob)
 }
 
 // copy creates a deep copy of the snapshot, though not the individual votes.
@@ -314,4 +314,13 @@ func (s *Snapshot) signers() []common.Address {
 	}
 	sort.Sort(signersAscending(sigs))
 	return sigs
+}
+
+// inturn returns if a signer at a given block height is in-turn or not.
+func (s *Snapshot) inturn(number uint64, signer common.Address) bool {
+	signers, offset := s.signers(), 0
+	for offset < len(signers) && signers[offset] != signer {
+		offset++
+	}
+	return (number % uint64(len(signers))) == uint64(offset)
 }

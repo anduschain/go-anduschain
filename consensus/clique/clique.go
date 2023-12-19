@@ -659,8 +659,7 @@ func (c *Clique) CalcDifficulty(chain consensus.ChainReader, time uint64, parent
 		return nil
 	}
 
-	//return calcDifficulty(snap, c.signer)
-	return c.CalcDifficultyEngine(uint64(len(snap.Signers)), parent.Otprn, c.signer, parent.Hash())
+	return calcDifficulty(snap, c.signer)
 }
 
 func calcDifficulty(snap *Snapshot, signer common.Address) *big.Int {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package sse implements the proof-of-authority consensus engine.
+// Package clique implements the proof-of-authority consensus engine.
 package sse
 
 import (
@@ -25,7 +25,6 @@ import (
 	"github.com/templexxx/xor"
 	"io"
 	"math/big"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -54,7 +53,7 @@ const (
 	wiggleTime = 500 * time.Millisecond // Random delay (per signer) to allow concurrent signers
 )
 
-// sse proof-of-authority protocol constants.
+// Clique proof-of-authority protocol constants.
 var (
 	epochLength = uint64(30000) // Default number of blocks after which to checkpoint and reset the pending votes
 
@@ -65,6 +64,9 @@ var (
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a signer.
 
 	voterHash = types.EmptyVoteHash
+
+	diffInTurn = big.NewInt(2) // Block difficulty for in-turn signatures
+	diffNoTurn = big.NewInt(1) // Block difficulty for out-of-turn signatures
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -165,7 +167,7 @@ func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 	return signer, nil
 }
 
-// Sse is the proof-of-authority consensus engine proposed to support the
+// Clique is the proof-of-authority consensus engine proposed to support the
 // Ethereum testnet following the Ropsten attacks.
 type Sse struct {
 	config *params.SseConfig // Consensus engine configuration parameters
@@ -192,8 +194,8 @@ func (c *Sse) VerifySeal(chain consensus.ChainReader, header *types.Header) erro
 }
 
 func (c *Sse) CalcDifficultyEngine(nonce uint64, otprn []byte, coinbase common.Address, hash common.Hash) *big.Int {
-
-	return calcDifficulty(hash, coinbase)
+	//TODO implement me
+	panic("implement me")
 }
 
 func (c *Sse) SetOtprn(otprn *types.Otprn) {
@@ -205,10 +207,10 @@ func (c *Sse) Otprn() *types.Otprn {
 }
 
 func (c *Sse) Name() string {
-	return "sse"
+	return "clique"
 }
 
-// New creates a SSE proof-of-authority consensus engine with the initial
+// New creates a Clique proof-of-authority consensus engine with the initial
 // signers set to the ones provided by the user.
 func New(config *params.SseConfig, db ethdb.Database) *Sse {
 	// Set any missing consensus parameters to their defaults
@@ -304,7 +306,7 @@ func (c *Sse) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 	// Ensure that the block's difficulty is meaningful (may not be correct at this point)
 	if number > 0 {
-		if header.Difficulty.Cmp(calcDifficulty(header.Hash(), c.signer)) != 0 {
+		if header.Difficulty == nil || (header.Difficulty.Cmp(calcDifficulty(header.Number, header.Coinbase)) != 0) {
 			return errInvalidDifficulty
 		}
 	}
@@ -474,9 +476,8 @@ func (c *Sse) verifySeal(snap *Snapshot, header *types.Header, parents []*types.
 		}
 	}
 	// Ensure that the difficulty corresponds to the turn-ness of the signer
-	calcDifficulty := calcDifficulty(header.Hash(), c.signer)
 	if !c.fakeDiff {
-		if header.Difficulty.Cmp(calcDifficulty) != 0 {
+		if header.Difficulty.Cmp(calcDifficulty(header.Number, header.Coinbase)) != 0 {
 			return errWrongDifficulty
 		}
 	}
@@ -487,9 +488,7 @@ func (c *Sse) verifySeal(snap *Snapshot, header *types.Header, parents []*types.
 // header for running the transactions on top.
 func (c *Sse) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
-	header.Coinbase = common.Address{}
 	header.Nonce = types.BlockNonce{}
-
 	number := header.Number.Uint64()
 	// Assemble the voting snapshot to check which votes make sense
 	snap, err := c.snapshot(chain, number-1, header.ParentHash, nil)
@@ -508,7 +507,6 @@ func (c *Sse) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		}
 		// If there's pending proposals, cast a vote on them
 		if len(addresses) > 0 {
-			header.Coinbase = addresses[rand.Intn(len(addresses))]
 			if c.proposals[header.Coinbase] {
 				copy(header.Nonce[:], nonceAuthVote)
 			} else {
@@ -517,8 +515,9 @@ func (c *Sse) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		}
 		c.lock.RUnlock()
 	}
+
 	// Set the correct difficulty
-	header.Difficulty = calcDifficulty(header.ParentHash, c.signer)
+	header.Difficulty = calcDifficulty(header.Number, c.signer)
 
 	// Ensure the extra data has all its components
 	if len(header.Extra) < extraVanity {
@@ -612,7 +611,13 @@ func (c *Sse) Seal(chain consensus.ChainReader, block *types.Block, results chan
 	}
 	// Sweet, the protocol permits us to sign the block, wait for our time
 	delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now()) // nolint: gosimple
-
+	//if header.Difficulty.Cmp(diffNoTurn) == 0 {
+	//	// It's not our turn explicitly to sign, delay it a bit
+	//	wiggle := time.Duration(len(snap.Signers)/2+1) * wiggleTime
+	//	delay += time.Duration(rand.Int63n(int64(wiggle)))
+	//
+	//	log.Trace("Out-of-turn signing requested", "wiggle", common.PrettyDuration(wiggle))
+	//}
 	// Sign all the things!
 	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeSse, SseRLP(header))
 	if err != nil {
@@ -643,19 +648,24 @@ func (c *Sse) Seal(chain consensus.ChainReader, block *types.Block, results chan
 // * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
 // * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
 func (c *Sse) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	//snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
-	//if err != nil {
-	//	return nil
-	//}
-	//
-	//return calcDifficulty(snap, c.signer)
-	return calcDifficulty(parent.Hash(), c.signer)
+	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
+	if err != nil {
+		return nil
+	}
+
+	return calcDifficulty(big.NewInt(int64(snap.Number)), c.signer)
+	//return c.CalcDifficultyEngine(uint64(len(snap.Signers)), parent.Otprn, c.signer, parent.Hash())
 }
 
-func calcDifficulty(hash common.Hash, signer common.Address) *big.Int {
-	result := make([]byte, len(signer))
-	xor.Bytes(result, hash.Bytes(), signer.Bytes())
-	return big.NewInt(0).SetBytes(result)
+func calcDifficulty(num *big.Int, signer common.Address) *big.Int {
+	//if snap.inturn(snap.Number+1, signer) {
+	//	return new(big.Int).Set(diffInTurn)
+	//}
+	//return new(big.Int).Set(diffNoTurn)
+	result := make([]byte, 4)
+	xor.Bytes(result, num.Bytes(), signer.Bytes())
+	val := big.NewInt(0).SetBytes(result)
+	return val
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
@@ -663,7 +673,7 @@ func (c *Sse) SealHash(header *types.Header) common.Hash {
 	return SealHash(header)
 }
 
-// Close implements consensus.Engine. It's a noop for sse as there are no background threads.
+// Close implements consensus.Engine. It's a noop for clique as there are no background threads.
 func (c *Sse) Close() error {
 	return nil
 }
@@ -687,7 +697,7 @@ func SealHash(header *types.Header) (hash common.Hash) {
 	return hash
 }
 
-// SseRLP returns the rlp bytes which needs to be signed for the proof-of-authority
+// CliqueRLP returns the rlp bytes which needs to be signed for the proof-of-authority
 // sealing. The RLP to sign consists of the entire header apart from the 65 byte signature
 // contained at the end of the extra data.
 //

@@ -77,7 +77,7 @@ func TestReimportMirroredState(t *testing.T) {
 			header.ParentHash = blocks[i-1].Hash()
 		}
 		header.Extra = make([]byte, extraVanity+extraSeal)
-		header.Difficulty = calcDifficulty(header.Hash(), crypto.PubkeyToAddress(key.PublicKey))
+		header.Difficulty = calcDifficulty(header.Number, crypto.PubkeyToAddress(key.PublicKey))
 
 		sig, _ := crypto.Sign(SealHash(header).Bytes(), key)
 		copy(header.Extra[len(header.Extra)-extraSeal:], sig)
