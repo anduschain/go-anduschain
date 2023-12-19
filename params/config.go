@@ -134,7 +134,7 @@ var (
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
 		nil, nil, &SseConfig{Period: 0, Epoch: 30000}}
 
-	AllDbftProtocolChanges = &ChainConfig{
+	AllSseProtocolChanges = &ChainConfig{
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),

@@ -406,11 +406,11 @@ func TestClique(t *testing.T) {
 
 		// Assemble a chain of headers from the cast votes
 		config := *params.TestChainConfig
-		config.Clique = &params.CliqueConfig{
+		config.Sse = &params.SseConfig{
 			Period: 1,
 			Epoch:  tt.epoch,
 		}
-		engine := New(config.Clique, db)
+		engine := New(config.Sse, db)
 		engine.fakeDiff = true
 
 		blocks, _ := core.GenerateChain(&config, genesis.ToBlock(db), engine, db, len(tt.votes), func(j int, gen *core.BlockGen) {
@@ -434,7 +434,7 @@ func TestClique(t *testing.T) {
 				header.Extra = make([]byte, extraVanity+len(auths)*common.AddressLength+extraSeal)
 				accounts.checkpoint(header, auths)
 			}
-			header.Difficulty = diffInTurn // Ignored, we just need a valid number
+			header.Difficulty = calcDifficulty(header.Hash(), accounts.address(tt.votes[j].signer)) // Ignored, we just need a valid number
 
 			// Generate the signature, embed it into the header and the block
 			accounts.sign(header, tt.votes[j].signer)

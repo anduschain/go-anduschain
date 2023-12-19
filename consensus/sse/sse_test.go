@@ -41,7 +41,7 @@ func TestReimportMirroredState(t *testing.T) {
 		db     = memorydb.NewMemDatabase()
 		key, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 		addr   = crypto.PubkeyToAddress(key.PublicKey)
-		engine = New(params.AllCliqueProtocolChanges.Clique, db)
+		engine = New(params.AllSseProtocolChanges.Sse, db)
 		signer = new(types.HomesteadSigner)
 	)
 	genspec := &core.Genesis{
@@ -57,10 +57,9 @@ func TestReimportMirroredState(t *testing.T) {
 	chain, _ := core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
-	blocks, _ := core.GenerateChain(params.AllCliqueProtocolChanges, genesis, engine, db, 3, func(i int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.AllSseProtocolChanges, genesis, engine, db, 3, func(i int, block *core.BlockGen) {
 		// The chain maker doesn't have access to a chain, so the difficulty will be
 		// lets unset (nil). Set it here to the correct value.
-		block.SetDifficulty(diffInTurn)
 
 		// We want to simulate an empty middle block, having the same state as the
 		// first one. The last is needs a state change again to force a reorg.
@@ -78,7 +77,7 @@ func TestReimportMirroredState(t *testing.T) {
 			header.ParentHash = blocks[i-1].Hash()
 		}
 		header.Extra = make([]byte, extraVanity+extraSeal)
-		header.Difficulty = diffInTurn
+		header.Difficulty = calcDifficulty(header.Hash(), crypto.PubkeyToAddress(key.PublicKey))
 
 		sig, _ := crypto.Sign(SealHash(header).Bytes(), key)
 		copy(header.Extra[len(header.Extra)-extraSeal:], sig)
