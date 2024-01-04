@@ -692,6 +692,11 @@ type Message struct {
 	checkNonce bool
 }
 
+func (m Message) IsL1MessageTx() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, checkNonce bool) Message {
 	return Message{
 		from:       from,

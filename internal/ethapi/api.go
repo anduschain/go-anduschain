@@ -472,7 +472,8 @@ func (s *PrivateAccountAPI) SignTransaction(ctx context.Context, args SendTxArgs
 // safely used to calculate a signature from.
 //
 // The hash is calulcated as
-//   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
+//
+//	keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
 //
 // This gives context to the signed message and prevents signing of transactions.
 func signHash(data []byte) []byte {
@@ -734,14 +735,14 @@ func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, blockHash comm
 	return nil, err
 }
 
-//// GetUncleByBlockNumberAndIndex returns the uncle block for the given block hash and index. When fullTx is true
-//// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
+// // GetUncleByBlockNumberAndIndex returns the uncle block for the given block hash and index. When fullTx is true
+// // all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
 func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) (map[string]interface{}, error) {
 	return nil, errors.New("GetUncleByBlockNumberAndIndex is not supported")
 }
 
-//// GetUncleByBlockHashAndIndex returns the uncle block for the given block hash and index. When fullTx is true
-//// all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
+// // GetUncleByBlockHashAndIndex returns the uncle block for the given block hash and index. When fullTx is true
+// // all transactions in the block are returned in full detail, otherwise only the transaction hash is returned.
 func (s *PublicBlockChainAPI) GetUncleByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) (map[string]interface{}, error) {
 
 	return nil, errors.New("GetUncleByBlockHashAndIndex is not supported")
@@ -838,7 +839,9 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 	// Setup the gas pool (also for unmetered requests)
 	// and apply the message.
 	gp := new(core.GasPool).AddGas(math.MaxUint64)
-	result, err := core.ApplyMessage(evm, msg, gp)
+	// ToDo - CSW
+	l1DataFee := big.NewInt(0)
+	result, err := core.ApplyMessage(evm, msg, gp, l1DataFee)
 	if err := vmError(); err != nil {
 		return nil, 0, false, err
 	}
@@ -1883,7 +1886,9 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 
 	// Execute the message.
 	gp := new(core.GasPool).AddGas(math.MaxUint64)
-	result, err := core.ApplyMessage(evm, msg, gp)
+	// ToDo - CSW
+	l1DataFee := big.NewInt(0)
+	result, err := core.ApplyMessage(evm, msg, gp, l1DataFee)
 	if err := vmError(); err != nil {
 		return nil, err
 	}

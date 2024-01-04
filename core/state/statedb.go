@@ -250,19 +250,19 @@ func (self *StateDB) GetCode(addr common.Address) []byte {
 	return nil
 }
 
-func (self *StateDB) GetCodeSize(addr common.Address) int {
+func (self *StateDB) GetCodeSize(addr common.Address) uint64 {
 	stateObject := self.getStateObject(addr)
 	if stateObject == nil {
 		return 0
 	}
 	if stateObject.code != nil {
-		return len(stateObject.code)
+		return uint64(len(stateObject.code))
 	}
 	size, err := self.db.ContractCodeSize(stateObject.addrHash, common.BytesToHash(stateObject.CodeHash()))
 	if err != nil {
 		self.setError(err)
 	}
-	return size
+	return uint64(size)
 }
 
 func (self *StateDB) GetCodeHash(addr common.Address) common.Hash {
@@ -706,4 +706,28 @@ func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common
 	if stateObject != nil {
 		stateObject.SetStorage(storage)
 	}
+}
+
+func (s *StateDB) IsZktrie() bool {
+	return s.db.TrieDB().Zktrie
+}
+
+func (s *StateDB) GetPoseidonCodeHash(addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.PoseidonCodeHash())
+}
+
+func (s *StateDB) GetKeccakCodeHash(addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.CodeHash())
+}
+
+func (s *StateDB) GetRootHash() common.Hash {
+	return s.trie.Hash()
 }

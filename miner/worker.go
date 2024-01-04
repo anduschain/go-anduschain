@@ -95,6 +95,9 @@ type environment struct {
 	header   *types.Header
 	txs      []*types.Transaction
 	receipts []*types.Receipt
+
+	// circuit capacity check related fields
+	traceEnv *core.TraceEnv // env for tracing
 }
 
 // task contains all information for consensus engine sealing and result submitting.
@@ -1050,18 +1053,34 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
-func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
+func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, *types.BlockTrace, error) {
+	var traces *types.BlockTrace
+	var err error
+
+	// ToDo - CSW
+	// 1. check circuit capacity before 'core.ApplyTransaction'
+	// 2. Get BlockTrace
+	traces, err = w.current.traceEnv.GetBlockTrace(
+		types.NewBlockWithHeader(w.current.header).WithBody([]*types.Transaction{tx}, nil),
+	)
+
 	snap := w.current.state.Snapshot()
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		return nil, err
+		return nil, traces, err
 	}
-
+	//withTimer(l2CommitTxCCCTimer, func() {
+	//	accRows, err = w.circuitCapacityChecker.ApplyTransaction(traces)
+	//})
+	//if err != nil {
+	//	return nil, traces, err
+	//}
+	// w.circuitCapacityChecker.ApplyTransaction(traces)
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
-	return receipt.Logs, nil
+	return receipt.Logs, traces, nil
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
@@ -1122,7 +1141,9 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.count)
 
-		logs, err := w.commitTransaction(tx, coinbase)
+		// ToDo - CSW
+		// traces 처리
+		logs, _, err := w.commitTransaction(tx, coinbase)
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account

@@ -38,6 +38,10 @@ var (
 	// errSnapshotReleased is returned if callers want to retrieve data from a
 	// released snapshot.
 	errSnapshotReleased = errors.New("snapshot released")
+
+	// ErrMemorydbNotFound is returned if a key is requested that is not found in
+	// the provided memory database.
+	ErrMemorydbNotFound = errors.New("not found")
 )
 
 /*
