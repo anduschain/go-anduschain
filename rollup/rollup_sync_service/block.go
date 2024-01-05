@@ -74,7 +74,7 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	}
 
 	binary.BigEndian.PutUint64(bytes[0:], w.Header.Number.Uint64())
-	binary.BigEndian.PutUint64(bytes[8:], w.Header.Time)
+	binary.BigEndian.PutUint64(bytes[8:], w.Header.Time.Uint64())
 	// TODO: [16:47] Currently, baseFee is 0, because we disable EIP-1559.
 	binary.BigEndian.PutUint64(bytes[48:], w.Header.GasLimit)
 	binary.BigEndian.PutUint16(bytes[56:], uint16(numTransactions))
@@ -123,15 +123,15 @@ func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 	}
 
 	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    txData.Nonce,
-		To:       txData.To,
-		Value:    txData.Value.ToInt(),
-		Gas:      txData.Gas,
-		GasPrice: txData.GasPrice.ToInt(),
-		Data:     data,
-		V:        txData.V.ToInt(),
-		R:        txData.R.ToInt(),
-		S:        txData.S.ToInt(),
+		AccountNonce: txData.Nonce,
+		Recipient:    txData.To,
+		Amount:       txData.Value.ToInt(),
+		GasLimit:     txData.Gas,
+		Price:        txData.GasPrice.ToInt(),
+		Payload:      data,
+		V:            txData.V.ToInt(),
+		R:            txData.R.ToInt(),
+		S:            txData.S.ToInt(),
 	})
 
 	rlpTxData, err := tx.MarshalBinary()

@@ -494,6 +494,8 @@ type callmsg struct {
 	ethereum.CallMsg
 }
 
+func (m callmsg) IsL1MessageTx() bool { return false }
+
 func (m callmsg) From() common.Address { return m.CallMsg.From }
 func (m callmsg) Nonce() uint64        { return 0 }
 func (m callmsg) CheckNonce() bool     { return false }

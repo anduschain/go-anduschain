@@ -247,7 +247,7 @@ func (l *StructLogger) UpdatedAccounts() map[common.Address]struct{} {
 }
 
 // WriteTrace writes a formatted trace to the given writer
-func WriteTrace(writer io.Writer, logs []StructLog) {
+func WriteTrace(writer io.Writer, logs []*StructLog) {
 	for _, log := range logs {
 		fmt.Fprintf(writer, "%-16spc=%08d gas=%v cost=%v", log.Op, log.Pc, log.Gas, log.GasCost)
 		if log.Err != nil {
