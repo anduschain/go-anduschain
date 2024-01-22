@@ -19,13 +19,12 @@ package core
 import (
 	"errors"
 	"fmt"
-	"math"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
+	"math"
+	"math/big"
 )
 
 var (
@@ -43,8 +42,10 @@ The state transitioning model does all the necessary work to work out a valid ne
 3) Create a new state object if the recipient is \0*32
 4) Value transfer
 == If contract creation ==
-  4a) Attempt to run transaction data
-  4b) If valid, use result as code for the new state object
+
+	4a) Attempt to run transaction data
+	4b) If valid, use result as code for the new state object
+
 == end ==
 5) Run Script section
 6) Derive new state root
@@ -59,6 +60,8 @@ type StateTransition struct {
 	data       []byte
 	state      vm.StateDB
 	evm        *vm.EVM
+
+	l1DataFee *big.Int
 }
 
 // Message represents a message sent to a contract.
@@ -74,6 +77,7 @@ type Message interface {
 	Nonce() uint64
 	CheckNonce() bool
 	Data() []byte
+	IsL1MessageTx() bool
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
@@ -129,7 +133,8 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
-func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
+func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, l1DataFee *big.Int) (*ExecutionResult, error) {
+
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 
@@ -188,7 +193,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	msg := st.msg
 	sender := vm.AccountRef(msg.From())
 	// TODO Hardfork check metanonia
-	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
+	homestead := st.evm.ChainConfig().IsHomestead(st.evm.Context.BlockNumber)
 
 	contractCreation := msg.To() == nil
 
@@ -245,7 +250,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if fee.Cmp(big.NewInt(0)) != 0 {
 			log.Debug("VM fairnode fee process", "total", fee, "fairAddr", fairAddr, "fairFeeRate", fairFeeRate, "minerFee", minerFee, "fairFee", fairFee)
 		}
-		st.state.AddBalance(st.evm.Coinbase, minerFee)
+		st.state.AddBalance(st.evm.Context.Coinbase, minerFee)
 		st.state.AddBalance(fairAddr, fairFee)
 	}
 
@@ -292,16 +297,17 @@ type ExecutionResult struct {
 	UsedGas    uint64 // Total used gas but include the refunded gas
 	Err        error  // Any error encountered during the execution(listed in core/vm/errors.go)
 	ReturnData []byte // Returned data from evm(function result or data supplied with revert opcode)
+	L1DataFee  *big.Int
 }
+
+// Failed returns the indicator whether the execution is successful or not
+func (result *ExecutionResult) Failed() bool { return result.Err != nil }
 
 // Unwrap returns the internal evm error which allows us for further
 // analysis outside.
 func (result *ExecutionResult) Unwrap() error {
 	return result.Err
 }
-
-// Failed returns the indicator whether the execution is successful or not
-func (result *ExecutionResult) Failed() bool { return result.Err != nil }
 
 // Return is a helper function to help caller distinguish between revert reason
 // and function return. Return returns the data after execution if no error occurs.

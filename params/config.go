@@ -104,41 +104,104 @@ var (
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil}
+		TestDebConfig, nil, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil}
+		TestDebConfig, nil, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	AllDebProtocolChanges = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil}
+		TestDebConfig, nil, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	TestCliqueChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	AllCliqueProtocolChanges = &ChainConfig{
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	TestSseChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, nil, &SseConfig{Period: 0, Epoch: 30000}}
+		nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 
 	AllSseProtocolChanges = &ChainConfig{
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, nil, &SseConfig{Period: 0, Epoch: 30000}}
+		nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
 )
 
 // ChainConfig is the core config which determines the blockchain settings.
@@ -169,6 +232,91 @@ type ChainConfig struct {
 	Deb    *DebConfig    `json:"deb,omitempty"`
 	Clique *CliqueConfig `json:"clique,omitempty"`
 	Sse    *SseConfig    `json:"sse,omitempty"`
+
+	// Scroll genesis extension: enable scroll rollup-related traces & state transition
+	Scroll ScrollConfig `json:"scroll,omitempty"`
+}
+
+type ScrollConfig struct {
+	// Use zktrie [optional]
+	UseZktrie bool `json:"useZktrie,omitempty"`
+
+	// Maximum number of transactions per block [optional]
+	MaxTxPerBlock *int `json:"maxTxPerBlock,omitempty"`
+
+	// Maximum tx payload size of blocks that we produce [optional]
+	MaxTxPayloadBytesPerBlock *int `json:"maxTxPayloadBytesPerBlock,omitempty"`
+
+	// Transaction fee vault address [optional]
+	FeeVaultAddress *common.Address `json:"feeVaultAddress,omitempty"`
+
+	// Enable EIP-2718 in tx pool [optional]
+	EnableEIP2718 bool `json:"enableEIP2718,omitempty"`
+
+	// Enable EIP-1559 in tx pool, EnableEIP2718 should be true too [optional]
+	EnableEIP1559 bool `json:"enableEIP1559,omitempty"`
+
+	// L1 config
+	L1Config *L1Config `json:"l1Config,omitempty"`
+}
+
+// L1Config contains the l1 parameters needed to sync l1 contract events (e.g., l1 messages, commit/revert/finalize batches) in the sequencer
+type L1Config struct {
+	L1ChainId             uint64         `json:"l1ChainId,string,omitempty"`
+	L1MessageQueueAddress common.Address `json:"l1MessageQueueAddress,omitempty"`
+	NumL1MessagesPerBlock uint64         `json:"numL1MessagesPerBlock,string,omitempty"`
+	ScrollChainAddress    common.Address `json:"scrollChainAddress,omitempty"`
+}
+
+func (c *L1Config) String() string {
+	if c == nil {
+		return "<nil>"
+	}
+
+	return fmt.Sprintf("{l1ChainId: %v, l1MessageQueueAddress: %v, numL1MessagesPerBlock: %v, ScrollChainAddress: %v}",
+		c.L1ChainId, c.L1MessageQueueAddress.Hex(), c.NumL1MessagesPerBlock, c.ScrollChainAddress.Hex())
+}
+
+func (s ScrollConfig) BaseFeeEnabled() bool {
+	return s.EnableEIP2718 && s.EnableEIP1559
+}
+
+func (s ScrollConfig) FeeVaultEnabled() bool {
+	return s.FeeVaultAddress != nil
+}
+
+func (s ScrollConfig) ZktrieEnabled() bool {
+	return s.UseZktrie
+}
+
+func (s ScrollConfig) ShouldIncludeL1Messages() bool {
+	return s.L1Config != nil && s.L1Config.NumL1MessagesPerBlock > 0
+}
+
+func (s ScrollConfig) String() string {
+	maxTxPerBlock := "<nil>"
+	if s.MaxTxPerBlock != nil {
+		maxTxPerBlock = fmt.Sprintf("%v", *s.MaxTxPerBlock)
+	}
+
+	maxTxPayloadBytesPerBlock := "<nil>"
+	if s.MaxTxPayloadBytesPerBlock != nil {
+		maxTxPayloadBytesPerBlock = fmt.Sprintf("%v", *s.MaxTxPayloadBytesPerBlock)
+	}
+
+	return fmt.Sprintf("{useZktrie: %v, maxTxPerBlock: %v, MaxTxPayloadBytesPerBlock: %v, feeVaultAddress: %v, enableEIP2718: %v, enableEIP1559: %v, l1Config: %v}",
+		s.UseZktrie, maxTxPerBlock, maxTxPayloadBytesPerBlock, s.FeeVaultAddress, s.EnableEIP2718, s.EnableEIP1559, s.L1Config.String())
+}
+
+// IsValidTxCount returns whether the given block's transaction count is below the limit.
+// This limit corresponds to the number of ECDSA signature checks that we can fit into the zkEVM.
+func (s ScrollConfig) IsValidTxCount(count int) bool {
+	return s.MaxTxPerBlock == nil || count <= *s.MaxTxPerBlock
+}
+
+// IsValidBlockSize returns whether the given block's transaction payload size is below the limit.
+func (s ScrollConfig) IsValidBlockSize(size common.StorageSize) bool {
+	return s.MaxTxPayloadBytesPerBlock == nil || size <= common.StorageSize(*s.MaxTxPayloadBytesPerBlock)
 }
 
 type DebConfig struct {

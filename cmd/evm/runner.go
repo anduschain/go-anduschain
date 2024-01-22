@@ -74,9 +74,9 @@ func runCmd(ctx *cli.Context) error {
 	glogger.Verbosity(log.Lvl(ctx.GlobalInt(VerbosityFlag.Name)))
 	log.Root().SetHandler(glogger)
 	logconfig := &vm.LogConfig{
-		DisableMemory: ctx.GlobalBool(DisableMemoryFlag.Name),
-		DisableStack:  ctx.GlobalBool(DisableStackFlag.Name),
-		Debug:         ctx.GlobalBool(DebugFlag.Name),
+		EnableMemory: !ctx.GlobalBool(DisableMemoryFlag.Name),
+		DisableStack: ctx.GlobalBool(DisableStackFlag.Name),
+		Debug:        ctx.GlobalBool(DebugFlag.Name),
 	}
 
 	var (

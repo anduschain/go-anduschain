@@ -194,13 +194,13 @@ func (t *StateTest) RunNoVerify(subtest StateSubtest, vmconfig vm.Config) (*stat
 	}
 
 	// Prepare the EVM.
-	evm := vm.NewEVM(vm.Context{BlockNumber: big.NewInt(1)}, nil, params.TestChainConfig, vm.Config{})
+	evm := vm.NewEVM(vm.BlockContext{BlockNumber: big.NewInt(1)}, vm.TxContext{}, nil, params.TestChainConfig, vm.Config{})
 
 	// Execute the message.
 	snapshot := statedb.Snapshot()
 	gaspool := new(core.GasPool)
 	gaspool.AddGas(block.GasLimit())
-	if _, err := core.ApplyMessage(evm, msg, gaspool); err != nil {
+	if _, err := core.ApplyMessage(evm, msg, gaspool, big.NewInt(0)); err != nil {
 		statedb.RevertToSnapshot(snapshot)
 	}
 

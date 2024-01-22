@@ -19,6 +19,7 @@ package vm
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/anduschain/go-anduschain/params"
 	"io"
 	"math/big"
 	"time"
@@ -44,11 +45,15 @@ func (s Storage) Copy() Storage {
 
 // LogConfig are the configuration options for structured logger the EVM
 type LogConfig struct {
-	DisableMemory  bool // disable memory capture
-	DisableStack   bool // disable stack capture
-	DisableStorage bool // disable storage capture
-	Debug          bool // print output during capture end
-	Limit          int  // maximum length of output, but zero means unlimited
+	EnableMemory     bool // disable memory capture
+	DisableStack     bool // disable stack capture
+	DisableStorage   bool // disable storage capture
+	Debug            bool // print output during capture end
+	Limit            int  // maximum length of output, but zero means unlimited
+	EnableReturnData bool // enable return data capture
+
+	// Chain overrides, can be used to execute a trace using future fork rules
+	Overrides *params.ChainConfig `json:"overrides,omitempty"`
 }
 
 //go:generate gencodec -type StructLog -field-override structLogMarshaling -out gen_structlog.go
@@ -56,16 +61,18 @@ type LogConfig struct {
 // StructLog is emitted to the EVM each cycle and lists information about the current internal state
 // prior to the execution of the statement.
 type StructLog struct {
-	Pc         uint64                      `json:"pc"`
-	Op         OpCode                      `json:"op"`
-	Gas        uint64                      `json:"gas"`
-	GasCost    uint64                      `json:"gasCost"`
-	Memory     []byte                      `json:"memory"`
-	MemorySize int                         `json:"memSize"`
-	Stack      []*big.Int                  `json:"stack"`
-	Storage    map[common.Hash]common.Hash `json:"-"`
-	Depth      int                         `json:"depth"`
-	Err        error                       `json:"-"`
+	Pc            uint64                      `json:"pc"`
+	Op            OpCode                      `json:"op"`
+	Gas           uint64                      `json:"gas"`
+	GasCost       uint64                      `json:"gasCost"`
+	Memory        []byte                      `json:"memory"`
+	MemorySize    int                         `json:"memSize"`
+	Stack         []*big.Int                  `json:"stack"`
+	Storage       map[common.Hash]common.Hash `json:"-"`
+	Depth         int                         `json:"depth"`
+	RefundCounter uint64                      `json:"refund"`
+	ExtraData     *types.ExtraData            `json:"extraData"`
+	Err           error                       `json:"-"`
 }
 
 // overrides for gencodec
@@ -113,10 +120,15 @@ type Tracer interface {
 type StructLogger struct {
 	cfg LogConfig
 
-	logs          []StructLog
+	createdAccount *types.AccountWrapper
+
+	logs          []*StructLog
 	changedValues map[common.Address]Storage
 	output        []byte
 	err           error
+
+	statesAffected  map[common.Address]struct{}
+	callStackLogInd []int
 }
 
 func (l *StructLogger) CaptureEnter(env *EVM, typ OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) error {
@@ -169,7 +181,7 @@ func (l *StructLogger) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost ui
 	}
 	// Copy a snapstot of the current memory state to a new buffer
 	var mem []byte
-	if !l.cfg.DisableMemory {
+	if l.cfg.EnableMemory {
 		mem = make([]byte, len(memory.Data()))
 		copy(mem, memory.Data())
 	}
@@ -187,9 +199,9 @@ func (l *StructLogger) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost ui
 		storage = l.changedValues[contract.Address()].Copy()
 	}
 	// create a new snaptshot of the EVM.
-	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, storage, depth, err}
+	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, storage, depth, 0, nil, err}
 
-	l.logs = append(l.logs, log)
+	l.logs = append(l.logs, &log)
 	return nil
 }
 
@@ -213,7 +225,7 @@ func (l *StructLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration
 }
 
 // StructLogs returns the captured log entries.
-func (l *StructLogger) StructLogs() []StructLog { return l.logs }
+func (l *StructLogger) StructLogs() []*StructLog { return l.logs }
 
 // Error returns the VM error captured by the trace.
 func (l *StructLogger) Error() error { return l.err }
@@ -221,8 +233,21 @@ func (l *StructLogger) Error() error { return l.err }
 // Output returns the VM return value captured by the trace.
 func (l *StructLogger) Output() []byte { return l.output }
 
+// UpdatedStorages is used to collect all "touched" storage slots
+func (l *StructLogger) UpdatedStorages() map[common.Address]Storage {
+	return l.changedValues
+}
+
+// CreatedAccount return the account data in case it is a create tx
+func (l *StructLogger) CreatedAccount() *types.AccountWrapper { return l.createdAccount }
+
+// UpdatedAccounts is used to collect all "touched" accounts
+func (l *StructLogger) UpdatedAccounts() map[common.Address]struct{} {
+	return l.statesAffected
+}
+
 // WriteTrace writes a formatted trace to the given writer
-func WriteTrace(writer io.Writer, logs []StructLog) {
+func WriteTrace(writer io.Writer, logs []*StructLog) {
 	for _, log := range logs {
 		fmt.Fprintf(writer, "%-16spc=%08d gas=%v cost=%v", log.Op, log.Pc, log.Gas, log.GasCost)
 		if log.Err != nil {
@@ -262,4 +287,30 @@ func WriteLogs(writer io.Writer, logs []*types.Log) {
 		fmt.Fprint(writer, hex.Dump(log.Data))
 		fmt.Fprintln(writer)
 	}
+}
+
+// FormatLogs formats EVM returned structured logs for json output
+func FormatLogs(logs []*StructLog) []*types.StructLogRes {
+	formatted := make([]*types.StructLogRes, 0, len(logs))
+
+	for _, trace := range logs {
+		logRes := types.NewStructLogResBasic(trace.Pc, trace.Op.String(), trace.Gas, trace.GasCost, trace.Depth, trace.RefundCounter, trace.Err)
+		for _, stackValue := range trace.Stack {
+			logRes.Stack = append(logRes.Stack, fmt.Sprintf("%x", stackValue))
+		}
+		for i := 0; i+32 <= len(trace.Memory); i += 32 {
+			logRes.Memory = append(logRes.Memory, common.Bytes2Hex(trace.Memory[i:i+32]))
+		}
+		if len(trace.Storage) != 0 {
+			storage := make(map[string]string)
+			for i, storageValue := range trace.Storage {
+				storage[i.Hex()] = storageValue.Hex()
+			}
+			logRes.Storage = storage
+		}
+		logRes.ExtraData = trace.ExtraData
+
+		formatted = append(formatted, logRes)
+	}
+	return formatted
 }

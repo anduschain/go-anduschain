@@ -19,15 +19,17 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto"
+	"github.com/anduschain/go-anduschain/crypto/codehash"
 	"github.com/anduschain/go-anduschain/rlp"
+	"io"
+	"math/big"
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
+var emptyPoseidonCodeHash = codehash.EmptyPoseidonCodeHash.Bytes()
+var emptyKeccakCodeHash = codehash.EmptyKeccakCodeHash.Bytes()
 
 type Code []byte
 
@@ -424,4 +426,12 @@ func (self *stateObject) setJoinNonce(nonce uint64) {
 // interface. Interfaces are awesome.
 func (self *stateObject) Value() *big.Int {
 	panic("Value on stateObject should never be called")
+}
+
+func (s *stateObject) PoseidonCodeHash() []byte {
+	return nil
+}
+
+func (s *stateObject) KeccakCodeHash() []byte {
+	return s.data.CodeHash
 }

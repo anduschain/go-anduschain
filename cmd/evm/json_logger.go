@@ -63,7 +63,7 @@ func (l *JSONLogger) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cos
 		Depth:      depth,
 		Err:        err,
 	}
-	if !l.cfg.DisableMemory {
+	if l.cfg.EnableMemory {
 		log.Memory = memory.Data()
 	}
 	if !l.cfg.DisableStack {

@@ -25,6 +25,7 @@ import (
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/params"
+	"github.com/anduschain/go-anduschain/rollup/fees"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -102,13 +103,18 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 		return nil, 0, err
 	}
 	// Create a new context to be used in the EVM environment
-	context := NewEVMContext(msg, header, bc, author)
+	context := NewEVMBlockContext(header, bc, config, author)
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
-	vmenv := vm.NewEVM(context, statedb, config, cfg)
+	vmenv := vm.NewEVM(context, NewEVMTxContext(msg), statedb, config, cfg)
 	// Apply the transaction to the current state (included in the env)
 
-	result, err := ApplyMessage(vmenv, msg, gp)
+	l1DataFee, err := fees.CalculateL1DataFee(tx, statedb)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	result, err := ApplyMessage(vmenv, msg, gp, l1DataFee)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -129,10 +135,11 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	receipt.GasUsed = result.UsedGas
 	// if the transaction created a contract, store the creation address in the receipt.
 	if msg.To() == nil {
-		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
+		receipt.ContractAddress = crypto.CreateAddress(vmenv.TxContext.Origin, tx.Nonce())
 	}
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+
 	return receipt, result.UsedGas, err
 }

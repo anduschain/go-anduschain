@@ -37,5 +37,6 @@ func NewEnv(cfg *Config) *vm.EVM {
 		GasPrice:    cfg.GasPrice,
 	}
 
-	return vm.NewEVM(context, cfg.State, cfg.ChainConfig, cfg.EVMConfig)
+	blkContext, txContext := core.SeparateContext(context)
+	return vm.NewEVM(blkContext, txContext, cfg.State, cfg.ChainConfig, cfg.EVMConfig)
 }

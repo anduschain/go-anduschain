@@ -19,8 +19,12 @@ package rawdb
 
 import (
 	"encoding/binary"
+	"errors"
+
+	leveldb "github.com/syndtr/goleveldb/leveldb/errors"
 
 	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"github.com/anduschain/go-anduschain/metrics"
 )
 
@@ -61,6 +65,19 @@ var (
 
 	preimageCounter    = metrics.NewRegisteredCounter("db/preimage/total", nil)
 	preimageHitCounter = metrics.NewRegisteredCounter("db/preimage/hits", nil)
+
+	// Scroll L1 message store
+	syncedL1BlockNumberKey            = []byte("LastSyncedL1BlockNumber")
+	l1MessageLegacyPrefix             = []byte("l1")
+	l1MessagePrefix                   = []byte("L1") // l1MessagePrefix + queueIndex (uint64 big endian) -> L1MessageTx
+	firstQueueIndexNotInL2BlockPrefix = []byte("q")  // firstQueueIndexNotInL2BlockPrefix + L2 block hash -> enqueue index
+	highestSyncedQueueIndexKey        = []byte("HighestSyncedQueueIndex")
+
+	// Scroll rollup event store
+	rollupEventSyncedL1BlockNumberKey = []byte("R-LastRollupEventSyncedL1BlockNumber")
+	batchChunkRangesPrefix            = []byte("R-bcr")
+	batchMetaPrefix                   = []byte("R-bm")
+	finalizedL2BlockNumberKey         = []byte("R-finalized")
 )
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
@@ -131,4 +148,35 @@ func preimageKey(hash common.Hash) []byte {
 // configKey = configPrefix + hash
 func configKey(hash common.Hash) []byte {
 	return append(configPrefix, hash.Bytes()...)
+}
+
+func isNotFoundErr(err error) bool {
+	return errors.Is(err, leveldb.ErrNotFound) || errors.Is(err, memorydb.ErrMemorydbNotFound)
+}
+
+// encodeBigEndian encodes an index as big endian uint64
+func encodeBigEndian(index uint64) []byte {
+	enc := make([]byte, 8)
+	binary.BigEndian.PutUint64(enc, index)
+	return enc
+}
+
+// L1MessageKey = l1MessagePrefix + queueIndex (uint64 big endian)
+func L1MessageKey(queueIndex uint64) []byte {
+	return append(l1MessagePrefix, encodeBigEndian(queueIndex)...)
+}
+
+// FirstQueueIndexNotInL2BlockKey = firstQueueIndexNotInL2BlockPrefix + L2 block hash
+func FirstQueueIndexNotInL2BlockKey(l2BlockHash common.Hash) []byte {
+	return append(firstQueueIndexNotInL2BlockPrefix, l2BlockHash.Bytes()...)
+}
+
+// batchChunkRangesKey = batchChunkRangesPrefix + batch index (uint64 big endian)
+func batchChunkRangesKey(batchIndex uint64) []byte {
+	return append(batchChunkRangesPrefix, encodeBigEndian(batchIndex)...)
+}
+
+// batchMetaKey = batchMetaPrefix + batch index (uint64 big endian)
+func batchMetaKey(batchIndex uint64) []byte {
+	return append(batchMetaPrefix, encodeBigEndian(batchIndex)...)
 }

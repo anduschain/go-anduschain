@@ -259,6 +259,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 					log.Error("otprn encode err", "msg", err)
 					return
 				}
+
 				sTx, err := dc.wallet.SignTx(dc.miner.Miner, types.NewJoinTransaction(nonce, jnonce, bOtrpn, dc.miner.Miner.Address), dc.config.ChainID)
 				if err != nil {
 					log.Error("signature join transaction", "msg", err)

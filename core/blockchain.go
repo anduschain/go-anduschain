@@ -1609,3 +1609,7 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 func (bc *BlockChain) GetVmConifg() vm.Config {
 	return bc.vmConfig
 }
+
+func (bc *BlockChain) DB() ethdb.Database {
+	return bc.db
+}

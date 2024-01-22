@@ -170,13 +170,14 @@ func TestCallTracer(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create call tracer: %v", err)
 			}
-			evm := vm.NewEVM(context, statedb, test.Genesis.Config, vm.Config{Debug: true, Tracer: tracer})
+			blkContext, txContext := core.SeparateContext(context)
+			evm := vm.NewEVM(blkContext, txContext, statedb, test.Genesis.Config, vm.Config{Debug: true, Tracer: tracer})
 			msg, err := tx.AsMessage(signer)
 			if err != nil {
 				t.Fatalf("failed to prepare transaction for tracing: %v", err)
 			}
 
-			_, err = core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas()))
+			_, err = core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas()), big.NewInt(0))
 			if err != nil {
 				t.Fatalf("failed to ApplyMessage: %v", err)
 			}
