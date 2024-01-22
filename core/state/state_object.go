@@ -105,9 +105,6 @@ type Account struct {
 	Balance   *big.Int
 	Root      common.Hash // merkle root of the storage trie
 	CodeHash  []byte
-
-	// StateAccount Scroll extensions
-	PoseidonCodeHash []byte
 }
 
 // newObject creates a state object.
@@ -432,7 +429,7 @@ func (self *stateObject) Value() *big.Int {
 }
 
 func (s *stateObject) PoseidonCodeHash() []byte {
-	return s.data.PoseidonCodeHash
+	return nil
 }
 
 func (s *stateObject) KeccakCodeHash() []byte {

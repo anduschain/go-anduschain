@@ -134,3 +134,37 @@ func NewEVMTxContext(msg Message) vm.TxContext {
 		GasPrice: new(big.Int).Set(msg.GasPrice()),
 	}
 }
+
+func CombineContext(blkContext vm.BlockContext, txContext vm.TxContext) vm.Context {
+	return vm.Context{
+		CanTransfer: blkContext.CanTransfer,
+		Transfer:    blkContext.Transfer,
+		GetHash:     blkContext.GetHash,
+		Origin:      txContext.Origin,
+		GasPrice:    txContext.GasPrice,
+		Coinbase:    blkContext.Coinbase,
+		GasLimit:    blkContext.GasLimit,
+		BlockNumber: blkContext.BlockNumber,
+		Time:        blkContext.Time,
+		Difficulty:  blkContext.Difficulty,
+	}
+}
+
+func SeparateContext(context vm.Context) (vm.BlockContext, vm.TxContext) {
+	blkContext := vm.BlockContext{
+		CanTransfer: context.CanTransfer,
+		Transfer:    context.Transfer,
+		GetHash:     context.GetHash,
+		Coinbase:    context.Coinbase,
+		GasLimit:    context.GasLimit,
+		BlockNumber: context.BlockNumber,
+		Time:        context.Time,
+		Difficulty:  context.Difficulty,
+	}
+	txContext := vm.TxContext{
+		Origin:   context.Origin,
+		GasPrice: context.GasPrice,
+	}
+
+	return blkContext, txContext
+}

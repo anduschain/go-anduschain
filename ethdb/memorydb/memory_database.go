@@ -19,6 +19,7 @@ package memorydb
 import (
 	"errors"
 	"github.com/anduschain/go-anduschain/ethdb"
+	"github.com/anduschain/go-anduschain/trie"
 	"sort"
 	"strings"
 	"sync"
@@ -50,6 +51,21 @@ var (
 type MemDatabase struct {
 	db   map[string][]byte
 	lock sync.RWMutex
+}
+
+func (db *MemDatabase) ContractCode(addrHash, codeHash common.Hash) ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (db *MemDatabase) ContractCodeSize(addrHash, codeHash common.Hash) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (db *MemDatabase) TrieDB() *trie.Database {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (db *MemDatabase) Sync() error {

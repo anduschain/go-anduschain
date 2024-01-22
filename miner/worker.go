@@ -1016,12 +1016,27 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	if err != nil {
 		return err
 	}
+
+	// don't commit the state during tracing for circuit capacity checker, otherwise we cannot revert.
+	// and even if we don't commit the state, the `refund` value will still be correct, as explained in `CommitTransaction`
+	commitStateAfterApply := false
+	traceEnv, err := core.CreateTraceEnv(w.chain.Config(), w.chain, w.engine, w.chain.DB(), state, parent,
+		// new block with a placeholder tx, for traceEnv's ExecutionResults length & TxStorageTraces length
+		types.NewBlockWithHeader(header).WithBody([]*types.Transaction{types.NewTx(&types.LegacyTx{})}, nil),
+		commitStateAfterApply)
+	if err != nil {
+		return err
+	}
+
+	state.StartPrefetcher("miner")
+
 	env := &environment{
 		signer:    types.NewEIP155Signer(w.config.ChainID),
 		state:     state,
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
 		header:    header,
+		traceEnv:  traceEnv,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -1057,19 +1072,24 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	var traces *types.BlockTrace
 	var err error
 
+	snap := w.current.state.Snapshot()
 	// ToDo - CSW
 	// 1. check circuit capacity before 'core.ApplyTransaction'
 	// 2. Get BlockTrace
 	traces, err = w.current.traceEnv.GetBlockTrace(
 		types.NewBlockWithHeader(w.current.header).WithBody([]*types.Transaction{tx}, nil),
 	)
+	w.current.state.RevertToSnapshot(snap)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	snap := w.current.state.Snapshot()
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
 		return nil, traces, err
 	}
+
 	//withTimer(l2CommitTxCCCTimer, func() {
 	//	accRows, err = w.circuitCapacityChecker.ApplyTransaction(traces)
 	//})
@@ -1088,7 +1108,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 	if w.current == nil {
 		return true
 	}
-
 	if w.current.gasPool == nil {
 		w.current.gasPool = new(core.GasPool).AddGas(w.current.header.GasLimit)
 	}
@@ -1173,7 +1192,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			txs.Shift()
 		}
 	}
-
 	if !w.isRunning() && len(coalescedLogs) > 0 {
 		// We don't push the pendingLogsEvent while we are mining. The reason is that
 		// when we are mining, the worker will regenerate a mining block every 3 seconds.
@@ -1190,11 +1208,13 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// go w.mux.Post(types.PendingLogsEvent{Logs: cpy})
 		w.pendingLogsFeed.Send(cpy)
 	}
+
 	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
 	// than the user-specified one.
 	if interrupt != nil {
 		w.resubmitAdjustCh <- &intervalAdjust{inc: false}
 	}
+
 	return false
 }
 
@@ -1317,6 +1337,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				localTxs[account] = txs
 			}
 		}
+
 		if len(localTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
@@ -1346,11 +1367,13 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		receipts[i] = new(types.Receipt)
 		*receipts[i] = *l
 	}
+
 	s := w.current.state.Copy()
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.receipts, []*types.Voter{})
 	if err != nil {
 		return err
 	}
+
 	if engine, ok := w.engine.(*deb.Deb); ok {
 		// otprn check
 		otprn, err := types.DecodeOtprn(block.Otprn())
@@ -1360,7 +1383,6 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		if err := otprn.ValidateSignature(); err != nil {
 			return err
 		}
-
 		if otprn.FnAddr != params.TestFairnodeAddr { // TEST CHECK
 			if err := engine.ValidationLeagueBlock(w.chain, block); err != nil {
 				return err
@@ -1389,6 +1411,7 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 			log.Info("Worker has exited")
 		}
 	}
+
 	if update {
 		w.updateSnapshot()
 	}

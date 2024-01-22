@@ -615,7 +615,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 			// Thus, we can safely ignore it here
 			continue
 		}
-
 		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
 			s.deleteStateObject(stateObject)
 		} else {
@@ -730,4 +729,8 @@ func (s *StateDB) GetKeccakCodeHash(addr common.Address) common.Hash {
 
 func (s *StateDB) GetRootHash() common.Hash {
 	return s.trie.Hash()
+}
+
+func (s *StateDB) StartPrefetcher(s2 string) {
+
 }

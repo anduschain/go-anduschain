@@ -19,13 +19,12 @@ package core
 import (
 	"errors"
 	"fmt"
-	"math"
-	"math/big"
-
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/vm"
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/params"
+	"math"
+	"math/big"
 )
 
 var (
@@ -135,6 +134,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, l1DataFee *big.Int) (*ExecutionResult, error) {
+
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 

@@ -80,6 +80,43 @@ type LegacyTx struct {
 	Hash *common.Hash `json:"hash" rlp:"-"`
 }
 
+func (tx *LegacyTx) From() common.Address {
+	return tx.From()
+}
+
+func (tx *LegacyTx) To() *common.Address {
+	return tx.Recipient
+}
+
+func (tx *LegacyTx) GasPrice() *big.Int {
+	return tx.Price
+}
+
+func (tx *LegacyTx) Gas() uint64 {
+	return tx.GasLimit
+}
+
+func (tx *LegacyTx) Value() *big.Int {
+	return tx.Amount
+}
+
+func (tx *LegacyTx) Nonce() uint64 {
+	return tx.AccountNonce
+}
+
+func (tx *LegacyTx) CheckNonce() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (tx *LegacyTx) Data() []byte {
+	return tx.Payload
+}
+
+func (tx *LegacyTx) IsL1MessageTx() bool {
+	return true
+}
+
 func (tx *LegacyTx) copy() TxData {
 	cpy := &LegacyTx{
 		AccountNonce: tx.AccountNonce,

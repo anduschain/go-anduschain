@@ -241,20 +241,18 @@ func (c *Deb) ValidationLeagueBlock(chain consensus.ChainReader, block *types.Bl
 	if chain.CurrentHeader().Number.Uint64()+1 != block.Number().Uint64() {
 		return errNotMatchBlockNumber
 	}
-
 	bOtp, err := c.otprn.EncodeOtprn()
 	if err != nil {
 		return err
 	}
-
 	// current otprn vs header otprn
 	if bytes.Compare(bOtp, block.Header().Otprn) != 0 {
 		return ertNotMatchOtprn
 	}
-
 	if err := c.validationBlockInJoinTx(block.Header(), block.Transactions()); err != nil {
 		return err
 	}
+
 	return nil
 }
 

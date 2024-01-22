@@ -19,6 +19,7 @@ package js
 import (
 	"encoding/json"
 	"errors"
+	"github.com/anduschain/go-anduschain/core"
 	"math/big"
 	"testing"
 	"time"
@@ -57,8 +58,9 @@ type vmContext struct {
 var testCtx = vm.Context{BlockNumber: big.NewInt(1), GasPrice: big.NewInt(100000)}
 
 func runTrace(tracer tracers.Tracer, ctx *vm.Context, chaincfg *params.ChainConfig) (json.RawMessage, error) {
+	blkContext, txContext := core.SeparateContext(*ctx)
 	var (
-		env             = vm.NewEVM(*ctx, &dummyStatedb{}, chaincfg, vm.Config{Debug: true, Tracer: tracer})
+		env             = vm.NewEVM(blkContext, txContext, &dummyStatedb{}, chaincfg, vm.Config{Debug: true, Tracer: tracer})
 		startGas uint64 = 10000
 		value           = big.NewInt(0)
 		contract        = vm.NewContract(account{}, account{}, value, startGas)
@@ -145,7 +147,8 @@ func TestHaltBetweenSteps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := vm.NewEVM(testCtx, &dummyStatedb{}, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
+	blkContext, txContext := core.SeparateContext(testCtx)
+	env := vm.NewEVM(blkContext, txContext, &dummyStatedb{}, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
 	contract := vm.NewContract(&account{}, &account{}, big.NewInt(0), 0)
 
 	tracer.CaptureStart(env, common.Address{}, common.Address{}, false, []byte{}, 0, big.NewInt(0))
@@ -168,7 +171,8 @@ func TestNoStepExec(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		env := vm.NewEVM(testCtx, &dummyStatedb{}, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
+		blkContext, txContext := core.SeparateContext(testCtx)
+		env := vm.NewEVM(blkContext, txContext, &dummyStatedb{}, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
 		tracer.CaptureStart(env, common.Address{}, common.Address{}, false, []byte{}, 1000, big.NewInt(0))
 		tracer.CaptureEnd(nil, 0, 1, nil)
 		ret, err := tracer.GetResult()

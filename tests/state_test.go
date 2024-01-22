@@ -214,8 +214,8 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			}
 
 			// Prepare the EVM.
-			context := core.NewEVMContext(msg, block.Header(), nil, &t.json.Env.Coinbase)
-			evm := vm.NewEVM(context, statedb, config, vmconfig)
+			context := core.NewEVMBlockContext(msg, block.Header(), nil, &t.json.Env.Coinbase)
+			evm := vm.NewEVM(context, vm.TxContext{}, statedb, config, vmconfig)
 
 			// Create "contract" for sender to cache code analysis.
 			sender := vm.NewContract(vm.AccountRef(msg.From()), vm.AccountRef(msg.From()),

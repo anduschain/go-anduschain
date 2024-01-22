@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/core/rawdb"
 	"runtime"
 	"sync"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -33,7 +33,7 @@ type TraceEnv struct {
 	// rMu lock is used to protect txs executed in parallel.
 	signer   types.Signer
 	state    *state.StateDB
-	blockCtx vm.Context
+	blockCtx vm.BlockContext
 
 	// pMu lock is used to protect Proofs' read and write mutual exclusion,
 	// since txs are executed in parallel, so this lock is required.
@@ -66,7 +66,7 @@ type txTraceTask struct {
 	index   int
 }
 
-func CreateTraceEnvHelper(chainConfig *params.ChainConfig, logConfig *vm.LogConfig, blockCtx vm.Context, startL1QueueIndex uint64, coinbase common.Address, statedb *state.StateDB, rootBefore common.Hash, block *types.Block, commitAfterApply bool) *TraceEnv {
+func CreateTraceEnvHelper(chainConfig *params.ChainConfig, logConfig *vm.LogConfig, blockCtx vm.BlockContext, startL1QueueIndex uint64, coinbase common.Address, statedb *state.StateDB, rootBefore common.Hash, block *types.Block, commitAfterApply bool) *TraceEnv {
 	return &TraceEnv{
 		logConfig:        logConfig,
 		commitAfterApply: commitAfterApply,
@@ -111,20 +111,23 @@ func CreateTraceEnv(chainConfig *params.ChainConfig, chainContext ChainContext, 
 	// block `C`.
 	// `ReadFirstQueueIndexNotInL1Block(B)` will return the correct value
 	// `10` on follower nodes.
+	// ToDo- CSW
 	startL1QueueIndex := rawdb.ReadFirstQueueIndexNotInL2Block(chaindb, parent.Hash())
-	if startL1QueueIndex == nil {
-		log.Error("missing FirstQueueIndexNotInL2Block for block during trace call", "number", parent.NumberU64(), "hash", parent.Hash())
-		return nil, fmt.Errorf("missing FirstQueueIndexNotInL2Block for block during trace call: hash=%v, parentHash=%vv", block.Hash(), parent.Hash())
-	}
+	//if startL1QueueIndex == nil {
+	//	log.Error("missing FirstQueueIndexNotInL2Block for block during trace call", "number", parent.NumberU64(), "hash", parent.Hash())
+	//	return nil, fmt.Errorf("missing FirstQueueIndexNotInL2Block for block during trace call: hash=%v, parentHash=%vv", block.Hash(), parent.Hash())
+	//}
+	// ToDo - CSW set startL1QueueIndex
+	abc := uint64(0)
+	startL1QueueIndex = &abc
 
-	msg := types.Message{}
 	env := CreateTraceEnvHelper(
 		chainConfig,
 		&vm.LogConfig{
 			EnableMemory:     false,
 			EnableReturnData: true,
 		},
-		NewEVMContext(msg, block.Header(), chainContext, nil),
+		NewEVMBlockContext(block.Header(), chainContext, chainConfig, nil),
 		*startL1QueueIndex,
 		coinbase,
 		statedb,
@@ -190,7 +193,7 @@ func (env *TraceEnv) GetBlockTrace(block *types.Block) (*types.BlockTrace, error
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(env.signer)
 		env.state.Prepare(tx.Hash(), common.Hash{}, i)
-		vmenv := vm.NewEVM(env.blockCtx, env.state, env.chainConfig, vm.Config{})
+		vmenv := vm.NewEVM(env.blockCtx, NewEVMTxContext(msg), env.state, env.chainConfig, vm.Config{})
 		l1DataFee, err := fees.CalculateL1DataFee(tx, env.state)
 		if err != nil {
 			failed = err
@@ -273,7 +276,7 @@ func (env *TraceEnv) getTxResult(state *state.StateDB, index int, block *types.B
 
 	tracer := vm.NewStructLogger(env.logConfig)
 	// Run the transaction with tracing enabled.
-	vmenv := vm.NewEVM(env.blockCtx, state, env.chainConfig, vm.Config{Debug: true, Tracer: tracer})
+	vmenv := vm.NewEVM(env.blockCtx, NewEVMTxContext(msg), state, env.chainConfig, vm.Config{Debug: true, Tracer: tracer})
 
 	// Call Prepare to clear out the statedb access list
 	state.Prepare(txctx.TxHash, common.Hash{}, txctx.TxIndex)
@@ -327,7 +330,11 @@ func (env *TraceEnv) getTxResult(state *state.StateDB, index int, block *types.B
 
 	// merge required proof data
 	proofAccounts := tracer.UpdatedAccounts()
-	proofAccounts[vmenv.FeeRecipient()] = struct{}{}
+	// ToDo - CSW
+	if proofAccounts != nil {
+		proofAccounts[vmenv.FeeRecipient()] = struct{}{}
+	}
+
 	for addr := range proofAccounts {
 		addrStr := addr.String()
 
