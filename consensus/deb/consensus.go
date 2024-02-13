@@ -436,6 +436,7 @@ func (c *Deb) ChangeJoinNonceAndReword(chainid *big.Int, state *state.StateDB, t
 	jtxFee, _ := new(big.Float).SetString(otprn.Data.Price.JoinTxPrice)
 	price := new(big.Float).Mul(big.NewFloat(params.Daon), jtxFee) // join transaction price ( fee * 10e18) - unit : daon
 	fnFeeRate, _ := new(big.Float).SetString(otprn.Data.FnFee)     // percent
+	fmt.Printf("===== CSW fnFeeRate %v\n", fnFeeRate)
 	fnAddr := otprn.FnAddr
 
 	signer := types.NewEIP155Signer(chainid)
