@@ -134,7 +134,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, l1DataFee *big.Int) (*ExecutionResult, error) {
-
+	fmt.Printf("===== CSW %v\n", evm.ChainConfig().Deb)
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 
