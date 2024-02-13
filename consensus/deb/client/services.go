@@ -117,8 +117,6 @@ func (dc *DebClient) requestOtprn(errCh chan error) {
 					log.Debug("already, have been had otprn", "msg", err)
 					return nil
 				} else {
-					fmt.Printf("============= CSW otprn=%+v\n", otprn.Data)
-					fmt.Printf("============= CSW otprnFnFee=%+v\n", otprn.Data.FnFee)
 					dc.otprn[otprn.HashOtprn()] = otprn // otprn save
 					dc.mu.Unlock()
 					go dc.receiveFairnodeStatusLoop(*otprn)
