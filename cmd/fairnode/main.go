@@ -80,7 +80,7 @@ var (
 		},
 		cli.BoolFlag{
 			Name:  "testnet",
-			Usage: fmt.Sprintf("testnet chain id is %s", params.MAIN_NETWORK.String()),
+			Usage: fmt.Sprintf("testnet chain id is %s", params.TEST_NETWORK.String()),
 		},
 		cli.Uint64Flag{
 			Name:  "chainID",
