@@ -243,13 +243,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 
 	st.refundGas()
 	if st.evm.ChainConfig().Deb != nil {
-		fmt.Printf("====== CSW state_transition IN\n")
 		fairAddr := st.evm.ChainConfig().Deb.FairAddr()
-		fmt.Printf("====== CSW state_transition fiarAddr %v\n", fairAddr.String())
 		fairFeeRate := st.evm.ChainConfig().Deb.GetFnFeeRate()
-		fmt.Printf("====== CSW state_transition fairFeeRate %v\n", fairFeeRate.String())
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
-		fmt.Printf("====== CSW state_transition fee %v\n", fee.String())
 
 		minerFee, fairFee := fairFee(fee, fairFeeRate)
 		if fee.Cmp(big.NewInt(0)) != 0 {
