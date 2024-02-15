@@ -1173,7 +1173,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			} else {
 				bc.engine.SetOtprn(otprn)
 			}
-			log.Info("==== CSW INSERT Block Set OTPRN")
 		}
 
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)

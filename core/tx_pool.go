@@ -393,8 +393,7 @@ func (pool *TxPool) UpdateGasPrice(header *types.Header) {
 	//	pool.SetGasPrice(big.NewInt(int64(otprn.Data.Price.GasPrice)))
 	//}
 	block := pool.chain.GetBlockByNumber(header.Number.Uint64())
-	fmt.Printf("==== CSW %v %v\n", header.Number, block)
-	fmt.Printf("==== CSW2 %v %v\n", block.Number, block.Hash())
+
 	otprn, err := types.DecodeOtprn(block.Otprn())
 	if err != nil {
 		return

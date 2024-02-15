@@ -245,7 +245,6 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		fairAddr := st.evm.ChainConfig().Deb.FairAddr()
 		fairFeeRate := st.evm.ChainConfig().Deb.GetFnFeeRate()
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
-		log.Info("============== CSW LOG", "fairAddr", fairAddr, "fairFeeRate", fairFeeRate, "fee", fee)
 
 		minerFee, fairFee := fairFee(fee, fairFeeRate)
 		if fee.Cmp(big.NewInt(0)) != 0 {
