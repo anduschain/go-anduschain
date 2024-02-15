@@ -134,7 +134,6 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, l1DataFee *big.Int) (*ExecutionResult, error) {
-	fmt.Printf("===== CSW %v\n", evm.ChainConfig().Deb)
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 
@@ -244,11 +243,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	st.refundGas()
 	if st.evm.ChainConfig().Deb != nil {
 		fairAddr := st.evm.ChainConfig().Deb.FairAddr()
-		fmt.Printf("==== CSW FairAddr %v\n", fairAddr)
 		fairFeeRate := st.evm.ChainConfig().Deb.GetFnFeeRate()
-		fmt.Printf("==== CSW fairFeeRate %v\n", fairFeeRate)
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
-		fmt.Printf("==== CSW fee %v\n", fee)
+		log.Info("============== CSW LOG", "fairAddr", fairAddr, "fairFeeRate", fairFeeRate, "fee", fee)
 
 		minerFee, fairFee := fairFee(fee, fairFeeRate)
 		if fee.Cmp(big.NewInt(0)) != 0 {

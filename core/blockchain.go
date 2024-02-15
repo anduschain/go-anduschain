@@ -25,6 +25,7 @@ import (
 	"github.com/anduschain/go-anduschain/common/mclock"
 	"github.com/anduschain/go-anduschain/common/prque"
 	"github.com/anduschain/go-anduschain/consensus"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/core/rawdb"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -1147,7 +1148,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			if err != nil {
 				return i, events, coalescedLogs, err
 			}
-
 		case err != nil:
 			bc.reportBlock(block, nil, err)
 			return i, events, coalescedLogs, err
@@ -1165,6 +1165,17 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		// Process block using the parent state as reference point.
+		// CSW block fairFee Setting
+		if _, ok := bc.engine.(*deb.Deb); ok {
+			otprn, err := types.DecodeOtprn(block.Otprn())
+			if err != nil {
+				log.Info("OTPRN Setting Error")
+			} else {
+				bc.engine.SetOtprn(otprn)
+			}
+			log.Info("==== CSW INSERT Block Set OTPRN")
+		}
+
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
