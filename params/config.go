@@ -447,7 +447,8 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 
 // IsPohang returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsPohang(num *big.Int) bool {
-	return isForked(c.PohangBlock, num)
+	return true
+	//return isForked(c.PohangBlock, num)
 }
 
 // GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).
