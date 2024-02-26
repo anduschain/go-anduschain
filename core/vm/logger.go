@@ -119,6 +119,7 @@ type Tracer interface {
 // contract their storage.
 type StructLogger struct {
 	cfg LogConfig
+	env *EVM
 
 	createdAccount *types.AccountWrapper
 
@@ -151,7 +152,22 @@ func NewStructLogger(cfg *LogConfig) *StructLogger {
 }
 
 // CaptureStart implements the Tracer interface to initialize the tracing operation.
-func (l *StructLogger) CaptureStart(env *EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
+func (l *StructLogger) CaptureStart(env *EVM, from common.Address, to common.Address, isCreate bool, input []byte, gas uint64, value *big.Int) error {
+	l.env = env
+
+	if isCreate {
+		// notice codeHash is set AFTER CreateTx has exited, so here codeHash is still empty
+		l.createdAccount = &types.AccountWrapper{
+			Address: to,
+			// nonce is 1 after EIP158, so we query it from stateDb
+			Nonce:   env.StateDB.GetNonce(to),
+			Balance: (*hexutil.Big)(value),
+		}
+	}
+
+	l.statesAffected[from] = struct{}{}
+	l.statesAffected[to] = struct{}{}
+
 	return nil
 }
 
