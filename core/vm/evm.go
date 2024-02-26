@@ -399,12 +399,17 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 		return nil, address, gas, nil
 	}
 
-	if evm.vmConfig.Debug && evm.depth == 0 {
-		evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), address, true, code, gas, value)
+	if evm.vmConfig.Debug {
+		if evm.depth == 0 {
+			evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), address, true, code, gas, value)
+		} // else {
+		// evm.vmConfig.Tracer.CaptureEnter(evm, typ, caller.Address(), address, codeAndHash.code, gas, value)
+		//}
+
 	}
 	start := time.Now()
 	ret, err := run(evm, contract, nil)
-
+	fmt.Printf("================== CSW [%v]\n", err)
 	// check whether the max code size has been exceeded
 	maxCodeSizeExceeded := evm.ChainConfig().IsEIP158(evm.Context.BlockNumber) && len(ret) > params.MaxCodeSize
 	// if the contract creation ran successfully and no errors were returned
@@ -432,7 +437,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if maxCodeSizeExceeded && err == nil {
 		err = ErrMaxCodeSizeExceeded
 	}
-	fmt.Printf("================== CSW [%v]\n", err)
+
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 	}
