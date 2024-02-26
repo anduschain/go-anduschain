@@ -46,6 +46,7 @@ func (w *wizard) makeGenesis() {
 			EIP155Block:    big.NewInt(3),
 			EIP158Block:    big.NewInt(3),
 			ByzantiumBlock: big.NewInt(4),
+			PohangBlock:    big.NewInt(5),
 		},
 	}
 	// Figure out which consensus engine to choose
@@ -221,6 +222,10 @@ func (w *wizard) manageGenesis() {
 		fmt.Println()
 		fmt.Printf("Which block should Byzantium come into effect? (default = %v)\n", w.conf.Genesis.Config.ByzantiumBlock)
 		w.conf.Genesis.Config.ByzantiumBlock = w.readDefaultBigInt(w.conf.Genesis.Config.ByzantiumBlock)
+
+		fmt.Println()
+		fmt.Printf("Which block should Pohang come into effect? (default = %v)\n", w.conf.Genesis.Config.PohangBlock)
+		w.conf.Genesis.Config.PohangBlock = w.readDefaultBigInt(w.conf.Genesis.Config.PohangBlock)
 
 		out, _ := json.MarshalIndent(w.conf.Genesis.Config, "", "  ")
 		fmt.Printf("Chain configuration updated:\n\n%s\n", out)
