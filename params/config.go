@@ -448,6 +448,7 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 // IsPohang returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsPohang(num *big.Int) bool {
 	// CSW Pohang Temp
+	fmt.Printf("============ CSW Pohang %v\n", c.PohangBlock)
 	return true
 	//return isForked(c.PohangBlock, num)
 }
