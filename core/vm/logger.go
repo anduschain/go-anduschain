@@ -143,12 +143,24 @@ func (l *StructLogger) CaptureExit(output []byte, gasUsed uint64, err error) err
 // NewStructLogger returns a new logger
 func NewStructLogger(cfg *LogConfig) *StructLogger {
 	logger := &StructLogger{
-		changedValues: make(map[common.Address]Storage),
+		changedValues:  make(map[common.Address]Storage),
+		statesAffected: make(map[common.Address]struct{}),
 	}
 	if cfg != nil {
 		logger.cfg = *cfg
 	}
 	return logger
+}
+
+// Reset clears the data held by the logger.
+func (l *StructLogger) Reset() {
+	l.changedValues = make(map[common.Address]Storage)
+	l.statesAffected = make(map[common.Address]struct{})
+	l.output = make([]byte, 0)
+	l.logs = l.logs[:0]
+	l.callStackLogInd = nil
+	l.err = nil
+	l.createdAccount = nil
 }
 
 // CaptureStart implements the Tracer interface to initialize the tracing operation.
