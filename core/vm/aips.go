@@ -72,4 +72,10 @@ func enable1000(jt *JumpTable) {
 		validateStack: makeStackFunc(0, 1),
 		valid:         true,
 	}
+	jt[PUSH0] = &operation{
+		execute:       opPush0,
+		gasCost:       gasPush0,
+		validateStack: makeStackFunc(0, 1),
+		valid:         true,
+	}
 }

@@ -484,6 +484,10 @@ func gasSelfBalance(gt params.GasTable, evm *EVM, contract *Contract, stack *Sta
 	return GasFastestStep, nil
 }
 
+func gasPush0(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+	return 2, nil
+}
+
 // BASEFEE is not supported
 func gasBaseFee(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	return 0, nil

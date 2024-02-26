@@ -121,6 +121,7 @@ const (
 	MSIZE
 	GAS
 	JUMPDEST
+	PUSH0 OpCode = 0x5f
 )
 
 // 0x60 range.
@@ -157,7 +158,10 @@ const (
 	PUSH30
 	PUSH31
 	PUSH32
-	DUP1
+)
+
+const (
+	DUP1 OpCode = 0x80 + iota
 	DUP2
 	DUP3
 	DUP4
@@ -173,7 +177,10 @@ const (
 	DUP14
 	DUP15
 	DUP16
-	SWAP1
+)
+
+const (
+	SWAP1 OpCode = 0x90 + iota
 	SWAP2
 	SWAP3
 	SWAP4
@@ -215,11 +222,11 @@ const (
 	RETURN
 	DELEGATECALL
 	CREATE2
-	STATICCALL = 0xfa
 
-	REVERT              = 0xfd
+	STATICCALL   OpCode = 0xfa
+	REVERT       OpCode = 0xfd
 	INVALID      OpCode = 0xfe
-	SELFDESTRUCT        = 0xff
+	SELFDESTRUCT OpCode = 0xff
 )
 
 // Since the opcodes aren't all in order we can't use a regular slice.
@@ -301,6 +308,7 @@ var opCodeToString = map[OpCode]string{
 	MSIZE:    "MSIZE",
 	GAS:      "GAS",
 	JUMPDEST: "JUMPDEST",
+	PUSH0:    "PUSH0",
 
 	// 0x60 range - push.
 	PUSH1:  "PUSH1",
@@ -468,6 +476,7 @@ var stringToOp = map[string]OpCode{
 	"MSIZE":          MSIZE,
 	"GAS":            GAS,
 	"JUMPDEST":       JUMPDEST,
+	"PUSH0":          PUSH0,
 	"PUSH1":          PUSH1,
 	"PUSH2":          PUSH2,
 	"PUSH3":          PUSH3,

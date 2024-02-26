@@ -917,6 +917,12 @@ func makePush(size uint64, pushByteSize int) executionFunc {
 	}
 }
 
+// opPush0 implements the PUSH0 opcode
+func opPush0(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
+	stack.push(big.NewInt(0))
+	return nil, nil
+}
+
 // make dup instruction function
 func makeDup(size int64) executionFunc {
 	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
