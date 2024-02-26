@@ -17,6 +17,7 @@
 package vm
 
 import (
+	"fmt"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 
@@ -366,6 +367,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 
 // create creates a new contract using code as deployment code.
 func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.Int, address common.Address) ([]byte, common.Address, uint64, error) {
+	fmt.Println("================== CSW 1")
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
 	if evm.depth > int(params.CallCreateDepth) {
@@ -376,12 +378,13 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	nonce := evm.StateDB.GetNonce(caller.Address())
 	evm.StateDB.SetNonce(caller.Address(), nonce+1)
-
+	fmt.Println("================== CSW 2")
 	// Ensure there's no existing contract already at the designated address
 	contractHash := evm.StateDB.GetCodeHash(address)
 	if evm.StateDB.GetNonce(address) != 0 || (contractHash != (common.Hash{}) && contractHash != emptyCodeHash) {
 		return nil, common.Address{}, 0, ErrContractAddressCollision
 	}
+	fmt.Println("================== CSW 3")
 	// Create a new account on the state
 	snapshot := evm.StateDB.Snapshot()
 	evm.StateDB.CreateAccount(address)
@@ -389,7 +392,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 		evm.StateDB.SetNonce(address, 1)
 	}
 	evm.Context.Transfer(evm.StateDB, caller.Address(), address, value)
-
+	fmt.Println("================== CSW 4")
 	// initialise a new contract and set the code that is to be used by the
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
@@ -404,7 +407,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 		evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), address, true, code, gas, value)
 	}
 	start := time.Now()
-
+	fmt.Println("================== CSW 5")
 	ret, err := run(evm, contract, nil)
 
 	// check whether the max code size has been exceeded
@@ -421,7 +424,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 			err = ErrCodeStoreOutOfGas
 		}
 	}
-
+	fmt.Println("================== CSW 6")
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
@@ -431,6 +434,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 			contract.UseGas(contract.Gas)
 		}
 	}
+	fmt.Println("================== CSW 7")
 	// Assign err if contract code size exceeds the max while the err is still empty.
 	if maxCodeSizeExceeded && err == nil {
 		err = ErrMaxCodeSizeExceeded
@@ -438,6 +442,7 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 	}
+	fmt.Printf("================== CSW 8 %v %v %v %v\n", ret, address, contract.Gas, err)
 	return ret, address, contract.Gas, err
 
 }
