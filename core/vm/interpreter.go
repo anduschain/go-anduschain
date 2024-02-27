@@ -86,34 +86,35 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// We use the STOP instruction whether to see
 	// the jump table was initialised. If it was not
 	// we'll set the default jump table.
-	if cfg.JumpTable == nil {
-		switch {
-		case evm.ChainConfig().IsPohang(evm.Context.BlockNumber):
-			cfg.JumpTable = &pohangInstructionSet
-		case evm.ChainConfig().IsConstantinople(evm.Context.BlockNumber):
-			cfg.JumpTable = &constantinopleInstructionSet
-		case evm.ChainConfig().IsByzantium(evm.Context.BlockNumber):
-			cfg.JumpTable = &byzantiumInstructionSet
-		case evm.ChainConfig().IsHomestead(evm.Context.BlockNumber):
-			cfg.JumpTable = &homesteadInstructionSet
-		default:
-			cfg.JumpTable = &frontierInstructionSet
-		}
-		for i, aip := range cfg.ExtraAips {
-			copy := *cfg.JumpTable
-			if err := EnableAIP(aip, &copy); err != nil {
-				// Disable it, so caller can check if it's activated or not
-				cfg.ExtraAips = append(cfg.ExtraAips[:i], cfg.ExtraAips[i+1:]...)
-				log.Error("AIP activation failed", "aip", aip, "error", err)
-			}
-			cfg.JumpTable = &copy
-		}
+	// CSW => Always RESET
+	//if cfg.JumpTable == nil {
+	switch {
+	case evm.chainRules.IsPohang:
+		cfg.JumpTable = &pohangInstructionSet
+	case evm.chainRules.IsConstantinople:
+		cfg.JumpTable = &constantinopleInstructionSet
+	case evm.chainRules.IsByzantium:
+		cfg.JumpTable = &byzantiumInstructionSet
+	case evm.chainRules.IsHomestead:
+		cfg.JumpTable = &homesteadInstructionSet
+	default:
+		cfg.JumpTable = &frontierInstructionSet
 	}
+	for i, aip := range cfg.ExtraAips {
+		copy := *cfg.JumpTable
+		if err := EnableAIP(aip, &copy); err != nil {
+			// Disable it, so caller can check if it's activated or not
+			cfg.ExtraAips = append(cfg.ExtraAips[:i], cfg.ExtraAips[i+1:]...)
+			log.Error("AIP activation failed", "aip", aip, "error", err)
+		}
+		cfg.JumpTable = &copy
+	}
+	//}
 
 	return &EVMInterpreter{
 		evm:      evm,
 		cfg:      cfg,
-		gasTable: evm.ChainConfig().GasTable(evm.Context.BlockNumber),
+		gasTable: evm.chainConfig.GasTable(evm.Context.BlockNumber),
 	}
 }
 

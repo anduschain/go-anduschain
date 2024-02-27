@@ -592,16 +592,32 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 	if chainID == nil {
 		chainID = new(big.Int)
 	}
-	return Rules{
-		ChainID:          new(big.Int).Set(chainID),
-		IsHomestead:      c.IsHomestead(num),
-		IsEIP150:         c.IsEIP150(num),
-		IsEIP155:         c.IsEIP155(num),
-		IsEIP158:         c.IsEIP158(num),
-		IsByzantium:      c.IsByzantium(num),
-		IsConstantinople: c.IsConstantinople(num),
-		IsPohang:         c.IsPohang(num),
+	fmt.Printf("====== CSW Byzantium %v Constaninople %v Pohang %v\n",
+		c.ByzantiumBlock, c.ConstantinopleBlock, c.PohangBlock)
+	if chainID == big.NewInt(3355) { // TESTNET
+		return Rules{
+			ChainID:          new(big.Int).Set(chainID),
+			IsHomestead:      true,
+			IsEIP150:         true,
+			IsEIP155:         true,
+			IsEIP158:         true,
+			IsByzantium:      true,
+			IsConstantinople: true,
+			IsPohang:         true,
+		}
+	} else {
+		return Rules{
+			ChainID:          new(big.Int).Set(chainID),
+			IsHomestead:      c.IsHomestead(num),
+			IsEIP150:         c.IsEIP150(num),
+			IsEIP155:         c.IsEIP155(num),
+			IsEIP158:         c.IsEIP158(num),
+			IsByzantium:      c.IsByzantium(num),
+			IsConstantinople: c.IsConstantinople(num),
+			IsPohang:         c.IsPohang(num),
+		}
 	}
+
 }
 
 // TrustedCheckpoint represents a set of post-processed trie roots (CHT and
