@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"fmt"
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/core/types"
 
@@ -409,7 +408,6 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	start := time.Now()
 	ret, err := run(evm, contract, nil)
-	fmt.Printf("================== CSW [%v]\n", err)
 	// check whether the max code size has been exceeded
 	maxCodeSizeExceeded := evm.ChainConfig().IsEIP158(evm.Context.BlockNumber) && len(ret) > params.MaxCodeSize
 	// if the contract creation ran successfully and no errors were returned
@@ -441,7 +439,6 @@ func (evm *EVM) create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 	}
-	fmt.Printf("================== CSW %v %v %v [%v]\n", ret, address, contract.Gas, err)
 	return ret, address, contract.Gas, err
 
 }
