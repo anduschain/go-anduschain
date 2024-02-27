@@ -88,13 +88,13 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// we'll set the default jump table.
 	if cfg.JumpTable == nil {
 		switch {
-		case evm.ChainConfig().IsPohang(evm.BlockNumber):
+		case evm.chainRules.IsPohang:
 			cfg.JumpTable = &pohangInstructionSet
-		case evm.ChainConfig().IsConstantinople(evm.BlockNumber):
+		case evm.chainRules.IsConstantinople:
 			cfg.JumpTable = &constantinopleInstructionSet
-		case evm.ChainConfig().IsByzantium(evm.BlockNumber):
+		case evm.chainRules.IsByzantium:
 			cfg.JumpTable = &byzantiumInstructionSet
-		case evm.ChainConfig().IsHomestead(evm.BlockNumber):
+		case evm.chainRules.IsHomestead:
 			cfg.JumpTable = &homesteadInstructionSet
 		default:
 			cfg.JumpTable = &frontierInstructionSet
@@ -113,7 +113,7 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	return &EVMInterpreter{
 		evm:      evm,
 		cfg:      cfg,
-		gasTable: evm.ChainConfig().GasTable(evm.BlockNumber),
+		gasTable: evm.chainConfig.GasTable(evm.BlockNumber),
 	}
 }
 
