@@ -211,11 +211,12 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 		if err := operation.validateStack(stack); err != nil {
 			return nil, err
 		}
+		fmt.Printf("======== CSW validateStack %v\n", err)
 		// If the operation is valid, enforce and write restrictions
 		if err := in.enforceRestrictions(op, *operation, stack); err != nil {
 			return nil, err
 		}
-
+		fmt.Printf("======== CSW enforceRestrictions %v\n", err)
 		var memorySize uint64
 		// calculate the new memory size and expand the memory to fit
 		// the operation
@@ -239,7 +240,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 		if memorySize > 0 {
 			mem.Resize(memorySize)
 		}
-
+		fmt.Printf("======== CSW gasCost %v\n", err)
 		if in.cfg.Debug {
 			in.cfg.Tracer.CaptureState(in.evm, pc, op, gasCopy, cost, mem, stack, contract, in.evm.depth, err)
 			logged = true
@@ -252,12 +253,13 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 		if verifyPool {
 			verifyIntegerPool(in.intPool)
 		}
+		fmt.Printf("======== CSW execute %v\n", err)
 		// if the operation clears the return data (e.g. it has returning data)
 		// set the last return to the result of the operation.
 		if operation.returns {
 			in.returnData = res
 		}
-
+		fmt.Printf("========= CSW ERROR %v\n", err)
 		switch {
 		case err != nil:
 			return nil, err
