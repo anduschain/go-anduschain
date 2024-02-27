@@ -87,6 +87,7 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// the jump table was initialised. If it was not
 	// we'll set the default jump table.
 	// CSW => Always RESET
+	fmt.Printf("==== CSW NewEVMInterpreter IsPohang %v\n", evm.chainRules.IsPohang)
 	//if cfg.JumpTable == nil {
 	switch {
 	case evm.chainRules.IsPohang:
