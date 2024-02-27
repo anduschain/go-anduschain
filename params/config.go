@@ -441,6 +441,9 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 	if chainID == nil {
 		chainID = new(big.Int)
 	}
+	fmt.Printf("======== CSW ChainId:%v, IsHomestead: %v IsEIP150: %v IsEIP155: %v IsEIP158: %v IsByzantium:%v IsConstantinople: %v IsPohang: %v\n",
+		chainID, c.IsHomestead(num), c.IsEIP150(num), c.IsEIP155(num), c.IsEIP158(num), c.IsByzantium(num),
+		c.IsConstantinople(num), c.IsPohang(num))
 	return Rules{
 		ChainID:          new(big.Int).Set(chainID),
 		IsHomestead:      c.IsHomestead(num),
