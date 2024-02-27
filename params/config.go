@@ -446,12 +446,19 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		c.IsConstantinople(num), c.IsPohang(num))
 	return Rules{
 		ChainID:          new(big.Int).Set(chainID),
-		IsHomestead:      c.IsHomestead(num),
-		IsEIP150:         c.IsEIP150(num),
-		IsEIP155:         c.IsEIP155(num),
-		IsEIP158:         c.IsEIP158(num),
-		IsByzantium:      c.IsByzantium(num),
-		IsConstantinople: c.IsConstantinople(num),
-		IsPohang:         c.IsPohang(num),
+		IsHomestead:      true,
+		IsEIP150:         true,
+		IsEIP155:         true,
+		IsEIP158:         true,
+		IsByzantium:      true,
+		IsConstantinople: true,
+		IsPohang:         true,
+		//IsHomestead:      c.IsHomestead(num),
+		//IsEIP150:         c.IsEIP150(num),
+		//IsEIP155:         c.IsEIP155(num),
+		//IsEIP158:         c.IsEIP158(num),
+		//IsByzantium:      c.IsByzantium(num),
+		//IsConstantinople: c.IsConstantinople(num),
+		//IsPohang:         c.IsPohang(num),
 	}
 }
