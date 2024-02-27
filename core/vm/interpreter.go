@@ -206,9 +206,11 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 		fmt.Printf("======== CSW GET_OP %v\n", op)
 		operation := in.cfg.JumpTable[op]
 		if !operation.valid {
+			fmt.Printf("======== CSW valid err %v\n", err)
 			return nil, fmt.Errorf("invalid opcode 0x%x", int(op))
 		}
 		if err := operation.validateStack(stack); err != nil {
+			fmt.Printf("======== CSW validateStack err %v\n", err)
 			return nil, err
 		}
 		fmt.Printf("======== CSW validateStack %v\n", err)
