@@ -224,6 +224,10 @@ func (w *wizard) manageGenesis() {
 		w.conf.Genesis.Config.ByzantiumBlock = w.readDefaultBigInt(w.conf.Genesis.Config.ByzantiumBlock)
 
 		fmt.Println()
+		fmt.Printf("Which block should Constantinople come into effect? (default = %v)\n", w.conf.Genesis.Config.ByzantiumBlock)
+		w.conf.Genesis.Config.ByzantiumBlock = w.readDefaultBigInt(w.conf.Genesis.Config.ConstantinopleBlock)
+
+		fmt.Println()
 		fmt.Printf("Which block should Pohang come into effect? (default = %v)\n", w.conf.Genesis.Config.PohangBlock)
 		w.conf.Genesis.Config.PohangBlock = w.readDefaultBigInt(w.conf.Genesis.Config.PohangBlock)
 
