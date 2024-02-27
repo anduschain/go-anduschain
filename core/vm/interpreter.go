@@ -205,19 +205,15 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 		// Get the operation from the jump table and validate the stack to ensure there are
 		// enough stack items available to perform the operation.
 		op = contract.GetOp(pc)
-		fmt.Printf("======== CSW_OP %v\n", op)
 		operation := in.cfg.JumpTable[op]
 		if !operation.valid {
 			return nil, fmt.Errorf("invalid opcode 0x%x", int(op))
 		}
-		fmt.Printf("======== CSW_OP OK\n")
 		if err := operation.validateStack(stack); err != nil {
-			fmt.Printf("======== CSW_validateStack %v\n", err)
 			return nil, err
 		}
 		// If the operation is valid, enforce and write restrictions
 		if err := in.enforceRestrictions(op, *operation, stack); err != nil {
-			fmt.Printf("======== CSW enforceRestrictions %v\n", err)
 			return nil, err
 		}
 
@@ -252,7 +248,6 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte) (ret []byte, err
 
 		// execute the operation
 		res, err := operation.execute(&pc, in, contract, mem, stack)
-		fmt.Printf("======== CSW LAST %v\n", err)
 		// verifyPool is a build flag. Pool verification makes sure the integrity
 		// of the integer pool by comparing values to a default value.
 		if verifyPool {
