@@ -592,9 +592,10 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 	if chainID == nil {
 		chainID = new(big.Int)
 	}
-	fmt.Printf("====== CSW Byzantium %v Constaninople %v Pohang %v\n",
-		c.ByzantiumBlock, c.ConstantinopleBlock, c.PohangBlock)
+	fmt.Printf("====== CSW chainID %v Byzantium %v Constaninople %v Pohang %v\n",
+		chainID, c.ByzantiumBlock, c.ConstantinopleBlock, c.PohangBlock)
 	if chainID == big.NewInt(3355) { // TESTNET
+		fmt.Printf("==== CSW TESTNET config")
 		return Rules{
 			ChainID:          new(big.Int).Set(chainID),
 			IsHomestead:      true,
