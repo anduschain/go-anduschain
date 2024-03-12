@@ -192,9 +192,9 @@ func (t *StateTest) RunNoVerify(subtest StateSubtest, vmconfig vm.Config) (*stat
 	if err != nil {
 		return nil, common.Hash{}, err
 	}
-
+	txContext := core.NewEVMTxContext(msg)
 	// Prepare the EVM.
-	evm := vm.NewEVM(vm.BlockContext{BlockNumber: big.NewInt(1)}, vm.TxContext{}, nil, params.TestChainConfig, vm.Config{})
+	evm := vm.NewEVM(vm.BlockContext{BlockNumber: big.NewInt(1)}, txContext, nil, params.TestChainConfig, vm.Config{})
 
 	// Execute the message.
 	snapshot := statedb.Snapshot()

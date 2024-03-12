@@ -103,6 +103,26 @@ type Context struct {
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
 }
 
+func (c *Context) ToBlockContext() BlockContext {
+	return BlockContext{
+		CanTransfer: c.CanTransfer,
+		Transfer:    c.Transfer,
+		GetHash:     c.GetHash,
+		Coinbase:    c.Coinbase,
+		GasLimit:    c.GasLimit,
+		BlockNumber: c.BlockNumber,
+		Time:        c.Time,
+		Difficulty:  c.Difficulty,
+	}
+}
+
+func (c *Context) ToTxContext() TxContext {
+	return TxContext{
+		Origin:   c.Origin,
+		GasPrice: c.GasPrice,
+	}
+}
+
 // EVM is the Ethereum Virtual Machine base object and provides
 // the necessary tools to run a contract on the given state with
 // the provided context. It should be noted that any error

@@ -20,13 +20,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/anduschain/go-anduschain/consensus/deb"
 	"testing"
+
+	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/vm"
-	"github.com/anduschain/go-anduschain/ethdb"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/trie"
 	"github.com/davecgh/go-spew/spew"
@@ -34,8 +35,8 @@ import (
 
 func TestNodeIterator(t *testing.T) {
 	var (
-		fulldb  = ethdb.NewMemDatabase()
-		lightdb = ethdb.NewMemDatabase()
+		fulldb  = memorydb.NewMemDatabase()
+		lightdb = memorydb.NewMemDatabase()
 		gspec   = core.Genesis{Alloc: core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}}}
 		genesis = gspec.MustCommit(fulldb)
 	)

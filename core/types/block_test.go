@@ -26,8 +26,22 @@ import (
 	"github.com/anduschain/go-anduschain/rlp"
 )
 
+type testTrie struct {
+}
+
+func (t testTrie) Reset() {
+
+}
+func (t testTrie) Hash() common.Hash {
+	return common.Hash{}
+}
+func (t testTrie) Update(key, value []byte) {
+
+}
+
 func TestNewBlock(t *testing.T) {
-	block1 := NewBlock(&Header{Number: big.NewInt(314)}, nil, nil, nil)
+	xx := testTrie{}
+	block1 := NewBlock(&Header{Number: big.NewInt(314)}, nil, nil, nil, xx)
 
 	t.Log("Number", block1.Number())
 	t.Log("Difficulty", block1.Difficulty())

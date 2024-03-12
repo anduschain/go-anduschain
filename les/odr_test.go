@@ -136,6 +136,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, config *params.Chai
 
 				context := core.NewEVMContext(msg, header, bc, nil)
 				blkContext, txContext := core.SeparateContext(context)
+				txContext.To = msg.To()
 				vmenv := vm.NewEVM(blkContext, txContext, statedb, config, vm.Config{})
 
 				//vmenv := core.NewEnv(statedb, config, bc, msg, header, vm.Config{})
@@ -150,6 +151,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, config *params.Chai
 			msg := callmsg{types.NewMessage(testBankAddress, &testContractAddr, 0, new(big.Int), 100000, new(big.Int), data, false)}
 			context := core.NewEVMContext(msg, header, lc, nil)
 			blkContext, txContext := core.SeparateContext(context)
+			txContext.To = msg.To()
 			vmenv := vm.NewEVM(blkContext, txContext, state, config, vm.Config{})
 			gp := new(core.GasPool).AddGas(math.MaxUint64)
 			ret, _ := core.ApplyMessage(vmenv, msg, gp, big.NewInt(0))

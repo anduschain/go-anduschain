@@ -189,6 +189,7 @@ func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec 
 			return msg, context, statedb, nil
 		}
 		blkContext, txContext := core.SeparateContext(context)
+		txContext.To = msg.To()
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(blkContext, txContext, statedb, eth.blockchain.Config(), vm.Config{})
 		statedb.Prepare(tx.Hash(), block.Hash(), idx)

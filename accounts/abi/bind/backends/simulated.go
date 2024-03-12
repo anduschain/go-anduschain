@@ -364,6 +364,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
 	blkContext, txContext := core.SeparateContext(evmContext)
+	txContext.To = msg.To()
 	vmenv := vm.NewEVM(blkContext, txContext, statedb, b.config, vm.Config{})
 	gaspool := new(core.GasPool).AddGas(math.MaxUint64)
 

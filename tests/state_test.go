@@ -20,14 +20,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/anduschain/go-anduschain/eth/tracers/logger"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/anduschain/go-anduschain/eth/tracers/logger"
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/types"
@@ -214,8 +215,10 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			}
 
 			// Prepare the EVM.
-			context := core.NewEVMBlockContext(msg, block.Header(), nil, &t.json.Env.Coinbase)
-			evm := vm.NewEVM(context, vm.TxContext{}, statedb, config, vmconfig)
+			context := core.NewEVMContext(msg, block.Header(), nil, &t.json.Env.Coinbase)
+			blkContext, txContext := core.SeparateContext(context)
+			txContext.To = msg.To()
+			evm := vm.NewEVM(blkContext, txContext, statedb, config, vmconfig)
 
 			// Create "contract" for sender to cache code analysis.
 			sender := vm.NewContract(vm.AccountRef(msg.From()), vm.AccountRef(msg.From()),

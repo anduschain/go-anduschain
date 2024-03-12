@@ -2,12 +2,14 @@ package deb
 
 import (
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/math"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/params"
-	"math/big"
-	"testing"
+	"github.com/anduschain/go-anduschain/trie"
 )
 
 var engine = NewFaker(types.NewDefaultOtprn())
@@ -18,7 +20,8 @@ func makeBlock(number, nonce, coinbase, diff int64) *types.Block {
 	h.Number = big.NewInt(number)
 	h.Coinbase = common.HexToAddress(fmt.Sprintf("%d", coinbase))
 	h.Difficulty = big.NewInt(diff)
-	return types.NewBlock(h, nil, nil, nil)
+
+	return types.NewBlock(h, nil, nil, nil, trie.NewStackTrie(nil))
 }
 
 func TestDeb_SelectWinningBlock(t *testing.T) {

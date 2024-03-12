@@ -19,7 +19,6 @@ package memorydb
 import (
 	"errors"
 	"github.com/anduschain/go-anduschain/ethdb"
-	"github.com/anduschain/go-anduschain/trie"
 	"sort"
 	"strings"
 	"sync"
@@ -59,11 +58,6 @@ func (db *MemDatabase) ContractCode(addrHash, codeHash common.Hash) ([]byte, err
 }
 
 func (db *MemDatabase) ContractCodeSize(addrHash, codeHash common.Hash) (int, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (db *MemDatabase) TrieDB() *trie.Database {
 	//TODO implement me
 	panic("implement me")
 }

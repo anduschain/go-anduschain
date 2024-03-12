@@ -198,6 +198,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, bc *core.BlockChain
 		msg := callmsg{types.NewMessage(testBankAddress, &testContractAddr, 0, new(big.Int), 1000000, new(big.Int), data, false)}
 		context := core.NewEVMContext(msg, header, chain, nil)
 		blkContext, txContext := core.SeparateContext(context)
+		txContext.To = msg.To()
 		vmenv := vm.NewEVM(blkContext, txContext, st, config, vm.Config{})
 		gp := new(core.GasPool).AddGas(math.MaxUint64)
 		ret, _ := core.ApplyMessage(vmenv, msg, gp, big.NewInt(0))

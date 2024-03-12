@@ -19,13 +19,15 @@ package core
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/anduschain/go-anduschain/ethdb/memorydb"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/anduschain/go-anduschain/ethdb/memorydb"
+	"github.com/anduschain/go-anduschain/trie"
 
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/state"
@@ -56,7 +58,7 @@ func (bc *testBlockChain) GetBlockByNumber(number uint64) *types.Block {
 }
 
 func (bc *testBlockChain) CurrentBlock() *types.Block {
-	return types.NewBlock(&types.Header{GasLimit: bc.gasLimit}, nil, nil, nil)
+	return types.NewBlock(&types.Header{GasLimit: bc.gasLimit}, nil, nil, nil, trie.NewStackTrie(nil))
 }
 
 func (bc *testBlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {

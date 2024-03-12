@@ -650,6 +650,7 @@ func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int, ree
 			return msg, context, statedb, nil
 		}
 		blkContext, txContext := core.SeparateContext(context)
+		txContext.To = msg.To()
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(blkContext, txContext, statedb, api.config, vm.Config{})
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas()), big.NewInt(0)); err != nil {

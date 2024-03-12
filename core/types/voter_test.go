@@ -2,10 +2,11 @@ package types
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/rlp"
 	"math/big"
 	"testing"
+
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/rlp"
 )
 
 func makeHeader(number, nonce, coinbase, diff int64) *Header {
@@ -35,7 +36,6 @@ func TestVoters(t *testing.T) {
 
 	vo := Voters(voters)
 
-	t.Log("===>", vo.Hash().String())
 	t.Log("===>", common.Bytes2Hex(vo.GetRlp(1)))
 	t.Log("===>", common.BytesToHash(vo[1].Header).String())
 

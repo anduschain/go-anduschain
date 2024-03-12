@@ -29,7 +29,7 @@ func TestRollupSyncServiceStartAndStop(t *testing.T) {
 			},
 		},
 	}
-	db := rawdb.NewDatabase(memorydb.New())
+	db := memorydb.NewMemDatabase()
 	l1Client := &mockEthClient{}
 	bc := &core.BlockChain{}
 	service, err := NewRollupSyncService(context.Background(), genesisConfig, db, l1Client, bc, 1)
@@ -102,7 +102,7 @@ func TestGetChunkRanges(t *testing.T) {
 			},
 		},
 	}
-	db := rawdb.NewDatabase(memorydb.New())
+	db := memorydb.NewMemDatabase()
 
 	rlpData, err := os.ReadFile("./testdata/commit_batch_tx.rlp")
 	if err != nil {

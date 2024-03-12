@@ -178,6 +178,7 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, state *sta
 	state.SetBalance(msg.From(), math.MaxBig256)
 	context := core.NewEVMContext(msg, header, b.eth.blockchain, nil)
 	blkContext, txContext := core.SeparateContext(context)
+	txContext.To = msg.To()
 	return vm.NewEVM(blkContext, txContext, state, b.eth.chainConfig, vmCfg), state.Error, nil
 }
 

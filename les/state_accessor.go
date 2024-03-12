@@ -63,6 +63,7 @@ func (leth *LightEthereum) stateAtTransaction(ctx context.Context, block *types.
 			return msg, context, statedb, nil
 		}
 		blkContext, txContext := core.SeparateContext(context)
+		txContext.To = msg.To()
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(blkContext, txContext, statedb, leth.blockchain.Config(), vm.Config{})
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas()), big.NewInt(0)); err != nil {
