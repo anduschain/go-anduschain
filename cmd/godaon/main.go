@@ -146,6 +146,7 @@ var (
 	fairclientFlages = []cli.Flag{
 		utils.FairserverIP,
 		utils.FairserverPort,
+		utils.KafkaServer,
 	}
 
 	exportDbFlages = []cli.Flag{

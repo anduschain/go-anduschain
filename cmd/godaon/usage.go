@@ -75,6 +75,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.FairserverIP,
 			utils.FairserverPort,
+			utils.KafkaServer,
 		},
 	},
 	{

@@ -148,6 +148,7 @@ type Config struct {
 	UseLocalIp     bool
 	FairServerIP   string
 	FairServerPort string
+	KafkaHosts     string
 }
 
 // Server manages all peer connections.
