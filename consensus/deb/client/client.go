@@ -83,7 +83,6 @@ type DebClient struct {
 	exitWorker  chan struct{}
 	localIps    map[string]string
 	staticNodes []*discover.Node
-	kafka       string
 }
 
 func NewDebClient(config *params.ChainConfig, exitWorker chan struct{}, localIps map[string]string, staticNodes []*discover.Node) *DebClient {
@@ -149,10 +148,6 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
-	if backend.Server().KafkaHosts != "" {
-		dc.kafka = backend.Server().KafkaHosts
-	}
-
 	minerIp := ""
 	// TODO: CSW => 지정하면 fairnode가 지정된 IP를, 지정하지 않으면 fairnode가 인식한 ip를 채굴리그 IP로 지정
 	// Use Local IP for mining
@@ -191,7 +186,6 @@ func (dc *DebClient) Start(backend Backend) error {
 		Timeout:             2 * time.Second,
 		PermitWithoutStream: true,
 	}))
-
 	if err != nil {
 		log.Error("did not connect", "msg", err)
 		return err
