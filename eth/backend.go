@@ -134,6 +134,7 @@ func New(ctx *node.ServiceContext, stack *node.Node, config *Config) (*Ethereum,
 	if err != nil {
 		return nil, err
 	}
+	// CSW: Genesis블록에서 Config를 읽읆
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr

@@ -327,6 +327,7 @@ type DebConfig struct {
 }
 
 func (c *DebConfig) FairAddr() common.Address {
+	// GenesisBlock에서 FairPubKey는 세팅됨
 	fnPubKey, err := crypto.DecompressPubkey(common.Hex2Bytes(c.FairPubKey))
 	if err != nil {
 		return common.Address{}

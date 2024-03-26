@@ -132,7 +132,15 @@ func (dc *DebClient) Start(backend Backend) error {
 	}
 
 	var err error
-	dc.fnEndpoint = DefaultConfig.FairnodeEndpoint(types.Network(dc.config.NetworkType()))
+	config := DefaultConfig
+	if backend.Server().FairServerIP != "" {
+		config.FairServerHost = backend.Server().FairServerIP
+	}
+	if backend.Server().FairServerPort != "" {
+		config.FairServerPort = backend.Server().FairServerPort
+	}
+	dc.fnEndpoint = config.FairnodeEndpoint(types.Network(dc.config.NetworkType()))
+
 	dc.fnPubKey, err = crypto.DecompressPubkey(common.Hex2Bytes(dc.config.Deb.FairPubKey))
 
 	if err != nil {

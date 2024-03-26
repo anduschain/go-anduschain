@@ -74,8 +74,6 @@ type Config struct {
 	// Setting DialRatio to zero defaults it to 3.
 	DialRatio int `toml:",omitempty"`
 
-	UseLocalIp bool
-
 	// NoDiscovery can be used to disable the peer discovery mechanism.
 	// Disabling is useful for protocol debugging (manual topology).
 	NoDiscovery bool
@@ -145,6 +143,11 @@ type Config struct {
 
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
+
+	// AndusChain
+	UseLocalIp     bool
+	FairServerIP   string
+	FairServerPort string
 }
 
 // Server manages all peer connections.
