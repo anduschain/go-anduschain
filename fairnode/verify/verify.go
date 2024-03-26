@@ -113,7 +113,7 @@ func ValidationSignHash(sign []byte, hash common.Hash, sAddr common.Address) err
 	if addr != sAddr {
 		return errors.New(fmt.Sprintf("validate: not matched address %v(%s:%s)", sAddr, addr.Hex(), sAddr.Hex()))
 	}
-
+	log.Info("========== CSW ", "addr", addr, "sddr", sAddr)
 	return nil
 }
 
