@@ -16,6 +16,7 @@ import (
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"github.com/anduschain/go-anduschain/protos/fairnode"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"net"
 	"sync"
@@ -148,9 +149,9 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
-	// CSW
-	log.Info("========== CSW ", "kafka", backend.Server().KafkaHosts)
-	//dc.kafka = backend.Server().KafkaHosts
+	if backend.Server().KafkaHosts != "" {
+		dc.kafka = backend.Server().KafkaHosts
+	}
 
 	minerIp := ""
 	// TODO: CSW => 지정하면 fairnode가 지정된 IP를, 지정하지 않으면 fairnode가 인식한 ip를 채굴리그 IP로 지정
@@ -185,7 +186,7 @@ func (dc *DebClient) Start(backend Backend) error {
 		return err
 	}
 
-	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithInsecure(), grpc.WithKeepaliveParams(keepalive.ClientParameters{
+	dc.grpcConn, err = grpc.Dial(dc.fnEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(keepalive.ClientParameters{
 		Time:                10 * time.Second,
 		Timeout:             2 * time.Second,
 		PermitWithoutStream: true,
