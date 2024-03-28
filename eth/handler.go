@@ -104,7 +104,7 @@ type ProtocolManager struct {
 	newLeagueBlockCh  chan types.NewLeagueBlockEvent
 	newLeagueBlockSub event.Subscription
 	miner             *miner.Miner
-
+	// NewLeagueBlockEvent 전송체크용 블록
 	possibleWinningBlock *types.Block
 }
 
