@@ -737,6 +737,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 		// 다른 노드에 전송
+		p.SendMakeLeagueBlock(&request)
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "head", pm.blockchain.CurrentHeader().Number)
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "request", request.Block.Number())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
@@ -757,11 +758,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				}
 				log.Info("=== CSW SendMakeLeagueBlock4")
 			}
-		} else {
-			log.Info("=== CSW SendMakeLeagueBlock5")
 		}
-		//
-
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
 	}
