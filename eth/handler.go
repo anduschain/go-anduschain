@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/miner"
 	"math"
 	"math/big"
@@ -104,8 +105,7 @@ type ProtocolManager struct {
 	newLeagueBlockSub event.Subscription
 	miner             *miner.Miner
 
-	// TODO(CSW) : dbft
-	voteBlockSub *event.TypeMuxSubscription
+	possibleWinningBlock *types.Block
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -739,7 +739,20 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// 다른 노드에 전송
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "head", pm.blockchain.CurrentHeader().Number)
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "request", request.Block.Number())
-		//p.SendMakeLeagueBlock(&request)
+		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
+			if pm.possibleWinningBlock == nil ||
+				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
+				pm.possibleWinningBlock = request.Block
+				p.SendMakeLeagueBlock(&request)
+			} else {
+				wBlock := pm.blockchain.Engine().(*deb.Deb).SelectWinningBlock(pm.possibleWinningBlock, request.Block)
+				if wBlock.Hash() != pm.possibleWinningBlock.Hash() {
+					pm.possibleWinningBlock = wBlock
+					p.SendMakeLeagueBlock(&request)
+				}
+			}
+		}
+		//
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
