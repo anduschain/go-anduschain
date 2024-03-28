@@ -14,13 +14,11 @@ const (
 type Config struct {
 	FairServerHost string
 	FairServerPort string
-	KafkaHost      string
 }
 
 var DefaultConfig = Config{
 	FairServerHost: "localhost",
 	FairServerPort: "60002",
-	KafkaHost:      "localhost:9092",
 }
 
 func (c *Config) FairnodeEndpoint(network types.Network) string {

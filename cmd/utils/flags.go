@@ -548,12 +548,6 @@ var (
 		Value: "60002",
 	}
 
-	KafkaServer = cli.StringFlag{
-		Name:  "kafka",
-		Usage: "kafka bootstrap hosts",
-		Value: "localhost:9092",
-	}
-
 	//for DB export file
 	FairUseSRV = cli.BoolFlag{
 		Name:  "usesrv",
@@ -901,9 +895,6 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	if ctx.GlobalIsSet(FairserverPort.Name) {
 		cfg.FairServerPort = ctx.GlobalString(FairserverPort.Name)
 	}
-	if ctx.GlobalIsSet(KafkaServer.Name) {
-		cfg.KafkaHosts = ctx.GlobalString(KafkaServer.Name)
-	}
 
 	// if we're running a light client or server, force enable the v5 peer discovery
 	// unless it is explicitly disabled with --nodiscover note that explicitly specifying
@@ -1156,7 +1147,6 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 func SetFairnodeConfig(ctx *cli.Context, cfg *client.Config) {
 	cfg.FairServerHost = ctx.GlobalString("serverHost")
 	cfg.FairServerPort = ctx.GlobalString("serverPort")
-	cfg.KafkaHost = ctx.GlobalString("kafka")
 	client.DefaultConfig = *cfg
 }
 

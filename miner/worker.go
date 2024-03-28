@@ -34,9 +34,7 @@ import (
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"github.com/anduschain/go-anduschain/trie"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/deckarep/golang-set"
-	"github.com/google/uuid"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -219,8 +217,6 @@ type worker struct {
 
 	possibleWinningBlock *types.VoteBlock // A set of possible winning voteblock
 
-	producer *kafka.Producer
-	consumer *kafka.Consumer
 }
 
 func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
@@ -256,28 +252,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		submitBlockCh:     make(chan *types.Block),
 		fnSignCh:          make(chan []byte),
 		finalizeCh:        make(chan struct{}),
-	}
-	// CSW: Kafka Setting
-	if eth.Server().KafkaHosts != "" {
-		producer, err := kafka.NewProducer(&kafka.ConfigMap{
-			"bootstrap.servers": eth.Server().KafkaHosts,
-			"client.id":         eth.Coinbase().String(),
-			"acks":              "all"})
-		if err != nil {
-			log.Error("Kafka producer connection", "error", err)
-		} else {
-			worker.producer = producer
-		}
-
-		consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-			"bootstrap.servers": eth.Server().KafkaHosts,
-			"group.id":          uuid.New().String(),
-			"auto.offset.reset": "latest"})
-		if err != nil {
-			log.Error("Kafka consumer connection", "error", err)
-		} else {
-			worker.consumer = consumer
-		}
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -489,14 +463,6 @@ func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
 	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debClient.Stop()
-	}
-	if w.producer != nil {
-		w.producer.Close()
-		log.Info("kafka producer close")
-	}
-	if w.consumer != nil {
-		w.consumer.Close()
-		log.Info("kafka consumer close")
 	}
 }
 
