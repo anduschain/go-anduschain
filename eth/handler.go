@@ -743,6 +743,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err != nil {
 			log.Info("MakeLeagueBlockMsg Decoding", "error", err)
 		}
+		log.Info("=== CSW", "current", pm.blockchain.CurrentBlock().Number())
+		log.Info("=== CSW", "ev", ev.Block.Number())
 		if pm.blockchain.CurrentBlock().Number().Cmp(ev.Block.Number()) <= 0 {
 			p.SendMakeLeagueBlock(&ev)
 		}
