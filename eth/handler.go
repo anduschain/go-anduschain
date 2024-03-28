@@ -737,12 +737,15 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 		// 다른 노드에 전송
+
 		var ev types.NewLeagueBlockEvent
 		err := msg.Decode(&ev)
 		if err != nil {
 			log.Info("MakeLeagueBlockMsg Decoding", "error", err)
 		}
-		p.SendMakeLeagueBlock(&ev)
+		if pm.blockchain.CurrentBlock().Number().Cmp(ev.Block.Number()) <= 0 {
+			p.SendMakeLeagueBlock(&ev)
+		}
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
 	}
