@@ -737,28 +737,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 		// 다른 노드에 전송
-		log.Info("============== CSW Receive MakeLeagueBlockMsg", "head", pm.blockchain.CurrentHeader().Number)
-		log.Info("============== CSW Receive MakeLeagueBlockMsg", "request", request.Block.Number())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
-			log.Info("=== CSW SendMakeLeagueBlock0")
 			if pm.possibleWinningBlock == nil ||
 				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
-				if pm.possibleWinningBlock != nil {
-					log.Info("============== CSW Receive MakeLeagueBlockMsg", "possible", pm.possibleWinningBlock.Number())
-				}
 				pm.possibleWinningBlock = request.Block
-				err = p.SendMakeLeagueBlock(&request)
-				log.Info("=== CSW SendMakeLeagueBlock1", "error", err)
+				p.SendMakeLeagueBlock(&request)
 			} else {
 				wBlock := pm.blockchain.Engine().(*deb.Deb).SelectWinningBlock(pm.possibleWinningBlock, request.Block)
 				if wBlock.Hash() != pm.possibleWinningBlock.Hash() {
 					pm.possibleWinningBlock = wBlock
-					err = p.SendMakeLeagueBlock(&request)
-					log.Info("=== CSW SendMakeLeagueBlock2", "error", err)
-				} else {
-					log.Info("=== CSW SendMakeLeagueBlock3")
+					p.SendMakeLeagueBlock(&request)
 				}
-				log.Info("=== CSW SendMakeLeagueBlock4")
 			}
 		}
 	default:
@@ -818,13 +807,6 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
 	for peer, txs := range txset {
 		peer.AsyncSendTransactions(txs)
-	}
-}
-
-// TODO: CSW
-func (pm *ProtocolManager) BroadcastVoteBlock(block *types.VoteBlock) {
-	for _, peer := range pm.peers.peers {
-		peer.SendVoteBlock(block)
 	}
 }
 
