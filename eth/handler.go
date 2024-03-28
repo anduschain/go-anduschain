@@ -737,7 +737,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 		// 다른 노드에 전송
-		p.SendMakeLeagueBlock(&request)
+		log.Info("============== CSW Receive MakeLeagueBlockMsg", "head", pm.blockchain.CurrentHeader().Number)
+		log.Info("============== CSW Receive MakeLeagueBlockMsg", "request", request.Block.Number())
+		//p.SendMakeLeagueBlock(&request)
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
