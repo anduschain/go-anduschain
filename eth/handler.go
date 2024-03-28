@@ -740,17 +740,25 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "head", pm.blockchain.CurrentHeader().Number)
 		log.Info("============== CSW Receive MakeLeagueBlockMsg", "request", request.Block.Number())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
+			log.Info("=== CSW SendMakeLeagueBlock0")
 			if pm.possibleWinningBlock == nil ||
 				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
 				pm.possibleWinningBlock = request.Block
 				p.SendMakeLeagueBlock(&request)
+				log.Info("=== CSW SendMakeLeagueBlock1")
 			} else {
 				wBlock := pm.blockchain.Engine().(*deb.Deb).SelectWinningBlock(pm.possibleWinningBlock, request.Block)
 				if wBlock.Hash() != pm.possibleWinningBlock.Hash() {
 					pm.possibleWinningBlock = wBlock
 					p.SendMakeLeagueBlock(&request)
+					log.Info("=== CSW SendMakeLeagueBlock2")
+				} else {
+					log.Info("=== CSW SendMakeLeagueBlock3")
 				}
+				log.Info("=== CSW SendMakeLeagueBlock4")
 			}
+		} else {
+			log.Info("=== CSW SendMakeLeagueBlock5")
 		}
 		//
 
