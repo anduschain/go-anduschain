@@ -57,6 +57,7 @@ var (
 	byzantiumInstructionSet      = newByzantiumInstructionSet()
 	constantinopleInstructionSet = newConstantinopleInstructionSet()
 	pohangInstructionSet         = newPohangInstructionSet()
+	ulsanInstructionSet          = newUlsanInstructionSet()
 )
 
 type JumpTable [256]*operation
@@ -68,6 +69,12 @@ func validate(jt JumpTable) JumpTable {
 		}
 	}
 	return jt
+}
+
+func newUlsanInstructionSet() JumpTable {
+	instructionSet := newConstantinopleInstructionSet()
+	enable1000(&instructionSet) //Pohang
+	return validate(instructionSet)
 }
 
 func newPohangInstructionSet() JumpTable {

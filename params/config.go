@@ -62,7 +62,9 @@ var (
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PohangBlock:         big.NewInt(2000000),
-		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
+		// ToDo: CSW (추후 수정)
+		UlsanBlock: big.NewInt(2000000),
+		Deb:        &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Anduschain test network.
@@ -78,6 +80,7 @@ var (
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PohangBlock:         big.NewInt(0),
+		UlsanBlock:          big.NewInt(0),
 		Deb:                 &DebConfig{FairPubKey: TestNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
@@ -93,6 +96,7 @@ var (
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PohangBlock:         big.NewInt(0),
+		UlsanBlock:          big.NewInt(0),
 		Deb: &DebConfig{
 			FairPubKey: TestPubKey,
 			GasLimit:   GenesisGasLimit,
@@ -104,7 +108,7 @@ var (
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -118,7 +122,7 @@ var (
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -132,7 +136,7 @@ var (
 	AllDebProtocolChanges = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -147,7 +151,7 @@ var (
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -162,7 +166,7 @@ var (
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -177,7 +181,7 @@ var (
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000},
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -192,7 +196,7 @@ var (
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000},
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -227,6 +231,7 @@ type ChainConfig struct {
 	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
 	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
 	PohangBlock         *big.Int `json:"pohangBlock,omitempty"`         // Pohang switch block (nil = no fork, 0 = already activated)
+	UlsanBlock          *big.Int `json:"ulsanBlock,omitempty"`          // Pohang switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
 	Deb    *DebConfig    `json:"deb,omitempty"`
@@ -448,8 +453,12 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 
 // IsPohang returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsPohang(num *big.Int) bool {
-	// CSW Pohang Temp
 	return isForked(c.PohangBlock, num)
+}
+
+// IsUlsan returns whether num is either equal to the Pohang fork block or greater.
+func (c *ChainConfig) IsUlsan(num *big.Int) bool {
+	return isForked(c.UlsanBlock, num)
 }
 
 // GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).
@@ -585,6 +594,7 @@ type Rules struct {
 	IsHomestead, IsEIP150, IsEIP155, IsEIP158 bool
 	IsByzantium, IsConstantinople             bool
 	IsPohang                                  bool
+	IsUlsan                                   bool
 }
 
 // Rules ensures c's ChainID is not nil.
@@ -595,6 +605,12 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 	}
 
 	if chainID.Int64() == 3355 { // TESTNET
+		var checkUlsan bool
+		if num.Cmp(big.NewInt(130000)) > 0 {
+			checkUlsan = true
+		} else {
+			checkUlsan = false
+		}
 		return Rules{
 			ChainID:          new(big.Int).Set(chainID),
 			IsHomestead:      true,
@@ -604,6 +620,7 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 			IsByzantium:      true,
 			IsConstantinople: true,
 			IsPohang:         true,
+			IsUlsan:          checkUlsan,
 		}
 	} else {
 		return Rules{
@@ -615,6 +632,7 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 			IsByzantium:      c.IsByzantium(num),
 			IsConstantinople: c.IsConstantinople(num),
 			IsPohang:         c.IsPohang(num),
+			IsUlsan:          c.IsUlsan(num),
 		}
 	}
 

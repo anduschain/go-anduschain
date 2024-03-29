@@ -226,6 +226,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		if evm.ChainConfig().IsPohang(evm.Context.BlockNumber) {
 			precompiles = PrecompiledContractsPohang
 		}
+		if evm.ChainConfig().IsUlsan(evm.Context.BlockNumber) {
+			precompiles = PrecompiledContractsUlsan
+		}
 		if precompiles[addr] == nil && evm.ChainConfig().IsEIP158(evm.Context.BlockNumber) && value.Sign() == 0 {
 			// Calling a non existing account, don't do anything, but ping the tracer
 			if evm.vmConfig.Debug && evm.depth == 0 {

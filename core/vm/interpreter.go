@@ -89,6 +89,8 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	// CSW => Always RESET
 	//if cfg.JumpTable == nil {
 	switch {
+	case evm.chainRules.IsUlsan:
+		cfg.JumpTable = &ulsanInstructionSet
 	case evm.chainRules.IsPohang:
 		cfg.JumpTable = &pohangInstructionSet
 	case evm.chainRules.IsConstantinople:
