@@ -45,6 +45,7 @@ var (
 	MAIN_NETWORK = big.NewInt(14288640)
 	TEST_NETWORK = big.NewInt(14288641)
 	DEB_NETWORK  = big.NewInt(14288642)
+	DVLP_NETWORK = big.NewInt(3355)
 )
 
 var (
@@ -453,12 +454,25 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 
 // IsPohang returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsPohang(num *big.Int) bool {
-	return isForked(c.PohangBlock, num)
+	if c.ChainID.Cmp(DVLP_NETWORK) == 0 {
+		return true
+	} else {
+		return isForked(c.PohangBlock, num)
+	}
 }
 
 // IsUlsan returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsUlsan(num *big.Int) bool {
-	return isForked(c.UlsanBlock, num)
+	if c.ChainID.Cmp(DVLP_NETWORK) == 0 {
+		if num.Cmp(big.NewInt(130000)) > 0 {
+			return true
+		} else {
+			return false
+		}
+	} else {
+		return isForked(c.UlsanBlock, num)
+	}
+
 }
 
 // GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).
@@ -604,36 +618,16 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		chainID = new(big.Int)
 	}
 
-	if chainID.Int64() == 3355 { // TESTNET
-		var checkUlsan bool
-		if num.Cmp(big.NewInt(130000)) > 0 {
-			checkUlsan = true
-		} else {
-			checkUlsan = false
-		}
-		return Rules{
-			ChainID:          new(big.Int).Set(chainID),
-			IsHomestead:      true,
-			IsEIP150:         true,
-			IsEIP155:         true,
-			IsEIP158:         true,
-			IsByzantium:      true,
-			IsConstantinople: true,
-			IsPohang:         true,
-			IsUlsan:          checkUlsan,
-		}
-	} else {
-		return Rules{
-			ChainID:          new(big.Int).Set(chainID),
-			IsHomestead:      c.IsHomestead(num),
-			IsEIP150:         c.IsEIP150(num),
-			IsEIP155:         c.IsEIP155(num),
-			IsEIP158:         c.IsEIP158(num),
-			IsByzantium:      c.IsByzantium(num),
-			IsConstantinople: c.IsConstantinople(num),
-			IsPohang:         c.IsPohang(num),
-			IsUlsan:          c.IsUlsan(num),
-		}
+	return Rules{
+		ChainID:          new(big.Int).Set(chainID),
+		IsHomestead:      c.IsHomestead(num),
+		IsEIP150:         c.IsEIP150(num),
+		IsEIP155:         c.IsEIP155(num),
+		IsEIP158:         c.IsEIP158(num),
+		IsByzantium:      c.IsByzantium(num),
+		IsConstantinople: c.IsConstantinople(num),
+		IsPohang:         c.IsPohang(num),
+		IsUlsan:          c.IsUlsan(num),
 	}
 
 }
