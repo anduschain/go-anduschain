@@ -149,7 +149,12 @@ func (c *Deb) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header
 
 func (c *Deb) verifyNonce(otprn []byte, coinbase []byte, nonce uint64) bool {
 	// Ulsan Fork 적용시 검증
-	if strings.Compare(c.Otprn().GetChainConfig().NodeVersion, "0.8.0") >= 0 {
+	ot, err := types.DecodeOtprn(otprn)
+	if err != nil {
+		log.Info("verifyNonce", "error", err)
+		return false
+	}
+	if strings.Compare(ot.GetChainConfig().NodeVersion, "0.8.0") >= 0 {
 		return types.MakeNonce(otprn, coinbase).Uint64() == nonce
 	} else {
 		return true
