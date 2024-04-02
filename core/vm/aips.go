@@ -23,7 +23,6 @@ import (
 
 var activators = map[int]func(*JumpTable){
 	1000: enable1000, // fork Pohang
-	2000: enable2000, // fork Ulsan
 }
 
 // EnableAIP enables the given AIP on the config.
@@ -73,14 +72,10 @@ func enable1000(jt *JumpTable) {
 		validateStack: makeStackFunc(0, 1),
 		valid:         true,
 	}
-}
-
-// PUSH0 opcode
-func enable2000(jt *JumpTable) {
-	jt[PUSH0] = &operation{
-		execute:       opPush0,
-		gasCost:       gasPush0,
-		validateStack: makeStackFunc(0, 1),
-		valid:         true,
-	}
+	//jt[PUSH0] = &operation{
+	//	execute:       opPush0,
+	//	gasCost:       gasPush0,
+	//	validateStack: makeStackFunc(0, 1),
+	//	valid:         true,
+	//}
 }

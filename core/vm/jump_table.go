@@ -72,8 +72,8 @@ func validate(jt JumpTable) JumpTable {
 }
 
 func newUlsanInstructionSet() JumpTable {
-	instructionSet := newPohangInstructionSet()
-	enable2000(&instructionSet) //Ulsan
+	instructionSet := newConstantinopleInstructionSet()
+	enable1000(&instructionSet) //Pohang
 	return validate(instructionSet)
 }
 
