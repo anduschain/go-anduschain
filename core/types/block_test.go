@@ -18,6 +18,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"math/big"
 	"reflect"
 	"testing"
@@ -131,4 +132,26 @@ func TestBlockEncoding2(t *testing.T) {
 
 	t.Log("Block Hash :", block.Hash().String(), "reuslt", "0xc8fd41156583a3f30dab774f346283acca270e79a739f88126f9d8c71a22560b" == block.Hash().String())
 
+}
+
+func TestMakeNonce(t *testing.T) {
+	b1 := "f906fcf902ffa0dfa0199d7b14497bffe5222b9bcc18c17ab0adda5210106ffcb5149f8cff2265948c9f4ddc8b24b729bb293000b8d4eadc0aeaa08ca0d998cff0f6a5e5c673a3e1f30b137f9576fa6b813bd62ad84fd945e7d8e9008aa07fe8749b8d529ca3cd086fe278a90ed840144832a7c1b5d226c16d183ddfebd8a06d6b8a6041cb247bf271021aefa919908f4ecbc3431fa8ee9b8b293c47cc5816a0bbbe73c6307e298ca23c33f1d9f72b414bf1ad338bc49a665b16feb19c659f9db90"
+	b2 := "f906fcf902ffa0dfa0199d7b14497bffe5222b9bcc18c17ab0adda5210106ffcb5149f8cff2265948c9f4ddc8b24b729bb293000b"
+	b3 := "f90"
+	d1, _ := hex.DecodeString(b1)
+	d2, _ := hex.DecodeString(b2)
+	h := MakeNonce(d1, d2)
+	t.Log(h.Uint64())
+	d1, _ = hex.DecodeString(b1)
+	d2, _ = hex.DecodeString(b3)
+	h = MakeNonce(d1, d2)
+	t.Log(h.Uint64())
+	d1, _ = hex.DecodeString(b1)
+	d2, _ = hex.DecodeString("")
+	h = MakeNonce(d1, d2)
+	t.Log(h.Uint64())
+	d1, _ = hex.DecodeString("")
+	d2, _ = hex.DecodeString("")
+	h = MakeNonce(d1, d2)
+	t.Log(h.Uint64())
 }

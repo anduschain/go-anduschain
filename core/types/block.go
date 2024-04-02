@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/common/hexutil"
+	"github.com/anduschain/go-anduschain/crypto/sha3"
 	"github.com/anduschain/go-anduschain/rlp"
 	"io"
 	"math/big"
@@ -47,6 +48,30 @@ func EncodeNonce(i uint64) BlockNonce {
 	var n BlockNonce
 	binary.BigEndian.PutUint64(n[:], i)
 	return n
+}
+
+func MakeNonce(otprn []byte, coinbase []byte) BlockNonce {
+	var bb []byte
+	if len(otprn) > len(coinbase) {
+		for i, b := range coinbase {
+			bb = append(bb, otprn[i]^b)
+		}
+		bb = append(bb, otprn[len(coinbase):]...)
+	} else {
+		for i, b := range otprn {
+			bb = append(bb, coinbase[i]^b)
+		}
+		bb = append(bb, coinbase[len(otprn):]...)
+	}
+
+	h := sha3.New256()
+	h.Write(bb)
+
+	var bn BlockNonce
+	bs := h.Sum(nil)
+	copy(bn[:], bs)
+
+	return bn
 }
 
 // Uint64 returns the integer value of a block nonce.

@@ -13,6 +13,7 @@ import (
 	"github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/trie"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/anduschain/go-anduschain/common"
@@ -45,6 +46,8 @@ var (
 	// errInvalidDifficulty is returned if the difficulty of a block is not either
 	// of 1 or 2, or if the value does not match the turn of the signer.
 	errInvalidDifficulty = errors.New("invalid difficulty")
+
+	errInvalidNonce = errors.New("invalid nonce")
 
 	errGetState = errors.New("get state reade error, parent root")
 
@@ -144,6 +147,20 @@ func (c *Deb) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header
 	return abort, results
 }
 
+func (c *Deb) verifyNonce(otprn []byte, coinbase []byte, nonce uint64) bool {
+	// Ulsan Fork 적용시 검증
+	ot, err := types.DecodeOtprn(otprn)
+	if err != nil {
+		log.Info("verifyNonce", "error", err)
+		return false
+	}
+	if strings.Compare(ot.GetChainConfig().NodeVersion, "0.8.0") >= 0 {
+		return types.MakeNonce(otprn, coinbase).Uint64() == nonce
+	} else {
+		return true
+	}
+}
+
 // verifyHeader checks whether a header conforms to the consensus rules.The
 // caller may optionally pass in a batch of parents (ascending order) to avoid
 // looking those up from the database. This is useful for concurrently verifying
@@ -192,6 +209,9 @@ func (c *Deb) verifyHeader(chain consensus.ChainReader, header *types.Header, pa
 	}
 
 	if number > 0 && otprn.FnAddr != params.TestFairnodeAddr {
+		if c.verifyNonce(header.Otprn, header.Coinbase.Bytes(), header.Nonce.Uint64()) == false {
+			return errInvalidNonce
+		}
 		diff := calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 		if header.Difficulty == nil || header.Difficulty.Cmp(diff) != 0 {
 			return errInvalidDifficulty
@@ -365,10 +385,11 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return consensus.ErrUnknownAncestor
 	}
 
-	current, err := chain.StateAt(parent.Root)
-	if err != nil {
-		return errGetState
-	}
+	// CSW Nonce 생성 규칙 변경
+	//current, err := chain.StateAt(parent.Root)
+	//if err != nil {
+	//	return errGetState
+	//}
 
 	// otprn....
 	if c.otprn == nil {
@@ -382,7 +403,8 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 
 	header.GasLimit = c.otprn.Data.Price.GasLimit
 	header.Otprn = bOtprn
-	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
+	//header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
+	header.Nonce = types.MakeNonce(bOtprn, header.Coinbase.Bytes())
 	header.Time = big.NewInt(time.Now().Unix())
 	header.Difficulty = calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 

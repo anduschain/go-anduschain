@@ -192,12 +192,14 @@ func (m *MongoDatabase) GetChainConfig() *types.ChainConfig {
 	current := m.CurrentInfo()
 	if current == nil {
 		logger.Warn("Get current block number", "database", "mongo", "current", num)
+		num = 1
 	} else {
 		num = current.Number.Uint64()
 	}
-	findOneOpts := options.FindOne().SetSort(bson.M{"timestamp": -1})
+	findOneOpts := options.FindOne().SetSort(bson.M{"config.blockNumber": -1})
 	conf := new(fntype.Config)
-	err := m.chainConfig.FindOne(m.context, bson.M{}, findOneOpts).Decode(conf)
+	filter := bson.D{{"config.blockNumber", bson.D{{"$lte", num}}}}
+	err := m.chainConfig.FindOne(m.context, filter, findOneOpts).Decode(conf)
 	if err != nil {
 		logger.Error("Get chain conifg", "msg", err)
 		return nil
