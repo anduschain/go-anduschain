@@ -738,6 +738,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			log.Info("I'm miner")
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
+
 		// 다른 노드에 전송
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
 			if pm.possibleWinningBlock == nil ||
