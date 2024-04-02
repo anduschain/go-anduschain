@@ -845,13 +845,13 @@ func (w *worker) resultLoop() {
 					continue
 				}
 
-				if wBlock = engine.SelectWinningBlock(w.possibleWinning, rblock); w.possibleWinning == nil {
+				if wBlock = engine.SelectWinningBlock(w.possibleWinning, rblock); wBlock == nil {
 					log.Error("SelectWinningBlock", "msg", "selected block was nil")
 					continue
 				}
 			}
 
-			if wBlock.Hash() == w.possibleWinning.Hash() {
+			if w.possibleWinning != nil && wBlock.Hash() == w.possibleWinning.Hash() {
 				continue
 			}
 
@@ -942,7 +942,7 @@ func (w *worker) resultLoop() {
 				hash     = block.Hash()
 			)
 
-			if w.current.header.Number.Cmp(block.Number()) != 0 {
+			if w.current == nil || w.current.header.Number.Cmp(block.Number()) != 0 {
 				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}

@@ -269,9 +269,11 @@ func (c *Deb) ValidationLeagueBlock(chain consensus.ChainReader, block *types.Bl
 	if bytes.Compare(bOtp, block.Header().Otprn) != 0 {
 		return ertNotMatchOtprn
 	}
+	/*** CSW Ulsan
 	if err := c.validationBlockInJoinTx(block.Header(), block.Transactions()); err != nil {
 		return err
 	}
+	***/
 
 	return nil
 }

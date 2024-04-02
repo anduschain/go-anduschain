@@ -733,9 +733,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 
-		log.Info("=== CSW got MakeLeagueBlockMsg", "hash", request.Block.Hash())
 		if pm.miner.Mining() { // 채굴자이면 possible winning block 갱신 투표 준비
-			log.Info("I'm miner")
 			pm.miner.Worker().LeagueBlockCh() <- &request
 		}
 
@@ -751,7 +749,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 						log.Error("peer broadcasting", "msg", err)
 					}
 				}
-				log.Info("=== ", "number1", request.Block.Number())
 			} else {
 				wBlock := pm.blockchain.Engine().(*deb.Deb).SelectWinningBlock(pm.possibleWinningBlock, request.Block)
 				if wBlock.Hash() != pm.possibleWinningBlock.Hash() {
@@ -763,7 +760,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 							log.Error("peer broadcasting", "msg", err)
 						}
 					}
-					log.Info("=== ", "number2", request.Block.Number())
 				}
 
 			}
