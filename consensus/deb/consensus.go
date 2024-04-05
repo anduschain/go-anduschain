@@ -392,10 +392,10 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	}
 
 	// CSW Nonce 생성 규칙 변경
-	//current, err := chain.StateAt(parent.Root)
-	//if err != nil {
-	//	return errGetState
-	//}
+	current, err := chain.StateAt(parent.Root)
+	if err != nil {
+		return errGetState
+	}
 	// otprn....
 	if c.otprn == nil {
 		return errors.New("consensus prepare, otprn is nil")
@@ -406,8 +406,8 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	}
 	header.GasLimit = c.otprn.Data.Price.GasLimit
 	header.Otprn = bOtprn
-	//header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
-	header.Nonce = types.MakeNonce(bOtprn, header.Coinbase.Bytes())
+	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
+	//header.Nonce = types.MakeNonce(bOtprn, header.Coinbase.Bytes())
 	header.Time = big.NewInt(time.Now().Unix())
 	header.Difficulty = calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 
