@@ -1345,12 +1345,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 					w.updateSnapshot()
 					return
 				}
+				// ToDo: CSW - join tx check하지 않음
 				// miner's join transaction is empty
-				if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
-					log.Error("miner's join transaction is empty")
-					w.updateSnapshot()
-					return
-				}
+				//if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+				//	log.Error("miner's join transaction is empty")
+				//	w.updateSnapshot()
+				//	return
+				//}
 			}
 		}
 
