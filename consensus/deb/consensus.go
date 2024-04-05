@@ -105,6 +105,7 @@ func (c *Deb) SetCoinbase(coinbase common.Address) {
 
 func (c *Deb) SetOtprn(otprn *types.Otprn) {
 	c.otprn = otprn
+	c.SetFnFee(otprn)
 }
 
 func (c *Deb) SetFnFee(otprn *types.Otprn) {
