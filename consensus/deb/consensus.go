@@ -159,7 +159,7 @@ func (c *Deb) verifyNonce(otprn []byte, coinbase []byte, nonce uint64) bool {
 		return false
 	}
 	if strings.Compare(ot.GetChainConfig().NodeVersion, "0.8.0") >= 0 {
-		return types.MakeNonce(otprn, coinbase).Uint64() == nonce
+		return types.MakeNonce(otprn, coinbase) == nonce
 	} else {
 		return true
 	}
@@ -391,11 +391,11 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 		return consensus.ErrUnknownAncestor
 	}
 
-	// CSW Nonce 생성 규칙 변경
-	current, err := chain.StateAt(parent.Root)
-	if err != nil {
-		return errGetState
-	}
+	// ToDo: CSW Nonce 생성 규칙 변경
+	//current, err := chain.StateAt(parent.Root)
+	//if err != nil {
+	//	return errGetState
+	//}
 	// otprn....
 	if c.otprn == nil {
 		return errors.New("consensus prepare, otprn is nil")
@@ -406,8 +406,9 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	}
 	header.GasLimit = c.otprn.Data.Price.GasLimit
 	header.Otprn = bOtprn
-	header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
-	//header.Nonce = types.MakeNonce(bOtprn, header.Coinbase.Bytes())
+	//nonce := current.GetJoinNonce(header.Coinbase)
+	nonce := types.MakeNonce(bOtprn, header.Coinbase.Bytes())
+	header.Nonce = types.EncodeNonce(nonce) // header nonce, coinbase join nonce
 	header.Time = big.NewInt(time.Now().Unix())
 	header.Difficulty = calcDifficultyDeb(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 

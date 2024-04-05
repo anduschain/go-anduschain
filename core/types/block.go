@@ -50,7 +50,7 @@ func EncodeNonce(i uint64) BlockNonce {
 	return n
 }
 
-func MakeNonce(otprn []byte, coinbase []byte) BlockNonce {
+func MakeNonce(otprn []byte, coinbase []byte) uint64 {
 	var bb []byte
 	if len(otprn) > len(coinbase) {
 		for i, b := range coinbase {
@@ -67,11 +67,10 @@ func MakeNonce(otprn []byte, coinbase []byte) BlockNonce {
 	h := sha3.New256()
 	h.Write(bb)
 
-	var bn BlockNonce
 	bs := h.Sum(nil)
-	copy(bn[:4], bs)
+	num, _ := binary.Uvarint(bs[0:8])
 
-	return bn
+	return num
 }
 
 // Uint64 returns the integer value of a block nonce.
