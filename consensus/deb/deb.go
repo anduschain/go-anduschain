@@ -54,8 +54,12 @@ func csprng(n int, otprn common.Hash, coinbase common.Address, pBlockHash common
 func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlockHash common.Hash) int64 {
 
 	rand := big.NewInt(0)
+	cnt := int(joinNonce)
+	if cnt > 100 {
+		cnt = 100
+	}
 
-	for i := 0; i <= int(joinNonce); i++ {
+	for i := 0; i <= cnt; i++ {
 		newRand := csprng(i, otprn, coinbase, pBlockHash)
 		if newRand.Cmp(rand) > 0 {
 			rand = newRand
