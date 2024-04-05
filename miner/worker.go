@@ -330,7 +330,9 @@ func (w *worker) leagueStatusLoop() {
 						log.Error("Block Sign Hash", "msg", err)
 						continue
 					}
-
+					otprn, _ := types.DecodeOtprn(block.Otprn())
+					log.Info("Vote Block", "number", block.Number(), "otprn", otprn.HashOtprn(), "hash", block.Hash(),
+						"difficulty", block.Difficulty())
 					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
 				}
 			case types.VOTE_COMPLETE:
@@ -813,13 +815,9 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			if w.current != nil {
-				log.Info("Possible winning block and league broadcasting2", "hash", w.possibleWinning.Hash(),
-					"current", w.current.header.Number, "possible", w.possibleWinning.Number())
-			} else {
-				log.Info("Possible winning block and league broadcasting2", "hash", w.possibleWinning.Hash(),
-					"current", nil, "possible", w.possibleWinning.Number())
-			}
+			otprn, _ := types.DecodeOtprn(block.Otprn())
+			log.Info("Possible winning block and league broadcasting2", "number", block.Number(), "otprn", otprn.HashOtprn(), "hash", block.Hash(),
+				"difficulty", block.Difficulty())
 		case ev := <-w.leagueBlockCh:
 			bypass := true
 			switch w.fnStatus {
@@ -883,13 +881,10 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: w.possibleWinning, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			if w.current != nil {
-				log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash(),
-					"current", w.current.header.Number, "possible", w.possibleWinning.Number())
-			} else {
-				log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash(),
-					"current", nil, "possible", w.possibleWinning.Number())
-			}
+			otprn, _ := types.DecodeOtprn(w.possibleWinning.Otprn())
+			log.Info("Possible winning block and league broadcasting", "number", w.possibleWinning.Number(),
+				"otprn", otprn.HashOtprn(), "hash", w.possibleWinning.Hash(),
+				"difficulty", w.possibleWinning.Difficulty())
 
 		case voters := <-w.voteResultCh:
 			if w.fnStatus != types.VOTE_COMPLETE {

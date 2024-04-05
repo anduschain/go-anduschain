@@ -18,7 +18,7 @@ func ValidationDifficulty(header *types.Header) error {
 	deb := deb.Deb{}
 	diff := deb.CalcDifficultyEngine(header.Nonce.Uint64(), header.Otprn, header.Coinbase, header.ParentHash)
 	if diff.Cmp(header.Difficulty) != 0 {
-		return errors.New("invalid difficulty")
+		return errors.New("invalid difficulty calc=" + diff.String() + " header=" + header.Difficulty.String())
 	}
 	return nil
 }
