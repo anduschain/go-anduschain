@@ -69,7 +69,7 @@ func MakeNonce(otprn []byte, coinbase []byte) BlockNonce {
 
 	var bn BlockNonce
 	bs := h.Sum(nil)
-	copy(bn[:], bs)
+	copy(bn[:4], bs)
 
 	return bn
 }
