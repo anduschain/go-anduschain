@@ -243,6 +243,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	st.refundGas()
 	if st.evm.ChainConfig().Deb != nil {
 		fairAddr := st.evm.ChainConfig().Deb.FairAddr()
+		// ToDo: CSW: tx가 포함된 블록의 OTPRN에서 fairNodeFee를 계산해야 함
 		fairFeeRate := st.evm.ChainConfig().Deb.GetFnFeeRate()
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
 

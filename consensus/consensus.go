@@ -108,6 +108,7 @@ type Engine interface {
 	SetOtprn(otprn *types.Otprn)
 	Otprn() *types.Otprn
 	Name() string
+	SetFnFee(otprn *types.Otprn)
 }
 
 // PoW is a consensus engine based on proof-of-work.

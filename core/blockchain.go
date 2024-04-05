@@ -1171,7 +1171,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			if err != nil {
 				log.Info("OTPRN Setting Error")
 			} else {
-				bc.engine.SetOtprn(otprn)
+				bc.engine.SetFnFee(otprn)
 			}
 		}
 

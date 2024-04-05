@@ -202,6 +202,9 @@ func (c *Clique) SetOtprn(otprn *types.Otprn) {
 	c.otprn = otprn
 }
 
+func (c *Clique) SetFnFee(otprn *types.Otprn) {
+}
+
 func (c *Clique) Otprn() *types.Otprn {
 	return c.otprn
 }

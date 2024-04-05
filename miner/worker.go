@@ -305,6 +305,7 @@ func (w *worker) leagueStatusLoop() {
 						engine.SetOtprn(&otprn)        // deb consensus engine setting otprn
 					}
 					w.startCh <- struct{}{}
+				} else {
 				}
 			case types.LEAGUE_BROADCASTING:
 				// league broadcasting
@@ -812,7 +813,13 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("Possible Block broadcasting", "hash", block.Hash())
+			if w.current != nil {
+				log.Info("Possible winning block and league broadcasting2", "hash", w.possibleWinning.Hash(),
+					"current", w.current.header.Number, "possible", w.possibleWinning.Number())
+			} else {
+				log.Info("Possible winning block and league broadcasting2", "hash", w.possibleWinning.Hash(),
+					"current", nil, "possible", w.possibleWinning.Number())
+			}
 		case ev := <-w.leagueBlockCh:
 			bypass := true
 			switch w.fnStatus {
@@ -841,7 +848,9 @@ func (w *worker) resultLoop() {
 
 			if engine, ok := w.engine.(*deb.Deb); ok {
 				if err := engine.ValidationLeagueBlock(w.chain, rblock); err != nil {
-					log.Error("Received league block Validation League Block", "msg", err, "hash", rblock.Header().Hash())
+					otprn, _ := types.DecodeOtprn(rblock.Otprn())
+
+					log.Error("Received league block Validation League Block", "msg", err, "chainOtprn", w.chain.Engine().Otprn().HashOtprn(), "otprn", otprn.HashOtprn())
 					continue
 				}
 
@@ -874,7 +883,13 @@ func (w *worker) resultLoop() {
 			}
 
 			w.newLeagueBlockFeed.Send(types.NewLeagueBlockEvent{Block: w.possibleWinning, Address: w.coinbase, Sign: sign}) // league block for broadcasting
-			log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash())
+			if w.current != nil {
+				log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash(),
+					"current", w.current.header.Number, "possible", w.possibleWinning.Number())
+			} else {
+				log.Info("Possible winning block and league broadcasting", "hash", w.possibleWinning.Hash(),
+					"current", nil, "possible", w.possibleWinning.Number())
+			}
 
 		case voters := <-w.voteResultCh:
 			if w.fnStatus != types.VOTE_COMPLETE {
@@ -943,7 +958,12 @@ func (w *worker) resultLoop() {
 			)
 
 			if w.current == nil || w.current.header.Number.Cmp(block.Number()) != 0 {
-				log.Error("Block found but not match block Number", "number", block.Number(), "sealhash", sealhash, "hash", hash)
+				if w.current == nil {
+					log.Error("Block found but current is nil", "bNumber", block.Number(), "sealhash", sealhash, "hash", hash)
+				} else {
+					log.Error("Block found but not match block Number", "cNumber", w.current.header.Number, "bNumber", block.Number(), "sealhash", sealhash, "hash", hash)
+				}
+
 				continue
 			}
 
@@ -1229,12 +1249,14 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if parent.Time().Cmp(new(big.Int).SetInt64(timestamp)) >= 0 {
 		timestamp = parent.Time().Int64() + 1
 	}
+
 	// this will ensure we're not going off too far in the future
 	if now := time.Now().Unix(); timestamp > now+1 {
 		wait := time.Duration(timestamp-now) * time.Second
 		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
 		time.Sleep(wait)
 	}
+
 	num := parent.Number()
 	var header *types.Header
 	if _, ok := w.engine.(*deb.Deb); ok {
@@ -1268,6 +1290,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
 		}
+
 		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 		if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
 			// Check whether the block is among the fork extra-override range
@@ -1281,29 +1304,34 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				}
 			}
 		}
+
 		// Could potentially happen if starting to mine in an odd state.
 		err := w.makeCurrent(parent, header)
 		if err != nil {
 			log.Error("Failed to create mining context", "err", err)
 			return
 		}
+
 		// Create the current work task and check any fork transitions needed
 		env := w.current
 		if w.config.DAOForkSupport && w.config.DAOForkBlock != nil && w.config.DAOForkBlock.Cmp(header.Number) == 0 {
 			misc.ApplyDAOHardFork(env.state)
 		}
+
 		// Accumulate the uncles for the current block
 		for hash, uncle := range w.possibleUncles {
 			if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
 				delete(w.possibleUncles, hash)
 			}
 		}
+
 		// Fill the block with all available pending transactions.
 		pending, pendingJoinTx, err := w.eth.TxPool().Pending()
 		if err != nil {
 			log.Error("Failed to fetch pending transactions", "err", err)
 			return
 		}
+
 		// Short circuit if there is no available pending transactions
 		// otprn check
 		if _, ok := w.engine.(*deb.Deb); ok {
@@ -1330,6 +1358,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				}
 			}
 		}
+
 		// Split the pending transactions into locals and remotes
 		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
 		for _, account := range w.eth.TxPool().Locals() {
@@ -1351,6 +1380,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				return
 			}
 		}
+
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return

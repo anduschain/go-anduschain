@@ -202,6 +202,10 @@ func (c *Sse) SetOtprn(otprn *types.Otprn) {
 	c.otprn = otprn
 }
 
+func (c *Sse) SetFnFee(otprn *types.Otprn) {
+
+}
+
 func (c *Sse) Otprn() *types.Otprn {
 	return c.otprn
 }

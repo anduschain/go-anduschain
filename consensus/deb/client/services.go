@@ -218,6 +218,8 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		}
 		switch stCode {
 		case proto.ProcessStatus_MAKE_LEAGUE:
+			// MakeLeague에서 OTPRN 변경
+			dc.backend.BlockChain().Engine().SetOtprn(&otprn)
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
 			// TODO CSW: static node -> dynamic node
 			dc.backend.Server().DeleteStaticPeers(dc.staticNodes)

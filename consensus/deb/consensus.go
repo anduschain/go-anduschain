@@ -104,11 +104,14 @@ func (c *Deb) SetCoinbase(coinbase common.Address) {
 }
 
 func (c *Deb) SetOtprn(otprn *types.Otprn) {
+	c.otprn = otprn
+}
+
+func (c *Deb) SetFnFee(otprn *types.Otprn) {
 	// 변환에 성공하면 fee rate를 바꿔준다
 	if fnFeeRate, isOK := new(big.Int).SetString(otprn.Data.FnFee, 10); isOK {
 		c.config.SetFnFeeRate(fnFeeRate)
 	}
-	c.otprn = otprn
 }
 
 func (c *Deb) Name() string {
@@ -392,17 +395,14 @@ func (c *Deb) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	//if err != nil {
 	//	return errGetState
 	//}
-
 	// otprn....
 	if c.otprn == nil {
 		return errors.New("consensus prepare, otprn is nil")
 	}
-
 	bOtprn, err := c.otprn.EncodeOtprn()
 	if err != nil {
 		return err
 	}
-
 	header.GasLimit = c.otprn.Data.Price.GasLimit
 	header.Otprn = bOtprn
 	//header.Nonce = types.EncodeNonce(current.GetJoinNonce(header.Coinbase)) // header nonce, coinbase join nonce
