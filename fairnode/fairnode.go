@@ -325,6 +325,11 @@ func (fn *Fairnode) processManageLoopFollower() {
 						if fn.lastBlock != nil {
 							league.Current = fn.lastBlock.Number()
 						}
+					// ToDo: CSW -> JoinTx 생성없음. 바로 MAKE_BLOCK
+					case types.MAKE_BLOCK:
+						if fn.lastBlock != nil {
+							league.Current = fn.lastBlock.Number()
+						}
 					case types.VOTE_COMPLETE:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
 						voters := fn.db.GetVoters(voteKey)
@@ -406,7 +411,9 @@ func (fn *Fairnode) processManageLoop() {
 					leageuWaitAttampt = 0
 				case types.MAKE_LEAGUE:
 					time.Sleep(3 * time.Second)
-					l.Status = types.MAKE_JOIN_TX
+					// ToDo: CSW -> JoinTx 생성없이 바로 MAKE_BLOCK
+					//l.Status = types.MAKE_JOIN_TX
+					l.Status = types.MAKE_BLOCK
 				case types.MAKE_JOIN_TX:
 					if fn.lastBlock != nil {
 						l.Current = fn.lastBlock.Number()
@@ -414,6 +421,10 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
+					// ToDo: CSW -> MAkeJoinTx 없이 바로 MakeBlock
+					if fn.lastBlock != nil {
+						l.Current = fn.lastBlock.Number()
+					}
 					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
@@ -587,12 +598,16 @@ func (fn *Fairnode) makeOtprn() {
 			if league, ok := fn.leagues[*fn.currentLeague]; ok {
 				epoch := new(big.Int).SetUint64(league.Otprn.Data.Epoch) // epoch, league change term
 				if epoch.Uint64() == 0 {
-					league.Status = types.MAKE_JOIN_TX
+					//league.Status = types.MAKE_JOIN_TX
+					// ToDo: CSW -> MakeJoinTx 생략
+					league.Status = types.MAKE_BLOCK
 					continue
 				}
 
 				if league.Current.Uint64() == 0 {
-					league.Status = types.MAKE_JOIN_TX
+					//league.Status = types.MAKE_JOIN_TX
+					// ToDo: CSW -> MakeJoinTx 생략
+					league.Status = types.MAKE_BLOCK
 					continue
 				}
 
@@ -604,7 +619,9 @@ func (fn *Fairnode) makeOtprn() {
 						logger.Warn("Currnet league will be rejected", "epoch", epoch.String(), "current", league.Current.String())
 						league.Status = types.REJECT
 					} else {
-						league.Status = types.MAKE_JOIN_TX
+						//league.Status = types.MAKE_JOIN_TX
+						// ToDo: CSW -> MakeJoinTx 생략
+						league.Status = types.MAKE_BLOCK
 						// make otprn and pending league
 						if err := newOtprn(false); err != nil {
 							logger.Error("Make otprn error", "msg", err)
@@ -613,7 +630,9 @@ func (fn *Fairnode) makeOtprn() {
 						logger.Info("Make pending league", "epoch", epoch.String(), "current", league.Current.String())
 					}
 				} else {
-					league.Status = types.MAKE_JOIN_TX
+					// league.Status = types.MAKE_JOIN_TX
+					// ToDo: CSW -> MakeJoinTx 생략
+					league.Status = types.MAKE_BLOCK
 				}
 			}
 		}
