@@ -464,7 +464,7 @@ func (c *ChainConfig) IsPohang(num *big.Int) bool {
 // IsUlsan returns whether num is either equal to the Pohang fork block or greater.
 func (c *ChainConfig) IsUlsan(num *big.Int) bool {
 	if c.ChainID.Cmp(DVLP_NETWORK) == 0 {
-		if num.Cmp(big.NewInt(200000)) > 0 {
+		if num.Cmp(big.NewInt(160000)) > 0 {
 			return true
 		} else {
 			return false
