@@ -277,6 +277,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				return
 			}
 		case proto.ProcessStatus_MAKE_BLOCK:
+			log.Info("===== CSW GOT Fairnode MAKE_BLOCK")
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.MAKE_BLOCK, Payload: otprn})
 		case proto.ProcessStatus_LEAGUE_BROADCASTING:
 			dc.statusFeed.Send(types.FairnodeStatusEvent{Status: types.LEAGUE_BROADCASTING, Payload: nil})
