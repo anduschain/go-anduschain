@@ -743,23 +743,43 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
 			if pm.possibleWinningBlock == nil ||
 				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
-				pm.possibleWinningBlock = request.Block
-				for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
-					log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
-					err := peer.SendMakeLeagueBlock(&request)
+				otprn, err := types.DecodeOtprn(request.Block.Otprn())
+				if err != nil {
+					log.Info("MakeLeagueBlockMsg decode otprn", "error", err)
+				} else {
+					err = otprn.ValidateSignature()
 					if err != nil {
-						log.Error("peer broadcasting", "msg", err)
+						log.Info("MakeLeagueBlockMsg otprn validation", "error", err)
+					} else {
+						pm.possibleWinningBlock = request.Block
+						for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
+							log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+							err := peer.SendMakeLeagueBlock(&request)
+							if err != nil {
+								log.Error("peer broadcasting", "msg", err)
+							}
+						}
 					}
 				}
 			} else {
 				wBlock := pm.blockchain.Engine().(*deb.Deb).SelectWinningBlock(pm.possibleWinningBlock, request.Block)
 				if wBlock.Hash() != pm.possibleWinningBlock.Hash() {
-					pm.possibleWinningBlock = wBlock
-					for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
-						log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
-						err := peer.SendMakeLeagueBlock(&request)
+					otprn, err := types.DecodeOtprn(wBlock.Otprn())
+					if err != nil {
+						log.Info("MakeLeagueBlockMsg wblock decode otprn", "error", err)
+					} else {
+						err = otprn.ValidateSignature()
 						if err != nil {
-							log.Error("peer broadcasting", "msg", err)
+							log.Info("MakeLeagueBlockMsg wBlock otprn validation", "error", err)
+						} else {
+							pm.possibleWinningBlock = wBlock
+							for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
+								log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+								err := peer.SendMakeLeagueBlock(&request)
+								if err != nil {
+									log.Error("peer broadcasting", "msg", err)
+								}
+							}
 						}
 					}
 				}

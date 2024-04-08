@@ -9,7 +9,6 @@ import (
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/p2p"
-	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"math/big"
@@ -220,6 +219,8 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 		case proto.ProcessStatus_MAKE_LEAGUE:
 			// MakeLeague에서 OTPRN 변경
 			dc.backend.BlockChain().Engine().SetOtprn(&otprn)
+			// ToDo: CSW 채굴노드 형성 하지 않음
+			/****
 			enodes := dc.requestLeague(otprn) // 해당 리그에 해당되는 노드 리스트
 			// TODO CSW: static node -> dynamic node
 			dc.backend.Server().DeleteStaticPeers(dc.staticNodes)
@@ -236,6 +237,7 @@ func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 				dc.backend.Server().AddPeer(discover.MustParseNode(eNode))
 				log.Info("make league status", "addPeer", enodes[i], "realPeer", eNode)
 			}
+			*/
 		case proto.ProcessStatus_MAKE_JOIN_TX:
 			fnBlockNum := new(big.Int)
 			fnBlockNum.SetBytes(in.GetCurrentBlockNum())
