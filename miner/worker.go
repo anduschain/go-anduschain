@@ -299,7 +299,6 @@ func (w *worker) leagueStatusLoop() {
 			}
 			switch w.fnStatus {
 			case types.MAKE_BLOCK:
-				log.Info("========= CSW GOT MAKE_BLOCK")
 				if otprn, ok := ev.Payload.(types.Otprn); ok {
 					if engine, ok := w.engine.(*deb.Deb); ok {
 						engine.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
@@ -309,11 +308,9 @@ func (w *worker) leagueStatusLoop() {
 				} else {
 				}
 			case types.LEAGUE_BROADCASTING:
-				log.Info("========= CSW GOT LEAGUE_BROADCASTING")
 				// league broadcasting
 				w.leagueBroadCastCh <- struct{}{}
 			case types.VOTE_START:
-				log.Info("========= CSW GOT VOTE_START")
 				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
 					if w.possibleWinning == nil {
 						log.Error("leagueStatusLoop possible winning block was nil")
@@ -542,7 +539,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.startCh:
-			log.Info("=== CSW GOT startCh")
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -611,7 +607,6 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
-			log.Info("======== CSW GOT newWorkCh")
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 		case ev := <-w.chainSideCh:
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {
@@ -1341,23 +1336,23 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 
 			if otprn.FnAddr == params.TestFairnodeAddr { // TEST
-				if len(pending) == 0 {
-					w.updateSnapshot()
-					return
-				}
-			} else {
-				log.Info("=== CSW TX is null no mining")
 				if len(pending) == 0 || len(pendingJoinTx) == 0 {
 					w.updateSnapshot()
 					return
 				}
-				// ToDo: CSW - join tx check하지 않음
+			} else {
+
+				if len(pending) == 0 || len(pendingJoinTx) == 0 {
+					w.updateSnapshot()
+					return
+				}
+
 				// miner's join transaction is empty
-				//if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
-				//	log.Error("miner's join transaction is empty")
-				//	w.updateSnapshot()
-				//	return
-				//}
+				if txs, exist := pendingJoinTx[w.coinbase]; !exist || txs.Len() == 0 {
+					log.Error("miner's join transaction is empty")
+					w.updateSnapshot()
+					return
+				}
 			}
 		}
 
