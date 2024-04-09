@@ -299,6 +299,7 @@ func (w *worker) leagueStatusLoop() {
 			}
 			switch w.fnStatus {
 			case types.MAKE_BLOCK:
+				log.Info("=========== CSW MAKE_BLOCK")
 				if otprn, ok := ev.Payload.(types.Otprn); ok {
 					if engine, ok := w.engine.(*deb.Deb); ok {
 						engine.SetCoinbase(w.coinbase) // deb consensus engine setting coinbase
@@ -311,6 +312,7 @@ func (w *worker) leagueStatusLoop() {
 				// league broadcasting
 				w.leagueBroadCastCh <- struct{}{}
 			case types.VOTE_START:
+				log.Info("=========== CSW MAKE_BLOCK")
 				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
 					if w.possibleWinning == nil {
 						log.Error("leagueStatusLoop possible winning block was nil")
@@ -1385,9 +1387,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return
-		} else {
-			// ToDo: CSW 마이닝후 바로 브로드캐스팅 commit mining
-			w.leagueBroadCastCh <- struct{}{}
 		}
 	}
 
@@ -1442,6 +1441,10 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 			feesEth := new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Daon)))
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()), "txs", w.current.count, "gas", block.GasUsed(), "fees", feesEth, "elapsed", common.PrettyDuration(time.Since(start)))
 
+			// ToDo: CSW 마이닝후 바로 브로드캐스팅 commit mining
+			var request types.NewLeagueBlockEvent
+			request = types.NewLeagueBlockEvent{Block: block, Address: w.coinbase}
+			w.LeagueBlockCh() <- &request
 		case <-w.exitCh:
 			log.Info("Worker has exited")
 		}
