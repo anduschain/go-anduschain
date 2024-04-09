@@ -158,6 +158,7 @@ func (c *Deb) verifyNonce(otprn []byte, coinbase []byte, nonce uint64) bool {
 		log.Info("verifyNonce", "error", err)
 		return false
 	}
+
 	if strings.Compare(ot.GetChainConfig().NodeVersion, "0.8.0") >= 0 {
 		return types.MakeNonce(otprn, coinbase) == nonce
 	} else {
