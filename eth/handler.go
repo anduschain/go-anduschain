@@ -739,7 +739,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		// 다른 노드에 전송
 		otprn, _ := types.DecodeOtprn(request.Block.Otprn())
-		log.Info("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn())
+		log.Info("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn(),
+			"difficulty", request.Block.Difficulty())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
 			if pm.possibleWinningBlock == nil ||
 				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
@@ -753,7 +754,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					} else {
 						pm.possibleWinningBlock = request.Block
 						for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
-							log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+							log.Info("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
 							err := peer.SendMakeLeagueBlock(&request)
 							if err != nil {
 								log.Error("peer broadcasting", "msg", err)
@@ -774,7 +775,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 						} else {
 							pm.possibleWinningBlock = wBlock
 							for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
-								log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
+								log.Info("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
 								err := peer.SendMakeLeagueBlock(&request)
 								if err != nil {
 									log.Error("peer broadcasting", "msg", err)

@@ -1467,6 +1467,8 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 			var request types.NewLeagueBlockEvent
 			request = types.NewLeagueBlockEvent{Block: block, Address: w.coinbase}
 			w.LeagueBlockCh() <- &request
+			log.Info("====== CSW 1st braodcasting", "difficulty",
+				block.Difficulty())
 		case <-w.exitCh:
 			log.Info("Worker has exited")
 		}
