@@ -1384,6 +1384,9 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return
+		} else {
+			// ToDo: CSW 마이닝후 바로 브로드캐스팅 commit mining
+			w.leagueBroadCastCh <- struct{}{}
 		}
 	}
 
