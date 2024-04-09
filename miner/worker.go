@@ -1388,6 +1388,8 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return
 		}
+		// ToDo: CSW 바로 브로드캐스팅
+		w.leagueBroadCastCh <- struct{}{}
 	}
 
 }
