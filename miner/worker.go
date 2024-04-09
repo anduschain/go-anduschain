@@ -847,7 +847,7 @@ func (w *worker) resultLoop() {
 		case ev := <-w.leagueBlockCh:
 			bypass := true
 			switch w.fnStatus {
-			case types.MAKE_BLOCK, types.LEAGUE_BROADCASTING:
+			case types.MAKE_JOIN_TX, types.MAKE_BLOCK, types.LEAGUE_BROADCASTING:
 				bypass = false
 			}
 
