@@ -793,7 +793,8 @@ func (w *worker) resultLoop() {
 				w.unconfirmed.Insert(block.NumberU64(), block.Hash())
 			}
 		case <-w.leagueBroadCastCh:
-			if w.config.Deb != nil && w.fnStatus != types.LEAGUE_BROADCASTING {
+			// ToDo: CSW LEAGUE_BROADCAST -> MAKE_BLOCK
+			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
 				continue
 			}
 
