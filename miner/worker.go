@@ -724,7 +724,7 @@ func (w *worker) resultLoop() {
 	for {
 		select {
 		case block := <-w.resultCh:
-			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
+			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK && w.fnStatus != types.MAKE_JOIN_TX {
 				continue
 			}
 
@@ -751,7 +751,24 @@ func (w *worker) resultLoop() {
 			}
 			if _, ok := w.engine.(*deb.Deb); ok {
 				w.pendingMu.Lock()
-				w.possibleWinning = block // made for me, saving possible block
+				if w.possibleWinning == nil {
+					w.possibleWinning = block // made for me, saving possible block
+				} else {
+					wBlock := w.engine.(*deb.Deb).SelectWinningBlock(w.possibleWinning, block)
+					if wBlock.Hash() != w.possibleWinning.Hash() {
+						otprn, err := types.DecodeOtprn(wBlock.Otprn())
+						if err != nil {
+							log.Info("MakeLeagueBlockMsg wblock decode otprn", "error", err)
+						} else {
+							err = otprn.ValidateSignature()
+							if err != nil {
+								log.Info("resultLoop wBlock otprn validation", "error", err)
+							} else {
+								w.possibleWinning = wBlock
+							}
+						}
+					}
+				}
 				w.pendingMu.Unlock()
 
 				log.Info("Save possible block for league broadcasting", "hash", w.possibleWinning.Hash())
