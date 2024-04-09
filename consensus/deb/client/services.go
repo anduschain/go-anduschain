@@ -163,8 +163,7 @@ func (dc *DebClient) disconnectNonStatic() {
 
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
-	// ToDo: CSW 리그를 별도로 형성하지 않으므로 필요없음
-	//defer dc.disconnectNonStatic()
+	defer dc.disconnectNonStatic()
 
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,

@@ -414,10 +414,8 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
-					// ToDo: CSW delete LEAGUE_BROADCASTING (time 3->8 sec)
-					time.Sleep(8 * time.Second)
-					//l.Status = types.LEAGUE_BROADCASTING
-					l.Status = types.VOTE_START
+					time.Sleep(3 * time.Second)
+					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
 					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_START
