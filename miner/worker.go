@@ -338,6 +338,7 @@ func (w *worker) leagueStatusLoop() {
 					voteCh <- types.NewLeagueBlockEvent{Block: block, Address: w.coinbase, Sign: sign}
 				}
 			case types.VOTE_COMPLETE:
+				log.Info("=========== CSW VOTE_COMPLETE")
 				if payload, ok := ev.Payload.([]interface{}); ok {
 					if voters, ok := payload[0].(types.Voters); ok {
 						w.voteResultCh <- voters
@@ -347,10 +348,12 @@ func (w *worker) leagueStatusLoop() {
 					}
 				}
 			case types.REQ_FAIRNODE_SIGN:
+				log.Info("=========== CSW REQ_FAIRNODE_SIGN")
 				if fnSign, ok := ev.Payload.([]byte); ok {
 					w.fnSignCh <- fnSign
 				}
 			case types.FINALIZE:
+				log.Info("=========== CSW FINALIZE")
 				if w.finalBlock == nil {
 					continue
 				}
