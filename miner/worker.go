@@ -603,6 +603,9 @@ func (w *worker) mainLoop() {
 	defer w.txsSub.Unsubscribe()
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
+	defer func() {
+		log.Info("mainLoop is dead")
+	}()
 
 	for {
 		select {
