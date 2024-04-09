@@ -312,7 +312,7 @@ func (w *worker) leagueStatusLoop() {
 				// league broadcasting
 				w.leagueBroadCastCh <- struct{}{}
 			case types.VOTE_START:
-				log.Info("=========== CSW MAKE_BLOCK")
+				log.Info("=========== CSW VOTE_START")
 				if voteCh, ok := ev.Payload.(chan types.NewLeagueBlockEvent); ok {
 					if w.possibleWinning == nil {
 						log.Error("leagueStatusLoop possible winning block was nil")
