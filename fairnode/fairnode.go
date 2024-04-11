@@ -420,12 +420,12 @@ func (fn *Fairnode) processManageLoop() {
 					time.Sleep(1 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
-					// ToDo: CSW 5->2
-					time.Sleep(2 * time.Second)
+					// ToDo: CSW 5->3
+					time.Sleep(3 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
 					// ToDo: CSW 3->2
-					time.Sleep(3 * time.Second)
+					time.Sleep(2 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
@@ -490,7 +490,8 @@ func (fn *Fairnode) processManageLoop() {
 						l.Current = block.Number()
 						l.Votehash = nil
 						l.BlockHash = nil
-						time.Sleep(3 * time.Second)
+						// ToDo: CSW 3->1
+						time.Sleep(1 * time.Second)
 						fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 					} else {
 						hash := *l.BlockHash
