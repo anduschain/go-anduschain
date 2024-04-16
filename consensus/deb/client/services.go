@@ -163,7 +163,8 @@ func (dc *DebClient) disconnectNonStatic() {
 
 func (dc *DebClient) receiveFairnodeStatusLoop(otprn types.Otprn) {
 	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
-	defer dc.disconnectNonStatic()
+	// MakeLeague에서 별도 커넥션을 만들지 않음
+	//defer dc.disconnectNonStatic()
 
 	msg := proto.Participate{
 		Enode:        dc.miner.Node.Enode,
