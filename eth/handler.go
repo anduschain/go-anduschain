@@ -740,7 +740,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		// 다른 노드에 전송
 		otprn, _ := types.DecodeOtprn(request.Block.Otprn())
-		log.Info("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn(),
+		log.Debug("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn(),
 			"difficulty", request.Block.Difficulty())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
 			if pm.possibleWinningBlock == nil ||
@@ -754,7 +754,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 						log.Info("MakeLeagueBlockMsg otprn validation", "error", err)
 					} else {
 						pm.possibleWinningBlock = request.Block
-						for _, peer := range pm.peers.PeersWithoutBlock(request.Block.Hash()) {
+						for _, peer := range pm.peers.Peers() {
 							log.Debug("broadcasting", "peer", peer.Peer.String(), "version", peer.String())
 							err := peer.SendMakeLeagueBlock(&request)
 							if err != nil {
