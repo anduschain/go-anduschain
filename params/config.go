@@ -63,7 +63,7 @@ var (
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PohangBlock:         big.NewInt(2000000),
-		UlsanBlock:          big.NewInt(3800000),
+		UlsanBlock:          big.NewInt(4000000),
 		Deb:                 &DebConfig{FairPubKey: MainNetPubKey, GasLimit: GenesisGasLimit, GasPrice: MinimumGenesisGasPrice, FnFeeRate: big.NewInt(DefaultFairnodeFee)},
 	}
 
