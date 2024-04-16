@@ -365,6 +365,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
 	}
 	defer msg.Discard()
+
 	// Handle the message depending on its contents
 	switch {
 	case msg.Code == StatusMsg:
@@ -739,7 +740,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		// 다른 노드에 전송
 		otprn, _ := types.DecodeOtprn(request.Block.Otprn())
-		log.Info("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn())
+		log.Info("Got MakeLeagueBlockMsg broadcasting", "request number", request.Block.Number(), "otprn", otprn.HashOtprn(),
+			"difficulty", request.Block.Difficulty())
 		if pm.blockchain.CurrentHeader().Number.Cmp(request.Block.Number()) < 0 {
 			if pm.possibleWinningBlock == nil ||
 				pm.possibleWinningBlock.Number().Cmp(request.Block.Number()) < 0 {
