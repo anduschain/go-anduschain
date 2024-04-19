@@ -55,8 +55,9 @@ func MakeRand(joinNonce uint64, otprn common.Hash, coinbase common.Address, pBlo
 
 	rand := big.NewInt(0)
 	cnt := int(joinNonce)
-	if cnt > 500 {
-		cnt = 500
+
+	if cnt > 1000 {
+		cnt = 1000
 	}
 
 	for i := 0; i <= cnt; i++ {
