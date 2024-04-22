@@ -321,7 +321,7 @@ func (w *worker) leagueStatusLoop() {
 					acc := accounts.Account{Address: w.coinbase}
 					wallet, err := w.eth.AccountManager().Find(acc)
 					if err != nil {
-						log.Error("wallet not fount", "msg", err)
+						log.Error("wallet not fount", "msg", err, "account", w.coinbase.String())
 						continue
 					}
 
@@ -804,7 +804,7 @@ func (w *worker) resultLoop() {
 			acc := accounts.Account{Address: w.coinbase}
 			wallet, err := w.eth.AccountManager().Find(acc)
 			if err != nil {
-				log.Error("wallet not fount", "msg", err)
+				log.Error("wallet not fount", "msg", err, "account", w.coinbase.String())
 				continue
 			}
 
@@ -870,7 +870,7 @@ func (w *worker) resultLoop() {
 			acc := accounts.Account{Address: w.coinbase}
 			wallet, err := w.eth.AccountManager().Find(acc)
 			if err != nil {
-				log.Error("wallet not fount", "msg", err)
+				log.Error("wallet not fount", "msg", err, "account", w.coinbase.String())
 				continue
 			}
 

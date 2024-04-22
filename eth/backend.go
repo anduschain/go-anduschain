@@ -383,7 +383,7 @@ func (s *Ethereum) StartMining(threads int) error {
 		if eb != (common.Address{}) {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
-				log.Error("Coinbase account unavailable locally", "err[andus]", err)
+				log.Error("Coinbase account unavailable locally", "err[andus]", err, "account", eb.String())
 				return fmt.Errorf("signer missing: %v", err)
 			}
 			if c, ok := s.engine.(*clique.Clique); ok {
