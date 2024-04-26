@@ -603,6 +603,7 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	// CSW check GoDaon
 	rest := req.rest()
 	if len(rest) == 1 {
+		log.Info("=== CSW Rest", "rest[0]", string(rest[0]))
 		if string(rest[0]) != "godaon" {
 			return nil, fromID, hash, fmt.Errorf("not godaon packet %s", req.name())
 		}
