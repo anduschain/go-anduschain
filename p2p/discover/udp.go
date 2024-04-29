@@ -608,8 +608,10 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 		} else {
 			log.Info("=== CSW Rest", "rest[0]", string(rest[0]))
 		}
+	} else if len(rest) == 0 {
+		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest=0", req.name())
 	} else {
-		return nil, fromID, hash, fmt.Errorf("not godaon packet %s", req.name(), "len_rest", len(rest))
+		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest %d", req.name(), len(rest), string(rest[0]))
 	}
 	return req, fromID, hash, err
 }
