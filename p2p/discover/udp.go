@@ -620,7 +620,7 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	} else if len(rest) == 0 {
 		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest=0", req.name())
 	} else {
-		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest %d", req.name(), len(rest), string(rest[0]))
+		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest %d %s", req.name(), len(rest), string(rest[0]))
 	}
 	return req, fromID, hash, err
 }
