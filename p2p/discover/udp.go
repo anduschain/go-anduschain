@@ -278,9 +278,8 @@ func (t *udp) ping(toid NodeID, toaddr *net.UDPAddr) error {
 // when the reply arrives.
 func (t *udp) sendPing(toid NodeID, toaddr *net.UDPAddr, callback func()) <-chan error {
 	var rest []rlp.RawValue
-	var tmp rlp.RawValue
+	var tmp rlp.RawValue = []byte("godaon")
 
-	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
 	rest = append(rest, tmp)
 	req := &ping{
 		Version:    4,
@@ -336,9 +335,8 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		return nreceived >= bucketSize
 	})
 	var rest []rlp.RawValue
-	var tmp rlp.RawValue
+	var tmp rlp.RawValue = []byte("godaon")
 
-	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
 	rest = append(rest, tmp)
 	t.send(toaddr, findnodePacket, &findnode{
 		Target:     target,
@@ -483,9 +481,8 @@ var (
 
 func init() {
 	var rest []rlp.RawValue
-	var tmp rlp.RawValue
+	var tmp rlp.RawValue = []byte("godaon")
 
-	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: ^uint64(0), Rest: rest}
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
@@ -613,7 +610,7 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	rest := req.rest()
 	if len(rest) == 1 {
 		if string(rest[0]) != "godaon" {
-			return nil, fromID, hash, fmt.Errorf("not godaon packet rest=%s", req.name(), string(rest[0]))
+			return nil, fromID, hash, fmt.Errorf("not godaon packet %s rest=%s", req.name(), string(rest[0]))
 		} else {
 			log.Info("=== CSW Rest", "rest[0]", string(rest[0]))
 		}
@@ -630,9 +627,8 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 		return errExpired
 	}
 	var rest []rlp.RawValue
-	var tmp rlp.RawValue
+	var tmp rlp.RawValue = []byte("godaon")
 
-	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
 	rest = append(rest, tmp)
 	t.send(from, pongPacket, &pong{
 		To:         makeEndpoint(from, req.From.TCP),
@@ -690,9 +686,8 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 	t.mutex.Unlock()
 
 	var rest []rlp.RawValue
-	var tmp rlp.RawValue
+	var tmp rlp.RawValue = []byte("godaon")
 
-	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: uint64(time.Now().Add(expiration).Unix()), Rest: rest}
 	var sent bool
