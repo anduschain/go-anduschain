@@ -288,6 +288,7 @@ func (t *udp) sendPing(toid NodeID, toaddr *net.UDPAddr, callback func()) <-chan
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	}
+	log.Info("============ CSW======", "rest0", string(rest[0]))
 	packet, hash, err := encodePacket(t.priv, pingPacket, req)
 	if err != nil {
 		errc := make(chan error, 1)
@@ -343,6 +344,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	})
+	log.Info("============ CSW======", "rest0", string(rest[0]))
 	return nodes, <-errc
 }
 
@@ -485,6 +487,7 @@ func init() {
 
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: ^uint64(0), Rest: rest}
+	log.Info("============ CSW======", "rest0", string(rest[0]))
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
 	for n := 0; ; n++ {
 		p.Nodes = append(p.Nodes, maxSizeNode)
@@ -691,6 +694,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: uint64(time.Now().Add(expiration).Unix()), Rest: rest}
+	log.Info("============ CSW======", "rest0", string(rest[0]))
 	var sent bool
 	// Send neighbors in chunks with at most maxNeighbors per packet
 	// to stay below the 1280 byte limit.
