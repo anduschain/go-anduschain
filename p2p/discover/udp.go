@@ -278,7 +278,10 @@ func (t *udp) ping(toid NodeID, toaddr *net.UDPAddr) error {
 // when the reply arrives.
 func (t *udp) sendPing(toid NodeID, toaddr *net.UDPAddr, callback func()) <-chan error {
 	var rest []rlp.RawValue
-	rest = append(rest, []byte("godaon"))
+	var tmp rlp.RawValue
+
+	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
+	rest = append(rest, tmp)
 	req := &ping{
 		Version:    4,
 		From:       t.ourEndpoint,
@@ -333,7 +336,10 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		return nreceived >= bucketSize
 	})
 	var rest []rlp.RawValue
-	rest = append(rest, []byte("godaon"))
+	var tmp rlp.RawValue
+
+	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
+	rest = append(rest, tmp)
 	t.send(toaddr, findnodePacket, &findnode{
 		Target:     target,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
@@ -477,7 +483,10 @@ var (
 
 func init() {
 	var rest []rlp.RawValue
-	rest = append(rest, []byte("godaon"))
+	var tmp rlp.RawValue
+
+	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
+	rest = append(rest, tmp)
 	p := neighbors{Expiration: ^uint64(0), Rest: rest}
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
 	for n := 0; ; n++ {
@@ -621,7 +630,10 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 		return errExpired
 	}
 	var rest []rlp.RawValue
-	rest = append(rest, []byte("godaon"))
+	var tmp rlp.RawValue
+
+	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
+	rest = append(rest, tmp)
 	t.send(from, pongPacket, &pong{
 		To:         makeEndpoint(from, req.From.TCP),
 		ReplyTok:   mac,
@@ -678,7 +690,10 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 	t.mutex.Unlock()
 
 	var rest []rlp.RawValue
-	rest = append(rest, []byte("godaon"))
+	var tmp rlp.RawValue
+
+	tmp = append(tmp, 'g', 'o', 'd', 'a', 'o', 'n')
+	rest = append(rest, tmp)
 	p := neighbors{Expiration: uint64(time.Now().Add(expiration).Unix()), Rest: rest}
 	var sent bool
 	// Send neighbors in chunks with at most maxNeighbors per packet
