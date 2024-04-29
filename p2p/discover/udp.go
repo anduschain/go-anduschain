@@ -636,6 +636,7 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	})
+	log.Info("============ CSW======", "rest0", string(rest[0]))
 	t.handleReply(fromID, pingPacket, req)
 
 	// Add the node to the table. Before doing so, ensure that we have a recent enough pong
