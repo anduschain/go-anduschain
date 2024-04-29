@@ -145,7 +145,7 @@ func nodeToRPC(n *Node) rpcNode {
 type packet interface {
 	handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error
 	name() string
-	rest() []rlp.RawValue
+	rest() []byte
 }
 
 type conn interface {
@@ -288,7 +288,7 @@ func (t *udp) sendPing(toid NodeID, toaddr *net.UDPAddr, callback func()) <-chan
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	}
-	log.Info("============ CSW======", "rest0", string(rest[0]))
+
 	packet, hash, err := encodePacket(t.priv, pingPacket, req)
 	if err != nil {
 		errc := make(chan error, 1)
@@ -344,7 +344,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	})
-	log.Info("============ CSW======", "rest0", string(rest[0]))
+
 	return nodes, <-errc
 }
 
@@ -487,7 +487,7 @@ func init() {
 
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: ^uint64(0), Rest: rest}
-	log.Info("============ CSW======", "rest0", string(rest[0]))
+
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
 	for n := 0; ; n++ {
 		p.Nodes = append(p.Nodes, maxSizeNode)
@@ -611,17 +611,14 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	err = s.Decode(req)
 	// CSW check GoDaon
 	rest := req.rest()
-	if len(rest) == 1 {
-		if string(rest[0]) != "godaon" {
-			return nil, fromID, hash, fmt.Errorf("not godaon packet %s rest=%s", req.name(), string(rest[0]))
-		} else {
-			log.Info("=== CSW Rest", "rest[0]", string(rest[0]))
+	if len(rest) != 0 {
+		if string(rest) != "godaon" {
+			return nil, fromID, hash, fmt.Errorf("not godaon packet %s rest=%s", req.name(), string(rest))
 		}
-	} else if len(rest) == 0 {
-		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest=0", req.name())
 	} else {
-		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest %d %s", req.name(), len(rest), string(rest[0]))
+		return nil, fromID, hash, fmt.Errorf("not godaon packet %s len_rest=0", req.name())
 	}
+
 	return req, fromID, hash, err
 }
 
@@ -639,7 +636,7 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 		Rest:       rest,
 	})
-	log.Info("============ CSW======", "rest0", string(rest[0]))
+
 	t.handleReply(fromID, pingPacket, req)
 
 	// Add the node to the table. Before doing so, ensure that we have a recent enough pong
@@ -654,8 +651,20 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 	return nil
 }
 
-func (req *ping) name() string         { return "PING/v4" }
-func (req *ping) rest() []rlp.RawValue { return req.Rest }
+func (req *ping) name() string { return "PING/v4" }
+func (req *ping) rest() []byte {
+	var rtn []byte
+	totalSize := 0
+	for _, tmp := range req.Rest {
+		totalSize += len(tmp)
+	}
+
+	rtn = make([]byte, 0, totalSize)
+	for _, tmp := range req.Rest {
+		rtn = append(rtn, tmp...)
+	}
+	return rtn
+}
 
 func (req *pong) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 	if expired(req.Expiration) {
@@ -668,8 +677,20 @@ func (req *pong) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 	return nil
 }
 
-func (req *pong) name() string         { return "PONG/v4" }
-func (req *pong) rest() []rlp.RawValue { return req.Rest }
+func (req *pong) name() string { return "PONG/v4" }
+func (req *pong) rest() []byte {
+	var rtn []byte
+	totalSize := 0
+	for _, tmp := range req.Rest {
+		totalSize += len(tmp)
+	}
+
+	rtn = make([]byte, 0, totalSize)
+	for _, tmp := range req.Rest {
+		rtn = append(rtn, tmp...)
+	}
+	return rtn
+}
 
 func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 	if expired(req.Expiration) {
@@ -694,7 +715,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 
 	rest = append(rest, tmp)
 	p := neighbors{Expiration: uint64(time.Now().Add(expiration).Unix()), Rest: rest}
-	log.Info("============ CSW======", "rest0", string(rest[0]))
+
 	var sent bool
 	// Send neighbors in chunks with at most maxNeighbors per packet
 	// to stay below the 1280 byte limit.
@@ -714,8 +735,20 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 	return nil
 }
 
-func (req *findnode) name() string         { return "FINDNODE/v4" }
-func (req *findnode) rest() []rlp.RawValue { return req.Rest }
+func (req *findnode) name() string { return "FINDNODE/v4" }
+func (req *findnode) rest() []byte {
+	var rtn []byte
+	totalSize := 0
+	for _, tmp := range req.Rest {
+		totalSize += len(tmp)
+	}
+
+	rtn = make([]byte, 0, totalSize)
+	for _, tmp := range req.Rest {
+		rtn = append(rtn, tmp...)
+	}
+	return rtn
+}
 
 func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 	if expired(req.Expiration) {
@@ -727,8 +760,20 @@ func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byt
 	return nil
 }
 
-func (req *neighbors) name() string         { return "NEIGHBORS/v4" }
-func (req *neighbors) rest() []rlp.RawValue { return req.Rest }
+func (req *neighbors) name() string { return "NEIGHBORS/v4" }
+func (req *neighbors) rest() []byte {
+	var rtn []byte
+	totalSize := 0
+	for _, tmp := range req.Rest {
+		totalSize += len(tmp)
+	}
+
+	rtn = make([]byte, 0, totalSize)
+	for _, tmp := range req.Rest {
+		rtn = append(rtn, tmp...)
+	}
+	return rtn
+}
 
 func expired(ts uint64) bool {
 	return time.Unix(int64(ts), 0).Before(time.Now())
