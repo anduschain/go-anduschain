@@ -613,7 +613,7 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	rest := req.rest()
 	if len(rest) == 1 {
 		if string(rest[0]) != "godaon" {
-			return nil, fromID, hash, fmt.Errorf("not godaon packet %s", req.name(), "rest", string(rest[0]))
+			return nil, fromID, hash, fmt.Errorf("not godaon packet rest=%s", req.name(), string(rest[0]))
 		} else {
 			log.Info("=== CSW Rest", "rest[0]", string(rest[0]))
 		}
