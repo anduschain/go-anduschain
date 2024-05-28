@@ -405,27 +405,22 @@ func (fn *Fairnode) processManageLoop() {
 					}
 					leageuWaitAttampt = 0
 				case types.MAKE_LEAGUE:
-					// ToDo: CSW 3->1
-					time.Sleep(1 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_JOIN_TX
 				case types.MAKE_JOIN_TX:
 					if fn.lastBlock != nil {
 						l.Current = fn.lastBlock.Number()
 					}
-					// ToDo: CSW 3->1
-					time.Sleep(1 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.MAKE_BLOCK
 				case types.MAKE_BLOCK:
-					// ToDo: CSW 3->1
-					time.Sleep(1 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.LEAGUE_BROADCASTING
 				case types.LEAGUE_BROADCASTING:
-					// ToDo: CSW 5->3
-					time.Sleep(3 * time.Second)
+					time.Sleep(5 * time.Second)
 					l.Status = types.VOTE_START
 				case types.VOTE_START:
-					// ToDo: CSW 3->2
-					time.Sleep(2 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.VOTE_COMPLETE
 				case types.VOTE_COMPLETE:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
@@ -481,8 +476,7 @@ func (fn *Fairnode) processManageLoop() {
 					}
 					sendBlockAttampt = 0
 				case types.REQ_FAIRNODE_SIGN:
-					// ToDo: CSW 3->2
-					time.Sleep(2 * time.Second)
+					time.Sleep(3 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
 					if block := fn.db.CurrentBlock(); block != nil {
@@ -490,8 +484,7 @@ func (fn *Fairnode) processManageLoop() {
 						l.Current = block.Number()
 						l.Votehash = nil
 						l.BlockHash = nil
-						// ToDo: CSW 3->1
-						time.Sleep(1 * time.Second)
+						time.Sleep(3 * time.Second)
 						fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 					} else {
 						hash := *l.BlockHash
@@ -500,8 +493,7 @@ func (fn *Fairnode) processManageLoop() {
 						l.Status = types.REJECT
 					}
 				case types.REJECT:
-					// ToDo: CSW 2->1
-					time.Sleep(1 * time.Second)
+					time.Sleep(2 * time.Second)
 					cur := *fn.currentLeague
 					logger.Warn("League Reject and Delete League", "hash", cur.String())
 					delete(fn.leagues, cur) // league delete
