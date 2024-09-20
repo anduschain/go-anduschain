@@ -23,9 +23,9 @@ build/_vendor/pkg
 .settings
 
 # used by the Makefile
-/build/_workspace/
-/build/bin/
-/geth*.zip
+build/_workspace/
+build/bin/
+geth*.zip
 
 # travis
 profile.tmp
