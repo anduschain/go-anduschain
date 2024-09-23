@@ -717,6 +717,7 @@ func (w *worker) resultLoop() {
 		select {
 		case block := <-w.resultCh:
 			if w.config.Deb != nil && w.fnStatus != types.MAKE_BLOCK {
+				log.Error("Got resultCh But fnStatus is not MAKE_BLOCK", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
@@ -791,6 +792,7 @@ func (w *worker) resultLoop() {
 			}
 		case <-w.leagueBroadCastCh:
 			if w.config.Deb != nil && w.fnStatus != types.LEAGUE_BROADCASTING {
+				log.Error("Got leagueBroadCastCh But fnStatus is not LEAGUE_BROADCASTING", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
@@ -826,6 +828,7 @@ func (w *worker) resultLoop() {
 			}
 
 			if bypass {
+				log.Error("Got leagueBlockCh But fnStatus is not MAKE_BLOCK, LEAGUE_BROADCASTING", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
@@ -888,6 +891,7 @@ func (w *worker) resultLoop() {
 
 		case voters := <-w.voteResultCh:
 			if w.fnStatus != types.VOTE_COMPLETE {
+				log.Error("Got voteResultCh But fnStatus is not VOTE_COMPLETE", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
