@@ -910,6 +910,7 @@ func (w *worker) resultLoop() {
 
 		case fnSign := <-w.fnSignCh:
 			if w.fnStatus != types.REQ_FAIRNODE_SIGN {
+				log.Error("Got FairnodeSign But fnStatus is not REQ_FAIRNODE_SIGN", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
@@ -937,6 +938,7 @@ func (w *worker) resultLoop() {
 			log.Info("Make Final Block for Finalize", "hash", w.finalBlock.Hash())
 		case <-w.finalizeCh:
 			if w.config.Deb != nil && w.fnStatus != types.FINALIZE {
+				log.Error("Got Finalize But fnStatus is not FINALIZE", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
