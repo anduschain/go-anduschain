@@ -828,7 +828,6 @@ func (w *worker) resultLoop() {
 			}
 
 			if bypass {
-				log.Error("Got leagueBlockCh But fnStatus is not MAKE_BLOCK, LEAGUE_BROADCASTING", "fnStatus", w.fnStatus.String())
 				continue
 			}
 
