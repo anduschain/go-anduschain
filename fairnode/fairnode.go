@@ -481,8 +481,8 @@ func (fn *Fairnode) processManageLoop() {
 					}
 					sendBlockAttampt = 0
 				case types.REQ_FAIRNODE_SIGN:
-					// ToDo: CSW 3->2
-					time.Sleep(2 * time.Second)
+					// ToDo: CSW 3->3
+					time.Sleep(3 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
 					if block := fn.db.CurrentBlock(); block != nil {
@@ -490,8 +490,8 @@ func (fn *Fairnode) processManageLoop() {
 						l.Current = block.Number()
 						l.Votehash = nil
 						l.BlockHash = nil
-						// ToDo: CSW 3->1
-						time.Sleep(1 * time.Second)
+						// ToDo: CSW 3->2
+						time.Sleep(2 * time.Second)
 						fn.makePendingLeagueCh <- struct{}{} // signal for checking league otprn
 					} else {
 						hash := *l.BlockHash
