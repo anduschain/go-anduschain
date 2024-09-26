@@ -357,6 +357,10 @@ func (s *Ethereum) SetEtherbase(etherbase common.Address) {
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
 func (s *Ethereum) StartMining(threads int) error {
+	if s.IsLayer2() { // Layer2 인 경우에는 mining 하지 않음
+		log.Info("Layer2 is not mineable!!")
+		return nil
+	}
 	// Update the thread count within the consensus engine
 	type threaded interface {
 		SetThreads(threads int)
@@ -430,6 +434,8 @@ func (s *Ethereum) IsListening() bool                  { return true } // Always
 func (s *Ethereum) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
+
+func (s *Ethereum) IsLayer2() bool { return s.config.Layer2 }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

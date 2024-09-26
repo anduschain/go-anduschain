@@ -75,6 +75,8 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.FairserverIP,
 			utils.FairserverPort,
+			utils.OrdererIP,
+			utils.OrdererPort,
 		},
 	},
 	{

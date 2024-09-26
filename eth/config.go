@@ -116,6 +116,8 @@ type Config struct {
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
 	// send-transction variants. The unit is ether.
 	RPCTxFeeCap float64
+
+	Layer2 bool `toml:",omitempty"`
 }
 
 type configMarshaling struct {

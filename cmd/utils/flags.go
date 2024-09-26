@@ -548,6 +548,18 @@ var (
 		Value: "60002",
 	}
 
+	OrdererIP = cli.StringFlag{
+		Name:  "ordererHost",
+		Usage: "orderer connection IP",
+		Value: "localhost",
+	}
+
+	OrdererPort = cli.StringFlag{
+		Name:  "orderPort",
+		Usage: "oderer connection Port",
+		Value: "61002",
+	}
+
 	//for DB export file
 	FairUseSRV = cli.BoolFlag{
 		Name:  "usesrv",
@@ -895,6 +907,12 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	if ctx.GlobalIsSet(FairserverPort.Name) {
 		cfg.FairServerPort = ctx.GlobalString(FairserverPort.Name)
 	}
+	if ctx.GlobalIsSet(OrdererIP.Name) {
+		cfg.OrdererIP = ctx.GlobalString(OrdererIP.Name)
+	}
+	if ctx.GlobalIsSet(OrdererPort.Name) {
+		cfg.OrdererPort = ctx.GlobalString(OrdererPort.Name)
+	}
 
 	// if we're running a light client or server, force enable the v5 peer discovery
 	// unless it is explicitly disabled with --nodiscover note that explicitly specifying
@@ -1097,6 +1115,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 	if ctx.GlobalIsSet(ZktrieEnableFlag.Name) {
 		cfg.ZktrieEnabled = true
+	}
+
+	if ctx.GlobalIsSet(OrdererIP.Name) {
+		cfg.Layer2 = true
 	}
 
 	// Override any default configs for hard coded networks.

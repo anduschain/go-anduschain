@@ -148,6 +148,8 @@ type Config struct {
 	UseLocalIp     bool
 	FairServerIP   string
 	FairServerPort string
+	OrdererIP      string
+	OrdererPort    string
 }
 
 // Server manages all peer connections.
