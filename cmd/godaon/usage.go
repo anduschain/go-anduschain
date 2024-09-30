@@ -75,8 +75,6 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.FairserverIP,
 			utils.FairserverPort,
-			utils.OrdererIP,
-			utils.OrdererPort,
 		},
 	},
 	{
@@ -94,6 +92,13 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.LightServFlag,
 			utils.LightPeersFlag,
 			utils.LightKDFFlag,
+		},
+	},
+	{
+		Name: "LAYER2 CHAIN",
+		Flags: []cli.Flag{
+			utils.OrdererIP,
+			utils.OrdererPort,
 		},
 	},
 	{

@@ -203,8 +203,8 @@ func init() {
 	app.Flags = append(app.Flags, debug.Flags...)
 	app.Flags = append(app.Flags, metricsFlags...)
 	app.Flags = append(app.Flags, fairclientFlages...) // andus >> fairnode 통신용 포트셋팅
-	app.Flags = append(app.Flags, ordererFlages...)    // andus >> orderers (L2)
 	app.Flags = append(app.Flags, exportDbFlages...)   // andus >> export blockchain file from fairnode db
+	app.Flags = append(app.Flags, ordererFlages...)    // andus >> orderers (Layer2)
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())

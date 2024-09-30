@@ -1688,6 +1688,8 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	// Determine the highest gas limit can be used during the estimation.
 	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
 		hi = uint64(*args.Gas)
+	} else if args.Gas == nil && b.Engine().Name() == "layer2" {
+		hi = params.TxGas
 	} else {
 		// Retrieve the block to act as the gas ceiling
 		block, err := b.BlockByNumberOrHash(ctx, blockNrOrHash)

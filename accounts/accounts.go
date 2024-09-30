@@ -41,6 +41,7 @@ const (
 	MimetypeClique            = "application/x-clique-header"
 	MimetypeTextPlain         = "text/plain"
 	MimetypeSse               = "application/x-sse-header"
+	MimetypeLayer2            = "application/x-layer2-header"
 )
 
 // Wallet represents a software or hardware wallet that might contain one or more

@@ -26,6 +26,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/clique"
 	"github.com/anduschain/go-anduschain/consensus/deb"
+	"github.com/anduschain/go-anduschain/consensus/layer2"
 	"github.com/anduschain/go-anduschain/consensus/sse"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/bloombits"
@@ -255,6 +256,8 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		return clique.New(chainConfig.Clique, db)
 	} else if chainConfig.Sse != nil {
 		return sse.New(chainConfig.Sse, db)
+	} else if chainConfig.Layer2 != nil {
+		return layer2.New(chainConfig.Layer2, db)
 	} else {
 		return deb.New(chainConfig.Deb, db)
 	}
@@ -357,8 +360,9 @@ func (s *Ethereum) SetEtherbase(etherbase common.Address) {
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
 func (s *Ethereum) StartMining(threads int) error {
-	if s.IsLayer2() { // Layer2 인 경우에는 mining 하지 않음
-		log.Info("Layer2 is not mineable!!")
+	// TODO: CSW Laayer2인 경우에는 채굴하지 않음
+	if _, ok := s.engine.(*layer2.Layer2); ok {
+		log.Info("Layer2 is not support Mining!!!!")
 		return nil
 	}
 	// Update the thread count within the consensus engine
@@ -434,8 +438,6 @@ func (s *Ethereum) IsListening() bool                  { return true } // Always
 func (s *Ethereum) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
-
-func (s *Ethereum) IsLayer2() bool { return s.config.Layer2 }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

@@ -548,18 +548,6 @@ var (
 		Value: "60002",
 	}
 
-	OrdererIP = cli.StringFlag{
-		Name:  "ordererHost",
-		Usage: "orderer connection IP",
-		Value: "localhost",
-	}
-
-	OrdererPort = cli.StringFlag{
-		Name:  "orderPort",
-		Usage: "oderer connection Port",
-		Value: "61002",
-	}
-
 	//for DB export file
 	FairUseSRV = cli.BoolFlag{
 		Name:  "usesrv",
@@ -582,6 +570,19 @@ var (
 	FairDBOpt = cli.StringFlag{
 		Name:  "dbopt",
 		Usage: "fairnode database options",
+	}
+
+	// Layer2 Config
+	OrdererIP = cli.StringFlag{
+		Name:  "ordererHost",
+		Usage: "orderer connection IP",
+		Value: "localhost",
+	}
+
+	OrdererPort = cli.StringFlag{
+		Name:  "orderPort",
+		Usage: "oderer connection Port",
+		Value: "61002",
 	}
 )
 
@@ -1115,10 +1116,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 	if ctx.GlobalIsSet(ZktrieEnableFlag.Name) {
 		cfg.ZktrieEnabled = true
-	}
-
-	if ctx.GlobalIsSet(OrdererIP.Name) {
-		cfg.Layer2 = true
 	}
 
 	// Override any default configs for hard coded networks.

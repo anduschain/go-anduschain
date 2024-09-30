@@ -108,7 +108,7 @@ var (
 	TestChainConfig = &ChainConfig{
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -122,7 +122,7 @@ var (
 	TestDebChainConfig = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -136,7 +136,7 @@ var (
 	AllDebProtocolChanges = &ChainConfig{
 		DvlpNetId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), TestDebConfig, nil, nil,
+		big.NewInt(0), TestDebConfig, nil, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -151,7 +151,7 @@ var (
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -166,7 +166,7 @@ var (
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil,
+		big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -181,7 +181,7 @@ var (
 		GeneralId, big.NewInt(0), nil, true,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000}, nil,
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -196,7 +196,37 @@ var (
 		big.NewInt(1337), big.NewInt(0), nil, false,
 		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
 		big.NewInt(0), big.NewInt(0), big.NewInt(0),
-		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000},
+		big.NewInt(0), nil, nil, &SseConfig{Period: 0, Epoch: 30000}, nil,
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
+
+	TestLayer2ChainConfig = &ChainConfig{
+		GeneralId, big.NewInt(0), nil, true,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), nil, nil, nil, &Layer2Config{Period: 0, Epoch: 30000},
+		ScrollConfig{
+			UseZktrie:                 false,
+			FeeVaultAddress:           &common.Address{123},
+			EnableEIP2718:             true,
+			EnableEIP1559:             true,
+			MaxTxPerBlock:             nil,
+			MaxTxPayloadBytesPerBlock: nil,
+			L1Config:                  &L1Config{5, common.HexToAddress("0x0000000000000000000000000000000000000000"), 0, common.HexToAddress("0x0000000000000000000000000000000000000000")},
+		}}
+
+	AllLayer2ProtocolChanges = &ChainConfig{
+		big.NewInt(1337), big.NewInt(0), nil, false,
+		big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), big.NewInt(0), big.NewInt(0),
+		big.NewInt(0), nil, nil, nil, &Layer2Config{Period: 0, Epoch: 30000},
 		ScrollConfig{
 			UseZktrie:                 false,
 			FeeVaultAddress:           &common.Address{123},
@@ -237,6 +267,7 @@ type ChainConfig struct {
 	Deb    *DebConfig    `json:"deb,omitempty"`
 	Clique *CliqueConfig `json:"clique,omitempty"`
 	Sse    *SseConfig    `json:"sse,omitempty"`
+	Layer2 *Layer2Config `json:"layer2,omitempty"`
 
 	// Scroll genesis extension: enable scroll rollup-related traces & state transition
 	Scroll ScrollConfig `json:"scroll,omitempty"`
@@ -378,6 +409,17 @@ func (c *SseConfig) String() string {
 	return "sse"
 }
 
+// CliqueConfig is the consensus engine configs for proof-of-authority based sealing.
+type Layer2Config struct {
+	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
+	Epoch  uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
+}
+
+// String implements the stringer interface, returning the consensus engine details.
+func (c *Layer2Config) String() string {
+	return "laye2"
+}
+
 // String implements the fmt.Stringer interface.
 func (c *ChainConfig) String() string {
 	var engine interface{}
@@ -471,7 +513,6 @@ func (c *ChainConfig) IsUlsan(num *big.Int) bool {
 	} else {
 		return isForked(c.UlsanBlock, num)
 	}
-
 }
 
 // GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).
