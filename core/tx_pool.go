@@ -1061,7 +1061,12 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	}
 	// Notify subsystem for new promoted transactions.
 	if len(promoted) > 0 {
-		go pool.txFeed.Send(types.NewTxsEvent{promoted})
+		if pool.chainconfig.Layer2 != nil {
+			// TODO: CSW Layer2 Transactions를 타 노드에 배포하지 않고, Orderer에만 전송
+			log.Info("Layer2 Do Not Make NewTxsEvent..... Only Send Orderer!!!!!!!!!!!!!!!", "layer2", pool.chainconfig.Layer2)
+		} else {
+			go pool.txFeed.Send(types.NewTxsEvent{promoted})
+		}
 	}
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)

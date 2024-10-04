@@ -18,11 +18,6 @@ fairnode:
 	@echo "Done building fairnode."
 	@echo "Run \"$(GOBIN)/fairnode\" to launch fairnode."
 
-godaonrelay:
-	build/env.sh go run build/ci.go install ./cmd/godaonrelay
-	@echo "Done building godaonrelay."
-	@echo "Run \"$(GOBIN)/godaonrelay\" to launch godaonrelay."
-
 loadtest:
 	build/env.sh go run build/ci.go install ./cmd/loadtest
 	@echo "Done building loadtest."
