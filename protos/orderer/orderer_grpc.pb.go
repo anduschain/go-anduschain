@@ -21,99 +21,99 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FairnodeService_HeartBeat_FullMethodName = "/orderer.FairnodeService/HeartBeat"
+	OrdererService_HeartBeat_FullMethodName = "/orderer.OrdererService/HeartBeat"
 )
 
-// FairnodeServiceClient is the client API for FairnodeService service.
+// OrdererServiceClient is the client API for OrdererService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type FairnodeServiceClient interface {
+type OrdererServiceClient interface {
 	HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type fairnodeServiceClient struct {
+type ordererServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewFairnodeServiceClient(cc grpc.ClientConnInterface) FairnodeServiceClient {
-	return &fairnodeServiceClient{cc}
+func NewOrdererServiceClient(cc grpc.ClientConnInterface) OrdererServiceClient {
+	return &ordererServiceClient{cc}
 }
 
-func (c *fairnodeServiceClient) HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *ordererServiceClient) HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, FairnodeService_HeartBeat_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, OrdererService_HeartBeat_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// FairnodeServiceServer is the server API for FairnodeService service.
-// All implementations should embed UnimplementedFairnodeServiceServer
+// OrdererServiceServer is the server API for OrdererService service.
+// All implementations should embed UnimplementedOrdererServiceServer
 // for forward compatibility.
-type FairnodeServiceServer interface {
+type OrdererServiceServer interface {
 	HeartBeat(context.Context, *common.HeartBeat) (*emptypb.Empty, error)
 }
 
-// UnimplementedFairnodeServiceServer should be embedded to have
+// UnimplementedOrdererServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedFairnodeServiceServer struct{}
+type UnimplementedOrdererServiceServer struct{}
 
-func (UnimplementedFairnodeServiceServer) HeartBeat(context.Context, *common.HeartBeat) (*emptypb.Empty, error) {
+func (UnimplementedOrdererServiceServer) HeartBeat(context.Context, *common.HeartBeat) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HeartBeat not implemented")
 }
-func (UnimplementedFairnodeServiceServer) testEmbeddedByValue() {}
+func (UnimplementedOrdererServiceServer) testEmbeddedByValue() {}
 
-// UnsafeFairnodeServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to FairnodeServiceServer will
+// UnsafeOrdererServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to OrdererServiceServer will
 // result in compilation errors.
-type UnsafeFairnodeServiceServer interface {
-	mustEmbedUnimplementedFairnodeServiceServer()
+type UnsafeOrdererServiceServer interface {
+	mustEmbedUnimplementedOrdererServiceServer()
 }
 
-func RegisterFairnodeServiceServer(s grpc.ServiceRegistrar, srv FairnodeServiceServer) {
-	// If the following call pancis, it indicates UnimplementedFairnodeServiceServer was
+func RegisterOrdererServiceServer(s grpc.ServiceRegistrar, srv OrdererServiceServer) {
+	// If the following call pancis, it indicates UnimplementedOrdererServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&FairnodeService_ServiceDesc, srv)
+	s.RegisterService(&OrdererService_ServiceDesc, srv)
 }
 
-func _FairnodeService_HeartBeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OrdererService_HeartBeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(common.HeartBeat)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FairnodeServiceServer).HeartBeat(ctx, in)
+		return srv.(OrdererServiceServer).HeartBeat(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FairnodeService_HeartBeat_FullMethodName,
+		FullMethod: OrdererService_HeartBeat_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FairnodeServiceServer).HeartBeat(ctx, req.(*common.HeartBeat))
+		return srv.(OrdererServiceServer).HeartBeat(ctx, req.(*common.HeartBeat))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// FairnodeService_ServiceDesc is the grpc.ServiceDesc for FairnodeService service.
+// OrdererService_ServiceDesc is the grpc.ServiceDesc for OrdererService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var FairnodeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "orderer.FairnodeService",
-	HandlerType: (*FairnodeServiceServer)(nil),
+var OrdererService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "orderer.OrdererService",
+	HandlerType: (*OrdererServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "HeartBeat",
-			Handler:    _FairnodeService_HeartBeat_Handler,
+			Handler:    _OrdererService_HeartBeat_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

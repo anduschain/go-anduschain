@@ -6,6 +6,6 @@ package orderer;
 import "common/common.proto";
 import "google/protobuf/empty.proto";
 
-service FairnodeService {
+service OrdererService {
   rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
 }

@@ -2,6 +2,8 @@ package orderer
 
 import (
 	"fmt"
+	"github.com/anduschain/go-anduschain/orderer/ordererdb"
+	"github.com/anduschain/go-anduschain/protos/orderer"
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"net"
@@ -16,7 +18,7 @@ type Orderer struct {
 	mu          sync.Mutex
 	tcpListener net.Listener
 	gRpcServer  *grpc.Server
-	db          *MongoDatabase
+	db          ordererdb.OrdererDB
 	errCh       chan error
 	//roleCh      chan fs.FnType
 	//
@@ -62,7 +64,7 @@ func NewOrderer() (*Orderer, error) {
 
 func (fn *Orderer) Start() error {
 	var err error
-	fn.db, err = NewDatabase(DefaultConfig)
+	fn.db, err = ordererdb.NewMongoDatabase(DefaultConfig)
 	if err != nil {
 		return err
 	}
@@ -71,6 +73,8 @@ func (fn *Orderer) Start() error {
 		logger.Error("Fail to db start", "msg", err)
 		return err
 	}
+
+	go fn.severLoop()
 
 	select {
 	case err := <-fn.errCh:
@@ -81,10 +85,24 @@ func (fn *Orderer) Start() error {
 	}
 }
 
+func (fn *Orderer) severLoop() {
+	orderer.RegisterOrdererServiceServer(fn.gRpcServer, newServer(fn))
+	if err := fn.gRpcServer.Serve(fn.tcpListener); err != nil {
+		logger.Error("failed to serve: %v", err)
+		fn.errCh <- err
+	}
+
+	defer logger.Warn("server loop was dead")
+}
+
 func (fn *Orderer) Stop() {
 	//fn.fnSyncer.Stop()
 	fn.db.Stop()
 	fn.gRpcServer.Stop()
 	fn.tcpListener.Close()
 	defer logger.Warn("Stoped orderer")
+}
+
+func (fn *Orderer) Database() ordererdb.OrdererDB {
+	return fn.db
 }

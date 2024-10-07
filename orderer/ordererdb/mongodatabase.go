@@ -1,9 +1,10 @@
-package orderer
+package ordererdb
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	logger "github.com/anduschain/go-anduschain/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -36,7 +37,7 @@ type config interface {
 	GetInfo() (useSRV bool, host, port, user, pass, ssl, option string, chainID *big.Int)
 }
 
-func NewDatabase(conf config) (*MongoDatabase, error) {
+func NewMongoDatabase(conf config) (*MongoDatabase, error) {
 	var db MongoDatabase
 	var err error
 	var protocol, userPass, dbOpt string

@@ -63,7 +63,7 @@ var (
 		},
 		cli.StringFlag{
 			Name:  "subport",
-			Value: "62001",
+			Value: "61002",
 			Usage: "default sub port 61002",
 		},
 
