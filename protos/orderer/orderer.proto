@@ -1,0 +1,11 @@
+syntax = "proto3";
+option go_package = "github.com/anduschain/go-anduschain/protos/orderer";
+
+package orderer;
+
+import "common/common.proto";
+import "google/protobuf/empty.proto";
+
+service FairnodeService {
+  rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
+}

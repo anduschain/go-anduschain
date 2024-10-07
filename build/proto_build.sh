@@ -5,7 +5,7 @@ set -eux
 # Find explicit proto roots
 PROTO_ROOT_FILES=$PWD/protos/.protoroot
 PROTO_ROOT_DIRS="$(dirname $PROTO_ROOT_FILES)"
-TREZOR_DIR=$PWD/accounts/usbwallet/internal/trezor
+TREZOR_DIR=$PWD/accounts/usbwallet/trezor
 BUILD_DIR=$PWD/build
 
 
@@ -25,7 +25,7 @@ echo Working on dir $dir
           if grep -q "$BUILD_DIR" <<< "$dir"; then
             echo ""
           else
-	          protoc --go_out=$GOPATH/src --go-grpc_out=require_unimplemented_servers=false:$GOPATH/src --proto_path="$dir" "$protos"/*.proto
+	          protoc --go_out=$dir --go-grpc_out=require_unimplemented_servers=false:$dir --proto_path="$dir" "$protos"/*.proto
 	        fi
 	      fi
 	done

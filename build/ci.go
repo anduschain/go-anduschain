@@ -74,6 +74,11 @@ var (
 		executablePath("fairnode"),
 	}
 
+	ordererArchiveFiles = []string{
+		"COPYING",
+		executablePath("orderer"),
+	}
+
 	loadtestArchiveFiles = []string{
 		"COPYING",
 		executablePath("loadtest"),
@@ -87,6 +92,7 @@ var (
 		executablePath("evm"),
 		executablePath("godaon"),
 		executablePath("fairnode"),
+		executablePath("orderer"),
 		executablePath("loadtest"),
 		executablePath("puppeth"),
 		executablePath("rlpdump"),
@@ -115,6 +121,10 @@ var (
 		{
 			BinaryName:  "fairnode",
 			Description: "Anduschain Fairnode Server.",
+		},
+		{
+			BinaryName:  "orderer",
+			Description: "Anduschain Layer2 Orderer Server.",
 		},
 		{
 			BinaryName:  "loadtest",
@@ -412,6 +422,9 @@ func doArchive(cmdline []string) {
 		log.Fatal(err)
 	}
 	if err := build.WriteArchive(geth, fairnodeArchiveFiles); err != nil {
+		log.Fatal(err)
+	}
+	if err := build.WriteArchive(geth, ordererArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
 	if err := build.WriteArchive(geth, loadtestArchiveFiles); err != nil {

@@ -18,8 +18,9 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
-
+	"github.com/anduschain/go-anduschain/console"
 	"github.com/anduschain/go-anduschain/console/prompt"
 )
 
@@ -44,6 +45,25 @@ func GetPassPhrase(text string, confirmation bool) string {
 		}
 	}
 	return password
+}
+
+func PromptPassphrase(confirmation bool) string {
+	passphrase, err := console.Stdin.PromptPassword("Passphrase: ")
+	if err != nil {
+		Fatalf("Failed to read passphrase: %v", err)
+	}
+
+	if confirmation {
+		confirm, err := console.Stdin.PromptPassword("Repeat passphrase: ")
+		if err != nil {
+			Fatalf("Failed to read passphrase confirmation: %v", err)
+		}
+		if passphrase != confirm {
+			Fatalf("Failed: %v", errors.New("Passphrases do not match"))
+		}
+	}
+
+	return passphrase
 }
 
 // GetPassPhraseWithList retrieves the password associated with an account, either fetched

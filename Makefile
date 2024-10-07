@@ -18,6 +18,11 @@ fairnode:
 	@echo "Done building fairnode."
 	@echo "Run \"$(GOBIN)/fairnode\" to launch fairnode."
 
+orderer:
+	build/env.sh go run build/ci.go install ./cmd/orderer
+	@echo "Done building orderer."
+	@echo "Run \"$(GOBIN)/orderer\" to launch orderer."
+
 loadtest:
 	build/env.sh go run build/ci.go install ./cmd/loadtest
 	@echo "Done building loadtest."
