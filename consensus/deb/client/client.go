@@ -5,12 +5,11 @@ import (
 	"crypto/ecdsa"
 	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
-	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/interfaces"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/event"
 	logger "github.com/anduschain/go-anduschain/log"
-	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	proto "github.com/anduschain/go-anduschain/protos/common"
@@ -52,14 +51,6 @@ func (m *Miner) Hash() common.Hash {
 	})
 }
 
-type Backend interface {
-	BlockChain() *core.BlockChain
-	TxPool() *core.TxPool
-	AccountManager() *accounts.Manager
-	Server() *p2p.Server
-	Coinbase() common.Address
-}
-
 type DebClient struct {
 	mu         sync.Mutex
 	running    int32
@@ -70,7 +61,7 @@ type DebClient struct {
 	fnPubKey   *ecdsa.PublicKey
 	config     *params.ChainConfig
 
-	backend Backend
+	backend interfaces.Backend
 	miner   *Miner
 	otprn   map[common.Hash]*types.Otprn
 
@@ -127,7 +118,7 @@ func getMinerIP() string {
 	return localAddr.IP.String()
 }
 
-func (dc *DebClient) Start(backend Backend) error {
+func (dc *DebClient) Start(backend interfaces.Backend) error {
 	if atomic.LoadInt32(&dc.running) == 1 {
 		return nil
 	}

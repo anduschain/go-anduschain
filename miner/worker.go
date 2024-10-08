@@ -23,8 +23,11 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
+	"github.com/anduschain/go-anduschain/consensus/layer2"
+	lclient "github.com/anduschain/go-anduschain/consensus/layer2/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/interfaces"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/core/vm"
@@ -139,7 +142,7 @@ type NewLeagueBlockData struct {
 type worker struct {
 	config *params.ChainConfig
 	engine consensus.Engine
-	eth    Backend
+	eth    interfaces.Backend
 	chain  *core.BlockChain
 
 	gasFloor uint64
@@ -217,9 +220,13 @@ type worker struct {
 
 	possibleWinningBlock *types.VoteBlock // A set of possible winning voteblock
 
+	// TODO: CSW add for Layer2
+	layer2Client     *lclient.Layer2Client
+	l2ClientCloseCh  chan types.ClientClose
+	l2ClientCLoseSub event.Subscription
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, eth interfaces.Backend, mux *event.TypeMux, recommit time.Duration, gasFloor, gasCeil uint64, loacalIps map[string]string, staticNodes []*discover.Node) *worker {
 	worker := &worker{
 		config:             config,
 		engine:             engine,
@@ -252,6 +259,9 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 		submitBlockCh:     make(chan *types.Block),
 		fnSignCh:          make(chan []byte),
 		finalizeCh:        make(chan struct{}),
+
+		// for layer2 client
+		l2ClientCloseCh: make(chan types.ClientClose),
 	}
 
 	// Subscribe NewTxsEvent for tx pool
@@ -279,6 +289,11 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 
 		go worker.clientStatusLoop() // client close check and mininig canceled
 		go worker.leagueStatusLoop() // for league status message
+	} else if worker.config.Layer2 != nil {
+		worker.layer2Client = lclient.NewLayer2Client(config, worker.exitCh)
+		worker.l2ClientCLoseSub = worker.layer2Client.SubscribeClientCloseEvent(worker.l2ClientCloseCh)
+
+		go worker.l2clientStatusLoop()
 	}
 
 	// Submit first work to initialize pending state.
@@ -456,6 +471,8 @@ func (w *worker) start() {
 	atomic.StoreInt32(&w.running, 1)
 	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debStart()
+	} else if _, ok := w.engine.(*layer2.Layer2); ok {
+		w.layer2Start()
 	} else {
 		w.startCh <- struct{}{}
 	}
@@ -466,6 +483,9 @@ func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
 	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debClient.Stop()
+	}
+	if _, ok := w.engine.(*layer2.Layer2); ok {
+		w.layer2Client.Stop()
 	}
 }
 
@@ -1449,4 +1469,34 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		w.updateSnapshot()
 	}
 	return nil
+}
+
+func (w *worker) layer2Start() {
+	if err := w.layer2Client.Start(w.eth); err == nil {
+		w.startCh <- struct{}{}
+	} else {
+		log.Error("layer2 client start", "msg", err)
+		return
+	}
+}
+
+func (w *worker) l2clientStatusLoop() {
+	defer log.Warn("layer2 client was dead and worker exited")
+	defer w.l2ClientCLoseSub.Unsubscribe()
+
+	for {
+		select {
+		case <-w.l2ClientCloseCh:
+			log.Warn("layser2 client was close")
+			w.layer2Client.Stop()
+			time.AfterFunc(10*time.Second, func() {
+				if w.isRunning() {
+					log.Info("Retry Mining")
+					w.layer2Start()
+				}
+			})
+		case <-w.l2ClientCLoseSub.Err():
+			return
+		}
+	}
 }

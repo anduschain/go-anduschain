@@ -19,37 +19,26 @@ package miner
 
 import (
 	"fmt"
-	"github.com/anduschain/go-anduschain/accounts"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/consensus"
-	"github.com/anduschain/go-anduschain/core"
+	"github.com/anduschain/go-anduschain/core/interfaces"
 	"github.com/anduschain/go-anduschain/core/state"
 	"github.com/anduschain/go-anduschain/core/types"
 	"github.com/anduschain/go-anduschain/eth/downloader"
 	"github.com/anduschain/go-anduschain/event"
 	"github.com/anduschain/go-anduschain/log"
-	"github.com/anduschain/go-anduschain/p2p"
 	"github.com/anduschain/go-anduschain/p2p/discover"
 	"github.com/anduschain/go-anduschain/params"
 	"sync/atomic"
 	"time"
 )
 
-// Backend wraps all methods required for mining.
-type Backend interface {
-	BlockChain() *core.BlockChain
-	TxPool() *core.TxPool
-	AccountManager() *accounts.Manager
-	Server() *p2p.Server
-	Coinbase() common.Address
-}
-
 // Miner creates blocks and searches for proof-of-work values.
 type Miner struct {
 	mux         *event.TypeMux
 	worker      *worker
 	coinbase    common.Address
-	eth         Backend
+	eth         interfaces.Backend
 	engine      consensus.Engine
 	exitCh      chan struct{}
 	localIps    map[string]string
@@ -59,7 +48,7 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, localIps map[string]string, staticNodes []*discover.Node) *Miner {
+func New(eth interfaces.Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, localIps map[string]string, staticNodes []*discover.Node) *Miner {
 	miner := &Miner{
 		eth:         eth,
 		mux:         mux,

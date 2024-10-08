@@ -360,11 +360,6 @@ func (s *Ethereum) SetEtherbase(etherbase common.Address) {
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
 func (s *Ethereum) StartMining(threads int) error {
-	// TODO: CSW Laayer2인 경우에는 채굴하지 않음
-	if _, ok := s.engine.(*layer2.Layer2); ok {
-		log.Info("Layer2 is not support Mining!!!!")
-		return nil
-	}
 	// Update the thread count within the consensus engine
 	type threaded interface {
 		SetThreads(threads int)
