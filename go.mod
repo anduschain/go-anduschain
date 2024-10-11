@@ -7,7 +7,6 @@ toolchain go1.22.1
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
 	github.com/aristanetworks/goarista v0.0.0-20230220080635-060caa35f493
-	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
@@ -48,7 +47,7 @@ require (
 	github.com/rs/cors v1.8.3
 	github.com/scroll-tech/zktrie v0.7.1
 	github.com/status-im/keycard-go v0.2.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b
 	github.com/tyler-smith/go-bip39 v1.1.0
