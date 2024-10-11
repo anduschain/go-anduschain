@@ -137,3 +137,16 @@ message ResFairnodeSign {
     bytes signature = 1;
     bytes sign = 2;
 }
+
+message Transaction {
+    bytes transaction = 1;
+}
+
+// Orderer Transaction 전송
+message TransactionList {
+    uint64  chainID = 1;
+    uint64 currentHeaderNumber = 2;
+    string address = 3;
+    bytes  sign = 4;
+    repeated Transaction Transactions = 5;
+}

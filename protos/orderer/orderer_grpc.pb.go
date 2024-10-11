@@ -21,7 +21,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrdererService_HeartBeat_FullMethodName = "/orderer.OrdererService/HeartBeat"
+	OrdererService_HeartBeat_FullMethodName    = "/orderer.OrdererService/HeartBeat"
+	OrdererService_Transactions_FullMethodName = "/orderer.OrdererService/Transactions"
 )
 
 // OrdererServiceClient is the client API for OrdererService service.
@@ -29,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrdererServiceClient interface {
 	HeartBeat(ctx context.Context, in *common.HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Transactions(ctx context.Context, in *common.TransactionList, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type ordererServiceClient struct {
@@ -49,11 +51,22 @@ func (c *ordererServiceClient) HeartBeat(ctx context.Context, in *common.HeartBe
 	return out, nil
 }
 
+func (c *ordererServiceClient) Transactions(ctx context.Context, in *common.TransactionList, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, OrdererService_Transactions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrdererServiceServer is the server API for OrdererService service.
 // All implementations should embed UnimplementedOrdererServiceServer
 // for forward compatibility.
 type OrdererServiceServer interface {
 	HeartBeat(context.Context, *common.HeartBeat) (*emptypb.Empty, error)
+	Transactions(context.Context, *common.TransactionList) (*emptypb.Empty, error)
 }
 
 // UnimplementedOrdererServiceServer should be embedded to have
@@ -65,6 +78,9 @@ type UnimplementedOrdererServiceServer struct{}
 
 func (UnimplementedOrdererServiceServer) HeartBeat(context.Context, *common.HeartBeat) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HeartBeat not implemented")
+}
+func (UnimplementedOrdererServiceServer) Transactions(context.Context, *common.TransactionList) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Transactions not implemented")
 }
 func (UnimplementedOrdererServiceServer) testEmbeddedByValue() {}
 
@@ -104,6 +120,24 @@ func _OrdererService_HeartBeat_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrdererService_Transactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(common.TransactionList)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrdererServiceServer).Transactions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrdererService_Transactions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrdererServiceServer).Transactions(ctx, req.(*common.TransactionList))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OrdererService_ServiceDesc is the grpc.ServiceDesc for OrdererService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var OrdererService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HeartBeat",
 			Handler:    _OrdererService_HeartBeat_Handler,
+		},
+		{
+			MethodName: "Transactions",
+			Handler:    _OrdererService_Transactions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

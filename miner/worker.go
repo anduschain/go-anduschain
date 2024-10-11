@@ -1403,6 +1403,12 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
+		if _, ok := w.engine.(*layer2.Layer2); ok { // Layer2 의 경우는 블록을 만들지 않고 tx만 orderer에게 전달...
+			// orderer에 Transactions 전송
+			w.layer2Client.Transaction(w.config.ChainID.Uint64(), w.current.header.Number.Uint64(), w.current.txs)
+			return
+		}
+
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return

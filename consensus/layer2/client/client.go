@@ -211,3 +211,36 @@ func (lc *Layer2Client) heartBeat() {
 		}
 	}
 }
+
+func (lc *Layer2Client) Transaction(chainId uint64, cHeaderNumber uint64, txs types.Transactions) {
+	var txlist []*proto.Transaction
+	for _, tx := range txs {
+		bTx, err := tx.MarshalBinary()
+		if err == nil {
+			var aTx *proto.Transaction
+			aTx = &proto.Transaction{
+				Transaction: bTx,
+			}
+			txlist = append(txlist, aTx)
+		}
+
+	}
+	sign, err := lc.wallet.SignHash(lc.miner.Miner, lc.miner.Hash().Bytes())
+	if err != nil {
+		log.Error("heart beat sign node info", "msg", err)
+		return
+
+	}
+	txlists := proto.TransactionList{
+		ChainID:             chainId,
+		CurrentHeaderNumber: cHeaderNumber,
+		Address:             lc.miner.Miner.Address.String(),
+		Sign:                sign,
+		Transactions:        txlist,
+	}
+
+	_, err = lc.rpc.Transactions(lc.ctx, &txlists)
+	if err != nil {
+		log.Error("Transactions call", "msg", err)
+	}
+}

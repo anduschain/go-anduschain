@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	logger "github.com/anduschain/go-anduschain/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -28,6 +27,8 @@ type MongoDatabase struct {
 
 	url     string
 	chainID *big.Int
+
+	txPool *mongo.Collection
 
 	context context.Context
 	client  *mongo.Client
@@ -98,7 +99,9 @@ func (m *MongoDatabase) Start() error {
 
 	fmt.Println("Successfully Connected to MongoDB!")
 
-	logger.Debug("Start fairnode mongo database", "chainID", m.chainID.String(), "url", m.url)
+	m.txPool = m.client.Database(m.dbName).Collection("txPool")
+
+	log.Println("Start orderer mongo database", "chainID", m.chainID.String(), "url", m.url)
 
 	return nil
 }
@@ -109,3 +112,13 @@ func (m *MongoDatabase) Stop() {
 	}
 	fmt.Println("successfully disconnected")
 }
+
+//func (m *MongoDatabase) InsertTransactionsToTxPool(transactions []*proto.Transaction) error {
+//	for _, tx := range transactions {
+//		_, err := m.txPool.InsertOne(m.context, tx)
+//		if err != nil {
+//			log.Println("InsertTransactionsToTxPool", "tx", tx, "msg", err)
+//		}
+//	}
+//	return nil
+//}

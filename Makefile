@@ -2,7 +2,7 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: godaon evm all test clean
+.PHONY: godaon evm all test clean orderer
 .PHONY: fairnode loadtest bootnode-linux-amd64 proto
 
 GOBIN = $(shell pwd)/build/bin

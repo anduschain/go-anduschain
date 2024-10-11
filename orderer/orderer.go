@@ -80,7 +80,7 @@ func (fn *Orderer) Start() error {
 	case err := <-fn.errCh:
 		return err
 	default:
-		logger.Info("Started fairnode")
+		logger.Info("Started orderer")
 		return nil
 	}
 }
