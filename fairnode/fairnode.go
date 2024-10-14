@@ -325,7 +325,7 @@ func (fn *Fairnode) processManageLoopFollower() {
 						if fn.lastBlock != nil {
 							league.Current = fn.lastBlock.Number()
 						}
-					case types.VOTE_COMPLETE:
+					case types.VOTE_COUNTING:
 						voteKey := fairdb.MakeVoteKey(l.OtprnHash, new(big.Int).Add(league.Current, big.NewInt(1)))
 						voters := fn.db.GetVoters(voteKey)
 						if uint64(len(voters)) < (fn.config.MinMiner - 1) {
@@ -426,29 +426,12 @@ func (fn *Fairnode) processManageLoop() {
 				case types.VOTE_START:
 					// ToDo: CSW 3->2
 					time.Sleep(2 * time.Second)
-					l.Status = types.VOTE_COMPLETE
-				case types.VOTE_COMPLETE:
+					l.Status = types.VOTE_COUNTING
+				case types.VOTE_COUNTING:
 					voteKey := fairdb.MakeVoteKey(l.Otprn.HashOtprn(), new(big.Int).Add(l.Current, big.NewInt(1)))
 					voters := fn.db.GetVoters(voteKey)
 					if uint64(len(voters)) < (fn.config.MinMiner - 1) {
 						logger.Error("Anyone was not vote, league change and term", "VoteCount", len(voters))
-						if len(voters) == 0 {
-							// TODO: DELETE
-							//if l.BlockHash != nil {
-							//	hash := *l.BlockHash
-							//	fn.db.RemoveBlock(hash)
-							//	logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
-							//}
-							// voter count is zero, remove fairnode current Block
-							// 투표수가 0일때, 현재 블록 정보가 생성될 블록 번호와 같으면 삭제
-							// 2022.03.26 Woody 정상적인 경우에도, 삭제되는 경우가 발생하여 처리 막음
-							//curBlock := fn.db.CurrentBlock()
-							//if curBlock.Number().Cmp(l.Current) == 0 {
-							//	hash := curBlock.Hash()
-							//	fn.db.DeletedBlockChangeState(hash)
-							//	logger.Error("Remove Current Block in Database", "VoteCount", len(voters), "hash", hash)
-							//}
-						}
 						l.Status = types.REJECT
 					} else {
 						finalBlockHash := verify.ValidationFinalBlockHash(voters)     // block hash
@@ -456,8 +439,11 @@ func (fn *Fairnode) processManageLoop() {
 						l.BlockHash = &finalBlockHash
 						l.Votehash = &voteHash
 						time.Sleep(1 * time.Second)
-						l.Status = types.SEND_BLOCK
+						l.Status = types.VOTE_COMPLETE
 					}
+				case types.VOTE_COMPLETE:
+					time.Sleep(1 * time.Second)
+					l.Status = types.SEND_BLOCK
 				case types.SEND_BLOCK:
 					hash := *l.BlockHash
 					if l.BlockHash == nil {
@@ -481,8 +467,8 @@ func (fn *Fairnode) processManageLoop() {
 					}
 					sendBlockAttampt = 0
 				case types.REQ_FAIRNODE_SIGN:
-					// ToDo: CSW 3->3
-					time.Sleep(3 * time.Second)
+					// ToDo: CSW 3->2
+					time.Sleep(2 * time.Second)
 					l.Status = types.FINALIZE
 				case types.FINALIZE:
 					if block := fn.db.CurrentBlock(); block != nil {

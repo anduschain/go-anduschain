@@ -32,6 +32,7 @@ enum ProcessStatus {
     SEND_BLOCK_WAIT = 9;
     REQ_FAIRNODE_SIGN = 10; // 서명 요청해, method terminate
     FINALIZE = 11;
+    VOTE_COUNTING = 12;
 }
 
 message Participate {

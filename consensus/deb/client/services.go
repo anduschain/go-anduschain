@@ -446,7 +446,7 @@ func (dc *DebClient) requestVoteResult(otprn types.Otprn) types.Voters {
 }
 
 func (dc *DebClient) reqSealConfirm(otprn types.Otprn, block types.Block) {
-	defer log.Warn("reqSealConfirm was dead", "otprn", otprn.HashOtprn().String())
+	defer log.Warn("reqSealConfirm was end", "otprn", otprn.HashOtprn().String())
 	msg := proto.ReqConfirmSeal{
 		OtprnHash: otprn.HashOtprn().Bytes(),
 		Address:   dc.miner.Node.MinerAddress,

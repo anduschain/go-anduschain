@@ -99,6 +99,8 @@ func (f FnStatus) String() string {
 		return "FINALIZE"
 	case REJECT:
 		return "REJECT"
+	case VOTE_COUNTING:
+		return "VOTE_COUNTING"
 	default:
 		return "UNKNOWN"
 	}
@@ -119,6 +121,7 @@ const (
 	REQ_FAIRNODE_SIGN
 	FINALIZE
 	REJECT
+	VOTE_COUNTING
 )
 
 func StatusToProto(status FnStatus) proto.ProcessStatus {
@@ -147,6 +150,8 @@ func StatusToProto(status FnStatus) proto.ProcessStatus {
 		return proto.ProcessStatus_FINALIZE
 	case REJECT:
 		return proto.ProcessStatus_REJECT
+	case VOTE_COUNTING:
+		return proto.ProcessStatus_VOTE_COUNTING
 	default:
 		return proto.ProcessStatus_WAIT
 	}
@@ -178,6 +183,8 @@ func ProtoToStatus(status proto.ProcessStatus) FnStatus {
 		return FINALIZE
 	case proto.ProcessStatus_REJECT:
 		return REJECT
+	case proto.ProcessStatus_VOTE_COUNTING:
+		return VOTE_COUNTING
 	default:
 		return PENDING
 	}
