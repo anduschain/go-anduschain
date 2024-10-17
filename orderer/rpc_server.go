@@ -39,7 +39,12 @@ func (r rpcServer) Transactions(ctx context.Context, txlist *proto.TransactionLi
 			logger.Info("Transaction Unmarshal Error", "err", err)
 		}
 		sender, _ := tx.Sender(types.EIP155Signer{})
+
 		logger.Info("GOT TX", "idx", idx, "hash", tx.Hash(), "from", sender, "nonce", tx.Nonce())
+		err = r.db.InsertTransactionToTxPool(sender.Hex(), tx.Nonce(), tx.Hash().Hex(), aTx.Transaction)
+		if err != nil {
+			logger.Info("Transaction Insert Error", "err", err)
+		}
 	}
 	return &emptypb.Empty{}, nil
 }

@@ -113,12 +113,16 @@ func (m *MongoDatabase) Stop() {
 	fmt.Println("successfully disconnected")
 }
 
-//func (m *MongoDatabase) InsertTransactionsToTxPool(transactions []*proto.Transaction) error {
-//	for _, tx := range transactions {
-//		_, err := m.txPool.InsertOne(m.context, tx)
-//		if err != nil {
-//			log.Println("InsertTransactionsToTxPool", "tx", tx, "msg", err)
-//		}
-//	}
-//	return nil
-//}
+func (m *MongoDatabase) InsertTransactionToTxPool(sender string, nonce uint64, hash string, tx []byte) error {
+	doc := map[string]interface{}{
+		"txhash": hash,
+		"from":   sender,
+		"nonce":  nonce,
+		"tx":     tx,
+	}
+	_, err := m.txPool.InsertOne(m.context, doc)
+	if err != nil {
+		log.Println("InsertTransactionToTxPool", "tx", tx, "msg", err)
+	}
+	return nil
+}
