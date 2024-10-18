@@ -15,12 +15,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 const (
-	HEART_BEAT_TERM = 3 // per min
+	HEART_BEAT_TERM = 3
+	REQ_OTPRN_TERM  = 3 // per min
 )
 
 var (
@@ -47,6 +49,7 @@ func (m *Miner) Hash() common.Hash {
 }
 
 type Layer2Client struct {
+	mu         sync.Mutex
 	running    int32
 	ctx        context.Context
 	config     *params.ChainConfig
@@ -56,8 +59,10 @@ type Layer2Client struct {
 	grpcConn        *grpc.ClientConn
 	rpc             orderer.OrdererServiceClient
 	miner           *Miner
-	backend         interfaces.Backend
-	wallet          accounts.Wallet
+	otprn           *types.Otprn
+
+	backend interfaces.Backend
+	wallet  accounts.Wallet
 
 	scope       event.SubscriptionScope
 	closeClient event.Feed
@@ -162,54 +167,6 @@ func (lc *Layer2Client) close() {
 // client process close event
 func (dc *Layer2Client) SubscribeClientCloseEvent(ch chan<- types.ClientClose) event.Subscription {
 	return dc.scope.Track(dc.closeClient.Subscribe(ch))
-}
-
-// active miner heart beat
-func (lc *Layer2Client) heartBeat() {
-	t := time.NewTicker(HEART_BEAT_TERM * time.Minute)
-	errCh := make(chan error)
-
-	defer func() {
-		lc.close()
-		log.Warn("heart beat loop was dead")
-	}()
-
-	submit := func() error {
-		lc.miner.Node.Head = lc.backend.BlockChain().CurrentHeader().Hash().String() // head change
-		sign, err := lc.wallet.SignHash(lc.miner.Miner, lc.miner.Hash().Bytes())
-		if err != nil {
-			log.Error("heart beat sign node info", "msg", err)
-			return err
-
-		}
-		lc.miner.Node.Sign = sign // heartbeat sign
-		_, err = lc.rpc.HeartBeat(lc.ctx, &lc.miner.Node)
-		if err != nil {
-			log.Error("heart beat call", "msg", err)
-			return err
-		}
-		log.Info("heart beat call", "message", lc.miner.Node.String())
-		return nil
-	}
-
-	// init call
-	if err := submit(); err != nil {
-		return
-	}
-
-	//go lc.requestOtprn(errCh) // otprn request
-
-	for {
-		select {
-		case <-t.C:
-			if err := submit(); err != nil {
-				return
-			}
-		case err := <-errCh:
-			log.Error("heartBeat loop was dead", "msg", err)
-			return
-		}
-	}
 }
 
 func (lc *Layer2Client) Transaction(chainId uint64, cHeaderNumber uint64, txs types.Transactions) {

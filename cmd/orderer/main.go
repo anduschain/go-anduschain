@@ -2,19 +2,21 @@ package main
 
 import (
 	"fmt"
-	logger "github.com/anduschain/go-anduschain/log"
 	"github.com/anduschain/go-anduschain/orderer"
+	logger "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
 )
 
 var (
-	app  *cli.App
-	flag = []cli.Flag{
+	app     *cli.App
+	keypath = filepath.Join(os.Getenv("HOME"), ".orderer", "key")
+	flag    = []cli.Flag{
 		cli.StringFlag{
 			Name:  "chainID",
 			Value: "1000",
@@ -71,6 +73,16 @@ var (
 			Name:  "debug",
 			Usage: "stdout log",
 		},
+
+		cli.StringFlag{
+			Name:  "keypath",
+			Value: keypath,
+			Usage: fmt.Sprintf("default keystore path %s", keypath),
+		},
+		cli.StringFlag{
+			Name:  "keypass",
+			Usage: "use password parameter instead of using passphrase",
+		},
 	}
 )
 
@@ -81,10 +93,37 @@ func init() {
 	app.Usage = "Orderer for AndUsChain Layer2 networks"
 	app.Version = orderer.DefaultConfig.Version
 	app.Flags = flag
-	app.Commands = []cli.Command{}
+	app.Commands = []cli.Command{
+		{
+			Name:      "generate",
+			Usage:     "generate new keyfile",
+			ArgsUsage: "[ <keyfile> ]",
+			Action:    makeOrdererKey,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "keypath",
+					Value: os.Getenv("HOME") + "/.orderer/key/orderer.json",
+					Usage: "file containing a raw private key to encrypt",
+				},
+				cli.StringFlag{
+					Name:  "keypass",
+					Usage: "use password parameter instead of using passphrase",
+				},
+			},
+		},
+	}
 
 	app.Action = func(c *cli.Context) error {
 		w.Add(1)
+		//keypass
+		var keypass string
+		keypass = c.String("keypass")
+		if keypass != "" {
+			fmt.Println("Use input keystore password")
+		} else {
+			fmt.Println("Input orderer keystore password")
+			keypass = promptPassphrase(false)
+		}
 		//dbpass
 		var user string
 		var dbpass string
@@ -96,20 +135,19 @@ func init() {
 				fmt.Println("use input database password")
 			}
 		}
-		orderer.SetOrdererConfig(c, dbpass)
+
+		orderer.SetOrdererConfig(c, keypass, dbpass)
 
 		fn, err := orderer.NewOrderer()
 		if err != nil {
 			logger.Error("new orderer", "msg", err)
 			return err
 		}
-
 		if err := fn.Start(); err != nil {
 			logger.Error("failed starting orderer", "msg", err)
 			w.Done()
 			return err
 		}
-
 		defer fn.Stop()
 
 		go func() {

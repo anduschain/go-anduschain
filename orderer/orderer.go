@@ -1,7 +1,10 @@
 package orderer
 
 import (
+	"crypto/ecdsa"
 	"fmt"
+	"github.com/anduschain/go-anduschain/common"
+	"github.com/anduschain/go-anduschain/crypto"
 	"github.com/anduschain/go-anduschain/orderer/ordererdb"
 	"github.com/anduschain/go-anduschain/protos/orderer"
 	"google.golang.org/grpc"
@@ -18,6 +21,7 @@ type Orderer struct {
 	mu          sync.Mutex
 	tcpListener net.Listener
 	gRpcServer  *grpc.Server
+	privKey     *ecdsa.PrivateKey
 	db          ordererdb.OrdererDB
 	errCh       chan error
 	//roleCh      chan fs.FnType
@@ -31,6 +35,21 @@ type Orderer struct {
 
 }
 
+func (fn *Orderer) GetAddress() common.Address {
+	return crypto.PubkeyToAddress(fn.privKey.PublicKey)
+}
+
+func (fn *Orderer) GetPublicKey() ecdsa.PublicKey {
+	return fn.privKey.PublicKey
+}
+
+func (fn *Orderer) SignHash(hash []byte) ([]byte, error) {
+	return crypto.Sign(hash, fn.privKey)
+}
+func (fn *Orderer) GetPrivateKey() *ecdsa.PrivateKey {
+	return fn.privKey
+}
+
 func NewOrderer() (*Orderer, error) {
 	if DefaultConfig.Debug {
 		log.Root().SetHandler(log.StdoutHandler)
@@ -40,7 +59,7 @@ func NewOrderer() (*Orderer, error) {
 		)
 		log.Root().SetHandler(handler)
 	}
-
+	fmt.Println("++++++++++++++++++++=11111111")
 	logger = log.New("orderer", "main")
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", DefaultConfig.Port))
@@ -48,8 +67,14 @@ func NewOrderer() (*Orderer, error) {
 		logger.Error("Failed to listen", "msg", err)
 		return nil, err
 	}
+	fmt.Printf(">>>>>>>>>%s %s\n", DefaultConfig.KeyPath, DefaultConfig.KeyPass)
+	pKey, err := GetPriveKey(DefaultConfig.KeyPath, DefaultConfig.KeyPass)
+	if err != nil {
+		return nil, err
+	}
 
 	fn := Orderer{
+		privKey:     pKey,
 		tcpListener: lis,
 		gRpcServer:  grpc.NewServer(),
 		errCh:       make(chan error),
@@ -73,7 +98,6 @@ func (fn *Orderer) Start() error {
 		logger.Error("Fail to db start", "msg", err)
 		return err
 	}
-
 	go fn.severLoop()
 
 	select {
@@ -100,7 +124,7 @@ func (fn *Orderer) Stop() {
 	fn.db.Stop()
 	fn.gRpcServer.Stop()
 	fn.tcpListener.Close()
-	defer logger.Warn("Stoped orderer")
+	defer logger.Info("Stoped orderer")
 }
 
 func (fn *Orderer) Database() ordererdb.OrdererDB {

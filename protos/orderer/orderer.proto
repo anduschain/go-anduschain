@@ -8,5 +8,7 @@ import "google/protobuf/empty.proto";
 
 service OrdererService {
   rpc HeartBeat(common.HeartBeat) returns(google.protobuf.Empty) {}
+  rpc RequestOtprn(common.ReqOtprn) returns(common.ResOtprn) {}
   rpc Transactions(common.TransactionList) returns(google.protobuf.Empty){}
+  rpc ProcessController(common.Participate) returns (stream common.TransactionList) {}
 }
