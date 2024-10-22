@@ -2,7 +2,9 @@ package orderer
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/anduschain/go-anduschain/accounts/keystore"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/crypto/sha3"
@@ -46,4 +48,30 @@ func GetPriveKey(keypath, keypass string) (*ecdsa.PrivateKey, error) {
 		return nil, err
 	}
 	return key.PrivateKey, nil
+}
+
+func XorHashes(hash1, hash2 string) (string, error) {
+	// 16진수 문자열을 바이트 슬라이스로 변환
+	bytes1, err := hex.DecodeString(hash1)
+	if err != nil {
+		return "", err
+	}
+	bytes2, err := hex.DecodeString(hash2)
+	if err != nil {
+		return "", err
+	}
+
+	// 두 해시의 길이가 같은지 확인
+	if len(bytes1) != len(bytes2) {
+		return "", fmt.Errorf("hashes must be of the same length")
+	}
+
+	// XOR 연산 수행
+	result := make([]byte, len(bytes1))
+	for i := 0; i < len(bytes1); i++ {
+		result[i] = bytes1[i] ^ bytes2[i]
+	}
+
+	// 결과를 16진수 문자열로 변환
+	return hex.EncodeToString(result), nil
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	proto "github.com/anduschain/go-anduschain/protos/common"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -36,6 +39,14 @@ type MongoDatabase struct {
 
 type config interface {
 	GetInfo() (useSRV bool, host, port, user, pass, ssl, option string, chainID *big.Int)
+}
+
+type MongoTxPool struct {
+	ID     primitive.ObjectID `bson:"_id"`
+	From   string             `bson:"from"`
+	Nonce  int64              `bson:"nonce"`
+	TxHash string             `bson:"tx_hash"`
+	Tx     primitive.Binary   `bson:"tx"`
 }
 
 func NewMongoDatabase(conf config) (*MongoDatabase, error) {
@@ -125,4 +136,27 @@ func (m *MongoDatabase) InsertTransactionToTxPool(sender string, nonce uint64, h
 		log.Println("InsertTransactionToTxPool", "tx", tx, "msg", err)
 	}
 	return nil
+}
+
+func (m *MongoDatabase) GetTransactionListFromTxPool() ([]proto.Transaction, error) {
+	result := []proto.Transaction{}
+	cursor, err := m.txPool.Find(m.context, bson.M{})
+	if err != nil {
+		log.Println("GetTransactionListFromTxPool", "cursor", err)
+		return nil, err
+	}
+	defer cursor.Close(m.context)
+
+	for cursor.Next(m.context) {
+		var row MongoTxPool
+		if err := cursor.Decode(&row); err != nil {
+			log.Println("GetTransactionListFromTxPool", "cursor", err)
+			return nil, err
+		}
+		i := proto.Transaction{}
+		i.Transaction = row.Tx.Data
+		result = append(result, i)
+	}
+
+	return result, nil
 }

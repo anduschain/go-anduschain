@@ -9,6 +9,7 @@ import (
 	"github.com/anduschain/go-anduschain/protos/orderer"
 	"google.golang.org/grpc"
 	log "gopkg.in/inconshreveable/log15.v2"
+	"math/big"
 	"net"
 	"sync"
 )
@@ -24,6 +25,7 @@ type Orderer struct {
 	privKey     *ecdsa.PrivateKey
 	db          ordererdb.OrdererDB
 	errCh       chan error
+	chainID     *big.Int
 	//roleCh      chan fs.FnType
 	//
 	//currentLeague *common.Hash
@@ -49,6 +51,9 @@ func (fn *Orderer) SignHash(hash []byte) ([]byte, error) {
 func (fn *Orderer) GetPrivateKey() *ecdsa.PrivateKey {
 	return fn.privKey
 }
+func (fn *Orderer) GetChainID() *big.Int {
+	return fn.chainID
+}
 
 func NewOrderer() (*Orderer, error) {
 	if DefaultConfig.Debug {
@@ -59,7 +64,7 @@ func NewOrderer() (*Orderer, error) {
 		)
 		log.Root().SetHandler(handler)
 	}
-	fmt.Println("++++++++++++++++++++=11111111")
+
 	logger = log.New("orderer", "main")
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", DefaultConfig.Port))
@@ -67,7 +72,7 @@ func NewOrderer() (*Orderer, error) {
 		logger.Error("Failed to listen", "msg", err)
 		return nil, err
 	}
-	fmt.Printf(">>>>>>>>>%s %s\n", DefaultConfig.KeyPath, DefaultConfig.KeyPass)
+
 	pKey, err := GetPriveKey(DefaultConfig.KeyPath, DefaultConfig.KeyPass)
 	if err != nil {
 		return nil, err
@@ -78,6 +83,7 @@ func NewOrderer() (*Orderer, error) {
 		tcpListener: lis,
 		gRpcServer:  grpc.NewServer(),
 		errCh:       make(chan error),
+		chainID:     DefaultConfig.ChainID,
 	}
 
 	// orderer syncer

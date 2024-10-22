@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
-	"github.com/anduschain/go-anduschain/log"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
 	"github.com/anduschain/go-anduschain/orderer/ordererdb"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"math/big"
 	"sync"
+	"time"
 )
 
 var (
@@ -21,9 +23,11 @@ var (
 )
 
 type ordererServer interface {
+	SignHash(hash []byte) ([]byte, error)
 	Database() ordererdb.OrdererDB
 	GetPrivateKey() *ecdsa.PrivateKey
 	GetAddress() common.Address
+	GetChainID() *big.Int
 }
 
 // orderer rpc method implemented
@@ -33,9 +37,74 @@ type rpcServer struct {
 	db ordererdb.OrdererDB
 }
 
-func (r rpcServer) ProcessController(participate *proto.Participate, g grpc.ServerStreamingServer[proto.TransactionList]) error {
-	//TODO implement me
-	panic("implement me")
+func (r rpcServer) ProcessController(participate *proto.Participate, stream grpc.ServerStreamingServer[proto.TransactionList]) error {
+	if participate.GetEnode() == "" {
+		return errorEmpty("enode")
+	}
+
+	if participate.GetMinerAddress() == "" {
+		return errorEmpty("miner's address")
+	}
+
+	if bytes.Compare(participate.GetOtprnHash(), emptyByte) == 0 {
+		return errorEmpty("otprn hash")
+	}
+
+	if bytes.Compare(participate.GetSign(), emptyByte) == 0 {
+		return errorEmpty("sign")
+	}
+
+	hash := rlpHash([]interface{}{
+		participate.GetEnode(),
+		participate.GetMinerAddress(),
+		participate.GetOtprnHash(),
+	})
+
+	addr := common.HexToAddress(participate.GetMinerAddress())
+	err := verify.ValidationSignHash(participate.GetSign(), hash, addr)
+	if err != nil {
+		return errors.New(fmt.Sprintf("sign validation failed msg=%s", err.Error()))
+	}
+
+	rHash := common.Hash{}
+	makeMsg := func(txs []proto.Transaction) *proto.TransactionList {
+		var msg proto.TransactionList
+		msg.ChainID = r.os.GetChainID().Uint64()
+		msg.Address = r.os.GetAddress().String()
+		msg.Sign = nil
+		msg.Transactions = []*proto.Transaction{}
+		for _, tx := range txs {
+			aTx := types.Transaction{}
+			err := aTx.UnmarshalBinary(tx.Transaction)
+			if err == nil {
+				hash := aTx.Hash()
+				thash, err := XorHashes(rHash.String(), hash.String())
+				if err == nil {
+					rHash = common.HexToHash(thash)
+				}
+			}
+			tTx := proto.Transaction{}
+			tTx = tx
+			msg.Transactions = append(msg.Transactions, &tTx)
+		}
+		msg.Sign, _ = r.os.SignHash(rHash.Bytes())
+
+		return &msg
+	}
+
+	for {
+		txlist, err := r.db.GetTransactionListFromTxPool()
+		if err == nil {
+			m := makeMsg(txlist) // make message
+
+			if err := stream.Send(m); err != nil {
+				logger.Error("ProcessController send status message", "msg", err)
+				return err
+			}
+		}
+
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func errorEmpty(key string) error {
@@ -83,7 +152,6 @@ func (r *rpcServer) RequestOtprn(ctx context.Context, nodeInfo *proto.ReqOtprn) 
 	if bytes.Compare(nodeInfo.GetSign(), emptyByte) == 0 {
 		return nil, errorEmpty("sign")
 	}
-	log.Info("================================ GET REQUEST OTPRN=====================================")
 	// ToDo: CSW => Check Node
 	otprn := types.NewOtprn(uint64(0), r.os.GetAddress(), types.ChainConfig{}) // 체인 관련 설정값 읽고, OTPRN 생성
 	err := otprn.SignOtprn(r.os.GetPrivateKey())                               // OTPRN 서명

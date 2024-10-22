@@ -168,7 +168,7 @@ func (lc *Layer2Client) receiveOrdererTransactionLoop(otprn types.Otprn) {
 			log.Error("ProcessController stream receive", "msg", err)
 			return
 		}
-		log.Info("Recv===", "chainID", in.ChainID, "address", in.Address, "sign", in.Sign)
+
 		txLists := types.Transactions{}
 		for idx, aTx := range in.Transactions {
 			tx := types.Transaction{}
