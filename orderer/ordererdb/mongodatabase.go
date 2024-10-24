@@ -133,7 +133,17 @@ func (m *MongoDatabase) InsertTransactionToTxPool(sender string, nonce uint64, h
 	}
 	_, err := m.txPool.InsertOne(m.context, doc)
 	if err != nil {
-		log.Println("InsertTransactionToTxPool", "tx", tx, "msg", err)
+		if writeErr, ok := err.(mongo.WriteException); ok {
+			for _, we := range writeErr.WriteErrors {
+				if we.Code != 11000 {
+					log.Println("InsertTransactionToTxPool", "tx", tx, "code", we.Code, "msg", we.Message)
+					return err
+				} else {
+					return nil
+				}
+			}
+		}
+		return err
 	}
 	return nil
 }

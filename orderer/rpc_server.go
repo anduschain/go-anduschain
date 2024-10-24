@@ -12,6 +12,8 @@ import (
 	"github.com/anduschain/go-anduschain/orderer/ordererdb"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"math/big"
 	"sync"
@@ -98,7 +100,17 @@ func (r rpcServer) ProcessController(participate *proto.Participate, stream grpc
 			m := makeMsg(txlist) // make message
 
 			if err := stream.Send(m); err != nil {
-				logger.Error("ProcessController send status message", "msg", err)
+				grpcErr, ok := status.FromError(err)
+				if ok {
+					if grpcErr.Code() == codes.Unavailable {
+						return nil
+					} else {
+						logger.Error("ProcessController gRPC Error", "code", grpcErr.Code(), "msg", grpcErr.Message())
+					}
+				} else {
+					logger.Error("ProcessController send status message", "msg", err)
+				}
+
 				return err
 			}
 		}

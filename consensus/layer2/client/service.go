@@ -3,7 +3,10 @@ package client
 import (
 	"bytes"
 	"errors"
+	"github.com/anduschain/go-anduschain/common"
 	"github.com/anduschain/go-anduschain/core/types"
+	"github.com/anduschain/go-anduschain/fairnode/verify"
+	"github.com/anduschain/go-anduschain/orderer"
 	proto "github.com/anduschain/go-anduschain/protos/common"
 	"time"
 )
@@ -41,7 +44,7 @@ func (lc *Layer2Client) heartBeat() {
 		return
 	}
 
-	go lc.requestOtprn(errCh) // otprn request
+	go lc.receiveOrdererTransactionLoop(errCh) // otprn request
 
 	for {
 		select {
@@ -56,13 +59,7 @@ func (lc *Layer2Client) heartBeat() {
 	}
 }
 
-func (lc *Layer2Client) requestOtprn(errCh chan error) {
-	t := time.NewTicker(REQ_OTPRN_TERM * time.Second)
-	defer func() {
-		errCh <- errors.New("request otprn error occurred")
-		log.Warn("request otprn loop was dead")
-	}()
-
+func (lc *Layer2Client) requestOtprn() error {
 	msg := proto.ReqOtprn{
 		Enode:        lc.miner.Node.Enode,
 		MinerAddress: lc.miner.Node.MinerAddress,
@@ -75,8 +72,8 @@ func (lc *Layer2Client) requestOtprn(errCh chan error) {
 
 	sign, err := lc.wallet.SignHash(lc.miner.Miner, hash.Bytes())
 	if err != nil {
-		log.Error("heart beat sign node info", "msg", err)
-		return
+		log.Error("requestOtprn", "msg", err)
+		return err
 	}
 
 	msg.Sign = sign // sign add
@@ -92,7 +89,7 @@ func (lc *Layer2Client) requestOtprn(errCh chan error) {
 		case proto.Status_SUCCESS:
 			if bytes.Compare(res.Otprn, emptyByte) == 0 {
 				log.Warn("Empty OTPRN")
-				return nil
+				return errors.New("Empty OTPRN")
 			} else {
 				otprn, err := types.DecodeOtprn(res.Otprn)
 				if err != nil {
@@ -106,38 +103,34 @@ func (lc *Layer2Client) requestOtprn(errCh chan error) {
 				lc.mu.Lock()
 				lc.otprn = otprn // otprn save
 				lc.mu.Unlock()
-				go lc.receiveOrdererTransactionLoop(*otprn)
-				log.Info("otprn received and start orderer message loop", "hash", otprn.HashOtprn())
+				log.Info("otprn received", "hash", otprn.HashOtprn())
 				return nil
 			}
 		case proto.Status_FAIL:
 			log.Debug("otprn got nil")
-			return nil
+			return errors.New("otprn got nil")
 		}
-		return nil
+		return errors.New("Unknown Error")
 	}
 
 	// init call
-	if err := reqOtprn(); err != nil {
-		return
-	}
-
-	for {
-		select {
-		case <-t.C:
-			if err := reqOtprn(); err != nil {
-				return
-			}
-		}
-	}
+	return reqOtprn()
 }
 
-func (lc *Layer2Client) receiveOrdererTransactionLoop(otprn types.Otprn) {
-	defer log.Warn("receiveFairnodeStatusLoop was dead", "otprn", otprn.HashOtprn().String())
+func (lc *Layer2Client) receiveOrdererTransactionLoop(errCh chan error) {
+	defer func() {
+		errCh <- errors.New("receiveOrdererTransactionLoop was dead")
+		log.Warn("receiveOrdererTransactionLoop was dead")
+	}()
+
+	if err := lc.requestOtprn(); err != nil {
+		errCh <- err
+	}
+
 	msg := proto.Participate{
 		Enode:        lc.miner.Node.Enode,
 		MinerAddress: lc.miner.Node.MinerAddress,
-		OtprnHash:    otprn.HashOtprn().Bytes(),
+		OtprnHash:    lc.otprn.HashOtprn().Bytes(),
 	}
 
 	hash := rlpHash([]interface{}{
@@ -170,16 +163,29 @@ func (lc *Layer2Client) receiveOrdererTransactionLoop(otprn types.Otprn) {
 		}
 
 		txLists := types.Transactions{}
+		rHash := common.Hash{}
 		for idx, aTx := range in.Transactions {
 			tx := types.Transaction{}
 			err := tx.UnmarshalBinary(aTx.Transaction)
 			if err != nil {
 				log.Info("Transaction Unmarshal Error", "err", err)
 			}
+			hash := tx.Hash()
+			thash, err := orderer.XorHashes(rHash.String(), hash.String())
+			if err == nil {
+				rHash = common.HexToHash(thash)
+			}
 			sender, _ := tx.Sender(types.EIP155Signer{})
 
 			log.Info("GOT TX", "idx", idx, "hash", tx.Hash(), "from", sender, "nonce", tx.Nonce())
 			txLists = append(txLists, &tx)
 		}
+		// TXLIST 검증
+		err = verify.ValidationSignHash(in.Sign, rHash, lc.otprn.FnAddr)
+		if err != nil {
+			log.Error("ProcessController Orderer sign Velidation Error", "msg", err)
+			return
+		}
+		// 이 리스트를 이용하여 블록생성.. 채굴과정으로 넘어가야 함
 	}
 }
