@@ -280,7 +280,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth interfac
 	go worker.newWorkLoop(recommit)
 	go worker.resultLoop()
 	go worker.taskLoop()
-	go worker.commitLoop()
 
 	if worker.config.Deb != nil {
 		worker.debClient = client.NewDebClient(config, worker.exitCh, loacalIps, staticNodes)
@@ -294,6 +293,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth interfac
 		worker.layer2Client = lclient.NewLayer2Client(config, worker.exitCh)
 		worker.l2ClientCLoseSub = worker.layer2Client.SubscribeClientCloseEvent(worker.l2ClientCloseCh)
 
+		go worker.commitLoop()
 		go worker.l2clientStatusLoop()
 	}
 
@@ -1524,7 +1524,7 @@ func (w *worker) layer2CommitNewWork(pending map[common.Address]types.Transactio
 				return
 			}
 		}
-
+		log.Info("CSW ======== miner", "miner", w.coinbase, "check", w.current.header.Coinbase)
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return

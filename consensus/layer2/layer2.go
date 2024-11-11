@@ -522,9 +522,6 @@ func (c *Layer2) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 // header for running the transactions on top.
 func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// If the block isn't a checkpoint, cast a random vote (good enough for now)
-	header.Coinbase = common.Address{}
-	header.Nonce = types.BlockNonce{}
-
 	number := header.Number.Uint64()
 	// Assemble the voting snapshot to check which votes make sense
 	snap, err := c.snapshot(chain, number-1, header.ParentHash, nil)
