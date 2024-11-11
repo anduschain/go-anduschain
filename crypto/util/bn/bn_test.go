@@ -129,7 +129,7 @@ func TestMod(t *testing.T) {
 	}
 }
 
-// what does this test? Only the the bn.ModInverse function? That is already tested by bn_test.go/TestModInverse1 and 2
+// what does this test? Only the bn.ModInverse function? That is already tested by bn_test.go/TestModInverse1 and 2
 // The main difference looks to be the ORDER param?
 // func TestInv(t *testing.T) {
 // 	y, _ := new(big.Int).SetString("103823382860325249552741530200099120077084118788867728791742258217664299339569", 10)
