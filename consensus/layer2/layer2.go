@@ -690,9 +690,6 @@ func (c *Layer2) Seal(chain consensus.ChainReader, block *types.Block, results c
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
-// that a new block should have:
-// * DIFF_NOTURN(2) if BLOCK_NUMBER % SIGNER_COUNT != SIGNER_INDEX
-// * DIFF_INTURN(1) if BLOCK_NUMBER % SIGNER_COUNT == SIGNER_INDEX
 func (c *Layer2) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	snap, err := c.snapshot(chain, parent.Number.Uint64(), parent.Hash(), nil)
 	if err != nil {
@@ -710,7 +707,7 @@ func calcDifficulty(priKey *ecdsa.PrivateKey, alpha string) (*big.Int, []byte, e
 	if err != nil {
 		return nil, nil, err
 	}
-	bigInt := new(big.Int).SetBytes(beta)
+	bigInt := new(big.Int).SetBytes(beta[:4])
 	return bigInt, pi, nil
 }
 
@@ -720,7 +717,7 @@ func verifyDifficulty(pubKey *ecdsa.PublicKey, alpha string, pi []byte) (*big.In
 	if err != nil {
 		return nil, err
 	}
-	bigInt := new(big.Int).SetBytes(beta)
+	bigInt := new(big.Int).SetBytes(beta[:4])
 	return bigInt, nil
 }
 
