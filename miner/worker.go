@@ -1524,7 +1524,7 @@ func (w *worker) layer2CommitNewWork(pending map[common.Address]types.Transactio
 				return
 			}
 		}
-		log.Info("CSW ======== miner", "miner", w.coinbase, "check", w.current.header.Coinbase)
+
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
 			return
