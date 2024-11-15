@@ -11,7 +11,7 @@ func TestVrf(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to generate private key")
 	}
-	alpha := "Hello VeChain"
+	alpha := "1000"
 
 	// `beta`: the VRF hash output
 	// `pi`: the VRF proof

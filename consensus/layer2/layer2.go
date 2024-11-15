@@ -156,6 +156,7 @@ func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 	if len(header.Extra) < extraSeal {
 		return common.Address{}, errMissingSignature
 	}
+
 	signature := header.Extra[len(header.Extra)-extraSeal:]
 
 	// Recover the public key and the Ethereum address
@@ -497,14 +498,14 @@ func (c *Layer2) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 	if _, ok := snap.Signers[signer]; !ok {
 		return errUnauthorizedSigner
 	}
-	for seen, recent := range snap.Recents {
-		if recent == signer {
-			// Signer is among recents, only fail if the current block doesn't shift it out
-			if limit := uint64(len(snap.Signers)/2 + 1); seen > number-limit {
-				return errRecentlySigned
-			}
-		}
-	}
+	//for seen, recent := range snap.Recents {
+	//	if recent == signer {
+	//		// Signer is among recents, only fail if the current block doesn't shift it out
+	//		if limit := uint64(len(snap.Signers)/2 + 1); seen > number-limit {
+	//			return errRecentlySigned
+	//		}
+	//	}
+	//}
 	// Ensure that the difficulty corresponds to the turn-ness of the signer
 	if !c.fakeDiff {
 		inturn := snap.inturn(header.Number.Uint64(), signer)
@@ -550,7 +551,7 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 		c.lock.RUnlock()
 	}
 	// Set the correct difficulty
-	difficulty, pi, err := calcDifficulty(&c.priKey, strconv.FormatUint(snap.Number, 10))
+	difficulty, pi, err := calcDifficulty(&c.priKey, strconv.FormatUint(header.Number.Uint64(), 10))
 	if err != nil {
 		header.Difficulty = big.NewInt(0)
 	} else {
@@ -648,23 +649,23 @@ func (c *Layer2) Seal(chain consensus.ChainReader, block *types.Block, results c
 	}
 
 	// If we're amongst the recent signers, wait for the next block
-	for seen, recent := range snap.Recents {
-		if recent == signer {
-			// Signer is among recents, only wait if the current block doesn't shift it out
-			if limit := uint64(len(snap.Signers)/2 + 1); number < limit || seen > number-limit {
-				return errors.New("signed recently, must wait for others")
-			}
-		}
-	}
+	//for seen, recent := range snap.Recents {
+	//	if recent == signer {
+	//		// Signer is among recents, only wait if the current block doesn't shift it out
+	//		if limit := uint64(len(snap.Signers)/2 + 1); number < limit || seen > number-limit {
+	//			return errors.New("signed recently, must wait for others")
+	//		}
+	//	}
+	//}
 	// Sweet, the protocol permits us to sign the block, wait for our time
-	delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now()) // nolint: gosimple
-	if header.Difficulty.Cmp(diffNoTurn) == 0 {
-		// It's not our turn explicitly to sign, delay it a bit
-		wiggle := time.Duration(len(snap.Signers)/2+1) * wiggleTime
-		delay += time.Duration(rand.Int63n(int64(wiggle)))
-
-		log.Trace("Out-of-turn signing requested", "wiggle", common.PrettyDuration(wiggle))
-	}
+	//delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now()) // nolint: gosimple
+	//if header.Difficulty.Cmp(diffNoTurn) == 0 {
+	//	// It's not our turn explicitly to sign, delay it a bit
+	//	wiggle := time.Duration(len(snap.Signers)/2+1) * wiggleTime
+	//	delay += time.Duration(rand.Int63n(int64(wiggle)))
+	//
+	//	log.Trace("Out-of-turn signing requested", "wiggle", common.PrettyDuration(wiggle))
+	//}
 	// Sign all the things!
 	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeLayer2, Layer2RLP(header))
 	if err != nil {
@@ -672,13 +673,13 @@ func (c *Layer2) Seal(chain consensus.ChainReader, block *types.Block, results c
 	}
 	copy(header.Extra[len(header.Extra)-extraSeal:], sighash)
 	// Wait until sealing is terminated or delay timeout.
-	log.Trace("Waiting for slot to sign and propagate", "delay", common.PrettyDuration(delay))
+	//log.Trace("Waiting for slot to sign and propagate", "delay", common.PrettyDuration(delay))
 	go func() {
-		select {
-		case <-stop:
-			return
-		case <-time.After(delay):
-		}
+		//select {
+		//case <-stop:
+		//	return
+		//case <-time.After(delay):
+		//}
 
 		select {
 		case results <- block.WithSeal(header):

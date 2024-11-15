@@ -277,6 +277,10 @@ func CopyHeader(h *Header) *Header {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
 	}
+	if len(h.FairnodeSign) > 0 {
+		cpy.FairnodeSign = make([]byte, len(h.FairnodeSign))
+		copy(cpy.FairnodeSign, h.FairnodeSign)
+	}
 
 	return &cpy
 }
