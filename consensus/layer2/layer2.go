@@ -317,28 +317,10 @@ func (c *Layer2) verifyHeader(chain consensus.ChainReader, header *types.Header,
 		if header.Difficulty == nil {
 			return errInvalidDifficulty
 		}
-		// Get Miner PublicKey
-		pubKey, err := crypto.DecompressPubkey(header.Otprn)
-		if err != nil {
-			log.Info("VerifyDifficulty DecompressPubkey", "error", err)
-			return errInvalidDifficulty
-		}
 
-		addr := crypto.PubkeyToAddress(*pubKey).Hex()
-		if addr != header.Coinbase.Hex() {
-			log.Info("VerifyDifficulty Compare Address", "error", err)
-			return errInvalidDifficulty
-		}
-
-		// Verify Difficulty
-		difficulty, err := verifyDifficulty(pubKey, strconv.FormatUint(header.Number.Uint64(), 10), header.FairnodeSign)
+		err := c.VerifyDifficulty(header)
 		if err != nil {
-			log.Info("VerifyDifficulty", "error", err)
-			return errInvalidDifficulty
-		}
-		if header.Difficulty.Cmp(difficulty) != 0 {
-			log.Info("VerifyDifficulty Difficulty Compare", "error", err)
-			return errInvalidDifficulty
+			return err
 		}
 	}
 	// Verify that the gas limit is <= 2^63-1
@@ -351,6 +333,34 @@ func (c *Layer2) verifyHeader(chain consensus.ChainReader, header *types.Header,
 	}
 	// All basic checks passed, verify cascading fields
 	return c.verifyCascadingFields(chain, header, parents)
+}
+
+func (c *Layer2) VerifyDifficulty(header *types.Header) error {
+	// Get Miner PublicKey
+	pubKey, err := crypto.DecompressPubkey(header.Otprn)
+	if err != nil {
+		log.Info("VerifyDifficulty DecompressPubkey", "error", err)
+		return errInvalidDifficulty
+	}
+
+	addr := crypto.PubkeyToAddress(*pubKey).Hex()
+	if addr != header.Coinbase.Hex() {
+		log.Info("VerifyDifficulty Compare Address", "error", err)
+		return errInvalidDifficulty
+	}
+
+	// Verify Difficulty
+	difficulty, err := verifyDifficulty(pubKey, strconv.FormatUint(header.Number.Uint64(), 10), header.FairnodeSign)
+	if err != nil {
+		log.Info("VerifyDifficulty", "error", err)
+		return errInvalidDifficulty
+	}
+	if header.Difficulty.Cmp(difficulty) != 0 {
+		log.Info("VerifyDifficulty Difficulty Compare", "error", err)
+		return errInvalidDifficulty
+	}
+
+	return nil
 }
 
 // verifyCascadingFields verifies all the header fields that are not standalone,
@@ -508,13 +518,8 @@ func (c *Layer2) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 	//}
 	// Ensure that the difficulty corresponds to the turn-ness of the signer
 	if !c.fakeDiff {
-		inturn := snap.inturn(header.Number.Uint64(), signer)
-		if inturn && header.Difficulty.Cmp(diffInTurn) != 0 {
-			return errWrongDifficulty
-		}
-		if !inturn && header.Difficulty.Cmp(diffNoTurn) != 0 {
-			return errWrongDifficulty
-		}
+
+		return c.VerifyDifficulty(header)
 	}
 	return nil
 }
@@ -556,6 +561,7 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 		header.Difficulty = big.NewInt(0)
 	} else {
 		header.Difficulty = difficulty
+		header.FairnodeSign = make([]byte, len(pi))
 		copy(header.FairnodeSign, pi)
 		var pubKey ecdsa.PublicKey
 		pubKey = c.priKey.PublicKey

@@ -44,7 +44,7 @@ func newTesterAccountPool() *testerAccountPool {
 	}
 }
 
-// checkpoint creates a Layer2 checkpoint signer section from the provided list
+// checkpoint creates a layer2 checkpoint signer section from the provided list
 // of authorized signers and embeds it into the provided header.
 func (ap *testerAccountPool) checkpoint(header *types.Header, signers []string) {
 	auths := make([]common.Address, len(signers))
@@ -72,7 +72,7 @@ func (ap *testerAccountPool) address(account string) common.Address {
 	return crypto.PubkeyToAddress(ap.accounts[account].PublicKey)
 }
 
-// sign calculates a Layer2 digital signature for the given block and embeds it
+// sign calculates a layer2 digital signature for the given block and embeds it
 // back into the header.
 func (ap *testerAccountPool) sign(header *types.Header, signer string) {
 	// Ensure we have a persistent key for the signer
@@ -85,7 +85,7 @@ func (ap *testerAccountPool) sign(header *types.Header, signer string) {
 }
 
 // testerVote represents a single block signed by a parcitular account, where
-// the account may or may not have cast a Layer2 vote.
+// the account may or may not have cast a layer2 vote.
 type testerVote struct {
 	signer     string
 	voted      string
@@ -94,7 +94,7 @@ type testerVote struct {
 	newbatch   bool
 }
 
-// Tests that Layer2 signer voting is evaluated correctly for various simple and
+// Tests that layer2 signer voting is evaluated correctly for various simple and
 // complex scenarios, as well as that a few special corner cases fail correctly.
 func TestLayer2(t *testing.T) {
 	// Define the various voting scenarios to test

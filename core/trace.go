@@ -94,6 +94,7 @@ func CreateTraceEnv(chainConfig *params.ChainConfig, chainContext ChainContext, 
 	if chainConfig.Scroll.FeeVaultEnabled() {
 		coinbase = *chainConfig.Scroll.FeeVaultAddress
 	} else {
+		log.Info("=== CSW ===", "header", block.Header())
 		coinbase, err = engine.Author(block.Header())
 		if err != nil {
 			log.Warn("recover coinbase in CreateTraceEnv fail. using zero-address", "err", err, "blockNumber", block.Header().Number, "headerHash", block.Header().Hash())

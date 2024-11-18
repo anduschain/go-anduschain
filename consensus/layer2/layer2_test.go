@@ -30,13 +30,13 @@ import (
 )
 
 // This test case is a repro of an annoying bug that took us forever to catch.
-// In Layer2 PoA networks (Rinkeby, Görli, etc), consecutive blocks might have
+// In Clique PoA networks (Rinkeby, Görli, etc), consecutive blocks might have
 // the same state root (no block subsidy, empty block). If a node crashes, the
 // chain ends up losing the recent state and needs to regenerate it from blocks
 // already in the database. The bug was that processing the block *prior* to an
 // empty one **also completes** the empty one, ending up in a known-block error.
 func TestReimportMirroredState(t *testing.T) {
-	// Initialize a Layer2 chain with a single signer
+	// Initialize a Clique chain with a single signer
 	var (
 		db     = memorydb.NewMemDatabase()
 		key, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
@@ -57,7 +57,7 @@ func TestReimportMirroredState(t *testing.T) {
 	chain, _ := core.NewBlockChain(db, nil, params.AllLayer2ProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
-	blocks, _ := core.GenerateChain(params.AllLayer2ProtocolChanges, genesis, engine, db, 3, func(i int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.AllCliqueProtocolChanges, genesis, engine, db, 3, func(i int, block *core.BlockGen) {
 		// The chain maker doesn't have access to a chain, so the difficulty will be
 		// lets unset (nil). Set it here to the correct value.
 		block.SetDifficulty(diffInTurn)
@@ -89,7 +89,7 @@ func TestReimportMirroredState(t *testing.T) {
 	db = memorydb.NewMemDatabase()
 	genspec.MustCommit(db)
 
-	chain, _ = core.NewBlockChain(db, nil, params.AllLayer2ProtocolChanges, engine, vm.Config{})
+	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
 	if _, err := chain.InsertChain(blocks[:2]); err != nil {
@@ -102,7 +102,7 @@ func TestReimportMirroredState(t *testing.T) {
 	// Simulate a crash by creating a new chain on top of the database, without
 	// flushing the dirty states out. Insert the last block, triggering a sidechain
 	// reimport.
-	chain, _ = core.NewBlockChain(db, nil, params.AllLayer2ProtocolChanges, engine, vm.Config{})
+	chain, _ = core.NewBlockChain(db, nil, params.AllCliqueProtocolChanges, engine, vm.Config{})
 	defer chain.Stop()
 
 	if _, err := chain.InsertChain(blocks[2:]); err != nil {

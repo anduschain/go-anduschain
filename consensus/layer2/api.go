@@ -142,6 +142,7 @@ func (api *API) Status() (*status, error) {
 	)
 	snap, err := api.layer2.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 	if err != nil {
+		return nil, err
 	}
 	var (
 		signers = snap.signers()
@@ -203,7 +204,7 @@ func (sb *blockNumberOrHashOrRLP) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GetSigner returns the signer for a specific layer2 block.
+// GetSigner returns the signer for a specific clique block.
 // Can be called with either a blocknumber, blockhash or an rlp encoded blob.
 // The RLP encoded blob can either be a block or a header.
 func (api *API) GetSigner(rlpOrBlockNr *blockNumberOrHashOrRLP) (common.Address, error) {

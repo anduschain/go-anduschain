@@ -23,8 +23,6 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
-	"github.com/anduschain/go-anduschain/consensus/layer2"
-	lclient "github.com/anduschain/go-anduschain/consensus/layer2/client"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/interfaces"
@@ -221,7 +219,6 @@ type worker struct {
 	possibleWinningBlock *types.VoteBlock // A set of possible winning voteblock
 
 	// TODO: CSW add for Layer2
-	layer2Client     *lclient.Layer2Client
 	l2ClientCloseCh  chan types.ClientClose
 	l2ClientCLoseSub event.Subscription
 }
@@ -289,12 +286,6 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth interfac
 
 		go worker.clientStatusLoop() // client close check and mininig canceled
 		go worker.leagueStatusLoop() // for league status message
-	} else if worker.config.Layer2 != nil {
-		worker.layer2Client = lclient.NewLayer2Client(config, worker.exitCh)
-		worker.l2ClientCLoseSub = worker.layer2Client.SubscribeClientCloseEvent(worker.l2ClientCloseCh)
-
-		go worker.commitLoop()
-		go worker.l2clientStatusLoop()
 	}
 
 	// Submit first work to initialize pending state.
@@ -472,8 +463,6 @@ func (w *worker) start() {
 	atomic.StoreInt32(&w.running, 1)
 	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debStart()
-	} else if _, ok := w.engine.(*layer2.Layer2); ok {
-		w.layer2Start()
 	} else {
 		w.startCh <- struct{}{}
 	}
@@ -484,9 +473,6 @@ func (w *worker) stop() {
 	atomic.StoreInt32(&w.running, 0)
 	if _, ok := w.engine.(*deb.Deb); ok {
 		w.debClient.Stop()
-	}
-	if _, ok := w.engine.(*layer2.Layer2); ok {
-		w.layer2Client.Stop()
 	}
 }
 
@@ -628,11 +614,7 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
-			if _, ok := w.engine.(*layer2.Layer2); ok {
-				w.layser2SendTransaction(req.interrupt, req.noempty, req.timestamp)
-			} else {
-				w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
-			}
+			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
 			if _, exist := w.possibleUncles[ev.Block.Hash()]; exist {
@@ -1059,6 +1041,7 @@ func (w *worker) resultLoop() {
 
 // makeCurrent creates a new environment for the current cycle.
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
+	log.Info("=== CSW ===", "len", len(header.Extra), "extra", header.Extra)
 	state, err := w.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
@@ -1409,138 +1392,8 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 
-		if _, ok := w.engine.(*layer2.Layer2); ok { // Layer2 의 경우는 블록을 만들지 않고 tx만 orderer에게 전달...
-			// orderer에 Transactions 전송
-			w.layer2Client.Transaction(w.config.ChainID.Uint64(), w.current.header.Number.Uint64(), w.current.txs)
-			return
-		}
-
 		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
 			log.Error("Failed commit for mining", "err", err, "update", true)
-			return
-		}
-	}
-}
-
-func (w *worker) layser2SendTransaction(interrupt *int32, noempty bool, timestamp int64) {
-	pending, _, err := w.eth.TxPool().Pending()
-	if err != nil {
-		log.Error("Failed to fetch pending transactions", "err", err)
-		return
-	}
-
-	// Layer2 의 경우는 블록을 만들지 않고 tx만 orderer에게 전달...
-	// orderer에 Transactions 전송
-	var txs []*types.Transaction
-	for _, tx := range pending {
-		for _, item := range tx {
-			txs = append(txs, item)
-		}
-	}
-	// Check Layer2 Client running
-	if w.layer2Client.Miner() != nil {
-		w.layer2Client.Transaction(w.config.ChainID.Uint64(), uint64(len(txs)), txs)
-	}
-}
-
-func (w *worker) layer2CommitNewWork(pending map[common.Address]types.Transactions, timestamp int64) {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	tstart := time.Now()
-	parent := w.chain.CurrentBlock()
-
-	if parent.Time().Cmp(new(big.Int).SetInt64(timestamp)) >= 0 {
-		timestamp = parent.Time().Int64() + 1
-	}
-
-	// this will ensure we're not going off too far in the future
-	if now := time.Now().Unix(); timestamp > now+1 {
-		wait := time.Duration(timestamp-now) * time.Second
-		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
-		time.Sleep(wait)
-	}
-
-	num := parent.Number()
-	var header *types.Header
-
-	header = &types.Header{
-		ParentHash: parent.Hash(),
-		Number:     num.Add(num, common.Big1),
-		GasLimit:   core.CalcGasLimitEth(parent.GasLimit(), w.gasCeil),
-		Extra:      w.extra,
-		Time:       big.NewInt(timestamp),
-	}
-
-	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
-	if w.isRunning() {
-		if w.coinbase == (common.Address{}) {
-			log.Error("Refusing to mine without coinbase")
-			return
-		}
-
-		header.Coinbase = w.coinbase
-		if err := w.engine.Prepare(w.chain, header); err != nil {
-			log.Error("Failed to prepare header for mining", "err", err)
-			return
-		}
-
-		// If we are care about TheDAO hard-fork check whether to override the extra-data or not
-		if daoBlock := w.config.DAOForkBlock; daoBlock != nil {
-			// Check whether the block is among the fork extra-override range
-			limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
-			if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
-				// Depending whether we support or oppose the fork, override differently
-				if w.config.DAOForkSupport {
-					header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
-				} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
-					header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
-				}
-			}
-		}
-
-		// Could potentially happen if starting to mine in an odd state.
-		err := w.makeCurrent(parent, header)
-		if err != nil {
-			log.Error("Failed to create mining context", "err", err)
-			return
-		}
-
-		// Create the current work task and check any fork transitions needed
-		env := w.current
-		if w.config.DAOForkSupport && w.config.DAOForkBlock != nil && w.config.DAOForkBlock.Cmp(header.Number) == 0 {
-			misc.ApplyDAOHardFork(env.state)
-		}
-
-		// Accumulate the uncles for the current block
-		for hash, uncle := range w.possibleUncles {
-			if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
-				delete(w.possibleUncles, hash)
-			}
-		}
-
-		if len(pending) > 0 {
-			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, pending)
-			if w.commitTransactions(txs, w.coinbase, nil) {
-				return
-			}
-		}
-
-		if err := w.commit(w.fullTaskHook, true, tstart); err != nil {
-			log.Error("Failed commit for mining", "err", err, "update", true)
-			return
-		}
-	}
-}
-
-// Layer2의 경우는 서버에서 채굴 리스트를 받아서 채굴을 진행
-func (w *worker) commitLoop() {
-	for {
-		select {
-		case txlist, ok := <-w.layer2Client.TxListCh:
-			if ok {
-				w.layer2CommitNewWork(txlist, time.Now().Unix())
-			}
-		case <-w.exitCh:
 			return
 		}
 	}
@@ -1557,6 +1410,7 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	}
 
 	s := w.current.state.Copy()
+
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, w.current.receipts, []*types.Voter{})
 	if err != nil {
 		return err
@@ -1604,34 +1458,4 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		w.updateSnapshot()
 	}
 	return nil
-}
-
-func (w *worker) layer2Start() {
-	if err := w.layer2Client.Start(w.eth); err == nil {
-		w.startCh <- struct{}{}
-	} else {
-		log.Error("layer2 client start", "msg", err)
-		return
-	}
-}
-
-func (w *worker) l2clientStatusLoop() {
-	defer log.Warn("layer2 client was dead and worker exited")
-	defer w.l2ClientCLoseSub.Unsubscribe()
-
-	for {
-		select {
-		case <-w.l2ClientCloseCh:
-			log.Warn("layser2 client was close")
-			w.layer2Client.Stop()
-			time.AfterFunc(10*time.Second, func() {
-				if w.isRunning() {
-					log.Info("Retry Mining")
-					w.layer2Start()
-				}
-			})
-		case <-w.l2ClientCLoseSub.Err():
-			return
-		}
-	}
 }
