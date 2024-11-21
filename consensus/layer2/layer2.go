@@ -242,7 +242,7 @@ func New(config *params.Layer2Config, db ethdb.Database) *Layer2 {
 // Author implements consensus.Engine, returning the Ethereum address recovered
 // from the signature in the header's extra-data section.
 func (c *Layer2) Author(header *types.Header) (common.Address, error) {
-	return ecrecover(header, c.signatures)
+	return header.Coinbase, nil
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
@@ -475,6 +475,7 @@ func (c *Layer2) snapshot(chain consensus.ChainReader, number uint64, hash commo
 	for i := 0; i < len(headers)/2; i++ {
 		headers[i], headers[len(headers)-1-i] = headers[len(headers)-1-i], headers[i]
 	}
+
 	snap, err := snap.apply(headers)
 	if err != nil {
 		return nil, err
@@ -534,6 +535,7 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 	if err != nil {
 		return err
 	}
+
 	if number%c.config.Epoch != 0 {
 		c.lock.RLock()
 
@@ -555,6 +557,7 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 		}
 		c.lock.RUnlock()
 	}
+
 	// Set the correct difficulty
 	difficulty, pi, err := calcDifficulty(&c.priKey, strconv.FormatUint(header.Number.Uint64(), 10))
 	if err != nil {
@@ -570,17 +573,19 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 
 	_ = c.config
 
-	// Ensure the extra data has all its components
+	// Ensure the extra data has all its components (32byte)
 	if len(header.Extra) < extraVanity {
 		header.Extra = append(header.Extra, bytes.Repeat([]byte{0x00}, extraVanity-len(header.Extra))...)
 	}
 	header.Extra = header.Extra[:extraVanity]
 
+	// epoch 마다 signer추가
 	if number%c.config.Epoch == 0 {
 		for _, signer := range snap.signers() {
 			header.Extra = append(header.Extra, signer[:]...)
 		}
 	}
+	// 추가 서명 공간 생성
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 
 	// Ensure the timestamp has the correct delay
@@ -588,10 +593,12 @@ func (c *Layer2) Prepare(chain consensus.ChainReader, header *types.Header) erro
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
+
 	header.Time = big.NewInt(0).Add(parent.Time, new(big.Int).SetUint64(c.config.Period))
 	if header.Time.Int64() < time.Now().Unix() {
 		header.Time = big.NewInt(time.Now().Unix())
 	}
+
 	return nil
 }
 

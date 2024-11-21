@@ -238,7 +238,7 @@ func New(config *params.SseConfig, db ethdb.Database) *Sse {
 // Author implements consensus.Engine, returning the Ethereum address recovered
 // from the signature in the header's extra-data section.
 func (c *Sse) Author(header *types.Header) (common.Address, error) {
-	return ecrecover(header, c.signatures)
+	return header.Coinbase, nil
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.

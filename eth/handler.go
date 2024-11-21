@@ -323,7 +323,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	// Propagate existing transactions. new transactions appearing
 	// after this will be sent via broadcasts.
-
 	pm.syncTransactions(p)
 
 	// If we're DAO hard-fork aware, validate any remote peer with regard to the hard-fork
@@ -366,7 +365,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
 	}
 	defer msg.Discard()
-
 	// Handle the message depending on its contents
 	switch {
 	case msg.Code == StatusMsg:

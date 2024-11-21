@@ -960,6 +960,7 @@ func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 // removeTx removes a single transaction from the queue, moving all subsequent
 // transactions back to the future queue.
 func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
+	log.Info("==- CSW === removeTx", "hash", hash, "outofbound", outofbound)
 	// Fetch the transaction we wish to delete
 	tx := pool.all.Get(hash)
 	if tx == nil {

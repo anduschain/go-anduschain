@@ -23,6 +23,7 @@ import (
 	"github.com/anduschain/go-anduschain/consensus"
 	"github.com/anduschain/go-anduschain/consensus/deb"
 	"github.com/anduschain/go-anduschain/consensus/deb/client"
+	"github.com/anduschain/go-anduschain/consensus/layer2"
 	"github.com/anduschain/go-anduschain/consensus/misc"
 	"github.com/anduschain/go-anduschain/core"
 	"github.com/anduschain/go-anduschain/core/interfaces"
@@ -1041,7 +1042,6 @@ func (w *worker) resultLoop() {
 
 // makeCurrent creates a new environment for the current cycle.
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	log.Info("=== CSW ===", "len", len(header.Extra), "extra", header.Extra)
 	state, err := w.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
@@ -1050,6 +1050,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	// don't commit the state during tracing for circuit capacity checker, otherwise we cannot revert.
 	// and even if we don't commit the state, the `refund` value will still be correct, as explained in `CommitTransaction`
 	commitStateAfterApply := false
+
 	traceEnv, err := core.CreateTraceEnv(w.chain.Config(), w.chain, w.engine, w.chain.DB(), state, parent,
 		// new block with a placeholder tx, for traceEnv's ExecutionResults length & TxStorageTraces length
 		types.NewBlockWithHeader(header).WithBody([]*types.Transaction{types.NewTx(&types.LegacyTx{})}, nil),
@@ -1098,26 +1099,14 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
-func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, *types.BlockTrace, error) {
-	var traces *types.BlockTrace
-	var err error
+func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 
 	snap := w.current.state.Snapshot()
-	// ToDo - CSW
-	// 1. check circuit capacity before 'core.ApplyTransaction'
-	// 2. Get BlockTrace
-	traces, err = w.current.traceEnv.GetBlockTrace(
-		types.NewBlockWithHeader(w.current.header).WithBody([]*types.Transaction{tx}, nil),
-	)
-	w.current.state.RevertToSnapshot(snap)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		return nil, traces, err
+		return nil, err
 	}
 
 	//withTimer(l2CommitTxCCCTimer, func() {
@@ -1130,7 +1119,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
-	return receipt.Logs, traces, nil
+	return receipt.Logs, nil
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
@@ -1192,7 +1181,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 		// ToDo - CSW
 		// traces 처리
-		logs, _, err := w.commitTransaction(tx, coinbase)
+		logs, err := w.commitTransaction(tx, coinbase)
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
@@ -1295,6 +1284,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 
 		header.Coinbase = w.coinbase
+
 		if err := w.engine.Prepare(w.chain, header); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
@@ -1341,7 +1331,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 
-		// Short circuit if there is no available pending transactions
 		// otprn check
 		if _, ok := w.engine.(*deb.Deb); ok {
 			otprn, err := types.DecodeOtprn(header.Otprn)
@@ -1388,6 +1377,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		if len(remoteTxs) > 0 {
 			txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs)
 			if w.commitTransactions(txs, w.coinbase, interrupt) {
+				return
+			}
+		}
+
+		if _, ok := w.engine.(*layer2.Layer2); ok {
+			if len(w.current.txs) == 0 {
+				log.Debug("Layer2 No Transactions => Skip Block Generation")
 				return
 			}
 		}

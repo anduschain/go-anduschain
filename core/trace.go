@@ -90,15 +90,11 @@ func CreateTraceEnvHelper(chainConfig *params.ChainConfig, logConfig *vm.LogConf
 
 func CreateTraceEnv(chainConfig *params.ChainConfig, chainContext ChainContext, engine consensus.Engine, chaindb ethdb.Database, statedb *state.StateDB, parent *types.Block, block *types.Block, commitAfterApply bool) (*TraceEnv, error) {
 	var coinbase common.Address
-	var err error
+
 	if chainConfig.Scroll.FeeVaultEnabled() {
 		coinbase = *chainConfig.Scroll.FeeVaultAddress
 	} else {
-		log.Info("=== CSW ===", "header", block.Header())
-		coinbase, err = engine.Author(block.Header())
-		if err != nil {
-			log.Warn("recover coinbase in CreateTraceEnv fail. using zero-address", "err", err, "blockNumber", block.Header().Number, "headerHash", block.Header().Hash())
-		}
+		coinbase = block.Header().Coinbase
 	}
 
 	// Collect start queue index, we should always have this value for blocks
