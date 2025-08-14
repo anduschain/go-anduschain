@@ -7,11 +7,12 @@ toolchain go1.22.1
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
 	github.com/aristanetworks/goarista v0.0.0-20230220080635-060caa35f493
+	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cespare/cp v1.1.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.8.0
-	github.com/docker/docker v26.1.5+incompatible
+	github.com/docker/docker v28.0.0+incompatible
 	github.com/dop251/goja v0.0.0-20230605162241-28ee0ee714f3
 	github.com/elastic/gosigar v0.14.2
 	github.com/fatih/color v1.14.1
@@ -79,6 +80,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/moby/sys/reexec v0.1.0 // indirect
 	github.com/montanaflynn/stats v0.7.0 // indirect
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -94,5 +96,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 )
